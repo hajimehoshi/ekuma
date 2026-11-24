@@ -25,15 +25,15 @@ var objectStorageExceptions = map[string]storageException{
 		count:  7,
 		reason: "adds within the capacity and creates objects; calls in exec cost more than inlined stores",
 	},
-	"ExecutionContext.AppendElements": {
+	"QuietContext.AppendElements": {
 		count:  1,
 		reason: "appends within the room that reserveElems made; a helper costs each push a spill",
 	},
-	"ExecutionContext.AppendElementsOf": {
+	"QuietContext.AppendElementsOf": {
 		count:  1,
 		reason: "calls leaveElems itself; a helper is not inlined",
 	},
-	"ExecutionContext.PrependElements": {
+	"QuietContext.PrependElements": {
 		count:  2,
 		reason: "calls leaveElems itself; a helper is not inlined",
 	},
@@ -41,7 +41,7 @@ var objectStorageExceptions = map[string]storageException{
 		count:  2,
 		reason: "clears the removed element itself; a helper is not inlined",
 	},
-	"ExecutionContext.SpliceElements": {
+	"QuietContext.SpliceElements": {
 		count:  1,
 		reason: "calls leaveElems and clears the tail itself; a helper is not inlined",
 	},

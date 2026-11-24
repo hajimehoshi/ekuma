@@ -91,26 +91,36 @@ func (cx *ExecutionContext) getGlobal(key *Object, c *globalCache, orUndef, stri
 		c.ref = &g.slots[p.slot]
 		return g.slots[p.slot]
 	}
+	switch l := cx.Quiet().lookupNamed(g, key); l.kind {
+	case lookupAbsent, lookupNumericMiss:
+		if orUndef {
+			return Undefined
+		}
+		cx.ThrowReferenceError(wtf8.ToValidUTF8(key.str) + " is not defined")
+	case lookupSlot:
+		v, getter := cx.readNamedSlot(g, l.holder, l.prop, nil)
+		if getter != nil {
+			return cx.Call(getter, Value{o: r.globalThis})
+		}
+		return v
+	}
 	k := PropKey{key: key}
-	canRunCode := hasDelegatedPrototype(g)
 	if !cx.HasProperty(g, k) {
 		if orUndef {
 			return Undefined
 		}
 		cx.ThrowReferenceError(wtf8.ToValidUTF8(key.str) + " is not defined")
 	}
-	if canRunCode {
-		// HasBinding can create a lexical binding or remove the property or its prototype.
-		// GetBindingValue selects the binding again in the same global environment.
-		if v, ok := cx.getGlobalLexical(key, c); ok {
-			return v
+	// HasBinding can create a lexical binding or remove the property or its prototype.
+	// GetBindingValue selects the binding again in the same global environment.
+	if v, ok := cx.getGlobalLexical(key, c); ok {
+		return v
+	}
+	if !cx.HasProperty(g, k) {
+		if strict {
+			cx.ThrowReferenceError(wtf8.ToValidUTF8(key.str) + " is not defined")
 		}
-		if !cx.HasProperty(g, k) {
-			if strict {
-				cx.ThrowReferenceError(wtf8.ToValidUTF8(key.str) + " is not defined")
-			}
-			return Undefined
-		}
+		return Undefined
 	}
 	return cx.getProp(g, k, Value{o: r.globalThis})
 }
@@ -310,6 +320,9 @@ func (cx *ExecutionContext) getValue(v, k Value) (Value, *Object) {
 	key := cx.QueryKey(k)
 	if key.key == nil {
 		return cx.getIndex(v, key.idx)
+	}
+	if key.idx == missingKey {
+		return cx.getMissing(v, key)
 	}
 	return cx.getNamed(v, key.key, nil)
 }
@@ -1097,7 +1110,7 @@ func takeDataProperties(dst, from *Object) bool {
 
 // AssignDataProperties copies the own enumerable properties of from to the empty object to as
 // Object.assign does, when that is known to run no code, and reports whether it did.
-func (ag *agent) AssignDataProperties(to, from *Object) bool {
+func (q QuietContext) AssignDataProperties(to, from *Object) bool {
 	s := takenShape(to, from)
 	if s == nil || len(from.elems) != 0 {
 		return false
@@ -1581,9 +1594,9 @@ func (ag *agent) SetFrameless(f *Object) {
 // one or two arguments. They neither throw nor run code, and report false when the function has
 // to be called instead.
 type (
-	MethodKernel0 func(cx *ExecutionContext, this Value) (Value, bool)
-	MethodKernel1 func(cx *ExecutionContext, this, x Value) (Value, bool)
-	MethodKernel2 func(cx *ExecutionContext, this, x, y Value) (Value, bool)
+	MethodKernel0 func(q QuietContext, this Value) (Value, bool)
+	MethodKernel1 func(q QuietContext, this, x Value) (Value, bool)
+	MethodKernel2 func(q QuietContext, this, x, y Value) (Value, bool)
 )
 
 // SetMethodKernels makes a call of the native function f with exactly no, one or two arguments
@@ -1721,7 +1734,7 @@ func (cx *ExecutionContext) deleteName(key *Object) bool {
 	}
 	// An inherited HasBinding check can create a lexical binding or an own global property.
 	k := PropKey{key: key}
-	if !hasDelegatedPrototype(g) || !cx.HasProperty(g.shape.proto, k) {
+	if !cx.Quiet().delegates(g) || !cx.HasProperty(g, k) {
 		return true
 	}
 	if _, ok := r.globalLex.shape.lookup(key); ok {

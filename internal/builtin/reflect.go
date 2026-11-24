@@ -85,7 +85,7 @@ func initReflect(cx *engine.ExecutionContext) {
 	})
 	method(cx, r, "has", 2, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		o := target(cx, arg(args, 0), "has")
-		return engine.Bool(cx.HasProperty(o, cx.QueryKey(arg(args, 1))))
+		return engine.Bool(cx.QueryProperty(o, cx.QueryKey(arg(args, 1))))
 	})
 	method(cx, r, "isExtensible", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		return engine.Bool(cx.IsExtensible(target(cx, arg(args, 0), "isExtensible")))

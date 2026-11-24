@@ -203,7 +203,7 @@ func TestPlainOwnPropertyQueryDefersLazyInitialization(t *testing.T) {
 	o := cx.NewLazyObject(nil, func(*engine.ExecutionContext, *engine.Object) {
 		t.Error("side-effect-free query ran the initializer")
 	})
-	if _, ok := cx.HasOwnPropertyPlain(o, engine.Number(0)); ok {
+	if _, ok := cx.Quiet().HasOwnPropertyPlain(o, engine.Number(0)); ok {
 		t.Error("side-effect-free query accepted an uninitialized object")
 	}
 }

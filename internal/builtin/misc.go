@@ -857,14 +857,14 @@ func initIterators(cx *engine.ExecutionContext) {
 	cx.SetIntrinsic(engine.IntrinsicArrayIteratorPrototypeNext, arrayIterNext)
 	cx.Define(cx.Intrinsic(engine.IntrinsicArrayIteratorPrototype), cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Array Iterator"), engine.FlagConfigurable)
 
-	plainIteratorNext(cx, cx.Intrinsic(engine.IntrinsicStringIteratorPrototype), engine.IteratorClosureRealm, "next method called on an object that is not a string iterator", func(cx *engine.ExecutionContext, _ *engine.Object, it *stringIterator) (engine.Value, bool) {
+	plainIteratorNext(cx, cx.Intrinsic(engine.IntrinsicStringIteratorPrototype), engine.IteratorClosureRealm, "next method called on an object that is not a string iterator", func(q engine.QuietContext, _ *engine.Object, it *stringIterator) (engine.Value, bool) {
 		if it.pos >= len(it.str) {
 			return engine.Undefined, false
 		}
 		_, size := wtf8.DecodeRune(it.str[it.pos:])
 		s := it.str[it.pos : it.pos+size]
 		it.pos += size
-		return cx.NewString(s), true
+		return q.NewString(s), true
 	})
 	cx.Define(cx.Intrinsic(engine.IntrinsicStringIteratorPrototype), cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("String Iterator"), engine.FlagConfigurable)
 

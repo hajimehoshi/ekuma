@@ -44,9 +44,12 @@ func initString(cx *engine.ExecutionContext) {
 		return s
 	})
 	// The kernel converts a number or a string, which needs no code to run and cannot throw.
-	cx.SetMethodKernels(ctor, shortContract, nil, func(cx *engine.ExecutionContext, this, x engine.Value) (engine.Value, bool) {
-		if x.IsNumber() || x.IsString() {
-			return cx.ToStringValue(x), true
+	cx.SetMethodKernels(ctor, shortContract, nil, func(q engine.QuietContext, this, x engine.Value) (engine.Value, bool) {
+		if x.IsString() {
+			return x, true
+		}
+		if x.IsNumber() {
+			return q.NumberToString(x.Number()), true
 		}
 		return engine.Undefined, false
 	}, nil)
@@ -63,11 +66,11 @@ func initString(cx *engine.ExecutionContext) {
 		checkStringLength(cx, s.StringByteLength())
 		return s
 	})
-	cx.SetMethodKernels(fromCharCode, shortContract, nil, func(cx *engine.ExecutionContext, this, x engine.Value) (engine.Value, bool) {
+	cx.SetMethodKernels(fromCharCode, shortContract, nil, func(q engine.QuietContext, this, x engine.Value) (engine.Value, bool) {
 		if !x.IsNumber() {
 			return engine.Undefined, false
 		}
-		return cx.UnitString(uint16(cx.ToUint32(x))), true
+		return q.UnitString(uint16(numconv.ToUint32(x.Number()))), true
 	}, nil)
 	method(cx, ctor, "fromCodePoint", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		var buf [charactersOnStack]rune
@@ -116,13 +119,13 @@ func initString(cx *engine.ExecutionContext) {
 	// conversions run no code.
 	charAt := method(cx, proto, "charAt", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		s := thisStringValue(cx, this, "charAt")
-		return unitStringAt(cx, s, cx.ToIntegerOrInfinity(arg(args, 0)))
+		return unitStringAt(cx.Quiet(), s, cx.ToIntegerOrInfinity(arg(args, 0)))
 	})
-	cx.SetMethodKernels(charAt, shortContract, nil, func(cx *engine.ExecutionContext, this, x engine.Value) (engine.Value, bool) {
+	cx.SetMethodKernels(charAt, shortContract, nil, func(q engine.QuietContext, this, x engine.Value) (engine.Value, bool) {
 		if !this.IsString() || !x.IsNumber() {
 			return engine.Undefined, false
 		}
-		return unitStringAt(cx, this, cx.ToIntegerOrInfinity(x)), true
+		return unitStringAt(q, this, numconv.ToIntegerOrInfinity(x.Number())), true
 	}, nil)
 	method(cx, proto, "at", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		s := thisStringValue(cx, this, "at")
@@ -140,11 +143,11 @@ func initString(cx *engine.ExecutionContext) {
 		s := thisStringValue(cx, this, "charCodeAt")
 		return codeUnitAt(s, cx.ToIntegerOrInfinity(arg(args, 0)))
 	})
-	cx.SetMethodKernels(charCodeAt, shortContract, nil, func(cx *engine.ExecutionContext, this, x engine.Value) (engine.Value, bool) {
+	cx.SetMethodKernels(charCodeAt, shortContract, nil, func(q engine.QuietContext, this, x engine.Value) (engine.Value, bool) {
 		if !this.IsString() || !x.IsNumber() {
 			return engine.Undefined, false
 		}
-		return codeUnitAt(this, cx.ToIntegerOrInfinity(x)), true
+		return codeUnitAt(this, numconv.ToIntegerOrInfinity(x.Number())), true
 	}, nil)
 	method(cx, proto, "codePointAt", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		s := thisStringValue(cx, this, "codePointAt")
@@ -161,11 +164,11 @@ func initString(cx *engine.ExecutionContext) {
 		from := engine.RelativeIndex(math.Max(cx.ToIntegerOrInfinity(arg(args, 1)), 0), s.StringLength())
 		return engine.Number(float64(s.UnitIndexOf(sub, from, cx.Poll)))
 	})
-	cx.SetMethodKernels(indexOf, polledContract, nil, func(cx *engine.ExecutionContext, this, sub engine.Value) (engine.Value, bool) {
+	cx.SetMethodKernels(indexOf, polledContract, nil, func(q engine.QuietContext, this, sub engine.Value) (engine.Value, bool) {
 		if !this.IsString() || !sub.IsString() {
 			return engine.Undefined, false
 		}
-		return engine.Number(float64(this.UnitIndexOf(sub, 0, cx.Poll))), true
+		return engine.Number(float64(this.UnitIndexOf(sub, 0, q.Poll))), true
 	}, nil)
 	method(cx, proto, "lastIndexOf", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		s := thisStringValue(cx, this, "lastIndexOf")
@@ -189,11 +192,11 @@ func initString(cx *engine.ExecutionContext) {
 		from := engine.RelativeIndex(math.Max(cx.ToIntegerOrInfinity(arg(args, 1)), 0), s.StringLength())
 		return engine.Bool(s.UnitIndexOf(sub, from, cx.Poll) >= 0)
 	})
-	cx.SetMethodKernels(includes, polledContract, nil, func(cx *engine.ExecutionContext, this, sub engine.Value) (engine.Value, bool) {
+	cx.SetMethodKernels(includes, polledContract, nil, func(q engine.QuietContext, this, sub engine.Value) (engine.Value, bool) {
 		if !this.IsString() || !sub.IsString() {
 			return engine.Undefined, false
 		}
-		return engine.Bool(this.UnitIndexOf(sub, 0, cx.Poll) >= 0), true
+		return engine.Bool(this.UnitIndexOf(sub, 0, q.Poll) >= 0), true
 	}, nil)
 	method(cx, proto, "startsWith", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		s := thisStringValue(cx, this, "startsWith")
@@ -218,33 +221,41 @@ func initString(cx *engine.ExecutionContext) {
 	})
 	slice := method(cx, proto, "slice", 2, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		s := thisStringValue(cx, this, "slice")
-		return sliceString(cx, s, arg(args, 0), arg(args, 1))
+		start, end := cx.ToIntegerOrInfinity(arg(args, 0)), math.Inf(1)
+		if e := arg(args, 1); !e.IsUndefined() {
+			end = cx.ToIntegerOrInfinity(e)
+		}
+		return sliceString(cx.Quiet(), s, start, end)
 	})
-	cx.SetMethodKernels(slice, shortContract, nil, func(cx *engine.ExecutionContext, this, start engine.Value) (engine.Value, bool) {
+	cx.SetMethodKernels(slice, shortContract, nil, func(q engine.QuietContext, this, start engine.Value) (engine.Value, bool) {
 		if !this.IsString() || !start.IsNumber() {
 			return engine.Undefined, false
 		}
-		return sliceString(cx, this, start, engine.Undefined), true
-	}, func(cx *engine.ExecutionContext, this, start, end engine.Value) (engine.Value, bool) {
+		return sliceString(q, this, start.Number(), math.Inf(1)), true
+	}, func(q engine.QuietContext, this, start, end engine.Value) (engine.Value, bool) {
 		if !this.IsString() || !start.IsNumber() || !end.IsNumber() {
 			return engine.Undefined, false
 		}
-		return sliceString(cx, this, start, end), true
+		return sliceString(q, this, start.Number(), end.Number()), true
 	})
 	substring := method(cx, proto, "substring", 2, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		s := thisStringValue(cx, this, "substring")
-		return substringOf(cx, s, arg(args, 0), arg(args, 1))
+		start, end := cx.ToIntegerOrInfinity(arg(args, 0)), math.Inf(1)
+		if e := arg(args, 1); !e.IsUndefined() {
+			end = cx.ToIntegerOrInfinity(e)
+		}
+		return substringOf(cx.Quiet(), s, start, end)
 	})
-	cx.SetMethodKernels(substring, shortContract, nil, func(cx *engine.ExecutionContext, this, start engine.Value) (engine.Value, bool) {
+	cx.SetMethodKernels(substring, shortContract, nil, func(q engine.QuietContext, this, start engine.Value) (engine.Value, bool) {
 		if !this.IsString() || !start.IsNumber() {
 			return engine.Undefined, false
 		}
-		return substringOf(cx, this, start, engine.Undefined), true
-	}, func(cx *engine.ExecutionContext, this, start, end engine.Value) (engine.Value, bool) {
+		return substringOf(q, this, start.Number(), math.Inf(1)), true
+	}, func(q engine.QuietContext, this, start, end engine.Value) (engine.Value, bool) {
 		if !this.IsString() || !start.IsNumber() || !end.IsNumber() {
 			return engine.Undefined, false
 		}
-		return substringOf(cx, this, start, end), true
+		return substringOf(q, this, start.Number(), end.Number()), true
 	})
 	method(cx, proto, "substr", 2, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		s := thisStringValue(cx, this, "substr")
@@ -479,7 +490,7 @@ func initString(cx *engine.ExecutionContext) {
 		return cx.ToWellFormed(thisStringValue(cx, this, "toWellFormed"))
 	})
 	// split, replace, replaceAll, match and search borrow the RegExp object of a literal separator
-	// or pattern. RegExp.prototype[@@split] and the others reach it only through IsUnmodifiedRegExp,
+	// or pattern. RegExp.prototype[@@split] and the others reach it only through UnmodifiedRegExpMatcher,
 	// and run no script code before the last use of it, except the conversions of the other
 	// arguments, which the conditions below rule out, and the replacer function, which runs last
 	// and is not passed the object.
@@ -863,38 +874,31 @@ func codeUnitAt(s engine.Value, i float64) engine.Value {
 
 // unitStringAt returns the code unit of the string s at the index i as a string, or the empty
 // string when s has none there.
-func unitStringAt(cx *engine.ExecutionContext, s engine.Value, i float64) engine.Value {
+func unitStringAt(q engine.QuietContext, s engine.Value, i float64) engine.Value {
 	if i < 0 || i >= float64(s.StringLength()) {
-		return cx.NewString("")
+		return q.NewString("")
 	}
-	return cx.UnitString(s.UnitAt(int(i)))
+	return q.UnitString(s.UnitAt(int(i)))
 }
 
-// sliceString implements String.prototype.slice for the string s and the arguments start and end.
-func sliceString(cx *engine.ExecutionContext, s, start, end engine.Value) engine.Value {
+// sliceString returns the result of String.prototype.slice for the string s and the converted
+// arguments start and end.
+func sliceString(q engine.QuietContext, s engine.Value, start, end float64) engine.Value {
 	n := s.StringLength()
-	from := engine.RelativeIndex(cx.ToIntegerOrInfinity(start), n)
-	to := n
-	if !end.IsUndefined() {
-		to = engine.RelativeIndex(cx.ToIntegerOrInfinity(end), n)
-	}
+	from, to := engine.RelativeIndex(start, n), engine.RelativeIndex(end, n)
 	if from >= to {
-		return cx.NewString("")
+		return q.NewString("")
 	}
-	return cx.Substring(s, from, to)
+	return q.Substring(s, from, to)
 }
 
-// substringOf implements String.prototype.substring for the string s and the arguments start and
-// end.
-func substringOf(cx *engine.ExecutionContext, s, start, end engine.Value) engine.Value {
+// substringOf returns the result of String.prototype.substring for the string s and the converted
+// arguments start and end.
+func substringOf(q engine.QuietContext, s engine.Value, start, end float64) engine.Value {
 	n := s.StringLength()
-	from := engine.RelativeIndex(math.Max(cx.ToIntegerOrInfinity(start), 0), n)
-	to := n
-	if !end.IsUndefined() {
-		to = engine.RelativeIndex(math.Max(cx.ToIntegerOrInfinity(end), 0), n)
-	}
+	from, to := engine.RelativeIndex(max(start, 0), n), engine.RelativeIndex(max(end, 0), n)
 	if from > to {
 		from, to = to, from
 	}
-	return cx.Substring(s, from, to)
+	return q.Substring(s, from, to)
 }

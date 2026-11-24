@@ -104,57 +104,117 @@ func (cx *ExecutionContext) ToPropertyKey(v Value) PropKey {
 	return cx.KeyOfString(cx.ToString(v))
 }
 
-// QueryKey returns ToPropertyKey(v) for an operation that only reads properties. The key is
-// valid only for that operation and must not be used to create a property.
-func (cx *ExecutionContext) QueryKey(v Value) PropKey {
-	if v.isShortString() && v.o.flags&objInterned == 0 {
-		s := v.shortText()
-		if i, ok := stringIndex(s); ok {
-			return PropKey{idx: i}
-		}
-		if o := cx.strings.interned.get(s); o != nil {
-			return PropKey{key: o}
-		}
-		return PropKey{key: v.stringObject()}
-	}
-	if o := v.o; o != nil && o.kind == kindString {
-		return cx.queryStringKey(o)
-	}
-	return cx.ToPropertyKey(v)
+// QueryKey is a property key for an operation that only reads properties. It may be a string that
+// no property key has.
+type QueryKey struct {
+	// key and idx are as in [PropKey], except that key is not interned when idx is missingKey.
+	key *Object
+	idx uint32
 }
 
-// queryStringKey returns the property key for the string o for a read. When no property key has
-// the contents of o, it returns a key that no object has as a property.
-func (ag *agent) queryStringKey(o *Object) PropKey {
+// missingKey is the idx of a query key whose key has the contents of no property key.
+const missingKey = 1
+
+func (k QueryKey) missing() bool {
+	return k.key != nil && k.idx == missingKey
+}
+
+// QueryKey returns ToPropertyKey(v) as a query key, which is valid until code runs or a property
+// key is made.
+func (cx *ExecutionContext) QueryKey(v Value) QueryKey {
+	if o := v.o; o != nil && o.kind == kindString {
+		if v.isShortString() && o.flags&objInterned == 0 {
+			return cx.shortQueryKey(v)
+		}
+		return cx.queryStringKey(o)
+	}
+	return QueryKey(cx.ToPropertyKey(v))
+}
+
+// shortQueryKey returns the query key for the short string v, which is not interned.
+func (ag *agent) shortQueryKey(v Value) QueryKey {
+	s := v.shortText()
+	if i, ok := stringIndex(s); ok {
+		return QueryKey{idx: i}
+	}
+	if o := ag.strings.interned.get(s); o != nil {
+		return QueryKey{key: o}
+	}
+	return QueryKey{
+		key: v.stringObject(),
+		idx: missingKey,
+	}
+}
+
+// queryStringKey returns the query key for the string o.
+func (ag *agent) queryStringKey(o *Object) QueryKey {
 	c := o.Str()
 	if len(c) > 0 && c[0] >= '0' && c[0] <= '9' {
 		if i, ok := o.arrayIndex(); ok {
-			return PropKey{idx: i}
+			return QueryKey{idx: i}
 		}
 	}
 	if o.flags&objInterned != 0 {
-		return PropKey{key: o}
+		return QueryKey{key: o}
 	}
 	if k, ok := o.extObject(); ok {
-		return PropKey{key: k}
+		return QueryKey{key: k}
 	}
 	if k := ag.strings.interned.get(c); k != nil {
 		o.setExtState(k)
-		return PropKey{key: k}
+		return QueryKey{key: k}
 	}
-	// Every property key of every object is interned, so o differs from all of them. Not
-	// interning o keeps a read of a missing key from adding to the interned strings.
-	return PropKey{key: o}
+	// Not interning o keeps a read of a missing key from adding to the interned strings.
+	return QueryKey{
+		key: o,
+		idx: missingKey,
+	}
 }
 
-// storedKey returns k as the key that a property with k is stored under. A trap of a proxy can
-// create the property while a read with a key from [ExecutionContext.QueryKey] runs, and the checks after the
-// trap have to find it.
-func (cx *ExecutionContext) storedKey(k PropKey) PropKey {
-	if o := k.key; o != nil && o.kind == kindString && o.flags&objInterned == 0 {
-		return PropKey{key: cx.stringKey(o)}
+// propKey returns k as a property key.
+func (cx *ExecutionContext) propKey(k QueryKey) PropKey {
+	if k.missing() {
+		return PropKey{key: cx.stringKey(k.key)}
 	}
-	return k
+	return PropKey(k)
+}
+
+// QueryProperty is HasProperty of o and k.
+func (cx *ExecutionContext) QueryProperty(o *Object, k QueryKey) bool {
+	if k.missing() {
+		return cx.queryMissing(o, k)
+	}
+	return cx.HasProperty(o, PropKey(k))
+}
+
+// queryMissing is QueryProperty of o and k, which is missing.
+func (cx *ExecutionContext) queryMissing(o *Object, k QueryKey) bool {
+	if _, ok := cx.Quiet().hasPropertyPlain(o, k.key); ok {
+		return false
+	}
+	return cx.HasProperty(o, cx.propKey(k))
+}
+
+// QueryOwnProperty is HasOwnProperty of o and k.
+func (cx *ExecutionContext) QueryOwnProperty(o *Object, k QueryKey) bool {
+	if k.missing() {
+		if !o.delegatesPropertyAccess() {
+			return false
+		}
+	} else if k.key != nil && o.shape.family == ordinaryRoot {
+		_, ok := o.shape.lookup(k.key)
+		return ok
+	}
+	return cx.HasOwnProperty(o, cx.propKey(k))
+}
+
+// getMissing is getNamed of v and k, which is missing.
+func (cx *ExecutionContext) getMissing(v Value, k QueryKey) (Value, *Object) {
+	start := cx.protoStart(v, PropKey{key: k.key})
+	if _, ok := cx.Quiet().hasPropertyPlain(start, k.key); ok {
+		return Undefined, nil
+	}
+	return cx.getNamed(v, cx.propKey(k).key, nil)
 }
 
 // Fields of a property descriptor that are present.
@@ -336,22 +396,15 @@ func (cx *ExecutionContext) resolve(o *Object) {
 	}
 }
 
-// resolveForKey materializes the own properties needed for key. A lazy object's initializer
-// can intern a previously missing query key on the object or farther up its prototype chain.
-func (cx *ExecutionContext) resolveForKey(o *Object, key *Object) *Object {
+// resolveForKey materializes the own properties needed for key.
+func (cx *ExecutionContext) resolveForKey(o *Object, key *Object) {
 	if o.class != classLazy {
 		if o.fn != nil && key != nil && cx.isLazyKey(key) {
 			cx.materialize(o)
 		}
-		return key
+		return
 	}
 	cx.InitLazyObject(o)
-	if key != nil && key.kind == kindString && key.flags&objInterned == 0 {
-		if k := cx.strings.interned.get(key.Str()); k != nil {
-			return k
-		}
-	}
-	return key
 }
 
 // NewLazyObject returns an ordinary object with prototype proto. The first operation that
@@ -615,16 +668,6 @@ func (ag *agent) readNamedSlot(start, holder *Object, p prop, c *propCache) (val
 	return val, nil
 }
 
-// hasDelegatedPrototype reports whether a prototype can run code during HasProperty.
-func hasDelegatedPrototype(o *Object) bool {
-	for h := o.shape.proto; h != nil; h = h.shape.proto {
-		if h.delegatesPropertyAccess() {
-			return true
-		}
-	}
-	return false
-}
-
 // GetV returns the named property key of v, calling a getter.
 func (cx *ExecutionContext) GetV(v Value, key *Object) Value {
 	if v.IsObject() && v.o.shape.family == ordinaryRoot {
@@ -782,28 +825,25 @@ func (cx *ExecutionContext) getIndex(v Value, i uint32) (Value, *Object) {
 
 // GetOwnProperty implements [[GetOwnProperty]].
 func (cx *ExecutionContext) GetOwnProperty(o *Object, k PropKey) (PropDesc, bool) {
-	return cx.getOwnProperty(o, &k)
-}
-
-// getOwnProperty keeps the refreshed query key available to a caller walking the prototype chain.
-func (cx *ExecutionContext) getOwnProperty(o *Object, query *PropKey) (PropDesc, bool) {
+	if validateExec && k.key != nil && k.key.kind == kindString && k.key.flags&objInterned == 0 {
+		panic("engine: property key that is not interned")
+	}
 	if o.flags&objExotic != 0 {
 		switch o.class {
 		case classProxy:
-			return cx.proxyGetOwnProperty(o, *query)
+			return cx.proxyGetOwnProperty(o, k)
 		case classModuleNamespace:
-			if cx.isNamespaceExportKey(o, *query) {
-				return cx.namespaceGetOwnProperty(o, *query)
+			if cx.isNamespaceExportKey(o, k) {
+				return cx.namespaceGetOwnProperty(o, k)
 			}
 		case classTypedArray:
-			if query.key != nil && isCanonicalNumericString(query.key) {
+			if k.key != nil && isCanonicalNumericString(k.key) {
 				return PropDesc{}, false
 			}
 		default:
-			query.key = cx.resolveForKey(o, query.key)
+			cx.resolveForKey(o, k.key)
 		}
 	}
-	k := *query
 	if k.key == nil {
 		if o.objectProperties != nil && int64(k.idx) < int64(len(o.elems)) {
 			if e := o.elems[k.idx]; !e.isHole() {
@@ -861,10 +901,6 @@ func (cx *ExecutionContext) getOwnProperty(o *Object, query *PropKey) (PropDesc,
 
 // HasOwnProperty reports whether o has the own property k.
 func (cx *ExecutionContext) HasOwnProperty(o *Object, k PropKey) bool {
-	return cx.hasOwnProperty(o, &k)
-}
-
-func (cx *ExecutionContext) hasOwnProperty(o *Object, k *PropKey) bool {
 	if k.key == nil {
 		if o.indicesInElements() {
 			return int64(k.idx) < int64(len(o.elems)) && !o.elems[k.idx].isHole()
@@ -873,23 +909,79 @@ func (cx *ExecutionContext) hasOwnProperty(o *Object, k *PropKey) bool {
 		_, ok := o.shape.lookup(k.key)
 		return ok
 	}
-	_, ok := cx.getOwnProperty(o, k)
+	_, ok := cx.GetOwnProperty(o, k)
 	return ok
 }
 
-// HasOwnPropertyPlain is HasOwnProperty of o and the key k when k is a primitive and finding out
-// neither throws nor runs JavaScript, and takes a short time. It reports false as ok otherwise.
-func (cx *ExecutionContext) HasOwnPropertyPlain(o *Object, k Value) (has, ok bool) {
-	if k.IsObject() || o.delegatesPropertyAccess() {
-		return false, false
-	}
-	if k.IsBigInt() {
-		// The string of a large BigInt can take long to compute, and be longer than a string may be.
-		if _, ok := k.BigInt64(); !ok {
+// HasOwnPropertyPlain is HasOwnProperty of o and the key k when finding out neither throws nor
+// runs code, and takes a short time. It reports false as ok otherwise.
+func (q QuietContext) HasOwnPropertyPlain(o *Object, k Value) (has, ok bool) {
+	cx := q.cx
+	var key QueryKey
+	switch {
+	case k.IsNumber():
+		i, ok := numberIndex(k.n)
+		if !ok {
 			return false, false
 		}
+		key.idx = i
+	case k.IsString():
+		if k.isShortString() && k.o.flags&objInterned == 0 {
+			key = cx.shortQueryKey(k)
+		} else {
+			key = cx.queryStringKey(k.o)
+		}
+	case k.o != nil && k.o.kind == kindSymbol:
+		key.key = k.o
+	default:
+		return false, false
 	}
-	return cx.HasOwnProperty(o, cx.QueryKey(k)), true
+	if key.key == nil {
+		if o.indicesInElements() {
+			return int64(key.idx) < int64(len(o.elems)) && !o.elems[key.idx].isHole(), true
+		}
+		if o.delegatesPropertyAccess() {
+			return false, false
+		}
+		if o.objectProperties != nil && int64(key.idx) < int64(len(o.elems)) && !o.elems[key.idx].isHole() {
+			return true, true
+		}
+		switch o.class {
+		case classTypedArray:
+			return cx.typedArrayHas(o, key.idx), true
+		case classString:
+			s := o.extState().(*Object)
+			if uint(key.idx) < uint(s.StringLength()) {
+				return true, true
+			}
+		}
+		if o.flags&objSparse == 0 {
+			return false, true
+		}
+		if key.key = cx.indexKey(key.idx); key.key == nil {
+			return false, true
+		}
+		_, has = o.shape.lookup(key.key)
+		return has, true
+	}
+	switch o.shape.family {
+	case ordinaryRoot:
+	case arrayRoot:
+		if key.key == cx.Key(KeyLength) {
+			return true, true
+		}
+	case lazyFunctionRoot:
+		if cx.isLazyKey(key.key) {
+			cx.materialize(o)
+		}
+	default:
+		return false, false
+	}
+	if key.missing() {
+		return false, true
+	}
+	_, has = o.shape.lookup(key.key)
+	return has, true
 }
 
 // HasProperty implements [[HasProperty]].
@@ -909,7 +1001,7 @@ func (cx *ExecutionContext) HasProperty(o *Object, k PropKey) bool {
 				}
 			}
 		}
-		if cx.hasOwnProperty(h, &k) {
+		if cx.HasOwnProperty(h, k) {
 			return true
 		}
 	}
@@ -949,7 +1041,7 @@ func (cx *ExecutionContext) getProp(o *Object, k PropKey, receiver Value) Value 
 			}
 			return cx.typedArrayGet(h, k.idx)
 		}
-		d, ok := cx.getOwnProperty(h, &k)
+		d, ok := cx.GetOwnProperty(h, k)
 		if !ok {
 			continue
 		}
@@ -1539,7 +1631,7 @@ func (cx *ExecutionContext) DeleteProp(o *Object, k PropKey) bool {
 				return true
 			}
 		default:
-			k.key = cx.resolveForKey(o, k.key)
+			cx.resolveForKey(o, k.key)
 		}
 	}
 	if k.key == nil {

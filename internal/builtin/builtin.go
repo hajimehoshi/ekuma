@@ -55,7 +55,7 @@ func iteratorNext(cx *engine.ExecutionContext, proto *engine.Object, yieldRealm 
 }
 
 // plainIteratorNext defines a next method whose step runs no JavaScript and cannot throw.
-func plainIteratorNext[T any](cx *engine.ExecutionContext, proto *engine.Object, yieldRealm engine.IteratorYieldRealm, receiverError string, step func(*engine.ExecutionContext, *engine.Object, T) (engine.Value, bool)) *engine.Object {
+func plainIteratorNext[T any](cx *engine.ExecutionContext, proto *engine.Object, yieldRealm engine.IteratorYieldRealm, receiverError string, step func(engine.QuietContext, *engine.Object, T) (engine.Value, bool)) *engine.Object {
 	fn := engine.NewPlainIteratorNext(cx, yieldRealm, receiverError, step)
 	cx.Define(proto, cx.Intern("next"), engine.ObjectValue(fn), engine.FlagsHidden)
 	return fn
@@ -341,13 +341,13 @@ func initObject(cx *engine.ExecutionContext, strs *objectStrings) {
 
 	hasOwn := method(cx, proto, "hasOwnProperty", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		k := cx.QueryKey(arg(args, 0))
-		return engine.Bool(cx.HasOwnProperty(cx.ToObject(this), k))
+		return engine.Bool(cx.QueryOwnProperty(cx.ToObject(this), k))
 	})
-	cx.SetMethodKernels(hasOwn, shortContract, nil, func(cx *engine.ExecutionContext, this, k engine.Value) (engine.Value, bool) {
+	cx.SetMethodKernels(hasOwn, shortContract, nil, func(q engine.QuietContext, this, k engine.Value) (engine.Value, bool) {
 		if !this.IsObject() {
 			return engine.Undefined, false
 		}
-		has, ok := cx.HasOwnPropertyPlain(this.Object(), k)
+		has, ok := q.HasOwnPropertyPlain(this.Object(), k)
 		return engine.Bool(has), ok
 	}, nil)
 	method(cx, proto, "isPrototypeOf", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -598,7 +598,7 @@ func initObject(cx *engine.ExecutionContext, strs *objectStrings) {
 				continue
 			}
 			from := cx.ToObject(src)
-			if cx.AssignDataProperties(to, from) {
+			if cx.Quiet().AssignDataProperties(to, from) {
 				continue
 			}
 			var pacer engine.Pacer
@@ -663,7 +663,7 @@ func initObject(cx *engine.ExecutionContext, strs *objectStrings) {
 	})
 	method(cx, ctor, "hasOwn", 2, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		o := cx.ToObject(arg(args, 0))
-		return engine.Bool(cx.HasOwnProperty(o, cx.QueryKey(arg(args, 1))))
+		return engine.Bool(cx.QueryOwnProperty(o, cx.QueryKey(arg(args, 1))))
 	})
 }
 

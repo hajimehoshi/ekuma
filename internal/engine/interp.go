@@ -2059,7 +2059,12 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			if !o.IsObject() {
 				fp.context.ThrowTypeError("cannot use 'in' operator to search for a key in a non-object")
 			}
-			r := fp.context.HasProperty(o.o, fp.context.QueryKey(regs[i.C]))
+			var r bool
+			if k := fp.context.QueryKey(regs[i.C]); k.missing() {
+				r = fp.context.queryMissing(o.o, k)
+			} else {
+				r = fp.context.HasProperty(o.o, PropKey(k))
+			}
 			regs = ag.reload(regs, ag.frameBase(), fp)
 			regs[i.A] = Bool(r)
 		case bytecode.OpInstanceof:

@@ -51,6 +51,11 @@ func (ag *agent) Now() time.Time {
 	} else {
 		t = ag.clock()
 	}
+	return clampSystemTime(t)
+}
+
+// clampSystemTime returns t clamped to the range of time values.
+func clampSystemTime(t time.Time) time.Time {
 	if t.After(maxSystemTime) {
 		return maxSystemTime
 	}
@@ -62,8 +67,21 @@ func (ag *agent) Now() time.Time {
 
 // SystemUTCEpochMilliseconds returns the current time as a time value.
 func (ag *agent) SystemUTCEpochMilliseconds() float64 {
+	return epochMilliseconds(ag.Now())
+}
+
+// SystemUTCEpochMilliseconds is [agent.SystemUTCEpochMilliseconds] without a host clock. It
+// reports false with one.
+func (q QuietContext) SystemUTCEpochMilliseconds() (float64, bool) {
+	if q.cx.clock != nil {
+		return 0, false
+	}
+	return epochMilliseconds(clampSystemTime(time.Now())), true
+}
+
+func epochMilliseconds(t time.Time) float64 {
 	// UnixMilli rounds toward negative infinity, as the floor of the specification does.
-	return float64(ag.Now().UnixMilli())
+	return float64(t.UnixMilli())
 }
 
 // SetRandomSource sets src as the source of [agent.RandomNumber]. A nil src restores the global

@@ -160,7 +160,8 @@ func (cx *ExecutionContext) arrayCtorPlain(o *Object) bool {
 // ArraySpeciesCreatePlain returns a new array of the length n with the prototype
 // %Array.prototype% when that is what ArraySpeciesCreate for o creates, because o is an array
 // with the original constructor of the current realm. It reports false otherwise.
-func (cx *ExecutionContext) ArraySpeciesCreatePlain(o *Object, n int64) (*Object, bool) {
+func (q QuietContext) ArraySpeciesCreatePlain(o *Object, n int64) (*Object, bool) {
+	cx := q.cx
 	if o.kind != kindArray || n > MaxArrayIndex+1 || !cx.arrayCtorPlain(o) {
 		return nil, false
 	}
@@ -174,7 +175,8 @@ func (cx *ExecutionContext) newElementsPlain(o *Object) bool {
 }
 
 // AppendElements adds vals at the end of the array o and returns the new length.
-func (cx *ExecutionContext) AppendElements(o *Object, vals []Value) (uint32, bool) {
+func (q QuietContext) AppendElements(o *Object, vals []Value) (uint32, bool) {
+	cx := q.cx
 	if o.kind != kindArray || int(o.length) != len(o.elems) || o.flags&(objSparse|objNotExtensible|objFrozenLength) != 0 || !cx.newElementsPlain(o) {
 		return 0, false
 	}
@@ -201,8 +203,9 @@ type pushSizeHint struct {
 // PushElements appends vals to the array o and returns its new length and true.
 // If o requires the generic Array.prototype.push algorithm, it leaves o unchanged
 // and returns 0, false.
-func (cx *ExecutionContext) PushElements(o *Object, vals []Value) (uint32, bool) {
-	n, ok := cx.AppendElements(o, vals)
+func (q QuietContext) PushElements(o *Object, vals []Value) (uint32, bool) {
+	cx := q.cx
+	n, ok := q.AppendElements(o, vals)
 	// Sample single-element pushes so earlier array lengths at this call site can
 	// guide how much space to reserve.
 	if ok && len(vals) == 1 && n > minElems && n <= maxPresizedElems {
@@ -259,7 +262,8 @@ func (ag *agent) observePush(o *Object) {
 }
 
 // PrependElements adds vals at the start of the array o and returns the new length.
-func (cx *ExecutionContext) PrependElements(o *Object, vals []Value) (uint32, bool) {
+func (q QuietContext) PrependElements(o *Object, vals []Value) (uint32, bool) {
+	cx := q.cx
 	if !cx.elemsMovable(o) || !cx.newElementsPlain(o) {
 		return 0, false
 	}
@@ -339,7 +343,8 @@ func (o *Object) RemoveFirstElement() (Value, bool) {
 
 // FillElements stores v as the elements of the array o from start up to end, as
 // Array.prototype.fill does when the length of o is n. It reports false when it did nothing.
-func (cx *ExecutionContext) FillElements(o *Object, n, start, end int64, v Value) bool {
+func (q QuietContext) FillElements(o *Object, n, start, end int64, v Value) bool {
+	cx := q.cx
 	if o.kind != kindArray || int64(o.length) != n || o.flags&(objSparse|objNotExtensible|objFrozenLength) != 0 {
 		return false
 	}
@@ -364,13 +369,13 @@ func (cx *ExecutionContext) FillElements(o *Object, n, start, end int64, v Value
 // SearchArray returns the index of the first element of the Array v that equals target, or -1,
 // comparing with SameValueZero when sameValueZero is set and with IsStrictlyEqual otherwise. It
 // reports false when v is not an Array or reading one of its elements could run JavaScript.
-func (cx *ExecutionContext) SearchArray(v, target Value, sameValueZero bool) (int64, bool) {
+func (q QuietContext) SearchArray(v, target Value, sameValueZero bool) (int64, bool) {
 	o := v.o
 	if o == nil || o.kind != kindArray {
 		return -1, false
 	}
 	n := int64(o.length)
-	found, next := cx.SearchElements(o, 0, n, target, sameValueZero)
+	found, next := q.SearchElements(o, 0, n, target, sameValueZero)
 	if found < 0 && next < n {
 		return -1, false
 	}
@@ -382,7 +387,8 @@ func (cx *ExecutionContext) SearchArray(v, target Value, sameValueZero bool) (in
 // sameValueZero is set and with IsStrictlyEqual otherwise. It looks only at a run of elements
 // that reading runs no JavaScript for, and returns -1 and the index after the run when the run
 // has no such element.
-func (cx *ExecutionContext) SearchElements(o *Object, i, end int64, target Value, sameValueZero bool) (found, next int64) {
+func (q QuietContext) SearchElements(o *Object, i, end int64, target Value, sameValueZero bool) (found, next int64) {
+	cx := q.cx
 	eq := IsStrictlyEqual
 	if sameValueZero {
 		eq = SameValueZero
@@ -428,7 +434,8 @@ func (cx *ExecutionContext) SearchElements(o *Object, i, end int64, target Value
 
 // JoinStrings joins an array of the given length with sep when its elements and sep are
 // ASCII strings and the result fits in MaxStringLength bytes. It reports false otherwise.
-func (cx *ExecutionContext) JoinStrings(o *Object, length int64, sep wtf8.String) (Value, bool) {
+func (q QuietContext) JoinStrings(o *Object, length int64, sep wtf8.String) (Value, bool) {
+	cx := q.cx
 	if o.kind != kindArray || int64(o.length) != length || int64(len(o.elems)) != length || !wtf8.IsASCII(sep) {
 		return Value{}, false
 	}
@@ -470,7 +477,8 @@ func (cx *ExecutionContext) JoinStrings(o *Object, length int64, sep wtf8.String
 }
 
 // ReverseElements reverses the order of the elements of the array o.
-func (cx *ExecutionContext) ReverseElements(o *Object) bool {
+func (q QuietContext) ReverseElements(o *Object) bool {
+	cx := q.cx
 	if !o.isDense() {
 		return false
 	}
@@ -483,7 +491,8 @@ func (cx *ExecutionContext) ReverseElements(o *Object) bool {
 
 // CopyElementRange returns a new array with the elements of the array o from start up to end,
 // as Array.prototype.slice creates it. A range that ends before it starts is empty.
-func (cx *ExecutionContext) CopyElementRange(o *Object, start, end int64) (*Object, bool) {
+func (q QuietContext) CopyElementRange(o *Object, start, end int64) (*Object, bool) {
+	cx := q.cx
 	if o.kind != kindArray || int(o.length) != len(o.elems) || o.flags&(objSparse|objNotExtensible|objFrozenLength) != 0 {
 		return nil, false
 	}
@@ -503,7 +512,8 @@ func (cx *ExecutionContext) CopyElementRange(o *Object, start, end int64) (*Obje
 // SpliceElements replaces del elements of the array o from start on with items, and returns
 // the removed elements as a new array, as Array.prototype.splice creates it.
 // length is the length of o that start and del were checked against.
-func (cx *ExecutionContext) SpliceElements(o *Object, length, start, del int64, items []Value) (*Object, bool) {
+func (q QuietContext) SpliceElements(o *Object, length, start, del int64, items []Value) (*Object, bool) {
+	cx := q.cx
 	if length != int64(len(o.elems)) || start < 0 || start > length || del < 0 || del > length-start {
 		return nil, false
 	}
@@ -538,7 +548,8 @@ func (cx *ExecutionContext) SpliceElements(o *Object, length, start, del int64, 
 
 // AppendElementsOf adds the elements of the array src at the end of the array dst,
 // which must have the length n, exactly n elements and no other property.
-func (cx *ExecutionContext) AppendElementsOf(dst *Object, n int64, src *Object) bool {
+func (q QuietContext) AppendElementsOf(dst *Object, n int64, src *Object) bool {
+	cx := q.cx
 	if dst.kind != kindArray || int64(dst.length) != n || int64(len(dst.elems)) != n || dst.shape != cx.realm.shapes.array {
 		return false
 	}
@@ -557,7 +568,8 @@ func (cx *ExecutionContext) AppendElementsOf(dst *Object, n int64, src *Object) 
 // SkipHoles returns the greatest index j with i <= j <= end such that neither o nor its prototypes
 // have a property with an integer index from i to j-1. It returns i when that is not known
 // without running JavaScript.
-func (ag *agent) SkipHoles(o *Object, i, end int64) int64 {
+func (q QuietContext) SkipHoles(o *Object, i, end int64) int64 {
+	ag := q.cx.agent
 	if i < 0 || i >= end || i < int64(len(o.elems)) && !o.elems[i].isHole() || !ag.holesAreAbsent(o) {
 		return i
 	}
@@ -580,7 +592,8 @@ func (ag *agent) SkipHoles(o *Object, i, end int64) int64 {
 // SkipHolesBackward returns the least index j with end <= j <= i such that neither o nor its
 // prototypes have a property with an integer index from j+1 to i. It returns i when that is not
 // known without running JavaScript.
-func (ag *agent) SkipHolesBackward(o *Object, i, end int64) int64 {
+func (q QuietContext) SkipHolesBackward(o *Object, i, end int64) int64 {
+	ag := q.cx.agent
 	if i <= end || i < 0 || i > MaxArrayIndex || i < int64(len(o.elems)) && !o.elems[i].isHole() || !ag.holesAreAbsent(o) {
 		return i
 	}

@@ -83,6 +83,7 @@ func checkPackages(t *testing.T, patterns ...string) []checkedPackage {
 		}
 		info := types.Info{
 			Types: map[ast.Expr]types.TypeAndValue{},
+			Defs:  map[*ast.Ident]types.Object{},
 			Uses:  map[*ast.Ident]types.Object{},
 		}
 		pkg, err := config.Check(p.ImportPath, fset, files, &info)

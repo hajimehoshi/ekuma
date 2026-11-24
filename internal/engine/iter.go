@@ -144,18 +144,18 @@ func (cx *ExecutionContext) NewIteratorNext(yieldRealm IteratorYieldRealm, step 
 
 // NewPlainIteratorNext returns a next method for iterators with state T.
 // For a compatible receiver, step must neither throw nor run JavaScript.
-func NewPlainIteratorNext[T any](cx *ExecutionContext, yieldRealm IteratorYieldRealm, receiverError string, step func(*ExecutionContext, *Object, T) (Value, bool)) *Object {
+func NewPlainIteratorNext[T any](cx *ExecutionContext, yieldRealm IteratorYieldRealm, receiverError string, step func(QuietContext, *Object, T) (Value, bool)) *Object {
 	next := cx.newIteratorNext(yieldRealm, func(cx *ExecutionContext, this Value) (Value, bool) {
 		state, ok := IteratorState(this).(T)
 		if !ok {
 			cx.ThrowTypeError(receiverError)
 		}
-		return step(cx, this.o, state)
+		return step(cx.Quiet(), this.o, state)
 	})
 	next.fn.info.fast = &nativeFast{
 		step: func(cx *ExecutionContext, this Value) (Value, bool) {
 			if state, ok := IteratorState(this).(T); ok {
-				return step(cx, this.o, state)
+				return step(cx.Quiet(), this.o, state)
 			}
 			// The receiver error belongs to the native next call.
 			return cx.Call(next, this), false

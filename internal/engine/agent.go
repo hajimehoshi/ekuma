@@ -125,11 +125,11 @@ type nativeFast struct {
 func (k *nativeFast) callMethod(cx *ExecutionContext, this Value, args []Value) (Value, bool) {
 	switch {
 	case len(args) == 0 && k.method0 != nil:
-		return k.method0(cx, this)
+		return k.method0(cx.Quiet(), this)
 	case len(args) == 1 && k.method1 != nil:
-		return k.method1(cx, this, args[0])
+		return k.method1(cx.Quiet(), this, args[0])
 	case len(args) == 2 && k.method2 != nil:
-		return k.method2(cx, this, args[0], args[1])
+		return k.method2(cx.Quiet(), this, args[0], args[1])
 	}
 	return Value{}, false
 }

@@ -176,13 +176,13 @@ func (cx *ExecutionContext) lendRegExpLiteral(regs []Value, dst, callee int32, s
 }
 
 // regExpLiteralFor returns the lent object of the literal site, as new, when f is one of
-// borrowers and [ExecutionContext.IsUnmodifiedRegExp] holds for it, or else a new RegExp object.
+// borrowers and [QuietContext.UnmodifiedRegExpMatcher] accepts it, or else a new RegExp object.
 func (cx *ExecutionContext) regExpLiteralFor(f *Object, site *regExpSite, borrowers []*Object) *Object {
 	if f == nil || !slices.Contains(borrowers, f) {
 		return cx.newRegExpLiteral(site)
 	}
 	o := cx.resetLentRegExp(site)
-	if !cx.IsUnmodifiedRegExp(o) {
+	if cx.Quiet().UnmodifiedRegExpMatcher(o) == nil {
 		return cx.newRegExpLiteral(site)
 	}
 	return o
@@ -270,7 +270,7 @@ func (cx *ExecutionContext) IsRegExpOfCurrentRealm(o *Object) bool {
 	return o.extState().(*regExpState).realm == cx.realm
 }
 
-// regExpOriginals is what [ExecutionContext.IsUnmodifiedRegExp] compares against.
+// regExpOriginals is what [QuietContext.UnmodifiedRegExpMatcher] compares against.
 type regExpOriginals struct {
 	props []originalProp
 
@@ -319,7 +319,7 @@ func (p *originalProp) find() bool {
 }
 
 // RecordRegExpOriginals records the current own properties protoKeys of %RegExp.prototype%
-// and ctorKeys of %RegExp%, which [ExecutionContext.IsUnmodifiedRegExp] requires to stay unchanged.
+// and ctorKeys of %RegExp%, which [QuietContext.UnmodifiedRegExpMatcher] requires to stay unchanged.
 // Every key must name an existing property whose value, if it is a data property, is an object.
 func (cx *ExecutionContext) RecordRegExpOriginals(protoKeys, ctorKeys []*Object) {
 	proto := cx.Intrinsic(IntrinsicRegExpPrototype)
@@ -361,13 +361,19 @@ func (cx *ExecutionContext) RecordRegExpOriginals(protoKeys, ctorKeys []*Object)
 	r.checked = false
 }
 
-// IsUnmodifiedRegExp reports whether o is an initialized RegExp object whose prototype is
-// %RegExp.prototype% and whose only own property is a writable lastIndex, while the properties
-// recorded by [ExecutionContext.RecordRegExpOriginals] are unchanged. Then those properties are the only
-// ones that reading the recorded keys from o finds, and lastIndex is an ordinary data property.
-func (cx *ExecutionContext) IsUnmodifiedRegExp(o *Object) bool {
-	if o.class != classRegExp || !cx.hasRegExpShape(o) || o.extState().(*regExpState).matcher == nil {
-		return false
+// UnmodifiedRegExpMatcher returns the compiled pattern of o when o is an initialized RegExp object
+// whose prototype is %RegExp.prototype% and whose only own property is a writable lastIndex, while
+// the properties recorded by [ExecutionContext.RecordRegExpOriginals] are unchanged, and nil
+// otherwise. When it is not nil, those properties are the only ones that reading the recorded keys
+// from o finds, and lastIndex is an ordinary data property.
+func (q QuietContext) UnmodifiedRegExpMatcher(o *Object) *regexp.Regexp {
+	cx := q.cx
+	if o.class != classRegExp || !cx.hasRegExpShape(o) {
+		return nil
+	}
+	matcher := o.extState().(*regExpState).matcher
+	if matcher == nil {
+		return nil
 	}
 	r := &cx.realm.regExpOriginals
 	if !r.checked || r.epoch != cx.protoEpoch {
@@ -390,17 +396,17 @@ func (cx *ExecutionContext) IsUnmodifiedRegExp(o *Object) bool {
 		r.checked = true
 	}
 	if !r.found {
-		return false
+		return nil
 	}
 	for _, d := range r.data {
 		if d.ref.o != d.value {
-			return false
+			return nil
 		}
 	}
 	if validateExec {
 		cx.checkUnmodifiedRegExp(o)
 	}
-	return true
+	return matcher
 }
 
 // hasRegExpShape reports whether o has the shape of a new RegExp object whose prototype is
@@ -415,8 +421,8 @@ func (cx *ExecutionContext) hasRegExpShape(o *Object) bool {
 
 // RegExpLastIndex returns the value of the own lastIndex property of o, or false when o may not
 // have it as a writable data property where [ExecutionContext.RegExpAlloc] puts it.
-func (cx *ExecutionContext) RegExpLastIndex(o *Object) (Value, bool) {
-	if !cx.hasRegExpShape(o) {
+func (q QuietContext) RegExpLastIndex(o *Object) (Value, bool) {
+	if !q.cx.hasRegExpShape(o) {
 		return Undefined, false
 	}
 	return o.slots[0], true
@@ -424,12 +430,12 @@ func (cx *ExecutionContext) RegExpLastIndex(o *Object) (Value, bool) {
 
 // SetRegExpLastIndex sets the own lastIndex property of o to v and reports true, or reports
 // false when o may not have it as a writable data property where [ExecutionContext.RegExpAlloc] puts it.
-func (cx *ExecutionContext) SetRegExpLastIndex(o *Object, v Value) bool {
-	if !cx.hasRegExpShape(o) {
+func (q QuietContext) SetRegExpLastIndex(o *Object, v Value) bool {
+	if !q.cx.hasRegExpShape(o) {
 		return false
 	}
 	o.slots[0] = v
-	cx.touchProto(o)
+	q.cx.touchProto(o)
 	return true
 }
 

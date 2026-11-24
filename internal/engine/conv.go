@@ -181,17 +181,23 @@ func (cx *ExecutionContext) toStringValue(v Value) Value {
 		return cx.ToStringValue(cx.ToPrimitive(v, HintString))
 	}
 	if v.IsNumber() {
-		var buf [32]byte
-		text := numconv.AppendNumber(buf[:0], v.n)
-		if len(text) == 1 {
-			return cx.strings.ascii[text[0]]
-		}
-		if len(text) <= shortstrings.MaxBytes {
-			return cx.shortString(wtf8.String(text))
-		}
-		return cx.NewString(wtf8.String(text))
+		return cx.Quiet().NumberToString(v.n)
 	}
 	return cx.NewString(cx.ToString(v))
+}
+
+// NumberToString returns Number::toString of n as a string value.
+func (q QuietContext) NumberToString(n float64) Value {
+	cx := q.cx
+	var buf [32]byte
+	text := numconv.AppendNumber(buf[:0], n)
+	if len(text) == 1 {
+		return cx.strings.ascii[text[0]]
+	}
+	if len(text) <= shortstrings.MaxBytes {
+		return cx.shortString(wtf8.String(text))
+	}
+	return cx.NewString(wtf8.String(text))
 }
 
 // ToObject implements ToObject.

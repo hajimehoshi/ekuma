@@ -321,7 +321,6 @@ func (cx *ExecutionContext) proxyPreventExtensions(o *Object) bool {
 
 // proxyGetOwnProperty implements [[GetOwnProperty]] of a proxy.
 func (cx *ExecutionContext) proxyGetOwnProperty(o *Object, k PropKey) (PropDesc, bool) {
-	k = cx.storedKey(k)
 	target, handler := cx.proxyEnter(o, "getOwnPropertyDescriptor")
 	defer cx.proxyLeave()
 	trap := cx.proxyTrap(handler, keyGetOwnPropertyDescriptor)
@@ -401,7 +400,6 @@ func (cx *ExecutionContext) proxyDefineOwnProperty(o *Object, k PropKey, d PropD
 
 // proxyHas implements [[HasProperty]] of a proxy.
 func (cx *ExecutionContext) proxyHas(o *Object, k PropKey) bool {
-	k = cx.storedKey(k)
 	target, handler := cx.proxyEnter(o, "has")
 	defer cx.proxyLeave()
 	trap := cx.proxyTrap(handler, keyHas)
@@ -424,7 +422,6 @@ func (cx *ExecutionContext) proxyHas(o *Object, k PropKey) bool {
 
 // proxyGet implements [[Get]] of a proxy.
 func (cx *ExecutionContext) proxyGet(o *Object, k PropKey, receiver Value) Value {
-	k = cx.storedKey(k)
 	target, handler := cx.proxyEnter(o, "get")
 	defer cx.proxyLeave()
 	trap := cx.proxyTrap(handler, KeyGet)

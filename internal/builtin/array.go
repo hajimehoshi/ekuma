@@ -50,9 +50,9 @@ func hasAt(cx *engine.ExecutionContext, o *engine.Object, i int64) bool {
 // on o, or end when there is none.
 func skipHoles(cx *engine.ExecutionContext, o *engine.Object, i, end int64, backward bool) int64 {
 	if backward {
-		return cx.SkipHolesBackward(o, i, end)
+		return cx.Quiet().SkipHolesBackward(o, i, end)
 	}
-	return cx.SkipHoles(o, i, end)
+	return cx.Quiet().SkipHoles(o, i, end)
 }
 
 // holeSteps returns the number of consecutive indices from i, moving by dir (1 or -1) and at most
@@ -63,9 +63,9 @@ func holeSteps(cx *engine.ExecutionContext, o *engine.Object, i, count, dir int6
 	}
 	if dir > 0 {
 		count = min(count, engine.MaxArrayIndex+1-i)
-		return cx.SkipHoles(o, i, i+count) - i
+		return cx.Quiet().SkipHoles(o, i, i+count) - i
 	}
-	return i - cx.SkipHolesBackward(o, i, i-count)
+	return i - cx.Quiet().SkipHolesBackward(o, i, i-count)
 }
 
 // moveSteps returns how many steps, at most count, of a loop that moves the property at src to dst,
@@ -106,7 +106,7 @@ func setLength(cx *engine.ExecutionContext, o *engine.Object, n int64) {
 
 // arraySpeciesCreate implements ArraySpeciesCreate.
 func arraySpeciesCreate(cx *engine.ExecutionContext, orig *engine.Object, n int64) *engine.Object {
-	if a, ok := cx.ArraySpeciesCreatePlain(orig, n); ok {
+	if a, ok := cx.Quiet().ArraySpeciesCreatePlain(orig, n); ok {
 		return a
 	}
 	if cx.IsArray(engine.ObjectValue(orig)) {
@@ -169,7 +169,7 @@ func joinArray(cx *engine.ExecutionContext, g *joinGuard, o *engine.Object, n in
 		return cx.NewString("")
 	}
 	defer g.leave()
-	if v, ok := cx.JoinStrings(o, n, sep); ok {
+	if v, ok := cx.Quiet().JoinStrings(o, n, sep); ok {
 		return v
 	}
 	return joinElements(cx, o, n, sep, nil)
@@ -212,7 +212,7 @@ func joinRun(cx *engine.ExecutionContext, b *wtf8.Buffer, o *engine.Object, i, e
 		}
 		e, ok := o.Element(i)
 		if !ok {
-			if j := cx.SkipHoles(o, i, n); j > i {
+			if j := cx.Quiet().SkipHoles(o, i, n); j > i {
 				// The indices from i to j-1 read as undefined.
 				writeSeparators(cx, b, sep, j-1-i)
 				i = j - 1
@@ -291,7 +291,7 @@ func initArray(cx *engine.ExecutionContext, strs *objectStrings) {
 	isArray := method(cx, ctor, "isArray", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		return engine.Bool(cx.IsArray(arg(args, 0)))
 	})
-	cx.SetMethodKernels(isArray, shortContract, nil, func(cx *engine.ExecutionContext, this, v engine.Value) (engine.Value, bool) {
+	cx.SetMethodKernels(isArray, shortContract, nil, func(q engine.QuietContext, this, v engine.Value) (engine.Value, bool) {
 		is, ok := engine.IsArrayPlain(v)
 		return engine.Bool(is), ok
 	}, nil)
@@ -378,7 +378,7 @@ func initArray(cx *engine.ExecutionContext, strs *objectStrings) {
 
 	push := method(cx, proto, "push", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		o := cx.ToObject(this)
-		if n, ok := cx.PushElements(o, args); ok {
+		if n, ok := cx.Quiet().PushElements(o, args); ok {
 			return engine.Number(float64(n))
 		}
 		n := cx.LengthOfArrayLike(o)
@@ -393,12 +393,12 @@ func initArray(cx *engine.ExecutionContext, strs *objectStrings) {
 		return engine.Number(float64(n))
 	})
 	// The kernel of push is the fast path of push for a single value.
-	cx.SetMethodKernels(push, shortContract, nil, func(cx *engine.ExecutionContext, this, v engine.Value) (engine.Value, bool) {
+	cx.SetMethodKernels(push, shortContract, nil, func(q engine.QuietContext, this, v engine.Value) (engine.Value, bool) {
 		if !this.IsObject() {
 			return engine.Undefined, false
 		}
 		vals := [...]engine.Value{v}
-		n, ok := cx.PushElements(this.Object(), vals[:])
+		n, ok := q.PushElements(this.Object(), vals[:])
 		if !ok {
 			return engine.Undefined, false
 		}
@@ -419,7 +419,7 @@ func initArray(cx *engine.ExecutionContext, strs *objectStrings) {
 		setLength(cx, o, n-1)
 		return v
 	})
-	cx.SetMethodKernels(pop, shortContract, func(cx *engine.ExecutionContext, this engine.Value) (engine.Value, bool) {
+	cx.SetMethodKernels(pop, shortContract, func(q engine.QuietContext, this engine.Value) (engine.Value, bool) {
 		if !this.IsObject() {
 			return engine.Undefined, false
 		}
@@ -451,7 +451,7 @@ func initArray(cx *engine.ExecutionContext, strs *objectStrings) {
 	method(cx, proto, "unshift", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		o := cx.ToObject(this)
 		k := int64(len(args))
-		if n, ok := cx.PrependElements(o, args); ok {
+		if n, ok := cx.Quiet().PrependElements(o, args); ok {
 			return engine.Number(float64(n))
 		}
 		n := cx.LengthOfArrayLike(o)
@@ -482,12 +482,12 @@ func initArray(cx *engine.ExecutionContext, strs *objectStrings) {
 		if e := arg(args, 1); !e.IsUndefined() {
 			end = relIndex(cx.ToIntegerOrInfinity(e), n)
 		}
-		if a, ok := cx.CopyElementRange(o, start, end); ok {
+		if a, ok := cx.Quiet().CopyElementRange(o, start, end); ok {
 			return engine.ObjectValue(a)
 		}
 		a := arraySpeciesCreate(cx, o, max(end-start, 0))
 		for i := start; i < end; i++ {
-			if i = cx.SkipHoles(o, i, end); i == end {
+			if i = cx.Quiet().SkipHoles(o, i, end); i == end {
 				break
 			}
 			if hasAt(cx, o, i) {
@@ -514,7 +514,7 @@ func initArray(cx *engine.ExecutionContext, strs *objectStrings) {
 		if n+k-del > numconv.MaxSafeInteger {
 			cx.ThrowTypeError("splicing elements past the maximum length")
 		}
-		if removed, ok := cx.SpliceElements(o, n, start, del, items); ok {
+		if removed, ok := cx.Quiet().SpliceElements(o, n, start, del, items); ok {
 			return engine.ObjectValue(removed)
 		}
 		a := arraySpeciesCreate(cx, o, del)
@@ -585,12 +585,12 @@ func initArray(cx *engine.ExecutionContext, strs *objectStrings) {
 			if n+l > numconv.MaxSafeInteger {
 				cx.ThrowTypeError("array too long")
 			}
-			if cx.AppendElementsOf(a, n, item.Object()) {
+			if cx.Quiet().AppendElementsOf(a, n, item.Object()) {
 				n += l
 				continue
 			}
 			for i := int64(0); i < l; i++ {
-				if i = cx.SkipHoles(item.Object(), i, l); i == l {
+				if i = cx.Quiet().SkipHoles(item.Object(), i, l); i == l {
 					break
 				}
 				if hasAt(cx, item.Object(), i) {
@@ -621,7 +621,7 @@ func initArray(cx *engine.ExecutionContext, strs *objectStrings) {
 	method(cx, proto, "reverse", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		o := cx.ToObject(this)
 		n := cx.LengthOfArrayLike(o)
-		if cx.ReverseElements(o) {
+		if cx.Quiet().ReverseElements(o) {
 			return engine.ObjectValue(o)
 		}
 		for lo, hi := int64(0), n-1; lo < hi; lo, hi = lo+1, hi-1 {
@@ -655,7 +655,24 @@ func initArray(cx *engine.ExecutionContext, strs *objectStrings) {
 		return engine.ObjectValue(o)
 	})
 
-	search := func(name string, fromEnd, same bool) {
+	for _, m := range []struct {
+		name    string
+		fromEnd bool
+		same    bool
+	}{
+		{
+			name: "indexOf",
+		},
+		{
+			name:    "lastIndexOf",
+			fromEnd: true,
+		},
+		{
+			name: "includes",
+			same: true,
+		},
+	} {
+		name, fromEnd, same := m.name, m.fromEnd, m.same
 		length := 1
 		fn := method(cx, proto, wtf8.String(name), length, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 			o := cx.ToObject(this)
@@ -682,7 +699,7 @@ func initArray(cx *engine.ExecutionContext, strs *objectStrings) {
 					}
 				}
 				for i := from; i >= 0; i-- {
-					f, next := cx.SearchElements(o, i, -1, target, false)
+					f, next := cx.Quiet().SearchElements(o, i, -1, target, false)
 					if f >= 0 {
 						return engine.Number(float64(f))
 					}
@@ -696,7 +713,7 @@ func initArray(cx *engine.ExecutionContext, strs *objectStrings) {
 						}
 						continue
 					}
-					if i = cx.SkipHolesBackward(o, i, -1); i < 0 {
+					if i = cx.Quiet().SkipHolesBackward(o, i, -1); i < 0 {
 						break
 					}
 					if hasAt(cx, o, i) && eq(getAt(cx, o, i), target) {
@@ -707,7 +724,7 @@ func initArray(cx *engine.ExecutionContext, strs *objectStrings) {
 			}
 			from := relIndex(cx.ToIntegerOrInfinity(arg(args, 1)), n)
 			for i := from; i < n; i++ {
-				f, next := cx.SearchElements(o, i, n, target, same)
+				f, next := cx.Quiet().SearchElements(o, i, n, target, same)
 				if f >= 0 {
 					if same {
 						return engine.True
@@ -721,7 +738,7 @@ func initArray(cx *engine.ExecutionContext, strs *objectStrings) {
 				if same {
 					e, ok := o.Element(i)
 					if !ok {
-						if j := cx.SkipHoles(o, i, n); j > i {
+						if j := cx.Quiet().SkipHoles(o, i, n); j > i {
 							// The indices from i to j-1 read as undefined.
 							if target.IsUndefined() {
 								return engine.True
@@ -742,7 +759,7 @@ func initArray(cx *engine.ExecutionContext, strs *objectStrings) {
 					}
 					continue
 				}
-				if i = cx.SkipHoles(o, i, n); i == n {
+				if i = cx.Quiet().SkipHoles(o, i, n); i == n {
 					break
 				}
 				if hasAt(cx, o, i) && eq(getAt(cx, o, i), target) {
@@ -755,20 +772,17 @@ func initArray(cx *engine.ExecutionContext, strs *objectStrings) {
 			return engine.Number(-1)
 		})
 		if fromEnd {
-			return
+			continue
 		}
 		// The kernel is the search of an Array from its start.
-		cx.SetMethodKernels(fn, polledContract, nil, func(cx *engine.ExecutionContext, this, target engine.Value) (engine.Value, bool) {
-			found, ok := cx.SearchArray(this, target, same)
+		cx.SetMethodKernels(fn, polledContract, nil, func(q engine.QuietContext, this, target engine.Value) (engine.Value, bool) {
+			found, ok := q.SearchArray(this, target, same)
 			if same {
 				return engine.Bool(found >= 0), ok
 			}
 			return engine.Number(float64(found)), ok
 		}, nil)
 	}
-	search("indexOf", false, false)
-	search("lastIndexOf", true, false)
-	search("includes", false, true)
 
 	method(cx, proto, "forEach", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		l := newEachLoop(cx, this, args, "forEach", true)
@@ -929,7 +943,7 @@ func initArray(cx *engine.ExecutionContext, strs *objectStrings) {
 		if e := arg(args, 2); !e.IsUndefined() {
 			end = relIndex(cx.ToIntegerOrInfinity(e), n)
 		}
-		if cx.FillElements(o, n, start, end, arg(args, 0)) {
+		if cx.Quiet().FillElements(o, n, start, end, arg(args, 0)) {
 			return engine.ObjectValue(o)
 		}
 		for i := start; i < end; i++ {
@@ -959,7 +973,7 @@ func initArray(cx *engine.ExecutionContext, strs *objectStrings) {
 		var vals []engine.Value
 		undefs := int64(0)
 		for i := int64(0); i < n; i++ {
-			if i = cx.SkipHoles(o, i, n); i == n {
+			if i = cx.Quiet().SkipHoles(o, i, n); i == n {
 				break
 			}
 			if !hasAt(cx, o, i) {
@@ -983,7 +997,7 @@ func initArray(cx *engine.ExecutionContext, strs *objectStrings) {
 			i++
 		}
 		for ; i < n; i++ {
-			if i = cx.SkipHoles(o, i, n); i == n {
+			if i = cx.Quiet().SkipHoles(o, i, n); i == n {
 				break
 			}
 			deleteAt(cx, o, i)
@@ -1005,7 +1019,7 @@ func initArray(cx *engine.ExecutionContext, strs *objectStrings) {
 		}}
 		for len(stack) > 0 {
 			t := &stack[len(stack)-1]
-			if t.i = cx.SkipHoles(t.src, t.i, t.l); t.i >= t.l {
+			if t.i = cx.Quiet().SkipHoles(t.src, t.i, t.l); t.i >= t.l {
 				stack = stack[:len(stack)-1]
 				continue
 			}
@@ -1046,7 +1060,7 @@ func initArray(cx *engine.ExecutionContext, strs *objectStrings) {
 		a := arraySpeciesCreate(cx, o, 0)
 		var n int64
 		for i := int64(0); i < l; i++ {
-			if i = cx.SkipHoles(o, i, l); i == l {
+			if i = cx.Quiet().SkipHoles(o, i, l); i == l {
 				break
 			}
 			if !hasAt(cx, o, i) {
@@ -1474,7 +1488,7 @@ func (l *eachLoop) next() (v, r engine.Value, ok bool) {
 	for i := l.i + 1; i < l.n; i++ {
 		if l.skipHoles {
 			if _, ok := o.Element(i); !ok {
-				if i = cx.SkipHoles(o, i, l.n); i == l.n {
+				if i = cx.Quiet().SkipHoles(o, i, l.n); i == l.n {
 					break
 				}
 				if !hasAt(cx, o, i) {
