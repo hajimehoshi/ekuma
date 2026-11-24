@@ -1532,16 +1532,6 @@ func (o *Object) getOwn(key *Object) (prop, bool) {
 	return o.shape.lookup(key)
 }
 
-// find looks key up on o and its prototype chain.
-func find(o *Object, key *Object) (holder *Object, p prop, ok bool) {
-	for h := o; h != nil; h = h.shape.proto {
-		if p, ok := h.shape.lookup(key); ok {
-			return h, p, true
-		}
-	}
-	return nil, prop{}, false
-}
-
 // touchProto records that the properties of o changed, if o is a prototype. Whatever moves the
 // slots of a prototype calls it too, because cacheProto entries point into them.
 func (ag *agent) touchProto(o *Object) {

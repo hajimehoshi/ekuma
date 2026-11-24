@@ -305,12 +305,12 @@ func holderName(cx *ExecutionContext, o *Object) string {
 	if o.fn != nil {
 		return string(o.fn.nativeName()) + "."
 	}
-	if v, ok := cx.lookupData(o, cx.Key(KeyConstructor)); ok && v.o.fn != nil {
+	if v, ok := diagnosticDataProperty(o, cx.Key(KeyConstructor)); ok && v.o.fn != nil {
 		if d, ok := cx.GetOwnProperty(v.o, PropKey{key: cx.Key(KeyPrototype)}); ok && d.value.o == o {
 			return string(v.o.fn.nativeName()) + ".prototype."
 		}
 	}
-	if v, ok := cx.lookupData(o, cx.WellKnownSymbol(SymbolToStringTag)); ok && v.IsString() {
+	if v, ok := diagnosticDataProperty(o, cx.WellKnownSymbol(SymbolToStringTag)); ok && v.IsString() {
 		return string(v.Str()) + "."
 	}
 	return ""

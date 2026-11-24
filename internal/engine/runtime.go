@@ -1146,16 +1146,15 @@ func (q QuietContext) AssignDataProperties(to, from *Object) bool {
 	if s == nil || len(from.elems) != 0 {
 		return false
 	}
-	// Set creates an own data property on to unless the first property of the same key on
-	// the prototype chain is an accessor or read-only. The keys of s are strings that are not
-	// array indices, which only an ordinary object is known to look up in its shape alone.
-	for h := to.shape.proto; h != nil; h = h.shape.proto {
-		if h.kind != kindObject || h.class != classObject || h.flags&objExotic != 0 {
-			return false
-		}
-	}
+	// Set creates an own data property when the prototype lookup finds a writable data property or no property.
 	for t := s; t.parent != nil; t = t.parent {
-		if _, p, ok := find(to.shape.proto, t.key); ok && p.flags&(FlagAccessor|FlagWritable) != FlagWritable {
+		switch r := q.lookupNamed(to.shape.proto, t.key); r.kind {
+		case lookupAbsent:
+		case lookupSlot:
+			if r.prop.flags&(FlagAccessor|FlagWritable) != FlagWritable {
+				return false
+			}
+		default:
 			return false
 		}
 	}

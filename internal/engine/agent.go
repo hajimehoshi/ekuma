@@ -986,7 +986,7 @@ func (ag *agent) newErrorData(e *Object, msg string, frames, natives int) *error
 		msg:     msg,
 		pending: true,
 	}
-	if v, ok := ag.lookupData(e, ag.Key(KeyName)); ok && v.IsString() {
+	if v, ok := diagnosticDataProperty(e, ag.Key(KeyName)); ok && v.IsString() {
 		d.name = v.Str()
 	}
 	if n := min(frames+natives, maxStackFrames); n > 0 {
@@ -1141,29 +1141,34 @@ func (ag *agent) typeName(v Value) wtf8.String {
 	}
 	o := v.o
 	if v.IsCallable() {
-		if n, ok := ag.lookupData(o, ag.Key(KeyName)); ok && n.IsString() && n.Str() != "" {
+		if n, ok := diagnosticDataProperty(o, ag.Key(KeyName)); ok && n.IsString() && n.Str() != "" {
 			return n.Str()
 		}
 		return "Function"
 	}
-	if c, ok := ag.lookupData(o, ag.Key(KeyConstructor)); ok && c.IsCallable() {
-		if n, ok := ag.lookupData(c.o, ag.Key(KeyName)); ok && n.IsString() && n.Str() != "" && n.Str() != "Object" {
+	if c, ok := diagnosticDataProperty(o, ag.Key(KeyConstructor)); ok && c.IsCallable() {
+		if n, ok := diagnosticDataProperty(c.o, ag.Key(KeyName)); ok && n.IsString() && n.Str() != "" && n.Str() != "Object" {
 			return n.Str()
 		}
 	}
-	if t, ok := ag.lookupData(o, ag.WellKnownSymbol(SymbolToStringTag)); ok && t.IsString() && t.Str() != "" {
+	if t, ok := diagnosticDataProperty(o, ag.WellKnownSymbol(SymbolToStringTag)); ok && t.IsString() && t.Str() != "" {
 		return t.Str()
 	}
 	return "Object"
 }
 
-// lookupData returns the data property key of o or its prototypes, without running any JavaScript.
-func (ag *agent) lookupData(o *Object, key *Object) (Value, bool) {
-	h, p, ok := find(o, key)
-	if !ok || p.flags&FlagAccessor != 0 {
-		return Undefined, false
+// diagnosticDataProperty reads stored properties for stack traces and exception descriptions.
+// It skips the property operations of exotic objects.
+func diagnosticDataProperty(o, key *Object) (Value, bool) {
+	for h := o; h != nil; h = h.shape.proto {
+		if p, ok := h.shape.lookup(key); ok {
+			if p.flags&FlagAccessor != 0 {
+				break
+			}
+			return h.slots[p.slot], true
+		}
 	}
-	return h.slots[p.slot], true
+	return Undefined, false
 }
 
 // takeException converts the pending exception to a Go error.
@@ -1177,11 +1182,11 @@ func (ag *agent) takeException() error {
 func (ag *agent) errorOf(v Value) *Error {
 	var msg string
 	if v.IsObject() {
-		if s, ok := ag.lookupData(v.o, ag.Key(KeyStack)); ok && s.IsString() {
+		if s, ok := diagnosticDataProperty(v.o, ag.Key(KeyStack)); ok && s.IsString() {
 			msg = wtf8.ToValidUTF8(s.Str())
 		} else if s, ok := ErrorStack(v); ok {
 			msg = wtf8.ToValidUTF8(s)
-		} else if s, ok := ag.lookupData(v.o, ag.Key(KeyMessage)); ok && s.IsString() {
+		} else if s, ok := diagnosticDataProperty(v.o, ag.Key(KeyMessage)); ok && s.IsString() {
 			msg = wtf8.ToValidUTF8(s.Str())
 		} else {
 			msg = "uncaught exception"

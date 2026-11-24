@@ -5,8 +5,8 @@ package engine
 
 import "github.com/hajimehoshi/ekuma/internal/wtf8"
 
-// QuietContext binds the engine operations that run no script or host code to one realm of an
-// agent.
+// QuietContext binds operations that run no script or host code to one realm of an agent.
+// A shortcut must preserve the ordinary result and effects or decline before changing observable state.
 type QuietContext struct {
 	cx *ExecutionContext
 }

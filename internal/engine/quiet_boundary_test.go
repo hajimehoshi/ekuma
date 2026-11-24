@@ -12,17 +12,20 @@ import (
 	"testing"
 )
 
-// TestQuietContextBoundary requires that no function with a QuietContext, no listed function and no
-// pair step of an iterator can run script or host code, and that built-ins cannot get around that.
+// TestQuietContextBoundary checks that quiet operations cannot run script or host code
+// or use the property lookup reserved for diagnostics.
 func TestQuietContextBoundary(t *testing.T) {
 	const enginePath = "github.com/hajimehoshi/ekuma/internal/engine"
-	// The functions that run script or host code. Reading a field that holds a function counts too.
-	doors := map[string]bool{
-		"(*" + enginePath + ".ExecutionContext).runFrame":     true,
-		"(*" + enginePath + ".ExecutionContext).callNative":   true,
-		"(*" + enginePath + ".ExecutionContext).invokeNative": true,
-		"(*" + enginePath + ".agent).exec":                    true,
-		"(*" + enginePath + ".agent).InitLazyObject":          true,
+	// A quiet operation must preserve observable property lookups. Calling code and
+	// looking past an exotic object through its stored properties both break that contract.
+	const runsCode = "can run code"
+	forbidden := map[string]string{
+		enginePath + ".diagnosticDataProperty":                "uses diagnostic property lookup",
+		"(*" + enginePath + ".ExecutionContext).runFrame":     runsCode,
+		"(*" + enginePath + ".ExecutionContext).callNative":   runsCode,
+		"(*" + enginePath + ".ExecutionContext).invokeNative": runsCode,
+		"(*" + enginePath + ".agent).exec":                    runsCode,
+		"(*" + enginePath + ".agent).InitLazyObject":          runsCode,
 	}
 	// An interruption unwinds to the host, which runs nothing in between.
 	poll := "(*" + enginePath + ".agent).Poll"
@@ -45,15 +48,9 @@ func TestQuietContextBoundary(t *testing.T) {
 	listed := len(quiet)
 	pairSteps := 0
 
-	// The functions that may look named properties up in storage alone. Such a lookup passes over
-	// objects that answer for themselves, such as a lazy prototype.
+	// Only these diagnostics may inspect stored data without applying property operations.
 	storageLookups := map[string]map[string]bool{
-		enginePath + ".find": {
-			"(*" + enginePath + ".agent).lookupData":                 true,
-			"(" + enginePath + ".QuietContext).AssignDataProperties": true,
-		},
-		// What these find only describes values and errors.
-		"(*" + enginePath + ".agent).lookupData": {
+		enginePath + ".diagnosticDataProperty": {
 			"(*" + enginePath + ".ExecutionContext).ExceptionDescription": true,
 			"(*" + enginePath + ".agent).errorOf":                         true,
 			"(*" + enginePath + ".agent).newErrorData":                    true,
@@ -229,7 +226,7 @@ func TestQuietContextBoundary(t *testing.T) {
 								global := o.Pkg() != nil && o.Parent() == o.Pkg().Scope()
 								if isFunc && (o.IsField() && !written[n] || global) && strings.HasPrefix(o.Pkg().Path(), "github.com/hajimehoshi/ekuma") {
 									uses[name] = append(uses[name], "the function "+o.Name())
-									doors["the function "+o.Name()] = true
+									forbidden["the function "+o.Name()] = runsCode
 								}
 							}
 						}
@@ -240,7 +237,7 @@ func TestQuietContextBoundary(t *testing.T) {
 			}
 		}
 	}
-	for name := range doors {
+	for name := range forbidden {
 		if !strings.HasPrefix(name, "the function ") && pos[name].Line == 0 {
 			t.Errorf("no function %s", name)
 		}
@@ -293,13 +290,13 @@ func TestQuietContextBoundary(t *testing.T) {
 		for len(work) > 0 {
 			name := work[0]
 			work = work[1:]
-			if doors[name] {
+			if reason := forbidden[name]; reason != "" {
 				path := name
 				for name != root {
 					name = from[name]
 					path = name + " > " + path
 				}
-				t.Errorf("%v: can run code: %s", pos[root], strings.ReplaceAll(path, "github.com/hajimehoshi/ekuma/internal/", ""))
+				t.Errorf("%v: %s: %s", pos[root], reason, strings.ReplaceAll(path, "github.com/hajimehoshi/ekuma/internal/", ""))
 				break
 			}
 			if name == poll {

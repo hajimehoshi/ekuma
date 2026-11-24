@@ -68,10 +68,10 @@ func (cx *ExecutionContext) ExceptionDescription(v, objectToString, errorToStrin
 		}
 		return src
 	}
-	method, _ := cx.lookupData(o, cx.Key(KeyToString))
+	method, _ := diagnosticDataProperty(o, cx.Key(KeyToString))
 	if o.class == classError || IsStrictlyEqual(method, errorToString) {
-		name, _ := cx.lookupData(o, cx.Key(KeyName))
-		message, _ := cx.lookupData(o, cx.Key(KeyMessage))
+		name, _ := diagnosticDataProperty(o, cx.Key(KeyName))
+		message, _ := diagnosticDataProperty(o, cx.Key(KeyMessage))
 		if !message.IsString() {
 			message = cx.emptyString
 		}
@@ -84,7 +84,7 @@ func (cx *ExecutionContext) ExceptionDescription(v, objectToString, errorToStrin
 		return cx.ConcatStrings([]Value{name, cx.NewString(": "), message})
 	}
 	if IsStrictlyEqual(method, objectToString) {
-		ctor, _ := cx.lookupData(o, cx.Key(KeyConstructor))
+		ctor, _ := diagnosticDataProperty(o, cx.Key(KeyConstructor))
 		if ctor.IsCallable() && ctor.o.class != classProxy {
 			if name := diagnosticFunctionName(ctor.o.fn); name != "" {
 				return cx.NewString("#<" + name + ">")
