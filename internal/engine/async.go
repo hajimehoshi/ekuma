@@ -99,12 +99,7 @@ func (g *generator) asyncFunctionResume(mode ResumeMode, v Value) {
 			return
 		}
 		if done {
-			if !r.IsObject() {
-				cx.fulfillPromise(promise, r)
-				return
-			}
-			if then, ok := cx.plainRead(r.o, cx.Key(keyThen)); ok && r.o != promise {
-				cx.resolvePromiseWithThen(promise, r, then)
+			if cx.Quiet().tryResolvePromise(promise, r) {
 				return
 			}
 			// The code that reading then runs sees the function at its return, as does the error

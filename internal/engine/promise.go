@@ -295,35 +295,25 @@ func (cx *ExecutionContext) ResolveCapability(c *PromiseCapability, v Value) {
 // CallCapabilityResolve calls the [[Resolve]] function of c with v, as [ExecutionContext.ResolveCapability]
 // does, and shows the frame of the function where the call can be observed.
 func (cx *ExecutionContext) CallCapabilityResolve(c *PromiseCapability, v Value) {
-	if v.IsObject() && !cx.readsPlainly(v.o, cx.Key(keyThen)) {
+	if !cx.Quiet().tryCallCapabilityResolve(c, v) {
 		cx.Call(cx.CapabilityResolve(c).o, Undefined, v)
-		return
 	}
-	cx.ResolveCapability(c, v)
 }
 
-// readsPlainly reports whether reading the property key of o is known to run no code. A false
-// result does not mean the opposite.
-func (ag *agent) readsPlainly(o, key *Object) bool {
-	_, ok := ag.plainRead(o, key)
-	return ok
-}
-
-// plainRead returns the value of the property key of o when reading it is known to run no code,
-// and false otherwise.
-func (ag *agent) plainRead(o, key *Object) (Value, bool) {
-	for h := o; h != nil; h = h.shape.proto {
-		if h.class != classObject && h.class != classArray && h.class != classPromise || h.flags&objExotic != 0 {
-			return Undefined, false
-		}
-		if p, ok := h.shape.lookup(key); ok {
-			if p.flags&FlagAccessor != 0 {
-				return Undefined, false
-			}
-			return h.slots[p.slot], true
-		}
+func (q QuietContext) tryCallCapabilityResolve(c *PromiseCapability, v Value) bool {
+	if !c.canSettleDirectly(q.cx) {
+		return false
 	}
-	return Undefined, true
+	if c.alreadyResolved {
+		return true
+	}
+	then, ok := q.resolutionThen(c.promise, v)
+	if !ok {
+		return false
+	}
+	c.alreadyResolved = true
+	q.cx.resolvePromiseWithThen(c.promise, v, then)
+	return true
 }
 
 // RejectCapability calls the [[Reject]] function of c with v.
@@ -371,6 +361,31 @@ func (cx *ExecutionContext) resolvePromise(resolverRealm *realm, p *Object, reso
 		return
 	}
 	cx.resolvePromiseWithThen(p, resolution, then)
+}
+
+// tryResolvePromise resolves p with v, or leaves p pending when resolution needs its caller's frame.
+func (q QuietContext) tryResolvePromise(p *Object, v Value) bool {
+	then, ok := q.resolutionThen(p, v)
+	if ok {
+		q.cx.resolvePromiseWithThen(p, v, then)
+	}
+	return ok
+}
+
+func (q QuietContext) resolutionThen(p *Object, v Value) (Value, bool) {
+	if v.o == p {
+		// The self-resolution TypeError records the frame.
+		return Undefined, false
+	}
+	return q.promiseThen(v)
+}
+
+// promiseThen returns the then property used by promise resolution, or undefined for a primitive.
+func (q QuietContext) promiseThen(v Value) (Value, bool) {
+	if !v.IsObject() {
+		return Undefined, true
+	}
+	return q.GetVWithoutCall(v, q.cx.Key(keyThen))
 }
 
 // resolvePromiseWithThen is the part of resolvePromise after the read of then from resolution.
@@ -531,22 +546,7 @@ func (g *generator) tryAwait(v Value, kind reactionKind) bool {
 		kind: kind,
 		gen:  g,
 	}
-	reaction := pendingReaction{
-		action:           action,
-		continuationData: cx.continuationData,
-		builtinContext:   cx,
-	}
-	if !v.IsObject() {
-		cx.enqueueReactionJob(&reaction, v, false)
-		return true
-	}
-	if IsPromise(v) {
-		if p := cx.resolveAwaitedPromisePlain(v); p != nil {
-			cx.addReaction(p, &reaction)
-			return true
-		}
-	} else if cx.readsPlainly(v.o, cx.Key(keyThen)) {
-		cx.awaitValue(v, action)
+	if cx.Quiet().tryAwait(v, action) {
 		return true
 	}
 	if kind != reactionAwait {
@@ -564,23 +564,37 @@ func (g *generator) tryAwait(v Value, kind reactionKind) bool {
 	return ok
 }
 
-// resolveAwaitedPromisePlain resolves the promise v for await, or returns nil when a property read can run code.
-func (cx *ExecutionContext) resolveAwaitedPromisePlain(v Value) *Object {
-	ctor, ok := cx.plainRead(v.o, cx.Key(KeyConstructor))
+// tryAwait registers action for v, or does nothing and returns false when a property read can run code.
+func (q QuietContext) tryAwait(v Value, action reactionAction) bool {
+	cx := q.cx
+	r := pendingReaction{
+		action:           action,
+		continuationData: cx.continuationData,
+		builtinContext:   cx,
+	}
+	if IsPromise(v) {
+		ctor, ok := q.GetVWithoutCall(v, cx.Key(KeyConstructor))
+		if !ok {
+			return false
+		}
+		if ctor.o == cx.Intrinsic(IntrinsicPromise) {
+			cx.addReaction(v.o, &r)
+			return true
+		}
+	}
+	then, ok := q.promiseThen(v)
 	if !ok {
-		return nil
+		return false
 	}
-	if ctor.o == cx.Intrinsic(IntrinsicPromise) {
-		return v.o
+	if then.IsCallable() {
+		p := cx.NewPromiseObject(cx.Intrinsic(IntrinsicPromisePrototype))
+		cx.enqueueThenableJob(p, v, then)
+		cx.addReaction(p, &r)
+	} else {
+		// PromiseResolve would immediately fulfill with v.
+		cx.enqueueReactionJob(&r, v, false)
 	}
-	// PromiseResolve wraps a promise from a different constructor and reads its then property.
-	then, ok := cx.plainRead(v.o, cx.Key(keyThen))
-	if !ok {
-		return nil
-	}
-	p := cx.NewPromiseObject(cx.Intrinsic(IntrinsicPromisePrototype))
-	cx.resolvePromiseWithThen(p, v, then)
-	return p
+	return true
 }
 
 // awaitValue performs PromiseResolve and registers the implicit handlers for an await.

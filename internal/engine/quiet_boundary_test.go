@@ -39,8 +39,6 @@ func TestQuietContextBoundary(t *testing.T) {
 		"(*" + enginePath + ".Object).SetElement",
 		"(*" + enginePath + ".Object).plainElems",
 		"(*" + enginePath + ".agent).pairDestructuringPlain",
-		"(*" + enginePath + ".agent).plainRead",
-		"(*" + enginePath + ".agent).readsPlainly",
 		enginePath + ".IsArrayPlain",
 		enginePath + ".takeDataProperties",
 	}
