@@ -43,7 +43,7 @@ func initBigInt(cx *engine.ExecutionContext) {
 		return cx.ToBigInt(p)
 	})
 	// The kernel converts an integer that fits in an int64, which cannot throw.
-	cx.SetMethodKernels(ctor, nil, func(cx *engine.ExecutionContext, this, x engine.Value) (engine.Value, bool) {
+	cx.SetMethodKernels(ctor, shortContract, nil, func(cx *engine.ExecutionContext, this, x engine.Value) (engine.Value, bool) {
 		if x.IsNumber() {
 			if n := x.Number(); n == math.Trunc(n) && n >= -1<<63 && n < 1<<63 {
 				return engine.BigIntFromInt64(int64(n)), true

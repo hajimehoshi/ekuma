@@ -44,7 +44,7 @@ func initString(cx *engine.ExecutionContext) {
 		return s
 	})
 	// The kernel converts a number or a string, which needs no code to run and cannot throw.
-	cx.SetMethodKernels(ctor, nil, func(cx *engine.ExecutionContext, this, x engine.Value) (engine.Value, bool) {
+	cx.SetMethodKernels(ctor, shortContract, nil, func(cx *engine.ExecutionContext, this, x engine.Value) (engine.Value, bool) {
 		if x.IsNumber() || x.IsString() {
 			return cx.ToStringValue(x), true
 		}
@@ -63,7 +63,7 @@ func initString(cx *engine.ExecutionContext) {
 		checkStringLength(cx, s.StringByteLength())
 		return s
 	})
-	cx.SetMethodKernels(fromCharCode, nil, func(cx *engine.ExecutionContext, this, x engine.Value) (engine.Value, bool) {
+	cx.SetMethodKernels(fromCharCode, shortContract, nil, func(cx *engine.ExecutionContext, this, x engine.Value) (engine.Value, bool) {
 		if !x.IsNumber() {
 			return engine.Undefined, false
 		}
@@ -118,7 +118,7 @@ func initString(cx *engine.ExecutionContext) {
 		s := thisStringValue(cx, this, "charAt")
 		return unitStringAt(cx, s, cx.ToIntegerOrInfinity(arg(args, 0)))
 	})
-	cx.SetMethodKernels(charAt, nil, func(cx *engine.ExecutionContext, this, x engine.Value) (engine.Value, bool) {
+	cx.SetMethodKernels(charAt, shortContract, nil, func(cx *engine.ExecutionContext, this, x engine.Value) (engine.Value, bool) {
 		if !this.IsString() || !x.IsNumber() {
 			return engine.Undefined, false
 		}
@@ -140,7 +140,7 @@ func initString(cx *engine.ExecutionContext) {
 		s := thisStringValue(cx, this, "charCodeAt")
 		return codeUnitAt(s, cx.ToIntegerOrInfinity(arg(args, 0)))
 	})
-	cx.SetMethodKernels(charCodeAt, nil, func(cx *engine.ExecutionContext, this, x engine.Value) (engine.Value, bool) {
+	cx.SetMethodKernels(charCodeAt, shortContract, nil, func(cx *engine.ExecutionContext, this, x engine.Value) (engine.Value, bool) {
 		if !this.IsString() || !x.IsNumber() {
 			return engine.Undefined, false
 		}
@@ -161,7 +161,7 @@ func initString(cx *engine.ExecutionContext) {
 		from := engine.RelativeIndex(math.Max(cx.ToIntegerOrInfinity(arg(args, 1)), 0), s.StringLength())
 		return engine.Number(float64(s.UnitIndexOf(sub, from, cx.Poll)))
 	})
-	cx.SetMethodKernels(indexOf, nil, func(cx *engine.ExecutionContext, this, sub engine.Value) (engine.Value, bool) {
+	cx.SetMethodKernels(indexOf, polledContract, nil, func(cx *engine.ExecutionContext, this, sub engine.Value) (engine.Value, bool) {
 		if !this.IsString() || !sub.IsString() {
 			return engine.Undefined, false
 		}
@@ -189,7 +189,7 @@ func initString(cx *engine.ExecutionContext) {
 		from := engine.RelativeIndex(math.Max(cx.ToIntegerOrInfinity(arg(args, 1)), 0), s.StringLength())
 		return engine.Bool(s.UnitIndexOf(sub, from, cx.Poll) >= 0)
 	})
-	cx.SetMethodKernels(includes, nil, func(cx *engine.ExecutionContext, this, sub engine.Value) (engine.Value, bool) {
+	cx.SetMethodKernels(includes, polledContract, nil, func(cx *engine.ExecutionContext, this, sub engine.Value) (engine.Value, bool) {
 		if !this.IsString() || !sub.IsString() {
 			return engine.Undefined, false
 		}
@@ -220,7 +220,7 @@ func initString(cx *engine.ExecutionContext) {
 		s := thisStringValue(cx, this, "slice")
 		return sliceString(cx, s, arg(args, 0), arg(args, 1))
 	})
-	cx.SetMethodKernels(slice, nil, func(cx *engine.ExecutionContext, this, start engine.Value) (engine.Value, bool) {
+	cx.SetMethodKernels(slice, shortContract, nil, func(cx *engine.ExecutionContext, this, start engine.Value) (engine.Value, bool) {
 		if !this.IsString() || !start.IsNumber() {
 			return engine.Undefined, false
 		}
@@ -235,7 +235,7 @@ func initString(cx *engine.ExecutionContext) {
 		s := thisStringValue(cx, this, "substring")
 		return substringOf(cx, s, arg(args, 0), arg(args, 1))
 	})
-	cx.SetMethodKernels(substring, nil, func(cx *engine.ExecutionContext, this, start engine.Value) (engine.Value, bool) {
+	cx.SetMethodKernels(substring, shortContract, nil, func(cx *engine.ExecutionContext, this, start engine.Value) (engine.Value, bool) {
 		if !this.IsString() || !start.IsNumber() {
 			return engine.Undefined, false
 		}

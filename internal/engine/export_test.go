@@ -4,6 +4,7 @@
 package engine
 
 import (
+	"reflect"
 	"slices"
 	"testing"
 
@@ -213,4 +214,190 @@ func CorruptCaches(f Value) {
 			c.ref = &v
 		}
 	}
+}
+
+// BuiltinHolders returns the objects that have got a property since the creation of the built-in
+// objects of cx started. It is empty once their creation has ended.
+func BuiltinHolders(cx *ExecutionContext) []*Object {
+	return slices.Clone(cx.builtins.objects)
+}
+
+// RunningFunction returns the innermost running function written in JavaScript, or undefined.
+func RunningFunction(cx *ExecutionContext) Value {
+	if n := len(cx.frames); n > 0 {
+		return Value{o: cx.frames[n-1].cl}
+	}
+	return Undefined
+}
+
+// Shortcut is a native function of a realm that has forms that its callers use instead of calling it.
+type Shortcut struct {
+	// Name is the name of the function, qualified with that of the object that holds it.
+	Name string
+
+	Func      Value
+	Contract  ShortcutContract
+	Frameless bool
+
+	// Forms are the names of the forms.
+	Forms []string
+}
+
+// Shortcuts returns the native functions with forms that holders, the global object and the
+// intrinsics of cx lead to. It calls observe for what happens to them from then on: "start" when
+// a form or, as the form "native", the function starts, and "taken" or "declined" when a form ends.
+func Shortcuts(t *testing.T, cx *ExecutionContext, holders []*Object, observe func(s *Shortcut, form, event string)) []*Shortcut {
+	t.Helper()
+	var objects []*Object
+	names := map[*Object]string{}
+	visit := func(o *Object, name string) {
+		if o == nil || !(Value{o: o}).IsObject() || o.class == classProxy {
+			return
+		}
+		if old, ok := names[o]; !ok {
+			names[o] = name
+			objects = append(objects, o)
+		} else if old == "" {
+			names[o] = name
+		}
+	}
+	for _, o := range holders {
+		visit(o, "")
+	}
+	visit(cx.realm.global, "")
+	for _, o := range cx.realm.intrinsics {
+		visit(o, "")
+	}
+	// The slice grows while it is visited.
+	for i := 0; i < len(objects); i++ {
+		o := objects[i]
+		visit(cx.ProtoOf(o), "")
+		for _, k := range cx.OwnKeys(o) {
+			if d, ok := cx.GetOwnProperty(o, k); ok {
+				name := holderName(cx, o) + string(cx.KeyString(k))
+				visit(d.value.o, name)
+				visit(d.getter, name)
+				visit(d.setter, name)
+			}
+		}
+	}
+	var shortcuts []*Shortcut
+	for _, o := range objects {
+		if o.fn == nil || o.fn.info == nil || o.fn.info.fast == nil && o.fn.info.extremum == ExtremumNone {
+			continue
+		}
+		s := &Shortcut{
+			Name:      names[o],
+			Func:      Value{o: o},
+			Frameless: o.fn.frameless(),
+		}
+		if s.Name == "" {
+			s.Name = string(o.fn.nativeName())
+		}
+		s.wrap(t, observe)
+		shortcuts = append(shortcuts, s)
+	}
+	return shortcuts
+}
+
+// holderName returns the prefix for the names of the properties of the built-in object o.
+func holderName(cx *ExecutionContext, o *Object) string {
+	if o.fn != nil {
+		return string(o.fn.nativeName()) + "."
+	}
+	if v, ok := cx.lookupData(o, cx.Key(KeyConstructor)); ok && v.o.fn != nil {
+		if d, ok := cx.GetOwnProperty(v.o, PropKey{key: cx.Key(KeyPrototype)}); ok && d.value.o == o {
+			return string(v.o.fn.nativeName()) + ".prototype."
+		}
+	}
+	if v, ok := cx.lookupData(o, cx.WellKnownSymbol(SymbolToStringTag)); ok && v.IsString() {
+		return string(v.Str()) + "."
+	}
+	return ""
+}
+
+// wrap fills in the forms of s and makes them call observe.
+func (s *Shortcut) wrap(t *testing.T, observe func(s *Shortcut, form, event string)) {
+	t.Helper()
+	fn := s.Func.o.fn
+	native := fn.native
+	fn.native = func(cx *ExecutionContext, this Value, args []Value) Value {
+		observe(s, "native", "start")
+		return native(cx, this, args)
+	}
+	if fn.info.extremum != ExtremumNone {
+		s.Forms = append(s.Forms, "extremum")
+	}
+	fast := fn.info.fast
+	if fast == nil {
+		return
+	}
+	s.Contract = fast.contract
+	ended := func(form string, taken bool) {
+		if taken {
+			observe(s, form, "taken")
+		} else {
+			observe(s, form, "declined")
+		}
+	}
+	wrapped := *fast
+	for field, value := range reflect.ValueOf(*fast).Fields() {
+		if value.Kind() != reflect.Func || value.IsNil() {
+			continue
+		}
+		form := field.Name
+		s.Forms = append(s.Forms, form)
+		switch form {
+		case "step":
+			wrapped.step = func(cx *ExecutionContext, this Value) (Value, bool) {
+				observe(s, form, "start")
+				v, ok := fast.step(cx, this)
+				ended(form, true)
+				return v, ok
+			}
+		case "pairStep":
+			wrapped.pairStep = func(state any) (Value, Value, PairStep) {
+				observe(s, form, "start")
+				a, b, st := fast.pairStep(state)
+				ended(form, st != PairDeclined)
+				return a, b, st
+			}
+		case "number1":
+			wrapped.number1 = func(x float64) float64 {
+				observe(s, form, "start")
+				defer ended(form, true)
+				return fast.number1(x)
+			}
+		case "number2":
+			wrapped.number2 = func(x, y float64) float64 {
+				observe(s, form, "start")
+				defer ended(form, true)
+				return fast.number2(x, y)
+			}
+		case "method0":
+			wrapped.method0 = func(cx *ExecutionContext, this Value) (Value, bool) {
+				observe(s, form, "start")
+				v, ok := fast.method0(cx, this)
+				ended(form, ok)
+				return v, ok
+			}
+		case "method1":
+			wrapped.method1 = func(cx *ExecutionContext, this, x Value) (Value, bool) {
+				observe(s, form, "start")
+				v, ok := fast.method1(cx, this, x)
+				ended(form, ok)
+				return v, ok
+			}
+		case "method2":
+			wrapped.method2 = func(cx *ExecutionContext, this, x, y Value) (Value, bool) {
+				observe(s, form, "start")
+				v, ok := fast.method2(cx, this, x, y)
+				ended(form, ok)
+				return v, ok
+			}
+		default:
+			t.Fatalf("%s has a form %s that the test does not know", s.Name, form)
+		}
+	}
+	fn.info.fast = &wrapped
 }

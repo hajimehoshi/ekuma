@@ -92,7 +92,8 @@ const (
 // It must decline incompatible state without advancing, and must neither throw nor run JavaScript.
 type IteratorPairStepFunc func(state any) (a, b Value, st PairStep)
 
-// SetIteratorPairStep registers the pair step of a built-in next method.
+// SetIteratorPairStep registers the pair step of a built-in next method, for which the contract
+// of its step holds.
 func (ag *agent) SetIteratorPairStep(next *Object, step IteratorPairStepFunc) {
 	next.fn.info.fast.pairStep = step
 }
@@ -133,6 +134,10 @@ func (cx *ExecutionContext) NewIteratorNext(yieldRealm IteratorYieldRealm, step 
 			cx.popNative()
 			return v, ok
 		},
+		contract: ShortcutContract{
+			Frame: FrameRecorded,
+			Pace:  PacePolled,
+		},
 	}
 	return o
 }
@@ -154,6 +159,10 @@ func NewPlainIteratorNext[T any](cx *ExecutionContext, yieldRealm IteratorYieldR
 			}
 			// The receiver error belongs to the native next call.
 			return cx.Call(next, this), false
+		},
+		contract: ShortcutContract{
+			Frame: FrameUnobservable,
+			Pace:  PaceShort,
 		},
 	}
 	return next
@@ -204,6 +213,10 @@ func (cx *ExecutionContext) NewArrayIteratorNext() *Object {
 				cx.popNative()
 			}
 			return v, st == PairYielded
+		},
+		contract: ShortcutContract{
+			Frame: FrameRecorded,
+			Pace:  PacePolled,
 		},
 	}
 	return next

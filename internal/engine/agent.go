@@ -114,6 +114,10 @@ type nativeFast struct {
 	method0 MethodKernel0
 	method1 MethodKernel1
 	method2 MethodKernel2
+
+	// contract holds for all of the forms, and for what the interpreter computes for the
+	// extremum of the function.
+	contract ShortcutContract
 }
 
 // callMethod calls the method kernel for this and the arguments args. It reports false when

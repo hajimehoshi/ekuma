@@ -408,11 +408,16 @@ func (cx *ExecutionContext) setSuper(base, k, val, this Value, strict bool) {
 // instanceOf implements InstanceofOperator. site is the inline cache of the OpInstanceof that
 // evaluates it, or nil.
 func (cx *ExecutionContext) instanceOf(v, c Value, site *propCache) bool {
+	outer := c.o
 	for {
 		if !c.IsObject() {
 			cx.ThrowTypeError("right-hand side of 'instanceof' is not an object")
 		}
 		if !cx.inheritsHasInstance(c.o) {
+			if c.o != outer {
+				// Looking the method up can be observed in the method of the bound function.
+				return cx.recordedHasInstance(outer, v)
+			}
 			site = nil
 			if m := cx.GetMethod(c, cx.WellKnownSymbol(SymbolHasInstance)); m != nil {
 				if m != cx.Intrinsic(IntrinsicFunctionPrototypeHasInstance) {
@@ -424,7 +429,7 @@ func (cx *ExecutionContext) instanceOf(v, c Value, site *propCache) bool {
 		}
 		// OrdinaryHasInstance of a bound function is InstanceofOperator of its target.
 		if !c.IsCallable() || c.o.fn.bound == nil {
-			return cx.ordinaryHasInstance(c, v, site)
+			return cx.ordinaryHasInstance(c, v, site, outer)
 		}
 		c, site = Value{o: c.o.fn.bound.target}, nil
 	}
@@ -450,8 +455,9 @@ func (cx *ExecutionContext) inheritsHasInstance(c *Object) bool {
 	return true
 }
 
-// functionPrototype returns Get(c, "prototype") for the function c.
-func (cx *ExecutionContext) functionPrototype(c *Object) Value {
+// plainFunctionPrototype returns the property prototype of the function c if it is an own data
+// property, and undefined otherwise.
+func (cx *ExecutionContext) plainFunctionPrototype(c *Object) Value {
 	if c.class == classFunction {
 		if c.flags&objExotic != 0 {
 			cx.resolve(c)
@@ -460,17 +466,32 @@ func (cx *ExecutionContext) functionPrototype(c *Object) Value {
 			return c.slots[p.slot]
 		}
 	}
-	return cx.GetV(Value{o: c}, cx.Key(KeyPrototype))
+	return Undefined
 }
 
 // OrdinaryHasInstance implements OrdinaryHasInstance.
 func (cx *ExecutionContext) OrdinaryHasInstance(c, v Value) bool {
-	return cx.ordinaryHasInstance(c, v, nil)
+	return cx.ordinaryHasInstance(c, v, nil, nil)
+}
+
+// recordedHasInstance is OrdinaryHasInstance of f and v with the frame of the default @@hasInstance
+// method of f.
+//
+//go:noinline
+func (cx *ExecutionContext) recordedHasInstance(f *Object, v Value) bool {
+	c := Value{o: f}
+	cx.pushNative(cx.Intrinsic(IntrinsicFunctionPrototypeHasInstance), c, nil)
+	r := cx.ordinaryHasInstance(c, v, nil, nil)
+	cx.popNative()
+	return r
 }
 
 // ordinaryHasInstance implements OrdinaryHasInstance for the instanceof operator with the inline
-// cache site, which is nil unless the @@hasInstance of c is that of %Function.prototype%.
-func (cx *ExecutionContext) ordinaryHasInstance(c, v Value, site *propCache) bool {
+// cache site, which is nil unless the @@hasInstance of c is that of %Function.prototype%. When
+// outer is not nil, the caller stands for a call of that method of outer, which is c or a bound
+// function of it, and the result is that of [ExecutionContext.recordedHasInstance] if the frame can
+// be observed.
+func (cx *ExecutionContext) ordinaryHasInstance(c, v Value, site *propCache, outer *Object) bool {
 	if !c.IsCallable() {
 		return false
 	}
@@ -480,7 +501,13 @@ func (cx *ExecutionContext) ordinaryHasInstance(c, v Value, site *propCache) boo
 	if !v.IsObject() {
 		return false
 	}
-	p := cx.functionPrototype(c.o)
+	p := cx.plainFunctionPrototype(c.o)
+	if !p.IsObject() {
+		if outer != nil {
+			return cx.recordedHasInstance(outer, v)
+		}
+		p = cx.GetV(c, cx.Key(KeyPrototype))
+	}
 	if !p.IsObject() {
 		cx.ThrowTypeError("function has non-object prototype in instanceof check")
 	}
@@ -491,12 +518,23 @@ func (cx *ExecutionContext) ordinaryHasInstance(c, v Value, site *propCache) boo
 			site.slot = s.slot
 		}
 	}
-	for o := cx.ProtoOf(v.o); o != nil; o = cx.ProtoOf(o) {
-		if o == p.o {
+	for o := v.o; ; {
+		h := o.shape.proto
+		if o.class == classProxy {
+			if outer != nil {
+				// Nothing has been observable so far.
+				return cx.recordedHasInstance(outer, v)
+			}
+			h = cx.proxyGetPrototypeOf(o)
+		}
+		if h == nil {
+			return false
+		}
+		if h == p.o {
 			return true
 		}
+		o = h
 	}
-	return false
 }
 
 // privateStorage returns the object holding o's private elements.
@@ -1448,6 +1486,44 @@ func (cx *ExecutionContext) NewNative(name wtf8.String, length int, f NativeFunc
 	return n.init()
 }
 
+// ShortcutFrame states how a shortcut accounts for the frame that calls of its function show.
+type ShortcutFrame uint8
+
+const (
+	// FrameUndeclared is not a valid statement.
+	FrameUndeclared ShortcutFrame = iota
+
+	// FrameUnobservable says that nothing that the shortcut does can observe the frame: it
+	// neither throws nor runs JavaScript or host code, and declines where the function may.
+	FrameUnobservable
+
+	// FrameRecorded says that the shortcut records the frame around what can observe it.
+	FrameRecorded
+)
+
+// ShortcutPace states how a shortcut accounts for the interruptions that its function takes.
+type ShortcutPace uint8
+
+const (
+	// PaceUndeclared is not a valid statement.
+	PaceUndeclared ShortcutPace = iota
+
+	// PaceShort says that the function takes no interruption where the shortcut does not
+	// decline: it does a bounded number of operations on its operands.
+	PaceShort
+
+	// PacePolled says that the shortcut can run for a time that depends on the script, and
+	// checks for an interruption as often as the function.
+	PacePolled
+)
+
+// ShortcutContract states what the forms of a native function that its callers use instead of
+// calling it preserve of the call. The function shows a frame.
+type ShortcutContract struct {
+	Frame ShortcutFrame
+	Pace  ShortcutPace
+}
+
 // NumberKernel1 and NumberKernel2 compute a function of one or two numbers. They neither throw
 // nor run code.
 type (
@@ -1457,12 +1533,13 @@ type (
 
 // SetNumberKernels makes a call of the native function f with exactly one or two arguments that
 // are numbers call k1 or k2 instead, which must return what f returns for those arguments.
-// Either may be nil.
-func (ag *agent) SetNumberKernels(f *Object, k1 NumberKernel1, k2 NumberKernel2) {
+// Either may be nil. c is the contract of the kernels.
+func (ag *agent) SetNumberKernels(f *Object, c ShortcutContract, k1 NumberKernel1, k2 NumberKernel2) {
 	info := f.fn.info
 	if info.fast == nil {
 		info.fast = &nativeFast{}
 	}
+	info.fast.contract = c
 	info.fast.number1 = k1
 	info.fast.number2 = k2
 }
@@ -1476,7 +1553,8 @@ const (
 	ExtremumMax
 )
 
-// SetExtremum says that the native function f is Math.min or Math.max, as e names.
+// SetExtremum says that the native function f is Math.min or Math.max, as e names. The contract of
+// its number kernels holds for what the interpreter computes.
 func (ag *agent) SetExtremum(f *Object, e Extremum) {
 	f.fn.info.extremum = e
 }
@@ -1498,12 +1576,13 @@ type (
 
 // SetMethodKernels makes a call of the native function f with exactly no, one or two arguments
 // try k0, k1 or k2 first. When the kernel reports true, its result must be what f returns for the
-// call. Any of them may be nil.
-func (ag *agent) SetMethodKernels(f *Object, k0 MethodKernel0, k1 MethodKernel1, k2 MethodKernel2) {
+// call. Any of them may be nil. c is the contract of the kernels.
+func (ag *agent) SetMethodKernels(f *Object, c ShortcutContract, k0 MethodKernel0, k1 MethodKernel1, k2 MethodKernel2) {
 	info := f.fn.info
 	if info.fast == nil {
 		info.fast = &nativeFast{}
 	}
+	info.fast.contract = c
 	info.fast.method0 = k0
 	info.fast.method1 = k1
 	info.fast.method2 = k2

@@ -878,10 +878,16 @@ func (cx *ExecutionContext) hasOwnProperty(o *Object, k *PropKey) bool {
 }
 
 // HasOwnPropertyPlain is HasOwnProperty of o and the key k when k is a primitive and finding out
-// neither throws nor runs JavaScript. It reports false as ok otherwise.
+// neither throws nor runs JavaScript, and takes a short time. It reports false as ok otherwise.
 func (cx *ExecutionContext) HasOwnPropertyPlain(o *Object, k Value) (has, ok bool) {
 	if k.IsObject() || o.delegatesPropertyAccess() {
 		return false, false
+	}
+	if k.IsBigInt() {
+		// The string of a large BigInt can take long to compute, and be longer than a string may be.
+		if _, ok := k.BigInt64(); !ok {
+			return false, false
+		}
 	}
 	return cx.HasOwnProperty(o, cx.QueryKey(k)), true
 }

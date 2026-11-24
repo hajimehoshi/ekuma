@@ -125,7 +125,7 @@ func initDate(cx *engine.ExecutionContext) {
 	now := method(cx, ctor, "now", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		return engine.Number(cx.SystemUTCEpochMilliseconds())
 	})
-	cx.SetMethodKernels(now, func(cx *engine.ExecutionContext, this engine.Value) (engine.Value, bool) {
+	cx.SetMethodKernels(now, shortContract, func(cx *engine.ExecutionContext, this engine.Value) (engine.Value, bool) {
 		// A host clock can reenter JavaScript and observe the native call frame.
 		if cx.HasCustomClock() {
 			return engine.Undefined, false

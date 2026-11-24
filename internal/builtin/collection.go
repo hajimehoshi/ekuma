@@ -218,7 +218,7 @@ func initMap(cx *engine.ExecutionContext) {
 	mapDelete := method(cx, proto, "delete", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		return engine.Bool(thisMap(cx, this, "delete").Delete(arg(args, 0)))
 	})
-	cx.SetMethodKernels(mapDelete, nil, func(cx *engine.ExecutionContext, this, k engine.Value) (engine.Value, bool) {
+	cx.SetMethodKernels(mapDelete, shortContract, nil, func(cx *engine.ExecutionContext, this, k engine.Value) (engine.Value, bool) {
 		if t := mapOf(this); t != nil {
 			return engine.Bool(t.Delete(k)), true
 		}
@@ -228,7 +228,7 @@ func initMap(cx *engine.ExecutionContext) {
 		v, _ := thisMap(cx, this, "get").Get(arg(args, 0))
 		return v
 	})
-	cx.SetMethodKernels(mapGet, nil, func(cx *engine.ExecutionContext, this, k engine.Value) (engine.Value, bool) {
+	cx.SetMethodKernels(mapGet, shortContract, nil, func(cx *engine.ExecutionContext, this, k engine.Value) (engine.Value, bool) {
 		if t := mapOf(this); t != nil {
 			v, _ := t.Get(k)
 			return v, true
@@ -238,7 +238,7 @@ func initMap(cx *engine.ExecutionContext) {
 	mapHas := method(cx, proto, "has", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		return engine.Bool(thisMap(cx, this, "has").Has(arg(args, 0)))
 	})
-	cx.SetMethodKernels(mapHas, nil, func(cx *engine.ExecutionContext, this, k engine.Value) (engine.Value, bool) {
+	cx.SetMethodKernels(mapHas, shortContract, nil, func(cx *engine.ExecutionContext, this, k engine.Value) (engine.Value, bool) {
 		if t := mapOf(this); t != nil {
 			return engine.Bool(t.Has(k)), true
 		}
@@ -248,7 +248,7 @@ func initMap(cx *engine.ExecutionContext) {
 		thisMap(cx, this, "set").Set(arg(args, 0), arg(args, 1))
 		return this
 	})
-	cx.SetMethodKernels(mapSet, nil, nil, func(cx *engine.ExecutionContext, this, k, v engine.Value) (engine.Value, bool) {
+	cx.SetMethodKernels(mapSet, shortContract, nil, nil, func(cx *engine.ExecutionContext, this, k, v engine.Value) (engine.Value, bool) {
 		if t := mapOf(this); t != nil {
 			t.Set(k, v)
 			return this, true
@@ -302,7 +302,7 @@ func initMap(cx *engine.ExecutionContext) {
 	mapSize := getter(cx, proto, cx.Intern("size"), "size", func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		return engine.Number(float64(thisMap(cx, this, "size").Size()))
 	})
-	cx.SetMethodKernels(mapSize, func(cx *engine.ExecutionContext, this engine.Value) (engine.Value, bool) {
+	cx.SetMethodKernels(mapSize, shortContract, func(cx *engine.ExecutionContext, this engine.Value) (engine.Value, bool) {
 		if t := mapOf(this); t != nil {
 			return engine.Number(float64(t.Size())), true
 		}
@@ -518,7 +518,7 @@ func initSet(cx *engine.ExecutionContext) {
 		}
 		return this
 	})
-	cx.SetMethodKernels(setAdd, nil, func(cx *engine.ExecutionContext, this, v engine.Value) (engine.Value, bool) {
+	cx.SetMethodKernels(setAdd, shortContract, nil, func(cx *engine.ExecutionContext, this, v engine.Value) (engine.Value, bool) {
 		t := setOf(this)
 		if t == nil {
 			return engine.Undefined, false
@@ -535,7 +535,7 @@ func initSet(cx *engine.ExecutionContext) {
 	setDelete := method(cx, proto, "delete", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		return engine.Bool(thisSet(cx, this, "delete").Delete(arg(args, 0)))
 	})
-	cx.SetMethodKernels(setDelete, nil, func(cx *engine.ExecutionContext, this, v engine.Value) (engine.Value, bool) {
+	cx.SetMethodKernels(setDelete, shortContract, nil, func(cx *engine.ExecutionContext, this, v engine.Value) (engine.Value, bool) {
 		if t := setOf(this); t != nil {
 			return engine.Bool(t.Delete(v)), true
 		}
@@ -544,7 +544,7 @@ func initSet(cx *engine.ExecutionContext) {
 	keys.setHas = method(cx, proto, "has", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		return engine.Bool(thisSet(cx, this, "has").Has(arg(args, 0)))
 	})
-	cx.SetMethodKernels(keys.setHas, nil, func(cx *engine.ExecutionContext, this, v engine.Value) (engine.Value, bool) {
+	cx.SetMethodKernels(keys.setHas, shortContract, nil, func(cx *engine.ExecutionContext, this, v engine.Value) (engine.Value, bool) {
 		if t := setOf(this); t != nil {
 			return engine.Bool(t.Has(v)), true
 		}
@@ -571,7 +571,7 @@ func initSet(cx *engine.ExecutionContext) {
 	setSize := getter(cx, proto, keys.size, "size", func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		return engine.Number(float64(thisSet(cx, this, "size").Size()))
 	})
-	cx.SetMethodKernels(setSize, func(cx *engine.ExecutionContext, this engine.Value) (engine.Value, bool) {
+	cx.SetMethodKernels(setSize, shortContract, func(cx *engine.ExecutionContext, this engine.Value) (engine.Value, bool) {
 		if t := setOf(this); t != nil {
 			return engine.Number(float64(t.Size())), true
 		}

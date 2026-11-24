@@ -291,7 +291,7 @@ func initArray(cx *engine.ExecutionContext, strs *objectStrings) {
 	isArray := method(cx, ctor, "isArray", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		return engine.Bool(cx.IsArray(arg(args, 0)))
 	})
-	cx.SetMethodKernels(isArray, nil, func(cx *engine.ExecutionContext, this, v engine.Value) (engine.Value, bool) {
+	cx.SetMethodKernels(isArray, shortContract, nil, func(cx *engine.ExecutionContext, this, v engine.Value) (engine.Value, bool) {
 		is, ok := engine.IsArrayPlain(v)
 		return engine.Bool(is), ok
 	}, nil)
@@ -393,7 +393,7 @@ func initArray(cx *engine.ExecutionContext, strs *objectStrings) {
 		return engine.Number(float64(n))
 	})
 	// The kernel of push is the fast path of push for a single value.
-	cx.SetMethodKernels(push, nil, func(cx *engine.ExecutionContext, this, v engine.Value) (engine.Value, bool) {
+	cx.SetMethodKernels(push, shortContract, nil, func(cx *engine.ExecutionContext, this, v engine.Value) (engine.Value, bool) {
 		if !this.IsObject() {
 			return engine.Undefined, false
 		}
@@ -419,7 +419,7 @@ func initArray(cx *engine.ExecutionContext, strs *objectStrings) {
 		setLength(cx, o, n-1)
 		return v
 	})
-	cx.SetMethodKernels(pop, func(cx *engine.ExecutionContext, this engine.Value) (engine.Value, bool) {
+	cx.SetMethodKernels(pop, shortContract, func(cx *engine.ExecutionContext, this engine.Value) (engine.Value, bool) {
 		if !this.IsObject() {
 			return engine.Undefined, false
 		}
@@ -758,7 +758,7 @@ func initArray(cx *engine.ExecutionContext, strs *objectStrings) {
 			return
 		}
 		// The kernel is the search of an Array from its start.
-		cx.SetMethodKernels(fn, nil, func(cx *engine.ExecutionContext, this, target engine.Value) (engine.Value, bool) {
+		cx.SetMethodKernels(fn, polledContract, nil, func(cx *engine.ExecutionContext, this, target engine.Value) (engine.Value, bool) {
 			found, ok := cx.SearchArray(this, target, same)
 			if same {
 				return engine.Bool(found >= 0), ok

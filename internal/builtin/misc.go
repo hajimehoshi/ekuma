@@ -698,14 +698,14 @@ func initMath(cx *engine.ExecutionContext) {
 			}
 			return engine.Number(f(cx.ToNumber(arg(args, 0))))
 		})
-		cx.SetNumberKernels(fn, f, nil)
+		cx.SetNumberKernels(fn, shortContract, f, nil)
 	}
 	binary := func(name string, f func(x, y float64) float64) {
 		fn := method(cx, m, wtf8.String(name), 2, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 			x := cx.ToNumber(arg(args, 0))
 			return engine.Number(f(x, cx.ToNumber(arg(args, 1))))
 		})
-		cx.SetNumberKernels(fn, nil, f)
+		cx.SetNumberKernels(fn, shortContract, nil, f)
 	}
 	unary("abs", math.Abs)
 	unary("acos", math.Acos)
@@ -792,7 +792,7 @@ func initMath(cx *engine.ExecutionContext) {
 			}
 			return engine.Number(r)
 		})
-		cx.SetNumberKernels(fn, nil, func(x, y float64) float64 {
+		cx.SetNumberKernels(fn, shortContract, nil, func(x, y float64) float64 {
 			if x != x || y != y {
 				return math.NaN()
 			}

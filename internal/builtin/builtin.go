@@ -20,6 +20,18 @@ func arg(args []engine.Value, i int) engine.Value {
 	return engine.Undefined
 }
 
+// shortContract is the contract of the kernels that run in a short time.
+var shortContract = engine.ShortcutContract{
+	Frame: engine.FrameUnobservable,
+	Pace:  engine.PaceShort,
+}
+
+// polledContract is the contract of the kernels that check for an interruption as they run.
+var polledContract = engine.ShortcutContract{
+	Frame: engine.FrameUnobservable,
+	Pace:  engine.PacePolled,
+}
+
 // method defines the non-enumerable function name on o.
 func method(cx *engine.ExecutionContext, o *engine.Object, name wtf8.String, length int, f engine.NativeFunc) *engine.Object {
 	fn := cx.NewNative(name, length, f)
@@ -331,7 +343,7 @@ func initObject(cx *engine.ExecutionContext, strs *objectStrings) {
 		k := cx.QueryKey(arg(args, 0))
 		return engine.Bool(cx.HasOwnProperty(cx.ToObject(this), k))
 	})
-	cx.SetMethodKernels(hasOwn, nil, func(cx *engine.ExecutionContext, this, k engine.Value) (engine.Value, bool) {
+	cx.SetMethodKernels(hasOwn, shortContract, nil, func(cx *engine.ExecutionContext, this, k engine.Value) (engine.Value, bool) {
 		if !this.IsObject() {
 			return engine.Undefined, false
 		}
