@@ -11,6 +11,7 @@ import (
 
 	"github.com/hajimehoshi/ekuma/internal/bytecode"
 	"github.com/hajimehoshi/ekuma/internal/compiler"
+	"github.com/hajimehoshi/ekuma/internal/modulegraph"
 	"github.com/hajimehoshi/ekuma/internal/parser"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 	"github.com/hajimehoshi/ekuma/internal/xerrors"
@@ -130,17 +131,16 @@ type Module struct {
 	ref         scriptOrModule
 	hostDefined any
 
-	// code describes a source text module, and is nil for a synthetic module.
-	code *bytecode.Module
+	// node is the node of m in the graph of modules. Its Code describes a source text module, and
+	// is nil for a synthetic module.
+	node modulegraph.Node[*Module]
+
 	body *funcProto
 
-	// env holds the bindings of the top level, in the order of code.Bindings. A binding of an
+	// env holds the bindings of the top level, in the order of node.Code.Bindings. A binding of an
 	// import is the binding of the exporting module, and fn has the bindings as its upvalues.
 	env []*upvalue
 	fn  *Object
-
-	// requested holds the module of each of code.Requests once it is loaded.
-	requested []*Module
 
 	status moduleStatus
 
@@ -171,54 +171,6 @@ type Module struct {
 
 	// source is the [[ModuleSource]], or nil when m has none.
 	source *Object
-
-	// exportIndex maps the name of each local export to its index in code.LocalExports, and
-	// that of each indirect export i to -1-i, once a lookup in a long list has built it.
-	exportIndex map[string]int
-}
-
-// minExportIndex is the number of exports from which ownExport looks them up in a map.
-const minExportIndex = 16
-
-// hasOwnExport reports whether the source text module m has a local or indirect export name.
-func (m *Module) hasOwnExport(name string) bool {
-	local, indirect := m.ownExport(name)
-	return local >= 0 || indirect >= 0
-}
-
-// ownExport returns the index of the local export name of m in code.LocalExports and -1, or -1
-// and the index of the indirect export name in code.IndirectExports, or -1 and -1.
-func (m *Module) ownExport(name string) (local, indirect int) {
-	code := m.code
-	if len(code.LocalExports)+len(code.IndirectExports) < minExportIndex {
-		if i := slices.IndexFunc(code.LocalExports, func(e bytecode.LocalExport) bool {
-			return e.Name == name
-		}); i >= 0 {
-			return i, -1
-		}
-		return -1, slices.IndexFunc(code.IndirectExports, func(e bytecode.IndirectExport) bool {
-			return e.Name == name
-		})
-	}
-	if m.exportIndex == nil {
-		m.exportIndex = make(map[string]int, len(code.LocalExports)+len(code.IndirectExports))
-		// An export name is unique in a module.
-		for i, e := range code.LocalExports {
-			m.exportIndex[e.Name] = i
-		}
-		for i, e := range code.IndirectExports {
-			m.exportIndex[e.Name] = -1 - i
-		}
-	}
-	i, ok := m.exportIndex[name]
-	switch {
-	case !ok:
-		return -1, -1
-	case i >= 0:
-		return i, -1
-	default:
-		return -1, -1 - i
-	}
 }
 
 // HostDefined returns the [[HostDefined]] of m.
@@ -246,9 +198,12 @@ func (cx *ExecutionContext) ParseModule(file, src string, hostDefined any) (*Mod
 	}
 	m := &Module{
 		hostDefined: hostDefined,
-		code:        code,
 		env:         make([]*upvalue, len(code.Bindings)),
-		requested:   make([]*Module, len(code.Requests)),
+	}
+	m.node = modulegraph.Node[*Module]{
+		Module:    m,
+		Code:      code,
+		Requested: make([]*modulegraph.Node[*Module], len(code.Requests)),
 	}
 	m.ref = scriptOrModule{
 		file:   file,
@@ -270,6 +225,7 @@ func (cx *ExecutionContext) CreateDefaultExportSyntheticModule(v Value, hostDefi
 		env:         []*upvalue{newCell(v)},
 		status:      moduleEvaluated,
 	}
+	m.node.Module = m
 	m.ref = scriptOrModule{
 		module: m,
 		realm:  cx.realm,
@@ -297,7 +253,7 @@ func (cx *ExecutionContext) getModuleSource(m *Module) (Value, bool) {
 
 // isCyclic reports whether m is a Cyclic Module Record.
 func (m *Module) isCyclic() bool {
-	return m.code != nil
+	return m.node.Code != nil
 }
 
 // LoadRequestedModules implements LoadRequestedModules for a host whose loading completes
@@ -474,13 +430,13 @@ func (cx *ExecutionContext) loadModuleGraph(root *Module) (Value, bool) {
 	}
 	for len(stack) > 0 {
 		top := &stack[len(stack)-1]
-		if top.i == len(top.m.code.Requests) {
+		if top.i == len(top.m.node.Code.Requests) {
 			stack = stack[:len(stack)-1]
 			continue
 		}
 		m, i := top.m, top.i
 		top.i++
-		req := moduleRequest(m.code.Requests[i])
+		req := moduleRequest(m.node.Code.Requests[i])
 		if !allImportAttributesSupported(req.Attributes) {
 			return m.ref.realm.context.NewError(ErrorKindSyntax, "unsupported import attribute"), false
 		}
@@ -488,7 +444,7 @@ func (cx *ExecutionContext) loadModuleGraph(root *Module) (Value, bool) {
 		if !ok {
 			return e, false
 		}
-		m.requested[i] = dep
+		m.node.Requested[i] = &dep.node
 		if !visit(dep) {
 			return cx.loadingError(m.ref.realm, dep), false
 		}
@@ -545,8 +501,8 @@ func (cx *ExecutionContext) linkModule(root *Module) (Value, bool) {
 	for len(frames) > 0 {
 		top := &frames[len(frames)-1]
 		m := top.m
-		if top.i < len(m.requested) {
-			dep := m.requested[top.i]
+		if top.i < len(m.node.Requested) {
+			dep := m.node.Requested[top.i].Module
 			top.i++
 			if dep.isCyclic() && dep.status == moduleUnlinked {
 				enter(dep)
@@ -585,198 +541,12 @@ func (cx *ExecutionContext) linkModule(root *Module) (Value, bool) {
 	return Undefined, true
 }
 
-// resolutionKind is the kind of the result of ResolveExport.
-type resolutionKind uint8
-
-const (
-	resolutionNull resolutionKind = iota
-	resolutionAmbiguous
-	resolutionFound
-)
-
-// The special values of resolution.index for the bindings that are not of the environment.
-const (
-	// resolutionNamespace is the [[BindingName]] namespace.
-	resolutionNamespace = -1
-
-	// resolutionSource is the [[BindingName]] source.
-	resolutionSource = -2
-)
-
-// resolution is the result of ResolveExport: for resolutionFound, the binding env[index]
-// of module, or the namespace object or the module source of module when index is
-// resolutionNamespace or resolutionSource.
-type resolution struct {
-	kind   resolutionKind
-	module *Module
-	index  int
-}
-
-// resolveExport implements ResolveExport for the export name of m.
-func (m *Module) resolveExport(name string) resolution {
-	type pair struct {
-		m    *Module
-		name string
-	}
-	resolveSet := map[pair]bool{}
-	type frame struct {
-		m    *Module
-		name string
-
-		// star is the index of the star export being resolved, or -1 before the star exports.
-		star int
-
-		// found is the starResolution.
-		found resolution
-	}
-	frames := []frame{{
-		m:    m,
-		name: name,
-		star: -1,
-	}}
-	// ret is the result of the frame that returned last.
-	var ret resolution
-	for len(frames) > 0 {
-		fr := &frames[len(frames)-1]
-		mod := fr.m
-		if fr.star < 0 {
-			if !mod.isCyclic() {
-				ret = resolution{}
-				if fr.name == "default" {
-					ret = resolution{
-						kind:   resolutionFound,
-						module: mod,
-					}
-				}
-				frames = frames[:len(frames)-1]
-				continue
-			}
-			p := pair{
-				m:    mod,
-				name: fr.name,
-			}
-			if resolveSet[p] {
-				// A circular import request.
-				ret = resolution{}
-				frames = frames[:len(frames)-1]
-				continue
-			}
-			resolveSet[p] = true
-			local, indirect := mod.ownExport(fr.name)
-			if local >= 0 {
-				ret = resolution{
-					kind:   resolutionFound,
-					module: mod,
-					index:  int(mod.code.LocalExports[local].Binding),
-				}
-				frames = frames[:len(frames)-1]
-				continue
-			}
-			if j := indirect; j >= 0 {
-				e := mod.code.IndirectExports[j]
-				imported := mod.requested[e.Request]
-				if e.All || e.Source {
-					ret = resolution{
-						kind:   resolutionFound,
-						module: imported,
-						index:  resolutionNamespace,
-					}
-					if e.Source {
-						ret.index = resolutionSource
-					}
-					frames = frames[:len(frames)-1]
-					continue
-				}
-				// The result of the frame is that of the imported module.
-				*fr = frame{
-					m:    imported,
-					name: e.ImportName,
-					star: -1,
-				}
-				continue
-			}
-			if fr.name == "default" {
-				// A default export cannot be provided by an export * from.
-				ret = resolution{}
-				frames = frames[:len(frames)-1]
-				continue
-			}
-			fr.star = 0
-			fr.found = resolution{}
-		} else {
-			// The star export fr.star resolved to ret.
-			if ret.kind == resolutionAmbiguous {
-				frames = frames[:len(frames)-1]
-				continue
-			}
-			if ret.kind == resolutionFound {
-				if fr.found.kind == resolutionNull {
-					fr.found = ret
-				} else if ret.module != fr.found.module || ret.index != fr.found.index {
-					ret = resolution{kind: resolutionAmbiguous}
-					frames = frames[:len(frames)-1]
-					continue
-				}
-			}
-			fr.star++
-		}
-		if fr.star < len(mod.code.StarExports) {
-			frames = append(frames, frame{
-				m:    mod.requested[mod.code.StarExports[fr.star]],
-				name: fr.name,
-				star: -1,
-			})
-			continue
-		}
-		ret = fr.found
-		frames = frames[:len(frames)-1]
-	}
-	return ret
-}
-
-// exportedNames implements GetExportedNames.
-func (m *Module) exportedNames() []string {
-	if !m.isCyclic() {
-		return []string{"default"}
-	}
-	visited := map[*Module]bool{}
-	seen := map[string]bool{}
-	var names []string
-	add := func(n string, root bool) {
-		if (root || n != "default") && !seen[n] {
-			seen[n] = true
-			names = append(names, n)
-		}
-	}
-	stack := []*Module{m}
-	for len(stack) > 0 {
-		mod := stack[len(stack)-1]
-		stack = stack[:len(stack)-1]
-		if visited[mod] || !mod.isCyclic() {
-			// The default export of a synthetic module is not exported by an export * from.
-			continue
-		}
-		visited[mod] = true
-		root := mod == m
-		for _, e := range mod.code.LocalExports {
-			add(e.Name, root)
-		}
-		for _, e := range mod.code.IndirectExports {
-			add(e.Name, root)
-		}
-		for _, r := range slices.Backward(mod.code.StarExports) {
-			stack = append(stack, mod.requested[r])
-		}
-	}
-	return names
-}
-
 // initializeEnvironment implements InitializeEnvironment for the source text module m.
 func (m *Module) initializeEnvironment() (Value, bool) {
 	cx := &m.ref.realm.context
-	code := m.code
+	code := m.node.Code
 	for _, e := range code.IndirectExports {
-		if r := m.resolveExport(e.Name); r.kind != resolutionFound {
+		if r := m.node.ResolveExport(e.Name); r.Kind != modulegraph.Found {
 			return cx.resolutionError(m, e.Name, r), false
 		}
 	}
@@ -790,33 +560,32 @@ func (m *Module) initializeEnvironment() (Value, bool) {
 		}
 	}
 	for _, ie := range code.Imports {
-		imported := m.requested[ie.Request]
-		r := imported.resolveExport(ie.ImportName)
-		if r.kind != resolutionFound {
+		r := m.node.Requested[ie.Request].ResolveExport(ie.ImportName)
+		if r.Kind != modulegraph.Found {
 			return cx.resolutionError(m, ie.ImportName, r), false
 		}
-		switch r.index {
-		case resolutionNamespace:
-			m.env[ie.Binding] = newCell(Value{o: cx.moduleNamespace(r.module)})
-		case resolutionSource:
-			v, ok := cx.getModuleSource(r.module)
+		switch r.Binding {
+		case modulegraph.Namespace:
+			m.env[ie.Binding] = newCell(Value{o: cx.moduleNamespace(r.Module)})
+		case modulegraph.Source:
+			v, ok := cx.getModuleSource(r.Module)
 			if !ok {
 				return v, false
 			}
 			m.env[ie.Binding] = newCell(v)
 		default:
-			m.env[ie.Binding] = r.module.env[r.index]
+			m.env[ie.Binding] = r.Module.env[r.Binding]
 		}
 	}
 	for i, b := range code.Bindings {
 		switch b.Kind {
 		case bytecode.ModuleNamespace:
-			m.env[i] = newCell(Value{o: cx.moduleNamespace(m.requested[b.Request])})
+			m.env[i] = newCell(Value{o: cx.moduleNamespace(m.node.Requested[b.Request].Module)})
 		case bytecode.ModuleDeferredNamespace:
 			// A circular importer may already refer to this cell.
-			*m.env[i].p = Value{o: cx.deferredModuleNamespace(m.requested[b.Request])}
+			*m.env[i].p = Value{o: cx.deferredModuleNamespace(m.node.Requested[b.Request].Module)}
 		case bytecode.ModuleSource:
-			v, ok := cx.getModuleSource(m.requested[b.Request])
+			v, ok := cx.getModuleSource(m.node.Requested[b.Request].Module)
 			if !ok {
 				return v, false
 			}
@@ -846,8 +615,8 @@ func (m *Module) initializeEnvironment() (Value, bool) {
 
 // resolutionError returns the SyntaxError of the import or export name of m that did not
 // resolve to r.
-func (cx *ExecutionContext) resolutionError(m *Module, n string, r resolution) Value {
-	if r.kind == resolutionAmbiguous {
+func (cx *ExecutionContext) resolutionError(m *Module, n string, r modulegraph.Resolution[*Module]) Value {
+	if r.Kind == modulegraph.Ambiguous {
 		return m.ref.realm.context.NewError(ErrorKindSyntax, "the export '"+n+"' is ambiguous ("+m.ref.file+")")
 	}
 	return m.ref.realm.context.NewError(ErrorKindSyntax, "the export '"+n+"' cannot be resolved ("+m.ref.file+")")
@@ -1009,7 +778,7 @@ func (cx *ExecutionContext) innerModuleEvaluation(root *Module, stack *[]*Module
 			continue
 		}
 		frames = frames[:len(frames)-1]
-		if m.pendingAsyncDeps > 0 || m.code.HasTLA {
+		if m.pendingAsyncDeps > 0 || m.node.Code.HasTLA {
 			cx.modules.asyncOrder++
 			m.asyncOrder = cx.modules.asyncOrder
 			if m.pendingAsyncDeps == 0 {
@@ -1072,8 +841,8 @@ func (m *Module) evaluationList() []*Module {
 			list = append(list, dep)
 		}
 	}
-	for i, r := range m.code.Requests {
-		dep := m.requested[i]
+	for i, r := range m.node.Code.Requests {
+		dep := m.node.Requested[i].Module
 		switch r.Phase {
 		case bytecode.PhaseDefer:
 			for _, d := range dep.asyncTransitiveDependencies() {
@@ -1112,7 +881,7 @@ func (m *Module) asyncTransitiveDependencies() []*Module {
 		if !m.isCyclic() || m.status == moduleEvaluating || m.isSCCEvaluated() {
 			return
 		}
-		if m.code.HasTLA {
+		if m.node.Code.HasTLA {
 			// seen keeps m from being added twice.
 			result = append(result, m)
 			return
@@ -1122,11 +891,11 @@ func (m *Module) asyncTransitiveDependencies() []*Module {
 	visit(m)
 	for len(frames) > 0 {
 		top := &frames[len(frames)-1]
-		if top.i == len(top.m.requested) {
+		if top.i == len(top.m.node.Requested) {
 			frames = frames[:len(frames)-1]
 			continue
 		}
-		dep := top.m.requested[top.i]
+		dep := top.m.node.Requested[top.i].Module
 		top.i++
 		visit(dep)
 	}
@@ -1136,9 +905,9 @@ func (m *Module) asyncTransitiveDependencies() []*Module {
 // readyForSyncExecution implements ReadyForSyncExecution.
 func (m *Module) readyForSyncExecution() bool {
 	seen := map[*Module]bool{}
-	work := []*Module{m}
+	work := []*modulegraph.Node[*Module]{&m.node}
 	for len(work) > 0 {
-		mod := work[len(work)-1]
+		mod := work[len(work)-1].Module
 		work = work[:len(work)-1]
 		if seen[mod] || !mod.isCyclic() {
 			continue
@@ -1150,10 +919,10 @@ func (m *Module) readyForSyncExecution() bool {
 		case moduleEvaluating, moduleEvaluatingAsync:
 			return false
 		}
-		if mod.code.HasTLA {
+		if mod.node.Code.HasTLA {
 			return false
 		}
-		work = append(work, mod.requested...)
+		work = append(work, mod.node.Requested...)
 	}
 	return true
 }
@@ -1216,7 +985,7 @@ func (cx *ExecutionContext) asyncModuleExecutionFulfilled(m *Module) {
 			if p.pendingAsyncDeps == 0 {
 				execList = append(execList, p)
 				inList[p] = true
-				if !p.code.HasTLA {
+				if !p.node.Code.HasTLA {
 					work = append(work, p)
 				}
 			}
@@ -1229,7 +998,7 @@ func (cx *ExecutionContext) asyncModuleExecutionFulfilled(m *Module) {
 		switch {
 		case p.status == moduleEvaluated:
 			// An error of an earlier module in the list rejected it.
-		case p.code.HasTLA:
+		case p.node.Code.HasTLA:
 			cx.executeAsyncModule(p)
 		default:
 			if e, ok := cx.Completion(func() {

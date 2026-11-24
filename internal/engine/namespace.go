@@ -6,6 +6,7 @@ package engine
 import (
 	"slices"
 
+	"github.com/hajimehoshi/ekuma/internal/modulegraph"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
@@ -17,7 +18,7 @@ type moduleNamespace struct {
 	keys []PropKey
 
 	// targets holds the resolved binding of each of keys.
-	targets []resolution
+	targets []modulegraph.Resolution[*Module]
 
 	// index maps a key to its index in keys.
 	index map[PropKey]int
@@ -44,48 +45,23 @@ func (cx *ExecutionContext) deferredModuleNamespace(m *Module) *Object {
 
 // newModuleNamespace collects the exports for the requested phase and implements ModuleNamespaceCreate.
 func (cx *ExecutionContext) newModuleNamespace(m *Module, deferred bool) *Object {
-	type export struct {
-		name string
-		r    resolution
+	exports := m.node.Exports()
+	if deferred {
+		exports = slices.DeleteFunc(exports, func(e modulegraph.Export[*Module]) bool {
+			return e.Name == "then"
+		})
 	}
-	var exports []export
-	names := m.exportedNames()
-	var star map[string]resolution
-	if len(names) >= minStarTable && m.isCyclic() {
-		star = m.starTable()
-	}
-	for _, n := range names {
-		if deferred && n == "then" {
-			continue
-		}
-		var r resolution
-		if star != nil && !m.hasOwnExport(n) {
-			// The default export is never provided by a star export, so n is not "default".
-			r = star[n]
-		} else {
-			r = m.resolveExport(n)
-		}
-		if r.kind == resolutionFound {
-			exports = append(exports, export{
-				name: n,
-				r:    r,
-			})
-		}
-	}
-	slices.SortFunc(exports, func(a, b export) int {
-		return wtf8.Compare(wtf8.String(a.name), wtf8.String(b.name))
-	})
 	ns := &moduleNamespace{
 		module:   m,
 		keys:     make([]PropKey, len(exports)),
-		targets:  make([]resolution, len(exports)),
+		targets:  make([]modulegraph.Resolution[*Module], len(exports)),
 		index:    make(map[PropKey]int, len(exports)),
 		deferred: deferred,
 	}
 	for i, e := range exports {
-		k := cx.ToPropertyKey(ObjectValue(cx.Intern(wtf8.String(e.name))))
+		k := cx.ToPropertyKey(ObjectValue(cx.Intern(wtf8.String(e.Name))))
 		ns.keys[i] = k
-		ns.targets[i] = e.r
+		ns.targets[i] = e.Resolution
 		ns.index[k] = i
 	}
 	o := (&propertyObject{
@@ -134,16 +110,16 @@ func (cx *ExecutionContext) namespaceGet(o *Object, k PropKey) Value {
 		return Undefined
 	}
 	r := ns.targets[i]
-	switch r.index {
-	case resolutionNamespace:
-		return Value{o: cx.moduleNamespace(r.module)}
-	case resolutionSource:
-		if r.module.source == nil {
+	switch r.Binding {
+	case modulegraph.Namespace:
+		return Value{o: cx.moduleNamespace(r.Module)}
+	case modulegraph.Source:
+		if r.Module.source == nil {
 			cx.ThrowReferenceError("the module source of '" + wtf8.ToValidUTF8(cx.KeyString(k)) + "' is not available")
 		}
-		return Value{o: r.module.source}
+		return Value{o: r.Module.source}
 	}
-	v := *r.module.env[r.index].p
+	v := *r.Module.env[r.Binding].p
 	if v.o == tdzObject {
 		cx.ThrowReferenceError("cannot access '" + wtf8.ToValidUTF8(cx.KeyString(k)) + "' before initialization")
 	}
@@ -202,127 +178,4 @@ func (cx *ExecutionContext) namespaceOwnKeys(o *Object) []PropKey {
 // namespaceDelete implements [[Delete]] of the module namespace object o for an export key.
 func (cx *ExecutionContext) namespaceDelete(o *Object, k PropKey) bool {
 	return !cx.namespaceHas(o, k)
-}
-
-// minStarTable is the number of export names from which newModuleNamespace resolves the names
-// that star exports provide all at once.
-const minStarTable = 32
-
-// starTable returns what ResolveExport gives for each name that the star exports of the module
-// m provide: the names that it lacks resolve to null. It returns nil when the modules that star
-// exports reach from m form a cycle, which the table cannot represent.
-func (m *Module) starTable() map[string]resolution {
-	// parents counts the star exports of the reached modules that refer to each module, and post
-	// lists the reached modules after the modules that their star exports refer to.
-	parents := map[*Module]int{}
-	var post []*Module
-	const (
-		visiting = 1
-		visited  = 2
-	)
-	state := map[*Module]int8{m: visiting}
-	type frame struct {
-		m *Module
-		i int
-	}
-	frames := []frame{{m: m}}
-	for len(frames) > 0 {
-		fr := &frames[len(frames)-1]
-		mod := fr.m
-		if !mod.isCyclic() || fr.i == len(mod.code.StarExports) {
-			state[mod] = visited
-			post = append(post, mod)
-			frames = frames[:len(frames)-1]
-			continue
-		}
-		dep := mod.requested[mod.code.StarExports[fr.i]]
-		fr.i++
-		parents[dep]++
-		switch state[dep] {
-		case visiting:
-			return nil
-		case 0:
-			state[dep] = visiting
-			frames = append(frames, frame{m: dep})
-		}
-	}
-
-	// provided holds, for each module whose star exports refer to it and that a module still
-	// needs, the resolutions of the names that it provides to them.
-	provided := map[*Module]map[string]resolution{}
-	for _, mod := range post {
-		var t map[string]resolution
-		if mod.isCyclic() {
-			for _, r := range mod.code.StarExports {
-				t = mergeStarTable(t, provided, parents, mod.requested[r])
-			}
-		}
-		if mod == m {
-			return t
-		}
-		if !mod.isCyclic() {
-			// A synthetic module provides only a default export, which star exports skip.
-			continue
-		}
-		// The own exports of mod hide those of its star exports.
-		for _, e := range mod.code.LocalExports {
-			if e.Name != "default" {
-				t = setStarEntry(t, e.Name, resolution{
-					kind:   resolutionFound,
-					module: mod,
-					index:  int(e.Binding),
-				})
-			}
-		}
-		for _, e := range mod.code.IndirectExports {
-			if e.Name != "default" {
-				t = setStarEntry(t, e.Name, mod.resolveExport(e.Name))
-			}
-		}
-		provided[mod] = t
-	}
-	panic("unreachable")
-}
-
-// setStarEntry sets the resolution r of name in the table t, creating t when it is nil, and
-// returns t. A null resolution removes name.
-func setStarEntry(t map[string]resolution, name string, r resolution) map[string]resolution {
-	if r.kind == resolutionNull {
-		delete(t, name)
-		return t
-	}
-	if t == nil {
-		t = map[string]resolution{}
-	}
-	t[name] = r
-	return t
-}
-
-// mergeStarTable merges the table that dep provides into t by the rules of the star exports of
-// ResolveExport, and returns the merged table. The table of dep is taken over by the last module
-// that needs it.
-func mergeStarTable(t map[string]resolution, provided map[*Module]map[string]resolution, parents map[*Module]int, dep *Module) map[string]resolution {
-	d := provided[dep]
-	parents[dep]--
-	last := parents[dep] == 0
-	if last {
-		delete(provided, dep)
-	}
-	if t == nil && last {
-		return d
-	}
-	for name, r := range d {
-		cur, ok := t[name]
-		switch {
-		case !ok:
-			if t == nil {
-				t = map[string]resolution{}
-			}
-			t[name] = r
-		case cur.kind == resolutionAmbiguous:
-		case r.kind == resolutionAmbiguous || r.module != cur.module || r.index != cur.index:
-			t[name] = resolution{kind: resolutionAmbiguous}
-		}
-	}
-	return t
 }
