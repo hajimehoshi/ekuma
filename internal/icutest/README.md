@@ -3,7 +3,7 @@
 Run `TestICU` from the repository root. Set `EKUMA_ICU` to the ICU 78.3
 checkout for Unicode and collation tests, and `EKUMA_ICU_CLDR` to ICU 79.1
 for CLDR 49 tests. Each checkout runs independently and offline. The 0BSD Go
-adapters read fixtures from the external checkouts. [Pins and default cache paths](../../README.md#conformance-tests) · [CI sparse checkout](../../.github/workflows/test.yml)
+adapters read fixtures from the external checkouts. [Pins and default cache paths](../../README.md#conformance-tests) · [CI sparse checkout](../../.github/actions/checkout-suites/action.yml)
 
 ```sh
 # Full suite

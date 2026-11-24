@@ -16,12 +16,6 @@ jobs:
     defaults:
       run:
         shell: bash
-    env:
-      EKUMA_ICU: ${{ github.workspace }}/.icu
-      EKUMA_ICU_CLDR: ${{ github.workspace }}/.icu-cldr
-      EKUMA_ICU_ZONEINFO: ${{ github.workspace }}/.icu-zoneinfo.zip
-      EKUMA_TEST262: ${{ github.workspace }}/.test262
-      EKUMA_V8: ${{ github.workspace }}/.v8
     steps:
       - name: Git
         run: |
@@ -32,84 +26,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Find the test suite revisions
-        id: suites
-        run: |
-          for file in internal/{icutest,jstest}/testdata/*-revision.txt; do
-            name=${file##*/}
-            suite=${name%-revision.txt}
-            revision=$(cat "$file")
-            if [[ ! $revision =~ ^[0-9a-f]{40}$ ]]; then
-              echo "Expected a commit SHA in $file"
-              exit 1
-            fi
-            echo "$suite=$revision" >> "$GITHUB_OUTPUT"
-          done
-
-      - name: Select ICU fixtures from the inventory
-        id: icu-fixtures
-        run: |
-          write_paths() {
-            echo "$1<<EOF"
-            echo /LICENSE
-            awk -F '\t' -v pin="$2" '
-              NR == 1 { for (i = 1; i <= NF; i++) col[$i] = i; next }
-              $(col["disposition"]) == "adapter" && $(col["reference pin"]) == pin {
-                print "/" $(col["ICU path"])
-              }
-            ' internal/icutest/upstream-paths.tsv
-            echo EOF
-          }
-          write_paths unicode 78.3 >> "$GITHUB_OUTPUT"
-          write_paths cldr 79.1 >> "$GITHUB_OUTPUT"
-
-      - name: Checkout ICU conformance tests
-        uses: actions/checkout@v4
-        with:
-          repository: unicode-org/icu
-          ref: ${{ steps.suites.outputs.icu }}
-          path: .icu
-          sparse-checkout: ${{ steps.icu-fixtures.outputs.unicode }}
-          sparse-checkout-cone-mode: false
-
-      - name: Checkout CLDR locale and formatting tests
-        uses: actions/checkout@v4
-        with:
-          repository: unicode-org/icu
-          ref: ${{ steps.suites.outputs.icu-cldr }}
-          path: .icu-cldr
-          sparse-checkout: ${{ steps.icu-fixtures.outputs.cldr }}
-          sparse-checkout-cone-mode: false
-
-      - name: Fetch pinned zoneinfo for the ICU transition tests
-        run: curl --fail --location --retry 3 --output "$EKUMA_ICU_ZONEINFO" https://raw.githubusercontent.com/golang/go/go1.27.4/lib/time/zoneinfo.zip
-
-      - name: Checkout test262
-        uses: actions/checkout@v4
-        with:
-          repository: tc39/test262
-          ref: ${{ steps.suites.outputs.test262 }}
-          path: .test262
-
-      - name: Checkout V8 test suites
-        uses: actions/checkout@v4
-        with:
-          repository: v8/v8
-          ref: ${{ steps.suites.outputs.v8 }}
-          path: .v8
-          sparse-checkout: |
-            /DEPS
-            /test/intl/
-            /test/mjsunit/
-            /test/mozilla/
-            /test/test262/local-tests/test/
-            /test/webkit/
-            /tools/**/*.mjs
-            /tools/clusterfuzz/js_fuzzer/resources/differential_fuzz_library.js
-          sparse-checkout-cone-mode: false
-
-      - name: Checkout Mozilla test data
-        run: bash internal/jstest/checkout-mozilla.sh "$EKUMA_V8"
+      - name: Checkout test suites
+        uses: ./.github/actions/checkout-suites
 
       - name: Setup Go
         uses: actions/setup-go@v5
@@ -139,7 +57,8 @@ jobs:
       - name: go test (bytecode validation)
         if: runner.os == 'Linux'
         env:
-          GOFLAGS: -tags=ekumavalidate
+          # The external suites take several times as long with the validation, so nightly.yml runs them.
+          GOFLAGS: -tags=ekumavalidate -short
         run: *native-tests
 
       - name: go vet (386)

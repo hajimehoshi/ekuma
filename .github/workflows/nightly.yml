@@ -1,4 +1,4 @@
-name: Fuzz
+name: Nightly
 
 on:
   schedule:
@@ -101,3 +101,32 @@ jobs:
           name: ${{ matrix.func }}
           path: ${{ matrix.package }}/testdata/fuzz/
           if-no-files-found: ignore
+
+  validate:
+    name: Test with bytecode validation
+    # The schedule is for this repository only, not for its forks.
+    if: github.event_name != 'schedule' || github.repository == 'hajimehoshi/ekuma'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Checkout test suites
+        uses: ./.github/actions/checkout-suites
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: go test
+        env:
+          GOFLAGS: -tags=ekumavalidate
+        run: |
+          # Only the root package's tests use the suite flags.
+          go test -v -shuffle=on -timeout 60m . -test262.shuffle=on -v8.shuffle=on
+          go test -v -shuffle=on -timeout 60m $(go list ./... | grep -vx github.com/hajimehoshi/ekuma)
