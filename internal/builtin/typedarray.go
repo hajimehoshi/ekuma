@@ -9,13 +9,14 @@ import (
 	"math"
 	"slices"
 
+	"github.com/hajimehoshi/ekuma/internal/element"
 	"github.com/hajimehoshi/ekuma/internal/engine"
 	"github.com/hajimehoshi/ekuma/internal/numconv"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 // typedArrayNames are the names of the typed array constructors, by element type.
-var typedArrayNames = [engine.ElementTypeCount]string{
+var typedArrayNames = [element.TypeCount]string{
 	"Int8Array", "Uint8Array", "Uint8ClampedArray", "Int16Array", "Uint16Array", "Int32Array",
 	"Uint32Array", "Float16Array", "Float32Array", "Float64Array", "BigInt64Array", "BigUint64Array",
 }
@@ -117,7 +118,7 @@ func copyElements(dst *engine.TypedArray, offset int, src *engine.TypedArray, n 
 
 // storeConverted stores the n elements of the type from in src as elements of t from the element
 // offset on. t must have enough elements.
-func storeConverted(cx *engine.ExecutionContext, t *engine.TypedArray, offset int, src []byte, from engine.ElementType, n int) {
+func storeConverted(cx *engine.ExecutionContext, t *engine.TypedArray, offset int, src []byte, from element.Type, n int) {
 	to := t.ElementType()
 	ts, fs := to.Size(), from.Size()
 	lockedRuns(cx, t, 0, n, false, func(b []byte, i, j int) bool {
@@ -146,7 +147,7 @@ func reverseFirst(cx *engine.ExecutionContext, t *engine.TypedArray, n int) {
 func sortFirst(cx *engine.ExecutionContext, t *engine.TypedArray, n int) {
 	typ := t.ElementType()
 	switch typ {
-	case engine.ElementBigInt64:
+	case element.BigInt64:
 		vals := loadElements(cx, t, n, func(x uint64) int64 {
 			return int64(x)
 		})
@@ -154,7 +155,7 @@ func sortFirst(cx *engine.ExecutionContext, t *engine.TypedArray, n int) {
 		storeElements(cx, t, vals, func(v int64) uint64 {
 			return uint64(v)
 		})
-	case engine.ElementBigUint64:
+	case element.BigUint64:
 		vals := loadElements(cx, t, n, func(x uint64) uint64 {
 			return x
 		})
@@ -164,10 +165,10 @@ func sortFirst(cx *engine.ExecutionContext, t *engine.TypedArray, n int) {
 		})
 	default:
 		vals := loadElements(cx, t, n, func(x uint64) float64 {
-			return engine.ElementNumber(typ, x)
+			return element.DecodeNumber(typ, x)
 		})
 		switch typ {
-		case engine.ElementFloat16, engine.ElementFloat32, engine.ElementFloat64:
+		case element.Float16, element.Float32, element.Float64:
 			sortPolled(cx, vals, numberSortRunLength, func(s []float64) {
 				slices.SortFunc(s, compareNumbers)
 			}, compareNumbers)
@@ -187,7 +188,7 @@ func loadElements[E any](cx *engine.ExecutionContext, t *engine.TypedArray, n in
 	vals := make([]E, n)
 	lockedRuns(cx, t, 0, n, false, func(b []byte, i, j int) bool {
 		for k := i; k < j; k++ {
-			vals[k] = decode(engine.LoadElementBits(b[k*size:], typ))
+			vals[k] = decode(element.Load(b[k*size:], typ))
 		}
 		return true
 	})
@@ -200,7 +201,7 @@ func storeElements[E any](cx *engine.ExecutionContext, t *engine.TypedArray, val
 	size := typ.Size()
 	lockedRuns(cx, t, 0, len(vals), false, func(b []byte, i, j int) bool {
 		for k := i; k < j; k++ {
-			engine.StoreElementBits(b[k*size:], typ, encode(vals[k]))
+			element.Store(b[k*size:], typ, encode(vals[k]))
 		}
 		return true
 	})
@@ -285,7 +286,7 @@ func storeNumbers(cx *engine.ExecutionContext, t *engine.TypedArray, offset int,
 			if !ok || !e.IsNumber() || (offset+k+1)*size > len(b) {
 				return false
 			}
-			engine.StoreElementBits(b[(offset+k)*size:], typ, engine.ElementBits(typ, e))
+			element.Store(b[(offset+k)*size:], typ, engine.ElementBits(typ, e))
 			stored++
 		}
 		return true
@@ -324,13 +325,13 @@ func storeNumberRange(t *engine.TypedArray, vals []engine.Value, start, end int)
 		if !v.IsNumber() {
 			return start + i
 		}
-		engine.StoreElementBits(b[(start+i)*size:], typ, engine.ElementBits(typ, v))
+		element.Store(b[(start+i)*size:], typ, engine.ElementBits(typ, v))
 	}
 	return end
 }
 
 // newTypedArray returns a new typed array of n elements of the type typ on a new ArrayBuffer.
-func (bi *binaryIntrinsics) newTypedArray(cx *engine.ExecutionContext, proto *engine.Object, typ engine.ElementType, n int64) *engine.Object {
+func (bi *binaryIntrinsics) newTypedArray(cx *engine.ExecutionContext, proto *engine.Object, typ element.Type, n int64) *engine.Object {
 	buf := cx.NewArrayBufferObject(bi.arrayBufferProto, n*int64(typ.Size()), -1, false)
 	return cx.NewTypedArrayObject(proto, typ, buf, 0, int(n))
 }
@@ -363,20 +364,20 @@ func (bi *binaryIntrinsics) createSameType(cx *engine.ExecutionContext, t *engin
 }
 
 // copyConverted stores the n elements of the type from in src as elements of the type to in dst.
-func copyConverted(dst []byte, to engine.ElementType, src []byte, from engine.ElementType, n int) {
+func copyConverted(dst []byte, to element.Type, src []byte, from element.Type, n int) {
 	if from == to {
 		copy(dst[:n*to.Size()], src)
 		return
 	}
 	fs, ts := from.Size(), to.Size()
 	for i := range n {
-		x := engine.LoadElementBits(src[i*fs:], from)
-		engine.StoreElementBits(dst[i*ts:], to, engine.ConvertElementBits(from, to, x))
+		x := element.Load(src[i*fs:], from)
+		element.Store(dst[i*ts:], to, element.Convert(from, to, x))
 	}
 }
 
 // construct implements the typed array constructors for the element type typ.
-func (bi *binaryIntrinsics) construct(cx *engine.ExecutionContext, typ engine.ElementType, args []engine.Value) engine.Value {
+func (bi *binaryIntrinsics) construct(cx *engine.ExecutionContext, typ element.Type, args []engine.Value) engine.Value {
 	nt := cx.GetNewTarget()
 	name := typedArrayNames[typ]
 	if nt == nil {
@@ -496,17 +497,17 @@ func compareNumbers(a, b float64) int {
 // searchElements returns the index of the first element of the type typ in b from from up to to
 // (downward from from to to when backward is set) that equals x, or -1. sameValueZero selects
 // SameValueZero instead of IsStrictlyEqual.
-func searchElements(b []byte, typ engine.ElementType, x engine.Value, from, to int, backward, sameValueZero bool) int {
+func searchElements(b []byte, typ element.Type, x engine.Value, from, to int, backward, sameValueZero bool) int {
 	if typ.IsBigInt() != x.IsBigInt() || !typ.IsBigInt() && !x.IsNumber() {
 		return -1
 	}
 	if !typ.IsBigInt() {
-		isFloat := typ == engine.ElementFloat16 || typ == engine.ElementFloat32 || typ == engine.ElementFloat64
+		isFloat := typ == element.Float16 || typ == element.Float32 || typ == element.Float64
 		// A number other than NaN, and other than a zero for a floating-point type, has at
 		// most one encoding, which the elements equal to it have.
 		if f := x.Number(); f == f && (f != 0 || !isFloat) {
 			bits := engine.ElementBits(typ, x)
-			if engine.ElementNumber(typ, bits) != f {
+			if element.DecodeNumber(typ, bits) != f {
 				return -1
 			}
 			return searchBits(b, typ, bits, from, to, backward)
@@ -514,19 +515,19 @@ func searchElements(b []byte, typ engine.ElementType, x engine.Value, from, to i
 	}
 	size := typ.Size()
 	match := func(i int) bool {
-		bits := engine.LoadElementBits(b[i*size:], typ)
+		bits := element.Load(b[i*size:], typ)
 		switch {
-		case typ == engine.ElementBigInt64:
+		case typ == element.BigInt64:
 			v, ok := x.BigInt64()
 			return ok && v == int64(bits)
-		case typ == engine.ElementBigUint64:
+		case typ == element.BigUint64:
 			if v, ok := x.BigInt64(); ok {
 				return v >= 0 && uint64(v) == bits
 			}
 			v := x.BigInt()
 			return v.IsUint64() && v.Uint64() == bits
 		}
-		f := engine.ElementNumber(typ, bits)
+		f := element.DecodeNumber(typ, bits)
 		return f == x.Number() || sameValueZero && f != f && x.Number() != x.Number()
 	}
 	if backward {
@@ -546,7 +547,7 @@ func searchElements(b []byte, typ engine.ElementType, x engine.Value, from, to i
 }
 
 // searchBits is searchElements for the elements whose encoding is bits.
-func searchBits(b []byte, typ engine.ElementType, bits uint64, from, to int, backward bool) int {
+func searchBits(b []byte, typ element.Type, bits uint64, from, to int, backward bool) int {
 	size := typ.Size()
 	// A loaded encoding has no bits above the element size.
 	bits &= 1<<(8*size) - 1
@@ -570,14 +571,14 @@ func searchBits(b []byte, typ engine.ElementType, bits uint64, from, to int, bac
 	}
 	if backward {
 		for i := from; i >= to; i-- {
-			if engine.LoadElementBits(b[i*size:], typ) == bits {
+			if element.Load(b[i*size:], typ) == bits {
 				return i
 			}
 		}
 		return -1
 	}
 	for i := from; i < to; i++ {
-		if engine.LoadElementBits(b[i*size:], typ) == bits {
+		if element.Load(b[i*size:], typ) == bits {
 			return i
 		}
 	}
@@ -585,12 +586,12 @@ func searchBits(b []byte, typ engine.ElementType, bits uint64, from, to int, bac
 }
 
 // fillElements stores the encoding x of an element of the type typ in every element of b.
-func fillElements(b []byte, typ engine.ElementType, x uint64) {
+func fillElements(b []byte, typ element.Type, x uint64) {
 	size := typ.Size()
 	if len(b) < size {
 		return
 	}
-	engine.StoreElementBits(b, typ, x)
+	element.Store(b, typ, x)
 	for n := size; n < len(b); n *= 2 {
 		copy(b[n:], b[:n])
 	}
@@ -1098,7 +1099,7 @@ func initTypedArrays(cx *engine.ExecutionContext, bi *binaryIntrinsics) {
 	toString := cx.Get(cx.Intrinsic(engine.IntrinsicArrayPrototype), engine.NamedKey(cx.Key(engine.KeyToString)))
 	cx.Define(proto, cx.Key(engine.KeyToString), toString, engine.FlagsHidden)
 
-	for typ := range engine.ElementTypeCount {
+	for typ := range element.TypeCount {
 		name := typedArrayNames[typ]
 		p := cx.NewObject(proto)
 		cx.SetIntrinsic(engine.TypedArrayPrototypeIntrinsic(typ), p)

@@ -9,6 +9,7 @@ import (
 	"math"
 	"slices"
 
+	"github.com/hajimehoshi/ekuma/internal/element"
 	"github.com/hajimehoshi/ekuma/internal/engine"
 	"github.com/hajimehoshi/ekuma/internal/numconv"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
@@ -291,13 +292,13 @@ func stringOption(cx *engine.ExecutionContext, opts engine.Value, name string, c
 }
 
 func initUint8ArrayBase64(cx *engine.ExecutionContext, bi *binaryIntrinsics) {
-	ctor := bi.ctors[engine.ElementUint8]
-	proto := bi.protos[engine.ElementUint8]
+	ctor := bi.ctors[element.Uint8]
+	proto := bi.protos[element.Uint8]
 
 	// thisUint8Array implements ValidateUint8Array with the access mode write when write is set.
 	thisUint8Array := func(cx *engine.ExecutionContext, this engine.Value, write bool, what string) *engine.TypedArray {
 		t := engine.TypedArrayData(this)
-		if t == nil || t.ElementType() != engine.ElementUint8 {
+		if t == nil || t.ElementType() != element.Uint8 {
 			cx.ThrowTypeError("Uint8Array.prototype." + what + ": this is not a Uint8Array")
 		}
 		if write && t.ArrayBuffer().IsImmutable() {
@@ -331,7 +332,7 @@ func initUint8ArrayBase64(cx *engine.ExecutionContext, bi *binaryIntrinsics) {
 		return alphabet == "base64url", last
 	}
 	newUint8Array := func(cx *engine.ExecutionContext, b []byte) engine.Value {
-		o := bi.newTypedArray(cx, proto, engine.ElementUint8, int64(len(b)))
+		o := bi.newTypedArray(cx, proto, element.Uint8, int64(len(b)))
 		writeElements(engine.TypedArrayData(engine.ObjectValue(o)), 0, b)
 		return engine.ObjectValue(o)
 	}

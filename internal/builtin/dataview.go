@@ -4,6 +4,7 @@
 package builtin
 
 import (
+	"github.com/hajimehoshi/ekuma/internal/element"
 	"github.com/hajimehoshi/ekuma/internal/engine"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
@@ -83,19 +84,19 @@ func initDataView(cx *engine.ExecutionContext, bi *binaryIntrinsics) {
 
 	for _, e := range []struct {
 		name string
-		typ  engine.ElementType
+		typ  element.Type
 	}{
-		{"Int8", engine.ElementInt8},
-		{"Uint8", engine.ElementUint8},
-		{"Int16", engine.ElementInt16},
-		{"Uint16", engine.ElementUint16},
-		{"Int32", engine.ElementInt32},
-		{"Uint32", engine.ElementUint32},
-		{"Float16", engine.ElementFloat16},
-		{"Float32", engine.ElementFloat32},
-		{"Float64", engine.ElementFloat64},
-		{"BigInt64", engine.ElementBigInt64},
-		{"BigUint64", engine.ElementBigUint64},
+		{"Int8", element.Int8},
+		{"Uint8", element.Uint8},
+		{"Int16", element.Int16},
+		{"Uint16", element.Uint16},
+		{"Int32", element.Int32},
+		{"Uint32", element.Uint32},
+		{"Float16", element.Float16},
+		{"Float32", element.Float32},
+		{"Float64", element.Float64},
+		{"BigInt64", element.BigInt64},
+		{"BigUint64", element.BigUint64},
 	} {
 		typ := e.typ
 		// view returns the bytes of the element at the converted index, as GetViewValue and SetViewValue

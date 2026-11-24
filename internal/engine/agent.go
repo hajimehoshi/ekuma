@@ -15,6 +15,7 @@ import (
 
 	"github.com/hajimehoshi/ekuma/internal/bytecode"
 	"github.com/hajimehoshi/ekuma/internal/datetime"
+	"github.com/hajimehoshi/ekuma/internal/element"
 	"github.com/hajimehoshi/ekuma/internal/numconv"
 	"github.com/hajimehoshi/ekuma/internal/regexp"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
@@ -775,7 +776,7 @@ const (
 	IntrinsicFunctionCallerGetter
 	IntrinsicFunctionArgumentsGetter
 
-	// The prototypes of the typed array constructors are in the order of [ElementType].
+	// The prototypes of the typed array constructors are in the order of [element.Type].
 	IntrinsicInt8ArrayPrototype
 	IntrinsicUint8ArrayPrototype
 	IntrinsicUint8ClampedArrayPrototype
@@ -812,7 +813,7 @@ func ErrorPrototypeIntrinsic(k ErrorKind) Intrinsic {
 }
 
 // TypedArrayPrototypeIntrinsic returns the intrinsic prototype for the element type t.
-func TypedArrayPrototypeIntrinsic(t ElementType) Intrinsic {
+func TypedArrayPrototypeIntrinsic(t element.Type) Intrinsic {
 	return IntrinsicInt8ArrayPrototype + Intrinsic(t)
 }
 

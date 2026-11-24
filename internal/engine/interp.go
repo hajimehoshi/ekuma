@@ -9,6 +9,7 @@ import (
 	"sort"
 
 	"github.com/hajimehoshi/ekuma/internal/bytecode"
+	"github.com/hajimehoshi/ekuma/internal/element"
 	"github.com/hajimehoshi/ekuma/internal/numconv"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
@@ -777,29 +778,29 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				// a register the load took makes the compiler store loop values at the head of the
 				// loop on amd64. The functions of encoding/binary do not inline into exec, so the
 				// bytes are combined here.
-				if t, ok := o.ext.(*TypedArray); ok && t.typ < ElementBigInt64 && t.typ != ElementFloat16 {
+				if t, ok := o.ext.(*TypedArray); ok && t.typ < element.BigInt64 && t.typ != element.Float16 {
 					if j := int(k.n); float64(j) == k.n && !t.tracking && uint(j) < uint(t.length) {
 						if r, s := &regs[i.A], t.typ.Size(); t.offset+t.length*s <= len(t.data.data) {
 							b := t.data.data[t.offset+j*s:]
 							var x float64
 							switch t.typ {
-							case ElementInt8:
+							case element.Int8:
 								x = float64(int8(b[0]))
-							case ElementUint8, ElementUint8C:
+							case element.Uint8, element.Uint8Clamped:
 								x = float64(b[0])
-							case ElementInt16:
+							case element.Int16:
 								_ = b[1]
 								x = float64(int16(uint16(b[0]) | uint16(b[1])<<8))
-							case ElementUint16:
+							case element.Uint16:
 								_ = b[1]
 								x = float64(uint16(b[0]) | uint16(b[1])<<8)
-							case ElementInt32:
+							case element.Int32:
 								_ = b[3]
 								x = float64(int32(uint32(b[0]) | uint32(b[1])<<8 | uint32(b[2])<<16 | uint32(b[3])<<24))
-							case ElementUint32:
+							case element.Uint32:
 								_ = b[3]
 								x = float64(uint32(b[0]) | uint32(b[1])<<8 | uint32(b[2])<<16 | uint32(b[3])<<24)
-							case ElementFloat32:
+							case element.Float32:
 								_ = b[3]
 								x = float64(math.Float32frombits(uint32(b[0]) | uint32(b[1])<<8 | uint32(b[2])<<16 | uint32(b[3])<<24))
 							default:
@@ -832,28 +833,28 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			}
 			// The same as OpGetIndex for a typed array.
 			if o := regs[i.B].o; o != nil {
-				if t, ok := o.ext.(*TypedArray); ok && t.typ < ElementBigInt64 && t.typ != ElementFloat16 && !t.tracking && uint(i.C) < uint(t.length) {
+				if t, ok := o.ext.(*TypedArray); ok && t.typ < element.BigInt64 && t.typ != element.Float16 && !t.tracking && uint(i.C) < uint(t.length) {
 					if j, r, s := int(i.C), &regs[i.A], t.typ.Size(); t.offset+t.length*s <= len(t.data.data) {
 						b := t.data.data[t.offset+j*s:]
 						var x float64
 						switch t.typ {
-						case ElementInt8:
+						case element.Int8:
 							x = float64(int8(b[0]))
-						case ElementUint8, ElementUint8C:
+						case element.Uint8, element.Uint8Clamped:
 							x = float64(b[0])
-						case ElementInt16:
+						case element.Int16:
 							_ = b[1]
 							x = float64(int16(uint16(b[0]) | uint16(b[1])<<8))
-						case ElementUint16:
+						case element.Uint16:
 							_ = b[1]
 							x = float64(uint16(b[0]) | uint16(b[1])<<8)
-						case ElementInt32:
+						case element.Int32:
 							_ = b[3]
 							x = float64(int32(uint32(b[0]) | uint32(b[1])<<8 | uint32(b[2])<<16 | uint32(b[3])<<24))
-						case ElementUint32:
+						case element.Uint32:
 							_ = b[3]
 							x = float64(uint32(b[0]) | uint32(b[1])<<8 | uint32(b[2])<<16 | uint32(b[3])<<24)
-						case ElementFloat32:
+						case element.Float32:
 							_ = b[3]
 							x = float64(math.Float32frombits(uint32(b[0]) | uint32(b[1])<<8 | uint32(b[2])<<16 | uint32(b[3])<<24))
 						default:
@@ -892,18 +893,18 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				// typedArraySet, with every check before the data is loaded as in OpGetIndex. A
 				// number beyond the range of int64, NaN included, goes to the switch below, so that
 				// an integer element takes the low bytes of int64(f).
-				if t, ok := o.ext.(*TypedArray); ok && t.numberStore && t.typ != ElementFloat16 {
+				if t, ok := o.ext.(*TypedArray); ok && t.numberStore && t.typ != element.Float16 {
 					if j, x := int(k.n), regs[i.C]; x.o == numberObject && float64(j) == k.n && !t.tracking && uint(j) < uint(t.length) && numconv.InInt64Range(x.n) {
 						if s := t.typ.Size(); t.offset+t.length*s <= len(t.data.data) {
 							b, f := t.data.data[t.offset+j*s:], x.n
 							// The most common types are tested first.
-							if u := uint64(int64(f)); t.typ == ElementInt32 || t.typ == ElementUint32 {
+							if u := uint64(int64(f)); t.typ == element.Int32 || t.typ == element.Uint32 {
 								_ = b[3]
 								b[0] = byte(u)
 								b[1] = byte(u >> 8)
 								b[2] = byte(u >> 16)
 								b[3] = byte(u >> 24)
-							} else if t.typ == ElementFloat64 {
+							} else if t.typ == element.Float64 {
 								bits := math.Float64bits(f)
 								_ = b[7]
 								b[0] = byte(bits)
@@ -914,16 +915,16 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 								b[5] = byte(bits >> 40)
 								b[6] = byte(bits >> 48)
 								b[7] = byte(bits >> 56)
-							} else if t.typ == ElementInt8 || t.typ == ElementUint8 {
+							} else if t.typ == element.Int8 || t.typ == element.Uint8 {
 								b[0] = byte(u)
-							} else if t.typ == ElementFloat32 {
+							} else if t.typ == element.Float32 {
 								bits := math.Float32bits(float32(f))
 								_ = b[3]
 								b[0] = byte(bits)
 								b[1] = byte(bits >> 8)
 								b[2] = byte(bits >> 16)
 								b[3] = byte(bits >> 24)
-							} else if t.typ == ElementUint8C {
+							} else if t.typ == element.Uint8Clamped {
 								// ToUint8Clamp, which rounds half to even.
 								c := byte(0)
 								if f >= 255 {
@@ -1580,18 +1581,18 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 					}
 					break
 				}
-				if t, ok := o.ext.(*TypedArray); ok && t.numberStore && t.typ != ElementFloat16 {
+				if t, ok := o.ext.(*TypedArray); ok && t.numberStore && t.typ != element.Float16 {
 					if x := regs[i.C]; x.o == numberObject && !t.tracking && uint(j) < uint(t.length) && numconv.InInt64Range(x.n) {
 						if s := t.typ.Size(); t.offset+t.length*s <= len(t.data.data) {
 							b, f := t.data.data[t.offset+j*s:], x.n
 							// The most common types are tested first.
-							if u := uint64(int64(f)); t.typ == ElementInt32 || t.typ == ElementUint32 {
+							if u := uint64(int64(f)); t.typ == element.Int32 || t.typ == element.Uint32 {
 								_ = b[3]
 								b[0] = byte(u)
 								b[1] = byte(u >> 8)
 								b[2] = byte(u >> 16)
 								b[3] = byte(u >> 24)
-							} else if t.typ == ElementFloat64 {
+							} else if t.typ == element.Float64 {
 								bits := math.Float64bits(f)
 								_ = b[7]
 								b[0] = byte(bits)
@@ -1602,16 +1603,16 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 								b[5] = byte(bits >> 40)
 								b[6] = byte(bits >> 48)
 								b[7] = byte(bits >> 56)
-							} else if t.typ == ElementInt8 || t.typ == ElementUint8 {
+							} else if t.typ == element.Int8 || t.typ == element.Uint8 {
 								b[0] = byte(u)
-							} else if t.typ == ElementFloat32 {
+							} else if t.typ == element.Float32 {
 								bits := math.Float32bits(float32(f))
 								_ = b[3]
 								b[0] = byte(bits)
 								b[1] = byte(bits >> 8)
 								b[2] = byte(bits >> 16)
 								b[3] = byte(bits >> 24)
-							} else if t.typ == ElementUint8C {
+							} else if t.typ == element.Uint8Clamped {
 								// ToUint8Clamp, which rounds half to even.
 								c := byte(0)
 								if f >= 255 {

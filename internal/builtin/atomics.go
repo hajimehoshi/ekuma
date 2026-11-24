@@ -6,6 +6,7 @@ package builtin
 import (
 	"math"
 
+	"github.com/hajimehoshi/ekuma/internal/element"
 	"github.com/hajimehoshi/ekuma/internal/engine"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
@@ -18,7 +19,7 @@ func validateIntegerTypedArray(cx *engine.ExecutionContext, v engine.Value, wait
 	_, t, n := validateTypedArrayAccess(cx, v, write, "Atomics."+what)
 	typ := t.ElementType()
 	if waitable {
-		if typ != engine.ElementInt32 && typ != engine.ElementBigInt64 {
+		if typ != element.Int32 && typ != element.BigInt64 {
 			cx.ThrowTypeError("Atomics." + what + ": the typed array must be an Int32Array or a BigInt64Array")
 		}
 	} else if !typ.IsInteger() {
@@ -48,7 +49,7 @@ func revalidateAtomicAccess(cx *engine.ExecutionContext, t *engine.TypedArray, i
 }
 
 // toAtomicValue converts v as the Atomics functions do for an element of the type typ.
-func toAtomicValue(cx *engine.ExecutionContext, typ engine.ElementType, v engine.Value) engine.Value {
+func toAtomicValue(cx *engine.ExecutionContext, typ element.Type, v engine.Value) engine.Value {
 	if typ.IsBigInt() {
 		return cx.ToBigInt(v)
 	}

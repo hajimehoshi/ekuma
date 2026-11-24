@@ -11,6 +11,7 @@ import (
 	"time"
 	"weak"
 
+	"github.com/hajimehoshi/ekuma/internal/element"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
@@ -184,7 +185,7 @@ func (t *TypedArray) AtomicReadModifyWrite(i int, op AtomicOp, v, replacement ui
 	b := t.Lock()
 	defer t.Unlock()
 	e := b[i*t.typ.Size():]
-	old := LoadElementBits(e, t.typ)
+	old := element.Load(e, t.typ)
 	var x uint64
 	switch op {
 	case AtomicAdd:
@@ -200,12 +201,12 @@ func (t *TypedArray) AtomicReadModifyWrite(i int, op AtomicOp, v, replacement ui
 	case AtomicXor:
 		x = old ^ v
 	case AtomicCompareExchange:
-		if !elementBitsEqual(t.typ, old, v) {
+		if !element.Equal(t.typ, old, v) {
 			return old
 		}
 		x = replacement
 	}
-	StoreElementBits(e, t.typ, x)
+	element.Store(e, t.typ, x)
 	return old
 }
 
@@ -220,13 +221,6 @@ func (t *TypedArray) AtomicLoad(i int) uint64 {
 // as a sequentially consistent write.
 func (t *TypedArray) AtomicStore(i int, x uint64) {
 	t.StoreElement(i, x)
-}
-
-// elementBitsEqual reports whether the encodings x and y are equal in the size of an element of
-// the type t.
-func elementBitsEqual(t ElementType, x, y uint64) bool {
-	mask := uint64(math.MaxUint64) >> (64 - 8*t.Size())
-	return x&mask == y&mask
 }
 
 // Wait implements the steps of DoWait from the critical section on, for the element i of the
@@ -277,10 +271,10 @@ func (cx *ExecutionContext) Wait(t *TypedArray, i int, v uint64, timeout float64
 
 // compareAndAdd reports whether the element of the type t at w.byteIndex has the encoding v,
 // and then adds w to its waiter list when add is set.
-func (blk *SharedDataBlock) compareAndAdd(w *waiter, t ElementType, v uint64, add bool) bool {
+func (blk *SharedDataBlock) compareAndAdd(w *waiter, t element.Type, v uint64, add bool) bool {
 	blk.mu.Lock()
 	defer blk.mu.Unlock()
-	if !elementBitsEqual(t, LoadElementBits(blk.data[w.byteIndex:], t), v) {
+	if !element.Equal(t, element.Load(blk.data[w.byteIndex:], t), v) {
 		return false
 	}
 	if add {

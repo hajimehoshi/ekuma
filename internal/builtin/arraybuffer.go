@@ -6,6 +6,7 @@ package builtin
 import (
 	"slices"
 
+	"github.com/hajimehoshi/ekuma/internal/element"
 	"github.com/hajimehoshi/ekuma/internal/engine"
 	"github.com/hajimehoshi/ekuma/internal/numconv"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
@@ -19,8 +20,8 @@ type binaryIntrinsics struct {
 	dataViewProto                                 *engine.Object
 
 	// ctors and protos are the typed array constructors and their prototypes, by element type.
-	ctors  [engine.ElementTypeCount]*engine.Object
-	protos [engine.ElementTypeCount]*engine.Object
+	ctors  [element.TypeCount]*engine.Object
+	protos [element.TypeCount]*engine.Object
 }
 
 // initBinary defines ArrayBuffer, SharedArrayBuffer, the typed arrays, DataView and Atomics.

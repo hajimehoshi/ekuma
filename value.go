@@ -9,6 +9,7 @@ import (
 	"math/big"
 	"strconv"
 
+	"github.com/hajimehoshi/ekuma/internal/element"
 	"github.com/hajimehoshi/ekuma/internal/engine"
 )
 
@@ -465,7 +466,7 @@ func (v Value) SharedDataBlock() *SharedDataBlock {
 // and panics with a [*ValueError] otherwise.
 func uint8ArrayData(v Value, method string) *engine.TypedArray {
 	if t := engine.TypedArrayData(v.value); t != nil {
-		if e := t.ElementType(); e == engine.ElementUint8 || e == engine.ElementUint8C {
+		if e := t.ElementType(); e == element.Uint8 || e == element.Uint8Clamped {
 			return t
 		}
 	}

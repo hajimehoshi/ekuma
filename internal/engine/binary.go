@@ -11,6 +11,7 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/hajimehoshi/ekuma/internal/element"
 	"github.com/hajimehoshi/ekuma/internal/numconv"
 )
 
@@ -363,216 +364,46 @@ func (cx *ExecutionContext) TransferArrayBuffer(o *Object, proto *Object, newByt
 	return r
 }
 
-// ElementType is the element type of a typed array.
-type ElementType uint8
-
-const (
-	ElementInt8 ElementType = iota
-	ElementUint8
-	ElementUint8C
-	ElementInt16
-	ElementUint16
-	ElementInt32
-	ElementUint32
-	ElementFloat16
-	ElementFloat32
-	ElementFloat64
-	ElementBigInt64
-	ElementBigUint64
-
-	// ElementTypeCount is the number of element types.
-	ElementTypeCount
-)
-
-var elementSizes = [ElementTypeCount]uint8{1, 1, 1, 2, 2, 4, 4, 2, 4, 8, 8, 8}
-
-// Size returns the element size of t in bytes.
-func (t ElementType) Size() int {
-	return int(elementSizes[t])
-}
-
-// IsBigInt reports whether the elements of t are BigInts.
-func (t ElementType) IsBigInt() bool {
-	return t >= ElementBigInt64
-}
-
-// IsInteger reports whether t is an integer type that is not Uint8C, as the Atomics functions require.
-func (t ElementType) IsInteger() bool {
-	return t != ElementUint8C && t <= ElementUint32 || t.IsBigInt()
-}
-
-// loadBits returns the n bytes at the start of b as an unsigned integer in the given byte order.
-func loadBits(b []byte, n int, littleEndian bool) uint64 {
-	if littleEndian {
-		switch n {
-		case 1:
-			return uint64(b[0])
-		case 2:
-			return uint64(binary.LittleEndian.Uint16(b))
-		case 4:
-			return uint64(binary.LittleEndian.Uint32(b))
-		}
-		return binary.LittleEndian.Uint64(b)
-	}
-	switch n {
-	case 1:
-		return uint64(b[0])
-	case 2:
-		return uint64(binary.BigEndian.Uint16(b))
-	case 4:
-		return uint64(binary.BigEndian.Uint32(b))
-	}
-	return binary.BigEndian.Uint64(b)
-}
-
-// storeBits stores the low n bytes of x at the start of b in the given byte order.
-func storeBits(b []byte, n int, x uint64, littleEndian bool) {
-	if littleEndian {
-		switch n {
-		case 1:
-			b[0] = byte(x)
-		case 2:
-			binary.LittleEndian.PutUint16(b, uint16(x))
-		case 4:
-			binary.LittleEndian.PutUint32(b, uint32(x))
-		default:
-			binary.LittleEndian.PutUint64(b, x)
-		}
-		return
-	}
-	switch n {
-	case 1:
-		b[0] = byte(x)
-	case 2:
-		binary.BigEndian.PutUint16(b, uint16(x))
-	case 4:
-		binary.BigEndian.PutUint32(b, uint32(x))
-	default:
-		binary.BigEndian.PutUint64(b, x)
-	}
-}
-
-// numberBits returns the encoding of the number f as an element of the type t, which is not a BigInt type.
-func numberBits(t ElementType, f float64) uint64 {
-	switch t {
-	case ElementInt8, ElementUint8, ElementInt16, ElementUint16, ElementInt32, ElementUint32:
-		if f >= -2147483648 && f <= 2147483647 {
-			return uint64(uint32(int32(f)))
-		}
-		return uint64(numconv.ToUint32(f))
-	case ElementUint8C:
-		return uint64(numconv.ToUint8Clamp(f))
-	case ElementFloat16:
-		return uint64(numconv.Float16Bits(f))
-	case ElementFloat32:
-		return uint64(math.Float32bits(float32(f)))
-	}
-	return math.Float64bits(f)
-}
-
-// numberFromBits returns the number that the encoding x of an element of the type t,
-// which is not a BigInt type, stands for.
-func numberFromBits(t ElementType, x uint64) float64 {
-	switch t {
-	case ElementInt8:
-		return float64(int8(x))
-	case ElementUint8, ElementUint8C:
-		return float64(uint8(x))
-	case ElementInt16:
-		return float64(int16(x))
-	case ElementUint16:
-		return float64(uint16(x))
-	case ElementInt32:
-		return float64(int32(x))
-	case ElementUint32:
-		return float64(uint32(x))
-	case ElementFloat16:
-		return numconv.Float16FromBits(uint16(x))
-	case ElementFloat32:
-		return float64(math.Float32frombits(uint32(x)))
-	}
-	return math.Float64frombits(x)
-}
-
-var bigUint64Mask = new(big.Int).SetUint64(math.MaxUint64)
-
-// bigIntBits returns i modulo 2^64.
-func bigIntBits(i *big.Int) uint64 {
-	if i.IsInt64() {
-		return uint64(i.Int64())
-	}
-	if i.IsUint64() {
-		return i.Uint64()
-	}
-	// And works on the two's complement of a negative number.
-	return new(big.Int).And(i, bigUint64Mask).Uint64()
-}
-
 // ElementBits returns the encoding of the numeric value v as an element of the type t.
 // v must be a BigInt for a BigInt type and a number otherwise.
-func ElementBits(t ElementType, v Value) uint64 {
+func ElementBits(t element.Type, v Value) uint64 {
 	if t.IsBigInt() {
 		if i, ok := v.BigInt64(); ok {
 			return uint64(i)
 		}
-		return bigIntBits(v.BigInt())
+		return element.EncodeBigInt(v.BigInt())
 	}
-	return numberBits(t, v.n)
-}
-
-// ElementNumber returns the number that the encoding x of an element of the type t, which is not a BigInt type, stands for.
-func ElementNumber(t ElementType, x uint64) float64 {
-	return numberFromBits(t, x)
+	return element.EncodeNumber(t, v.n)
 }
 
 // ElementFromBits returns the value that the encoding x of an element of the type t stands for.
-func (ag *agent) ElementFromBits(t ElementType, x uint64) Value {
+func (ag *agent) ElementFromBits(t element.Type, x uint64) Value {
 	switch t {
-	case ElementBigInt64:
+	case element.BigInt64:
 		return BigIntFromInt64(int64(x))
-	case ElementBigUint64:
+	case element.BigUint64:
 		if x <= math.MaxInt64 {
 			return BigIntFromInt64(int64(x))
 		}
 		return ag.NewBigInt(new(big.Int).SetUint64(x))
 	}
-	return Number(numberFromBits(t, x))
+	return Number(element.DecodeNumber(t, x))
 }
 
 // GetValueFromBuffer implements GetValueFromBuffer for the bytes b, which hold at least one element of the type t.
-func (ag *agent) GetValueFromBuffer(b []byte, t ElementType, littleEndian bool) Value {
-	return ag.ElementFromBits(t, loadBits(b, t.Size(), littleEndian))
+func (ag *agent) GetValueFromBuffer(b []byte, t element.Type, littleEndian bool) Value {
+	return ag.ElementFromBits(t, element.LoadEndian(b, t, littleEndian))
 }
 
 // SetValueInBuffer implements SetValueInBuffer for the bytes b, which hold at least one element of the type t.
 // v must be a BigInt for a BigInt type and a number otherwise.
-func SetValueInBuffer(b []byte, t ElementType, v Value, littleEndian bool) {
-	storeBits(b, t.Size(), ElementBits(t, v), littleEndian)
-}
-
-// LoadElementBits returns the encoding of the element of the type t at the start of b.
-func LoadElementBits(b []byte, t ElementType) uint64 {
-	return loadBits(b, t.Size(), true)
-}
-
-// StoreElementBits stores the encoding x of an element of the type t at the start of b.
-func StoreElementBits(b []byte, t ElementType, x uint64) {
-	storeBits(b, t.Size(), x, true)
-}
-
-// ConvertElementBits returns the encoding x of an element of the type from as an element of the type to,
-// as reading the element and storing the value would. Both types must be BigInt types or neither.
-func ConvertElementBits(from, to ElementType, x uint64) uint64 {
-	if from == to || from.IsBigInt() {
-		// BigInt64 and BigUint64 have the same encoding modulo 2^64.
-		return x
-	}
-	return numberBits(to, numberFromBits(from, x))
+func SetValueInBuffer(b []byte, t element.Type, v Value, littleEndian bool) {
+	element.StoreEndian(b, t, ElementBits(t, v), littleEndian)
 }
 
 // ToElementValue converts v as TypedArraySetElement does for an element of the type t:
 // by ToBigInt for a BigInt type and by ToNumber otherwise.
-func (cx *ExecutionContext) ToElementValue(t ElementType, v Value) Value {
+func (cx *ExecutionContext) ToElementValue(t element.Type, v Value) Value {
 	if t.IsBigInt() {
 		return cx.ToBigInt(v)
 	}
@@ -594,7 +425,7 @@ type TypedArray struct {
 	length   int
 	tracking bool
 
-	typ ElementType
+	typ element.Type
 
 	// numberStore reports whether the elements are numbers and the buffer is mutable and not
 	// shared, so that a number is stored without a conversion.
@@ -604,7 +435,7 @@ type TypedArray struct {
 // NewTypedArrayObject returns a typed array with the prototype proto whose elements of the type t
 // are stored in the buffer object buffer from byteOffset on. length is the number of elements, or -1
 // for a typed array whose length tracks the length of the buffer.
-func (cx *ExecutionContext) NewTypedArrayObject(proto *Object, t ElementType, buffer *Object, byteOffset, length int) *Object {
+func (cx *ExecutionContext) NewTypedArrayObject(proto *Object, t element.Type, buffer *Object, byteOffset, length int) *Object {
 	data := buffer.extState().(*ArrayBuffer)
 	w := &typedArrayObject{
 		state: TypedArray{
@@ -642,7 +473,7 @@ func TypedArrayData(v Value) *TypedArray {
 }
 
 // ElementType returns [[TypedArrayName]] of t as an element type.
-func (t *TypedArray) ElementType() ElementType {
+func (t *TypedArray) ElementType() element.Type {
 	return t.typ
 }
 
@@ -724,7 +555,7 @@ func (t *TypedArray) LoadElement(i int) (uint64, bool) {
 	if i < 0 || i >= len(b)/size {
 		return 0, false
 	}
-	return LoadElementBits(b[i*size:], t.typ), true
+	return element.Load(b[i*size:], t.typ), true
 }
 
 // StoreElement stores the encoding x as the element i of t, which is mutable, when i is a valid
@@ -734,7 +565,7 @@ func (t *TypedArray) StoreElement(i int, x uint64) {
 	defer t.Unlock()
 	size := t.typ.Size()
 	if i >= 0 && i < len(b)/size {
-		StoreElementBits(b[i*size:], t.typ, x)
+		element.Store(b[i*size:], t.typ, x)
 	}
 }
 
@@ -756,60 +587,28 @@ func (t *TypedArray) element(i uint32) ([]byte, bool) {
 }
 
 // loadElement returns the element of the type t at the start of b.
-func (ag *agent) loadElement(t ElementType, b []byte) Value {
+func (ag *agent) loadElement(t element.Type, b []byte) Value {
 	switch t {
-	case ElementInt8:
+	case element.Int8:
 		return Number(float64(int8(b[0])))
-	case ElementUint8, ElementUint8C:
+	case element.Uint8, element.Uint8Clamped:
 		return Number(float64(b[0]))
-	case ElementInt16:
+	case element.Int16:
 		return Number(float64(int16(binary.LittleEndian.Uint16(b))))
-	case ElementUint16:
+	case element.Uint16:
 		return Number(float64(binary.LittleEndian.Uint16(b)))
-	case ElementInt32:
+	case element.Int32:
 		return Number(float64(int32(binary.LittleEndian.Uint32(b))))
-	case ElementUint32:
+	case element.Uint32:
 		return Number(float64(binary.LittleEndian.Uint32(b)))
-	case ElementFloat16:
+	case element.Float16:
 		return Number(numconv.Float16FromBits(binary.LittleEndian.Uint16(b)))
-	case ElementFloat32:
+	case element.Float32:
 		return Number(float64(math.Float32frombits(binary.LittleEndian.Uint32(b))))
-	case ElementFloat64:
+	case element.Float64:
 		return Number(math.Float64frombits(binary.LittleEndian.Uint64(b)))
 	}
 	return ag.ElementFromBits(t, binary.LittleEndian.Uint64(b))
-}
-
-// storeNumber stores the number f as an element of the type t, which is not a BigInt type, at the start of b.
-func storeNumber(t ElementType, b []byte, f float64) {
-	switch t {
-	case ElementInt8, ElementUint8:
-		if f >= -2147483648 && f <= 2147483647 {
-			b[0] = byte(int32(f))
-			return
-		}
-		b[0] = byte(numconv.ToUint32(f))
-	case ElementUint8C:
-		b[0] = numconv.ToUint8Clamp(f)
-	case ElementInt16, ElementUint16:
-		if f >= -2147483648 && f <= 2147483647 {
-			binary.LittleEndian.PutUint16(b, uint16(int32(f)))
-			return
-		}
-		binary.LittleEndian.PutUint16(b, uint16(numconv.ToUint32(f)))
-	case ElementInt32, ElementUint32:
-		if f >= -2147483648 && f <= 2147483647 {
-			binary.LittleEndian.PutUint32(b, uint32(int32(f)))
-			return
-		}
-		binary.LittleEndian.PutUint32(b, numconv.ToUint32(f))
-	case ElementFloat32:
-		binary.LittleEndian.PutUint32(b, math.Float32bits(float32(f)))
-	case ElementFloat64:
-		binary.LittleEndian.PutUint64(b, math.Float64bits(f))
-	default:
-		storeBits(b, t.Size(), numberBits(t, f), true)
-	}
 }
 
 // typedArrayGet implements TypedArrayGetElement. It returns undefined when i is not a valid integer index.
@@ -817,15 +616,15 @@ func (ag *agent) typedArrayGet(o *Object, i uint32) Value {
 	t := o.extState().(*TypedArray)
 	if data := t.data.data; !t.tracking && uint(i) < uint(t.length) {
 		switch t.typ {
-		case ElementInt32:
+		case element.Int32:
 			if p := t.offset + int(i)*4; t.offset+t.length*4 <= len(data) {
 				return Number(float64(int32(binary.LittleEndian.Uint32(data[p:]))))
 			}
-		case ElementFloat64:
+		case element.Float64:
 			if p := t.offset + int(i)*8; t.offset+t.length*8 <= len(data) {
 				return Number(math.Float64frombits(binary.LittleEndian.Uint64(data[p:])))
 			}
-		case ElementUint8, ElementUint8C:
+		case element.Uint8, element.Uint8Clamped:
 			if p := t.offset + int(i); t.offset+t.length <= len(data) {
 				return Number(float64(data[p]))
 			}
@@ -860,17 +659,17 @@ func (cx *ExecutionContext) typedArraySet(o *Object, i uint32, val Value) bool {
 	if val.o == numberObject && t.numberStore {
 		if data, f := t.data.data, val.n; !t.tracking && uint(i) < uint(t.length) {
 			switch t.typ {
-			case ElementInt32:
+			case element.Int32:
 				if p := t.offset + int(i)*4; t.offset+t.length*4 <= len(data) && f >= -2147483648 && f <= 2147483647 {
 					binary.LittleEndian.PutUint32(data[p:], uint32(int32(f)))
 					return true
 				}
-			case ElementFloat64:
+			case element.Float64:
 				if p := t.offset + int(i)*8; t.offset+t.length*8 <= len(data) {
 					binary.LittleEndian.PutUint64(data[p:], math.Float64bits(f))
 					return true
 				}
-			case ElementUint8:
+			case element.Uint8:
 				if p := t.offset + int(i); t.offset+t.length <= len(data) && f >= -2147483648 && f <= 2147483647 {
 					data[p] = byte(int32(f))
 					return true
@@ -878,7 +677,7 @@ func (cx *ExecutionContext) typedArraySet(o *Object, i uint32, val Value) bool {
 			}
 		}
 		if b, ok := t.element(i); ok {
-			storeNumber(t.typ, b, val.n)
+			element.StoreNumber(b, t.typ, val.n)
 		}
 		return true
 	}
@@ -898,7 +697,7 @@ func (cx *ExecutionContext) typedArraySetElement(t *TypedArray, i uint32, val Va
 	}
 	// The conversion may have resized or detached the buffer.
 	if b, ok := t.element(i); ok {
-		storeBits(b, t.typ.Size(), ElementBits(t.typ, val), true)
+		element.Store(b, t.typ, ElementBits(t.typ, val))
 	}
 }
 
