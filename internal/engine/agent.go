@@ -620,6 +620,8 @@ type agent struct {
 
 	modules moduleHost
 
+	moduleEvaluations moduleEvaluations
+
 	builtins builtinLayout
 
 	// indexStrings holds the strings of the array indices below indexStringCount that were

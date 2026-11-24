@@ -1085,6 +1085,22 @@ func TestModules(t *testing.T) {
 			},
 			want: "main,dep",
 		},
+		{
+			// Modules that become ready together evaluate in the order in which they started to
+			// wait, including q1 and q2, which wait for leaf only through p1 and p2.
+			name: "asynchronous evaluation order",
+			sources: map[string]string{
+				"main": `import "p1"; import "p2"; import "q1"; import "q2";
+					globalThis.result = log.join();`,
+				"p1": `import "leaf"; log.push("p1");`,
+				"p2": `import "leaf"; log.push("p2");`,
+				"q1": `import "p1"; log.push("q1");`,
+				"q2": `import "p2"; log.push("q2");`,
+				"leaf": `globalThis.log = [];
+					await null;`,
+			},
+			want: "p1,p2,q1,q2",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

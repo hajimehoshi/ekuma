@@ -82,17 +82,10 @@ type ImportMetaProperty struct {
 	Value Value
 }
 
-// moduleHost is the state of the agent for modules.
+// moduleHost holds the host functions of the agent for modules.
 type moduleHost struct {
 	load HostLoadImportedModuleFunc
 	meta HostGetImportMetaPropertiesFunc
-
-	// asyncOrder is the last [[AsyncEvaluationOrder]] that was given out.
-	asyncOrder int
-
-	// evaluating holds the modules whose evaluation started, in the order it did. It includes
-	// every module that is evaluating or evaluating-async, and may include evaluated ones.
-	evaluating []*Module
 }
 
 // SetHostLoadImportedModule sets the implementation of HostLoadImportedModule. Without one,
@@ -105,6 +98,42 @@ func (ag *agent) SetHostLoadImportedModule(f HostLoadImportedModuleFunc) {
 // Without one, import.meta has no properties.
 func (ag *agent) SetHostGetImportMetaProperties(f HostGetImportMetaPropertiesFunc) {
 	ag.modules.meta = f
+}
+
+// moduleEvaluations tracks the evaluations of the modules of an agent.
+type moduleEvaluations struct {
+	// asyncOrder is the last [[AsyncEvaluationOrder]] that was given out.
+	asyncOrder int
+
+	// evaluating holds the modules whose evaluation started, in the order it did. It includes
+	// every module that is evaluating or evaluating-async, and may include evaluated ones.
+	evaluating []*Module
+}
+
+// nextAsyncOrder returns a new [[AsyncEvaluationOrder]], greater than all the earlier ones.
+func (e *moduleEvaluations) nextAsyncOrder() int {
+	e.asyncOrder++
+	return e.asyncOrder
+}
+
+// add adds m, whose evaluation starts.
+func (e *moduleEvaluations) add(m *Module) {
+	e.evaluating = append(e.evaluating, m)
+}
+
+// dropEvaluated removes the modules that are evaluated.
+func (e *moduleEvaluations) dropEvaluated() {
+	e.evaluating = slices.DeleteFunc(e.evaluating, func(m *Module) bool {
+		return m.status == moduleEvaluated
+	})
+}
+
+// takeAll removes all the modules and returns them in the order their evaluation started, possibly
+// with evaluated ones among them.
+func (e *moduleEvaluations) takeAll() []*Module {
+	modules := e.evaluating
+	e.evaluating = nil
+	return modules
 }
 
 type moduleStatus uint8
@@ -665,9 +694,7 @@ func (cx *ExecutionContext) evaluateModule(m *Module) Value {
 	if m.topLevelCapability != nil {
 		return Value{o: m.topLevelCapability.promise}
 	}
-	cx.modules.evaluating = slices.DeleteFunc(cx.modules.evaluating, func(mod *Module) bool {
-		return mod.status == moduleEvaluated
-	})
+	cx.moduleEvaluations.dropEvaluated()
 	c := cx.newIntrinsicCapability()
 	m.topLevelCapability = c
 	var stack []*Module
@@ -725,7 +752,7 @@ func (cx *ExecutionContext) innerModuleEvaluation(root *Module, stack *[]*Module
 			return Undefined, true, false
 		}
 		m.status = moduleEvaluating
-		cx.modules.evaluating = append(cx.modules.evaluating, m)
+		cx.moduleEvaluations.add(m)
 		m.dfsIndex = index
 		m.dfsAncestorIndex = index
 		m.pendingAsyncDeps = 0
@@ -779,8 +806,7 @@ func (cx *ExecutionContext) innerModuleEvaluation(root *Module, stack *[]*Module
 		}
 		frames = frames[:len(frames)-1]
 		if m.pendingAsyncDeps > 0 || m.node.Code.HasTLA {
-			cx.modules.asyncOrder++
-			m.asyncOrder = cx.modules.asyncOrder
+			m.asyncOrder = cx.moduleEvaluations.nextAsyncOrder()
 			if m.pendingAsyncDeps == 0 {
 				cx.executeAsyncModule(m)
 			}
@@ -1055,9 +1081,7 @@ func (cx *ExecutionContext) asyncModuleExecutionRejected(m *Module, e Value) {
 // that [GoError] maps to cause, as an exception of the module does. An interruption cuts these
 // evaluations off: it unwinds the modules that run and drops the jobs that the others wait for.
 func (cx *ExecutionContext) abortModuleEvaluations(cause error) {
-	modules := cx.modules.evaluating
-	cx.modules.evaluating = nil
-	cx.rejectModuleEvaluations(modules, cause)
+	cx.rejectModuleEvaluations(cx.moduleEvaluations.takeAll(), cause)
 }
 
 func (cx *ExecutionContext) rejectModuleEvaluations(modules []*Module, cause error) {
