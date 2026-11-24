@@ -49,14 +49,7 @@ func (r *realm) newRelativeTimeFormat(cx *engine.ExecutionContext, this engine.V
 	proto := protoFor(cx, nt, func(r *realm) *engine.Object { return r.relativeTimeFormatProto })
 	requested := canonicalizeLocaleList(cx, arg(args, 0))
 	options := optionsObject(cx, arg(args, 1))
-	bestFit := localeMatcher(cx, options)
-	nu, hasNu := numberingSystemOption(cx, options)
-	res := locale.ResolveLocale(requested, defaultLocale(cx), bestFit, []locale.ExtensionKey{{
-		Key:       "nu",
-		Option:    nu,
-		HasOption: hasNu,
-		Values:    numberingSystemsOf,
-	}})
+	res := resolveNumberingSystemLocale(cx, requested, options)
 	rtf := &relativeTimeFormatData{
 		locale:          res.Locale,
 		dataLocale:      res.DataLocale,

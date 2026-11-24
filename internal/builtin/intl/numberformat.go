@@ -224,19 +224,23 @@ func numberingSystemOption(cx *engine.ExecutionContext, options *engine.Object) 
 	return s, ok
 }
 
-// createNumberFormat implements the steps of the Intl.NumberFormat constructor that resolve
-// the internal slots.
-func createNumberFormat(cx *engine.ExecutionContext, locales, opts engine.Value) *numberFormatData {
-	requested := canonicalizeLocaleList(cx, locales)
-	options := optionsObject(cx, opts)
+func resolveNumberingSystemLocale(cx *engine.ExecutionContext, requested []string, options *engine.Object) locale.Resolution {
 	bestFit := localeMatcher(cx, options)
 	nu, hasNu := numberingSystemOption(cx, options)
-	res := locale.ResolveLocale(requested, defaultLocale(cx), bestFit, []locale.ExtensionKey{{
+	return locale.ResolveLocale(requested, defaultLocale(cx), bestFit, []locale.ExtensionKey{{
 		Key:       "nu",
 		Option:    nu,
 		HasOption: hasNu,
 		Values:    numberingSystemsOf,
 	}})
+}
+
+// createNumberFormat implements the steps of the Intl.NumberFormat constructor that resolve
+// the internal slots.
+func createNumberFormat(cx *engine.ExecutionContext, locales, opts engine.Value) *numberFormatData {
+	requested := canonicalizeLocaleList(cx, locales)
+	options := optionsObject(cx, opts)
+	res := resolveNumberingSystemLocale(cx, requested, options)
 	nf := &numberFormatData{
 		locale: res.Locale,
 	}

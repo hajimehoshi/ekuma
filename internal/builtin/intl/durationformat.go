@@ -10,7 +10,6 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/builtin"
 	"github.com/hajimehoshi/ekuma/internal/engine"
 	"github.com/hajimehoshi/ekuma/internal/intl/duration"
-	"github.com/hajimehoshi/ekuma/internal/intl/locale"
 	"github.com/hajimehoshi/ekuma/internal/temporal"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
@@ -40,14 +39,7 @@ var durationStyles = [len(duration.Units)][]string{
 func createDurationFormat(cx *engine.ExecutionContext, locales, opts engine.Value) *durationFormatData {
 	requested := canonicalizeLocaleList(cx, locales)
 	options := getOptionsObject(cx, opts, "Intl.DurationFormat")
-	bestFit := localeMatcher(cx, options)
-	nu, hasNu := numberingSystemOption(cx, options)
-	res := locale.ResolveLocale(requested, defaultLocale(cx), bestFit, []locale.ExtensionKey{{
-		Key:       "nu",
-		Option:    nu,
-		HasOption: hasNu,
-		Values:    numberingSystemsOf,
-	}})
+	res := resolveNumberingSystemLocale(cx, requested, options)
 	df := &durationFormatData{
 		locale: res.Locale,
 	}
