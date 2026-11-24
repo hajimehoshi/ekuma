@@ -565,9 +565,9 @@ func (m *Module) initializeEnvironment() (Value, bool) {
 			return cx.resolutionError(m, ie.ImportName, r), false
 		}
 		switch r.Binding {
-		case modulegraph.Namespace:
+		case modulegraph.BindingNamespace:
 			m.env[ie.Binding] = newCell(Value{o: cx.moduleNamespace(r.Module)})
-		case modulegraph.Source:
+		case modulegraph.BindingSource:
 			v, ok := cx.getModuleSource(r.Module)
 			if !ok {
 				return v, false

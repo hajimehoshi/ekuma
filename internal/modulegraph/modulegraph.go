@@ -81,8 +81,8 @@ func (n *Node[M]) ownExport(name string) (local, indirect int) {
 type ResolutionKind uint8
 
 const (
-	// NotFound says that the name resolves to no binding, or only circularly.
-	NotFound ResolutionKind = iota
+	// Null says that the name resolves to no binding, or only circularly.
+	Null ResolutionKind = iota
 
 	// Ambiguous says that star exports resolve the name to different bindings.
 	Ambiguous
@@ -93,11 +93,11 @@ const (
 
 // The special values of [Resolution.Binding] for the bindings that are not of the environment.
 const (
-	// Namespace is the [[BindingName]] namespace.
-	Namespace = -1
+	// BindingNamespace is the [[BindingName]] namespace.
+	BindingNamespace = -1
 
-	// Source is the [[BindingName]] source.
-	Source = -2
+	// BindingSource is the [[BindingName]] source.
+	BindingSource = -2
 )
 
 // Resolution is the result of ResolveExport. Module and Binding are set when Kind is [Found].
@@ -106,7 +106,7 @@ type Resolution[M comparable] struct {
 	Module M
 
 	// Binding is the index of the binding in [bytecode.Module.Bindings] of a source text module, 0
-	// for the default export of a synthetic module, or [Namespace] or [Source].
+	// for the default export of a synthetic module, or [BindingNamespace] or [BindingSource].
 	Binding int
 }
 
@@ -177,10 +177,10 @@ func (n *Node[M]) ResolveExport(name string) Resolution[M] {
 					ret = Resolution[M]{
 						Kind:    Found,
 						Module:  imported.Module,
-						Binding: Namespace,
+						Binding: BindingNamespace,
 					}
 					if e.Source {
-						ret.Binding = Source
+						ret.Binding = BindingSource
 					}
 					frames = frames[:len(frames)-1]
 					continue
@@ -208,7 +208,7 @@ func (n *Node[M]) ResolveExport(name string) Resolution[M] {
 				continue
 			}
 			if ret.Kind == Found {
-				if fr.found.Kind == NotFound {
+				if fr.found.Kind == Null {
 					fr.found = ret
 				} else if ret.Module != fr.found.Module || ret.Binding != fr.found.Binding {
 					ret = Resolution[M]{Kind: Ambiguous}
@@ -388,7 +388,7 @@ func (n *Node[M]) starTable() map[string]Resolution[M] {
 // setStarEntry sets the resolution r of name in the table t, creating t when it is nil, and
 // returns t. A null resolution removes name.
 func setStarEntry[M comparable](t map[string]Resolution[M], name string, r Resolution[M]) map[string]Resolution[M] {
-	if r.Kind == NotFound {
+	if r.Kind == Null {
 		delete(t, name)
 		return t
 	}

@@ -111,9 +111,9 @@ func (cx *ExecutionContext) namespaceGet(o *Object, k PropKey) Value {
 	}
 	r := ns.targets[i]
 	switch r.Binding {
-	case modulegraph.Namespace:
+	case modulegraph.BindingNamespace:
 		return Value{o: cx.moduleNamespace(r.Module)}
-	case modulegraph.Source:
+	case modulegraph.BindingSource:
 		if r.Module.source == nil {
 			cx.ThrowReferenceError("the module source of '" + wtf8.ToValidUTF8(cx.KeyString(k)) + "' is not available")
 		}
