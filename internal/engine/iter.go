@@ -187,19 +187,28 @@ func (cx *ExecutionContext) newArrayIterator(o *Object, kind IterationKind, next
 func (cx *ExecutionContext) NewArrayIteratorNext() *Object {
 	next := cx.newIteratorNext(IteratorMethodRealm, func(cx *ExecutionContext, this Value) (Value, bool) {
 		it, _ := IteratorState(this).(*arrayIterator)
-		v, st := it.valueStep(cx, true)
-		return v, st == PairYielded
+		key, value, st := it.stepPlain(cx.Quiet())
+		if st == PairDeclined {
+			key, value, st = it.step(cx)
+		}
+		if st != PairYielded {
+			return Undefined, false
+		}
+		return it.result(cx.Quiet(), key, value), true
 	})
 	next.fn.info.fast = &nativeFast{
 		step: func(cx *ExecutionContext, this Value) (Value, bool) {
 			it, _ := IteratorState(this).(*arrayIterator)
-			v, st := it.valueStep(cx, false)
+			key, value, st := it.stepPlain(cx.Quiet())
 			if st == PairDeclined {
 				cx.pushNative(next, this, nil)
-				v, st = it.valueStep(cx, true)
+				key, value, st = it.step(cx)
 				cx.popNative()
 			}
-			return v, st == PairYielded
+			if st != PairYielded {
+				return Undefined, false
+			}
+			return it.result(cx.Quiet(), key, value), true
 		},
 		arrayIndex: func(cx *ExecutionContext, o *Object, i uint32) Value {
 			// Only the receiver's type name is visible on a native frame. The
@@ -224,43 +233,38 @@ func (cx *ExecutionContext) arrayIteratorPairStep(it, next Value) (Value, Value,
 	if state == nil || state.kind != IterateEntries {
 		return Undefined, Undefined, PairDeclined
 	}
-	key, value, st := state.step(cx, false)
+	key, value, st := state.stepPlain(cx.Quiet())
 	if st == PairDeclined {
 		cx.pushNative(next.o, it, nil)
-		key, value, st = state.step(cx, true)
+		key, value, st = state.step(cx)
 		cx.popNative()
 	}
 	return key, value, st
 }
 
-func (it *arrayIterator) valueStep(cx *ExecutionContext, allowCalls bool) (Value, PairStep) {
-	key, value, st := it.step(cx, allowCalls)
-	if st != PairYielded {
-		return Undefined, st
-	}
+// result returns what the iterator yields for key and value.
+func (it *arrayIterator) result(q QuietContext, key, value Value) Value {
 	switch it.kind {
 	case IterateKeys:
-		return key, st
+		return key
 	case IterateValues:
-		return value, st
+		return value
 	default:
-		return Value{o: cx.NewArrayPair(key, value)}, st
+		return Value{o: q.NewArrayPair(key, value)}
 	}
 }
 
-// step advances the iterator, declining before any observable operation when allowCalls is false.
-func (it *arrayIterator) step(cx *ExecutionContext, allowCalls bool) (key, value Value, st PairStep) {
+// stepPlain is step when that neither runs code nor throws. It declines without advancing
+// otherwise.
+func (it *arrayIterator) stepPlain(q QuietContext) (key, value Value, st PairStep) {
 	if it == nil {
-		if !allowCalls {
-			return Undefined, Undefined, PairDeclined
-		}
-		cx.ThrowTypeError("next method called on an object that is not an array iterator")
+		return Undefined, Undefined, PairDeclined
 	}
+	cx := q.cx
 	o := it.object
 	if o == nil {
 		return Undefined, Undefined, PairDone
 	}
-	// Reading length can call next on this iterator again.
 	i := it.nextIndex
 	var length int64
 	switch {
@@ -278,17 +282,11 @@ func (it *arrayIterator) step(cx *ExecutionContext, allowCalls bool) (key, value
 		}
 		n, ok := t.Length()
 		if !ok {
-			if !allowCalls {
-				return Undefined, Undefined, PairDeclined
-			}
-			cx.ThrowTypeError("cannot iterate a detached or out of bounds typed array")
+			return Undefined, Undefined, PairDeclined
 		}
 		length = int64(n)
 	default:
-		if !allowCalls {
-			return Undefined, Undefined, PairDeclined
-		}
-		length = cx.LengthOfArrayLike(o)
+		return Undefined, Undefined, PairDeclined
 	}
 	if i >= length {
 		it.object = nil
@@ -305,10 +303,44 @@ func (it *arrayIterator) step(cx *ExecutionContext, allowCalls bool) (key, value
 		cx.PollAt(i)
 		return key, value, PairYielded
 	}
-	if !allowCalls {
-		return Undefined, Undefined, PairDeclined
+	return Undefined, Undefined, PairDeclined
+}
+
+// step advances the iterator.
+func (it *arrayIterator) step(cx *ExecutionContext) (key, value Value, st PairStep) {
+	if it == nil {
+		cx.ThrowTypeError("next method called on an object that is not an array iterator")
 	}
+	o := it.object
+	if o == nil {
+		return Undefined, Undefined, PairDone
+	}
+	// Reading length can call next on this iterator again.
+	i := it.nextIndex
+	var length int64
+	if o.class == classTypedArray {
+		n, ok := o.extState().(*TypedArray).Length()
+		if !ok {
+			cx.ThrowTypeError("cannot iterate a detached or out of bounds typed array")
+		}
+		length = int64(n)
+	} else {
+		length = cx.LengthOfArrayLike(o)
+	}
+	if i >= length {
+		it.object = nil
+		return Undefined, Undefined, PairDone
+	}
+	key = Number(float64(i))
 	it.nextIndex = i + 1
+	if it.kind == IterateKeys {
+		return key, Undefined, PairYielded
+	}
+	if i < int64(len(o.elems)) && !o.elems[i].isHole() {
+		value = o.elems[i]
+		cx.PollAt(i)
+		return key, value, PairYielded
+	}
 	cx.Poll()
 	return key, cx.Get(o, cx.ToPropertyKey(key)), PairYielded
 }
