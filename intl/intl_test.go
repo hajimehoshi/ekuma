@@ -427,7 +427,7 @@ func TestCancelFormatting(t *testing.T) {
 		},
 		{
 			name: "Greek uppercasing of a run of marks",
-			src:  `("\u03b1" + "\u0301\u0308".repeat(2 ** 22)).toLocaleUpperCase("el")`,
+			src:  `("\u03b1" + "\u0301\u0308".repeat(2 ** 24)).toLocaleUpperCase("el")`,
 		},
 		{
 			name: "collation of a run of marks",
