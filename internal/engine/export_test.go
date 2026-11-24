@@ -401,3 +401,21 @@ func (s *Shortcut) wrap(t *testing.T, observe func(s *Shortcut, form, event stri
 	}
 	fn.info.fast = &wrapped
 }
+
+// ObserveNative makes the native function f call observe whenever it starts.
+func ObserveNative(f Value, observe func()) {
+	fn := f.o.fn
+	native := fn.native
+	fn.native = func(cx *ExecutionContext, this Value, args []Value) Value {
+		observe()
+		return native(cx, this, args)
+	}
+}
+
+// ArraysPlain reports whether new arrays of cx meet what the shortcuts for arrays require of the
+// prototypes and the constructor of arrays.
+func ArraysPlain(cx *ExecutionContext) bool {
+	a := cx.NewArray(nil)
+	return cx.arrayProtoPlain() && cx.holesAreAbsent(a) && cx.arrayCtorPlain(a) &&
+		cx.arrayIterationPlain(a) && cx.pairDestructuringPlain(cx.realm)
+}
