@@ -161,9 +161,8 @@ func (resumer *ExecutionContext) asyncGeneratorResume(g *generator, mode ResumeM
 func (cx *ExecutionContext) asyncGeneratorCompleteStep(g *generator, v Value, thrown, done bool) {
 	a := g.async
 	next := a.queue[0]
-	n := copy(a.queue, a.queue[1:])
-	a.queue[n] = asyncGeneratorRequest{}
-	a.queue = a.queue[:n]
+	copy(a.queue, a.queue[1:])
+	a.queue = withoutLast(a.queue)
 	if thrown {
 		cx.RejectCapability(next.capability, v)
 		return

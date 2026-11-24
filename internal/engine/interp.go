@@ -53,6 +53,16 @@ type frame struct {
 	scopes []*Object
 }
 
+// leaveScopes leaves the dynamic scopes of fr beyond the first n. It stays out of line to keep
+// exec small.
+//
+//go:noinline
+func (fr *frame) leaveScopes(n int) {
+	for len(fr.scopes) > n {
+		fr.scopes = withoutLast(fr.scopes)
+	}
+}
+
 // thrownErrorKinds maps the error kinds of OpThrowError to [ErrorKind] values.
 var thrownErrorKinds = [...]ErrorKind{
 	bytecode.ThrowTypeError:      ErrorKindType,
@@ -304,7 +314,9 @@ func (ag *agent) unwind(stop int) (Value, execStatus) {
 			ag.thrown = Undefined
 			ag.dropNatives(n)
 			fr.pc = int(h.Target)
-			fr.scopes = fr.scopes[:min(len(fr.scopes), int(h.Scopes))]
+			if n := int(h.Scopes); n < len(fr.scopes) {
+				fr.leaveScopes(n)
+			}
 			ag.sp = fr.top()
 			return Undefined, execCatch
 		}
@@ -3124,7 +3136,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			cur.scopes = append(cur.scopes, o)
 		case bytecode.OpPopScope:
 			cur := &ag.frames[len(ag.frames)-1]
-			cur.scopes = cur.scopes[:len(cur.scopes)-1]
+			cur.leaveScopes(len(cur.scopes) - 1)
 		case bytecode.OpResolveName:
 			ag.frames[len(ag.frames)-1].pc = pc
 			o := fp.context.findScope(ag.frames[len(ag.frames)-1].cl, fp.keys[i.B], int(i.C))

@@ -41,70 +41,13 @@ func (cx *ExecutionContext) ArrayCreate(length uint32, proto *Object) *Object {
 		a.kind = kindArray
 		a.class = classArray
 		a.shape = cx.realm.shapes.array
-		a.elems = elems[:0]
+		a.initElems(elems[:0])
 	} else {
 		a = cx.NewArray(nil)
 	}
 	cx.setProto(a, proto)
 	a.length = length
 	return a
-}
-
-// reserveElems gives the elements of o room for n more elements.
-func (o *Object) reserveElems(n int) {
-	if cap(o.elems)-len(o.elems) < n {
-		o.moveElems(n)
-	}
-}
-
-// moveElems moves the elements of o to new storage with room for n more elements.
-// It stays out of line so that reserveElems can be inlined.
-//
-//go:noinline
-func (o *Object) moveElems(n int) {
-	elems := o.elems
-	if cap(elems) == 0 {
-		o.elems = make([]Value, 0, max(n, minElems))
-		return
-	}
-	o.elems = slices.Grow(elems, n)
-	o.leaveElems(elems)
-}
-
-// appendElem appends v to the elements of o.
-func (o *Object) appendElem(v Value) {
-	elems := o.elems
-	if cap(elems) == 0 {
-		elems = make([]Value, 0, minElems)
-	}
-	o.elems = append(elems, v)
-	if cap(o.elems) != cap(elems) {
-		o.leaveElems(elems)
-	}
-}
-
-// elemsStorage returns the number of values that the storage of the elements of o has room
-// for, counting those before the elements that removing the first elements left unused.
-func (o *Object) elemsStorage() int {
-	n := cap(o.elems)
-	if m := o.meta(); m != nil && m.shiftedCap == n {
-		n += m.shiftedElems
-	}
-	return n
-}
-
-// elemsOversized reports whether the elements of o use less than a quarter of their storage
-// and the storage is larger than minShrinkElems.
-func (o *Object) elemsOversized() bool {
-	n := o.elemsStorage()
-	return n > minShrinkElems && len(o.elems) < n/4
-}
-
-// reallocElems moves the elements of o to new storage with room for as many elements again.
-func (cx *ExecutionContext) reallocElems(o *Object) {
-	elems := make([]Value, len(o.elems), max(2*len(o.elems), minElems))
-	CopyPolled(cx, elems, o.elems)
-	o.elems = elems
 }
 
 // LengthOfArrayLike implements LengthOfArrayLike.
@@ -307,8 +250,7 @@ func (ag *agent) observePush(o *Object) {
 		if room := min(int(h.target), 8*n); room > n {
 			elems := make([]Value, n, room)
 			copy(elems, o.elems)
-			o.leaveElems(o.elems)
-			o.elems = elems
+			o.replaceElems(elems)
 			if m := o.meta(); m != nil {
 				m.shiftedElems, m.shiftedCap = 0, 0
 			}
@@ -348,8 +290,7 @@ func (o *Object) RemoveLastElement() (Value, bool) {
 	if v.isHole() {
 		return Value{}, false
 	}
-	o.elems[n] = Value{}
-	o.elems = o.elems[:n]
+	o.removeLastElem()
 	o.length = uint32(n)
 	if o.elemsOversized() {
 		o.shape.realm.context.reallocElems(o)

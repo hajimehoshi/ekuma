@@ -6,7 +6,8 @@ package engine
 // argumentsMap is the parameter map of a mapped arguments object.
 type argumentsMap struct {
 	// params holds, by index, the storage of the parameter that the index property is mapped to,
-	// or nil for a property that is not mapped.
+	// or nil for a property that is not mapped. The slot of a mapped property holds undefined, so
+	// that it does not keep a value alive that the parameter no longer has.
 	params []*upvalue
 }
 
@@ -48,7 +49,7 @@ func (cx *ExecutionContext) newArguments(fr *frame, regs []Value, mapped bool) *
 				m.params[i] = cx.findUpval(fr.base + i)
 			}
 			// A mapped property stays out of elems, so that every access to it takes a path that consults the map.
-			cx.add(o, cx.indexName(uint32(i)), o.elems[i], FlagsData)
+			cx.add(o, cx.indexName(uint32(i)), Undefined, FlagsData)
 			o.elems[i] = hole
 		}
 		o.flags |= objSparse
@@ -124,7 +125,7 @@ func mappedParam(o *Object, i uint32) *upvalue {
 // for the index i, which is mapped to the parameter u.
 func (cx *ExecutionContext) defineMappedArgument(o *Object, i uint32, u *upvalue, d PropDesc) bool {
 	m := o.extState().(*argumentsMap)
-	// The stored value is brought up to date, as the ordinary definition validates against it.
+	// The ordinary definition validates against the value in the slot.
 	p, _ := o.shape.lookup(cx.indexName(i))
 	o.slots[p.slot] = *u.p
 	readOnly := d.has&HasWritable != 0 && d.flags&FlagWritable == 0
@@ -135,6 +136,7 @@ func (cx *ExecutionContext) defineMappedArgument(o *Object, i uint32, u *upvalue
 	m.params[i] = nil
 	if !cx.defineOwnProperty(o, PropKey{idx: i}, d) {
 		m.params[i] = u
+		o.slots[p.slot] = Undefined
 		return false
 	}
 	if d.IsAccessor() {
@@ -145,6 +147,7 @@ func (cx *ExecutionContext) defineMappedArgument(o *Object, i uint32, u *upvalue
 	}
 	if !readOnly {
 		m.params[i] = u
+		o.slots[p.slot] = Undefined
 	}
 	return true
 }

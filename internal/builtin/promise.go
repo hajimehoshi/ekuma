@@ -4,8 +4,6 @@
 package builtin
 
 import (
-	"slices"
-
 	"github.com/hajimehoshi/ekuma/internal/engine"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
@@ -64,6 +62,14 @@ type promiseElements struct {
 	remaining int
 }
 
+// take returns the values once every element is settled, and gives them up, since the functions
+// that settle the elements may stay reachable.
+func (e *promiseElements) take() []engine.Value {
+	vals := e.values
+	e.values = nil
+	return vals
+}
+
 // keyedPromiseElements are the keys and values of Promise.allKeyed and
 // Promise.allSettledKeyed with the count of the elements that are not settled yet.
 type keyedPromiseElements struct {
@@ -76,7 +82,10 @@ type keyedPromiseElements struct {
 func (e *keyedPromiseElements) resolveIfDone(cx *engine.ExecutionContext, pc *engine.PromiseCapability) {
 	e.remaining--
 	if e.remaining == 0 {
-		cx.ResolveCapability(pc, engine.ObjectValue(createKeyedPromiseCombinatorResultObject(cx, e.keys, e.values)))
+		keys, vals := e.keys, e.values
+		// The functions that settle the elements may stay reachable.
+		e.keys, e.values = nil, nil
+		cx.ResolveCapability(pc, engine.ObjectValue(createKeyedPromiseCombinatorResultObject(cx, keys, vals)))
 	}
 }
 
@@ -206,7 +215,7 @@ func initPromise(cx *engine.ExecutionContext) {
 				e.values[i] = arg(args, 0)
 				e.remaining--
 				if e.remaining == 0 {
-					cx.ResolveCapability(pc, engine.ObjectValue(cx.NewArray(slices.Clone(e.values))))
+					cx.ResolveCapability(pc, engine.ObjectValue(cx.NewArray(e.take())))
 				}
 				return engine.Undefined
 			})
@@ -215,7 +224,7 @@ func initPromise(cx *engine.ExecutionContext) {
 		}, func(pc *engine.PromiseCapability) {
 			e.remaining--
 			if e.remaining == 0 {
-				cx.ResolveCapability(pc, engine.ObjectValue(cx.NewArray(slices.Clone(e.values))))
+				cx.ResolveCapability(pc, engine.ObjectValue(cx.NewArray(e.take())))
 			}
 		})
 	})
@@ -241,7 +250,7 @@ func initPromise(cx *engine.ExecutionContext) {
 					e.values[i] = engine.ObjectValue(o)
 					e.remaining--
 					if e.remaining == 0 {
-						cx.ResolveCapability(pc, engine.ObjectValue(cx.NewArray(slices.Clone(e.values))))
+						cx.ResolveCapability(pc, engine.ObjectValue(cx.NewArray(e.take())))
 					}
 					return engine.Undefined
 				})
@@ -253,7 +262,7 @@ func initPromise(cx *engine.ExecutionContext) {
 		}, func(pc *engine.PromiseCapability) {
 			e.remaining--
 			if e.remaining == 0 {
-				cx.ResolveCapability(pc, engine.ObjectValue(cx.NewArray(slices.Clone(e.values))))
+				cx.ResolveCapability(pc, engine.ObjectValue(cx.NewArray(e.take())))
 			}
 		})
 	})
@@ -272,7 +281,7 @@ func initPromise(cx *engine.ExecutionContext) {
 		}
 		aggregate := func(cx *engine.ExecutionContext) engine.Value {
 			err := cx.NewError(engine.ErrorKindAggregate, "all promises were rejected")
-			cx.Define(err.Object(), cx.Key(engine.KeyErrors), engine.ObjectValue(cx.NewArray(slices.Clone(e.values))), engine.FlagsHidden)
+			cx.Define(err.Object(), cx.Key(engine.KeyErrors), engine.ObjectValue(cx.NewArray(e.take())), engine.FlagsHidden)
 			return err
 		}
 		return promiseCombinator(cx, this, arg(args, 0), func(pc *engine.PromiseCapability, next engine.Value) {

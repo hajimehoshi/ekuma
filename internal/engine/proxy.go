@@ -715,7 +715,7 @@ func (cx *ExecutionContext) FromPropertyDescriptor(d PropDesc) Value {
 	o, slots := newObjectWithStorage(bits.OnesCount8(d.has))
 	o.kind = kindObject
 	o.shape = cx.realm.shapes.object
-	o.slots = slots[:0]
+	o.initSlots(slots[:0])
 	fn := func(f *Object) Value {
 		if f == nil {
 			return Undefined

@@ -16,16 +16,33 @@ import (
 	"os/exec"
 	"path/filepath"
 	"testing"
+
+	"github.com/hajimehoshi/ekuma/internal/engine"
 )
 
-func TestExecutionContextBoundary(t *testing.T) {
+// checkedPackage is a type-checked package.
+type checkedPackage struct {
+	path  string
+	pkg   *types.Package
+	fset  *token.FileSet
+	files []*ast.File
+	info  types.Info
+}
+
+// checkPackages type-checks the packages that patterns match, with the build constraints of the
+// running test.
+func checkPackages(t *testing.T, patterns ...string) []checkedPackage {
+	t.Helper()
 	goTool, err := exec.LookPath("go")
 	if err != nil {
 		t.Skip("Go toolchain unavailable")
 	}
 	// Use the same build constraints and export data as the packages under test.
-	cmd := exec.Command(goTool, "list", "-deps", "-export", "-json=Dir,ImportPath,GoFiles,Export,DepOnly", ".", "../builtin/...", "../json")
-	out, err := cmd.Output()
+	args := []string{"list", "-deps", "-export", "-json=Dir,ImportPath,GoFiles,Export,DepOnly"}
+	if engine.ValidateExec {
+		args = append(args, "-tags=ekumavalidate")
+	}
+	out, err := exec.Command(goTool, append(args, patterns...)...).Output()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -53,7 +70,7 @@ func TestExecutionContextBoundary(t *testing.T) {
 			return os.Open(exports[path])
 		}),
 	}
-	const engine = "github.com/hajimehoshi/ekuma/internal/engine"
+	var pkgs []checkedPackage
 	for _, p := range roots {
 		var files []*ast.File
 		for _, name := range p.GoFiles {
@@ -71,7 +88,22 @@ func TestExecutionContextBoundary(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if p.ImportPath == engine {
+		pkgs = append(pkgs, checkedPackage{
+			path:  p.ImportPath,
+			pkg:   pkg,
+			fset:  fset,
+			files: files,
+			info:  info,
+		})
+	}
+	return pkgs
+}
+
+func TestExecutionContextBoundary(t *testing.T) {
+	const enginePath = "github.com/hajimehoshi/ekuma/internal/engine"
+	for _, p := range checkPackages(t, ".", "../builtin/...", "../json") {
+		pkg, fset, files, info := p.pkg, p.fset, p.files, p.info
+		if p.path == enginePath {
 			// Only dispatch, restoration and the host entry point may observe the active binding.
 			ag := pkg.Scope().Lookup("agent").Type()
 			active, _, _ := types.LookupFieldOrMethod(ag, true, pkg, "active")

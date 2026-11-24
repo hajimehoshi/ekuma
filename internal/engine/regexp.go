@@ -76,7 +76,7 @@ func (ag *agent) newRegExpObject(s *shape, st *regExpState) *Object {
 	o.kind = kindObject
 	o.class = classRegExp
 	o.shape = s
-	o.slots = slots
+	o.initSlots(slots)
 	o.slots[0] = Number(0)
 	o.setExtState(st)
 	return o

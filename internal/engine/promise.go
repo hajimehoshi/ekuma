@@ -603,10 +603,8 @@ func (t *rejectionTracker) add(p *Object) {
 func (t *rejectionTracker) remove(p *Object) {
 	for i, q := range t.promises {
 		if q == p {
-			last := len(t.promises) - 1
 			copy(t.promises[i:], t.promises[i+1:])
-			t.promises[last] = nil
-			t.promises = t.promises[:last]
+			t.promises = withoutLast(t.promises)
 			return
 		}
 	}
@@ -614,8 +612,7 @@ func (t *rejectionTracker) remove(p *Object) {
 
 // reset removes all the promises.
 func (t *rejectionTracker) reset() {
-	clear(t.promises)
-	t.promises = t.promises[:0]
+	t.promises = truncated(t.promises, 0)
 }
 
 // maxIdleJobs is the number of jobs that the storage of the job queue keeps room for when the

@@ -1036,11 +1036,11 @@ func takeDataProperties(dst, from *Object) bool {
 		return false
 	}
 	dst.shape = s
-	dst.slots = append(dst.slots[:0], from.slots[:s.count]...)
+	dst.fillSlots(from.slots[:s.count])
 	// The keys of the elements come first, in index order, so the elements of dst are those of
 	// from.
 	if len(from.elems) != 0 {
-		dst.elems = slices.Clone(from.elems)
+		dst.initElems(slices.Clone(from.elems))
 	}
 	return true
 }
@@ -1066,7 +1066,7 @@ func (ag *agent) AssignDataProperties(to, from *Object) bool {
 		}
 	}
 	to.shape = s
-	to.slots = append(to.slots[:0], from.slots[:s.count]...)
+	to.fillSlots(from.slots[:s.count])
 	return true
 }
 

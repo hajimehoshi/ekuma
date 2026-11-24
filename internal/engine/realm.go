@@ -140,7 +140,7 @@ func (cx *ExecutionContext) initRealmGlobals() {
 	r.global = cx.NewObject(r.intrinsics[IntrinsicObjectPrototype])
 	// Deleting a property can restore a shared shape and its cached global slot pointers.
 	// Keep the slots in place until adding a property gives the global object a private shape.
-	r.global.slots = make([]Value, 0, privateShapeThreshold)
+	r.global.initSlots(make([]Value, 0, privateShapeThreshold))
 	r.global.pinned = pinnedGlobalSlots
 	r.globalThis = r.global
 	r.globalLex = cx.NewObject(nil)

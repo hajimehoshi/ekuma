@@ -170,6 +170,123 @@ func TestMovedStorageReleasesValues(t *testing.T) {
 	}
 }
 
+// TestLeftWithScopeReleasesObject checks that a suspended generator does not keep the object of
+// a with statement that it left alive.
+func TestLeftWithScopeReleasesObject(t *testing.T) {
+	var vm ekuma.VM
+	if _, err := runScript(t.Context(), &vm, "setup", `
+		var refs = [];
+		function make() {
+			const o = {};
+			refs.push(new WeakRef(o));
+			return o;
+		}
+		// The call reuses the registers of the with statements.
+		function reuse() {}
+		function* end() {
+			with (make()) {}
+			reuse(1, 2, 3, 4);
+			yield;
+		}
+		function* unwind() {
+			try {
+				with (make()) throw 0;
+			} catch {}
+			reuse(1, 2, 3, 4);
+			yield;
+		}
+		var suspended = [end(), unwind()];
+		for (const it of suspended) it.next();
+	`); err != nil {
+		t.Fatal(err)
+	}
+	runtime.GC()
+	v, err := runScript(t.Context(), &vm, "check", `refs.map(r => r.deref() === undefined).join()`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := v.String(), "true,true"; got != want {
+		t.Errorf("collected objects of the with statements left at the end and by an exception: got %s, want %s", got, want)
+	}
+}
+
+// TestMappedArgumentsReleaseValues checks that a mapped arguments object does not keep a value
+// alive that the parameter no longer has.
+func TestMappedArgumentsReleaseValues(t *testing.T) {
+	var vm ekuma.VM
+	if _, err := runScript(t.Context(), &vm, "setup", `
+		var refs = [];
+		function make() {
+			const o = {};
+			refs.push(new WeakRef(o));
+			return o;
+		}
+		function initial(a) {
+			a = null;
+			return arguments;
+		}
+		function stored(a) {
+			arguments[0] = make();
+			a = null;
+			return arguments;
+		}
+		function refused(a) {
+			Object.defineProperty(arguments, 0, {configurable: false});
+			Reflect.defineProperty(arguments, 0, {get() {}});
+			a = null;
+			return arguments;
+		}
+		var kept = [initial(make()), stored(0), refused(make())];
+	`); err != nil {
+		t.Fatal(err)
+	}
+	runtime.GC()
+	v, err := runScript(t.Context(), &vm, "check", `refs.map(r => r.deref() === undefined).join()`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := v.String(), "true,true,true"; got != want {
+		t.Errorf("collected values of the parameter (initial, stored, after a refused definition): got %s, want %s", got, want)
+	}
+}
+
+// TestSettledPromiseCombinatorsReleaseValues checks that a function that settles an element of
+// a settled promise combinator does not keep the values alive.
+func TestSettledPromiseCombinatorsReleaseValues(t *testing.T) {
+	var vm ekuma.VM
+	if _, err := runScript(t.Context(), &vm, "setup", `
+		function C(executor) { executor(() => {}, () => {}); }
+		C.resolve = v => v;
+		var kept = [], refs = [];
+		function run(combine) {
+			const value = {};
+			refs.push(new WeakRef(value));
+			combine.call(C, [{
+				then(onFulfilled, onRejected) {
+					const settle = combine === Promise.any ? onRejected : onFulfilled;
+					kept.push(settle);
+					settle(value);
+				},
+			}]);
+		}
+		run(Promise.all);
+		run(Promise.allSettled);
+		run(Promise.any);
+		run(Promise.allKeyed);
+		run(Promise.allSettledKeyed);
+	`); err != nil {
+		t.Fatal(err)
+	}
+	runtime.GC()
+	v, err := runScript(t.Context(), &vm, "check", `refs.map(r => r.deref() === undefined).join()`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := v.String(), "true,true,true,true,true"; got != want {
+		t.Errorf("collected values of all, allSettled, any, allKeyed and allSettledKeyed: got %s, want %s", got, want)
+	}
+}
+
 func TestCompletedIteratorHelperReleasesSource(t *testing.T) {
 	var vm ekuma.VM
 	if _, err := runScript(t.Context(), &vm, "setup", `

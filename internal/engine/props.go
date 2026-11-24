@@ -990,9 +990,9 @@ func (cx *ExecutionContext) addIndex(o *Object, i uint32, val Value, flags uint8
 		if growElems(o.elems, i) {
 			o.reserveElems(int(i) + 1 - n)
 			for uint32(len(o.elems)) < i {
-				o.elems = append(o.elems, hole)
+				o.pushElem(hole)
 			}
-			o.elems = append(o.elems, val)
+			o.pushElem(val)
 			cx.touchProto(o)
 			// The elements may have reached the indices in the shape. Checking only when their
 			// number passes a power of two bounds the cost of the checks by that of the growth.
@@ -1071,25 +1071,22 @@ func (cx *ExecutionContext) densify(o *Object) {
 	}
 
 	o.reserveElems(int(end) - len(o.elems))
-	elems := o.elems
-	for int64(len(elems)) < end {
-		elems = append(elems, hole)
+	for int64(len(o.elems)) < end {
+		o.pushElem(hole)
 	}
-	slots := o.slots
 	o.shape = root
-	o.slots = append(make([]Value, 0, int64(len(slots))-count), slots[:base]...)
+	slots := o.detachSlots(base, len(o.slots)-int(count))
 	for _, k := range keys[base:] {
 		p, _ := s.lookup(k)
 		if k.kind == kindString {
 			if i, ok := stringIndex(k.str); ok {
-				elems[i] = slots[p.slot]
+				o.elems[i] = slots[p.slot]
 				continue
 			}
 		}
 		cx.add(o, k, slots[p.slot], p.flags)
 	}
 	o.leaveSlots(slots)
-	o.elems = elems
 	o.flags &^= objSparse
 	if o.kind != kindArray {
 		// The shape may be one that o had before, with other slots. The inline caches of

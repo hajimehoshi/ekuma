@@ -912,7 +912,7 @@ func newInstance(s *shape) *Object {
 	o, slots := newObjectWithStorage(min(n, maxInstanceSlots))
 	o.kind = kindObject
 	o.shape = s
-	o.slots = slots[:0]
+	o.initSlots(slots[:0])
 	return o
 }
 
@@ -957,7 +957,7 @@ func (cx *ExecutionContext) NewEmptyArrayWithRoom(n int) *Object {
 	a.kind = kindArray
 	a.class = classArray
 	a.shape = cx.realm.shapes.array
-	a.elems = storage[:0]
+	a.initElems(storage[:0])
 	return a
 }
 
@@ -1132,41 +1132,6 @@ type objectWith[S any] struct {
 	storage S
 }
 
-// appendSlot appends v to the slots of o.
-func (o *Object) appendSlot(v Value) {
-	old := o.slots
-	o.slots = append(old, v)
-	if cap(o.slots) != cap(old) {
-		o.leaveSlots(old)
-	}
-}
-
-// reserveSlots gives the slots of o room for n more values.
-func (o *Object) reserveSlots(n int) {
-	if old := o.slots; cap(old)-len(old) < n {
-		o.slots = slices.Grow(old, n)
-		o.leaveSlots(old)
-	}
-}
-
-// leaveSlots clears old, storage that the slots of o have moved out of, when it stays reachable.
-func (o *Object) leaveSlots(old []Value) {
-	// Inline caches point into the slots of global objects and of prototypes.
-	if o.pinned&(pinnedSlots|pinnedGlobalSlots) != 0 || o.flags&objIsProto != 0 {
-		clear(old)
-	}
-	o.pinned &^= pinnedSlots
-}
-
-// leaveElems clears old, storage that the elements of o have moved out of, when it stays
-// reachable.
-func (o *Object) leaveElems(old []Value) {
-	if o.pinned&pinnedElems != 0 {
-		clear(old)
-		o.pinned &^= pinnedElems
-	}
-}
-
 // NewArrayPair returns a new array with the elements a and b.
 func (cx *ExecutionContext) NewArrayPair(a, b Value) *Object {
 	p := &pairArray{
@@ -1187,20 +1152,20 @@ func (cx *ExecutionContext) NewArrayWithRoom(length, n int) *Object {
 	var storage []Value
 	if length+n <= maxInlineObjectValues {
 		a, storage = newObjectWithStorage(length + n)
-		a.elems = storage[:length:length]
+		a.initElems(storage[:length:length])
 		storage = storage[length:]
 	} else {
 		// Keep the named properties with the object so they cannot retain the elements
 		// after the array shrinks.
 		a, storage = newObjectWithStorage(n)
-		a.elems = make([]Value, length)
+		a.initElems(make([]Value, length))
 		a.pinned &^= pinnedElems
 	}
 	a.kind = kindArray
 	a.class = classArray
 	a.shape = cx.realm.shapes.array
 	a.length = uint32(length)
-	a.slots = storage[:0]
+	a.initSlots(storage[:0])
 	return a
 }
 
@@ -1211,7 +1176,7 @@ func (cx *ExecutionContext) NewObjectFromProperties(keys []PropKey, vals []Value
 	o, slots := newObjectWithStorage(len(vals))
 	o.kind = kindObject
 	o.shape = cx.realm.shapes.object
-	o.slots = slots[:0]
+	o.initSlots(slots[:0])
 	for i, k := range keys {
 		v := vals[i]
 		if k.key == nil {
@@ -1716,10 +1681,7 @@ func (cx *ExecutionContext) remove(o *Object, key *Object) {
 	// so their values move down by one.
 	if s := old.without(key); s != nil {
 		p, _ := old.lookup(key)
-		n := len(o.slots)
-		copy(o.slots[p.slot:], o.slots[p.slot+1:])
-		o.slots[n-1] = Value{}
-		o.slots = o.slots[:n-1]
+		o.removeSlot(int(p.slot))
 		o.shape = s
 		cx.touchProto(o)
 		return
@@ -1748,9 +1710,8 @@ func (cx *ExecutionContext) remove(o *Object, key *Object) {
 		s.count++
 		slots = append(slots, o.slots[q.slot])
 	}
-	o.leaveSlots(o.slots)
+	o.replaceSlots(slots)
 	o.shape = s
-	o.slots = slots
 	cx.touchProto(o)
 }
 
@@ -1771,9 +1732,8 @@ func (ag *agent) removeFromPrivate(o *Object, key *Object) {
 	for n > 0 && s.order[n-1] == nil {
 		n--
 	}
-	clear(o.slots[n:])
 	s.order = s.order[:n]
-	o.slots = o.slots[:n]
+	o.truncateSlots(n)
 	if n-int(s.count) > int(s.count) {
 		o.compact()
 	}
@@ -1800,9 +1760,8 @@ func (o *Object) compact() {
 		n++
 	}
 	clear(s.order[n:])
-	clear(o.slots[n:])
 	s.order = s.order[:n]
-	o.slots = o.slots[:n]
+	o.truncateSlots(n)
 }
 
 // setProto changes the prototype of o. It stays out of line to keep ArrayCreate small.

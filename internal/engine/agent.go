@@ -483,8 +483,7 @@ func (ag *agent) popNative() {
 
 // truncateNatives drops the calls of native functions after the first n.
 func (ag *agent) truncateNatives(n int) {
-	clear(ag.natives[n:])
-	ag.natives = ag.natives[:n]
+	ag.natives = truncated(ag.natives, n)
 }
 
 // dropNatives drops the calls of native functions that started when there were more than

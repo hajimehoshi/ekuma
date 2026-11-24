@@ -115,8 +115,7 @@ func (cx *ExecutionContext) disposeStep(dc *DisposeCapability) (Value, bool) {
 			dc.needsAwait = false
 			return Undefined, true
 		}
-		dc.stack[len(dc.stack)-1] = disposableResource{}
-		dc.stack = dc.stack[:len(dc.stack)-1]
+		dc.stack = withoutLast(dc.stack)
 		if r.method == nil {
 			dc.needsAwait = true
 			continue
