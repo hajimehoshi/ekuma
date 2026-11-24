@@ -27,6 +27,17 @@ function promise() {
 	return Object.defineProperty(Promise.resolve(), "constructor", { get: read });
 }
 
+function wrappedPromise() {
+	made = new Error().stack.split("\n")[2];
+	const p = Promise.resolve();
+	p.constructor = null;
+	return Object.defineProperty(p, "then", { get: read });
+}
+
+async function awaitsWrapped() {
+	await wrappedPromise();
+}
+
 async function awaits() {
 	await thenable();
 }
@@ -63,7 +74,7 @@ function call(f) {
 }
 
 (async () => {
-	for (const f of [awaits, awaitsLater, returns, returnsLater, generates]) {
+	for (const f of [awaits, awaitsLater, awaitsWrapped, returns, returnsLater, generates]) {
 		made = frame = caller = undefined;
 		await call(f);
 		assert.sameValue(made.includes("at " + f.name + " "), true, f.name);

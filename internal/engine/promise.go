@@ -531,20 +531,21 @@ func (g *generator) tryAwait(v Value, kind reactionKind) bool {
 		kind: kind,
 		gen:  g,
 	}
+	reaction := pendingReaction{
+		action:           action,
+		continuationData: cx.continuationData,
+		builtinContext:   cx,
+	}
 	if !v.IsObject() {
-		// A primitive only queues the fulfill handler created in the activation's realm.
-		cx.enqueueReactionJob(&pendingReaction{
-			action:           action,
-			continuationData: cx.continuationData,
-			builtinContext:   cx,
-		}, v, false)
+		cx.enqueueReactionJob(&reaction, v, false)
 		return true
 	}
-	read := keyThen
 	if IsPromise(v) {
-		read = KeyConstructor
-	}
-	if cx.readsPlainly(v.o, cx.Key(read)) {
+		if p := cx.resolveAwaitedPromisePlain(v); p != nil {
+			cx.addReaction(p, &reaction)
+			return true
+		}
+	} else if cx.readsPlainly(v.o, cx.Key(keyThen)) {
 		cx.awaitValue(v, action)
 		return true
 	}
@@ -561,6 +562,25 @@ func (g *generator) tryAwait(v Value, kind reactionKind) bool {
 		})
 	})
 	return ok
+}
+
+// resolveAwaitedPromisePlain resolves the promise v for await, or returns nil when a property read can run code.
+func (cx *ExecutionContext) resolveAwaitedPromisePlain(v Value) *Object {
+	ctor, ok := cx.plainRead(v.o, cx.Key(KeyConstructor))
+	if !ok {
+		return nil
+	}
+	if ctor.o == cx.Intrinsic(IntrinsicPromise) {
+		return v.o
+	}
+	// PromiseResolve wraps a promise from a different constructor and reads its then property.
+	then, ok := cx.plainRead(v.o, cx.Key(keyThen))
+	if !ok {
+		return nil
+	}
+	p := cx.NewPromiseObject(cx.Intrinsic(IntrinsicPromisePrototype))
+	cx.resolvePromiseWithThen(p, v, then)
+	return p
 }
 
 // awaitValue performs PromiseResolve and registers the implicit handlers for an await.
