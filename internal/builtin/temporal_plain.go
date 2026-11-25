@@ -73,7 +73,7 @@ func toTemporalDate(cx *engine.ExecutionContext, item, options engine.Value) pla
 			getOverflowOption(cx, getOptionsObject(cx, options))
 			return *s
 		case *zonedDateTimeSlots:
-			dt := s.tz.ISODateTimeFor(s.ns)
+			dt := s.localDateTime()
 			getOverflowOption(cx, getOptionsObject(cx, options))
 			return plainDateSlots{
 				date: dt.Date,
@@ -118,7 +118,7 @@ func toTemporalDateTime(cx *engine.ExecutionContext, item, options engine.Value)
 			getOverflowOption(cx, getOptionsObject(cx, options))
 			return *s
 		case *zonedDateTimeSlots:
-			dt := s.tz.ISODateTimeFor(s.ns)
+			dt := s.localDateTime()
 			getOverflowOption(cx, getOptionsObject(cx, options))
 			return plainDateTimeSlots{
 				dt:  dt,
@@ -174,7 +174,7 @@ func toTemporalTime(cx *engine.ExecutionContext, item, options engine.Value) tem
 			getOverflowOption(cx, getOptionsObject(cx, options))
 			return s.dt.Time
 		case *zonedDateTimeSlots:
-			dt := s.tz.ISODateTimeFor(s.ns)
+			dt := s.localDateTime()
 			getOverflowOption(cx, getOptionsObject(cx, options))
 			return dt.Time
 		}

@@ -25,6 +25,35 @@ func thisStringValue(cx *engine.ExecutionContext, this engine.Value, what string
 	return cx.ToStringValue(this)
 }
 
+func requireThisString(cx *engine.ExecutionContext, this engine.Value, what string) engine.Value {
+	if this.IsString() {
+		return this
+	}
+	return requireThisStringObject(cx, this, what)
+}
+
+// requireThisStringObject is requireThisString for a receiver that is not a string.
+func requireThisStringObject(cx *engine.ExecutionContext, this engine.Value, what string) engine.Value {
+	s, ok := engine.ThisStringValue(this)
+	if !ok {
+		cx.ThrowTypeError("String.prototype." + what + " requires that 'this' be a String")
+	}
+	return s
+}
+
+// rejectRegExp throws a TypeError when the argument v of the method what is a regular expression.
+func rejectRegExp(cx *engine.ExecutionContext, v engine.Value, what string) {
+	if v.IsObject() {
+		rejectRegExpObject(cx, v, what)
+	}
+}
+
+func rejectRegExpObject(cx *engine.ExecutionContext, v engine.Value, what string) {
+	if isRegExp(cx, v) {
+		cx.ThrowTypeError("first argument to String.prototype." + what + " must not be a regular expression")
+	}
+}
+
 func initString(cx *engine.ExecutionContext) {
 	proto := cx.Intrinsic(engine.IntrinsicStringPrototype)
 	ctor := constructor(cx, "String", 1, engine.IntrinsicStringPrototype, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -102,18 +131,11 @@ func initString(cx *engine.ExecutionContext) {
 		return cx.ConcatStrings(parts)
 	})
 
-	thisValue := func(cx *engine.ExecutionContext, this engine.Value, what string) engine.Value {
-		s, ok := engine.ThisStringValue(this)
-		if !ok {
-			cx.ThrowTypeError("String.prototype." + what + " requires that 'this' be a String")
-		}
-		return s
-	}
 	method(cx, proto, "toString", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		return thisValue(cx, this, "toString")
+		return requireThisString(cx, this, "toString")
 	})
 	method(cx, proto, "valueOf", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		return thisValue(cx, this, "valueOf")
+		return requireThisString(cx, this, "valueOf")
 	})
 	// The kernels of the methods below are the methods for a string and arguments whose
 	// conversions run no code.
@@ -180,14 +202,9 @@ func initString(cx *engine.ExecutionContext) {
 		}
 		return engine.Number(float64(s.UnitLastIndexOf(sub, from, cx.Poll)))
 	})
-	noRegExp := func(cx *engine.ExecutionContext, v engine.Value, what string) {
-		if isRegExp(cx, v) {
-			cx.ThrowTypeError("first argument to String.prototype." + what + " must not be a regular expression")
-		}
-	}
 	includes := method(cx, proto, "includes", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		s := thisStringValue(cx, this, "includes")
-		noRegExp(cx, arg(args, 0), "includes")
+		rejectRegExp(cx, arg(args, 0), "includes")
 		sub := cx.ToStringValue(arg(args, 0))
 		from := numconv.RelativeIndex(math.Max(cx.ToIntegerOrInfinity(arg(args, 1)), 0), s.StringLength())
 		return engine.Bool(s.UnitIndexOf(sub, from, cx.Poll) >= 0)
@@ -200,7 +217,7 @@ func initString(cx *engine.ExecutionContext) {
 	}, nil)
 	method(cx, proto, "startsWith", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		s := thisStringValue(cx, this, "startsWith")
-		noRegExp(cx, arg(args, 0), "startsWith")
+		rejectRegExp(cx, arg(args, 0), "startsWith")
 		sub := cx.ToStringValue(arg(args, 0))
 		n := s.StringLength()
 		from := numconv.RelativeIndex(math.Max(cx.ToIntegerOrInfinity(arg(args, 1)), 0), n)
@@ -209,7 +226,7 @@ func initString(cx *engine.ExecutionContext) {
 	})
 	method(cx, proto, "endsWith", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		s := thisStringValue(cx, this, "endsWith")
-		noRegExp(cx, arg(args, 0), "endsWith")
+		rejectRegExp(cx, arg(args, 0), "endsWith")
 		sub := cx.ToStringValue(arg(args, 0))
 		n := s.StringLength()
 		end := n

@@ -325,6 +325,31 @@ func enumerableOwn(cx *engine.ExecutionContext, o *engine.Object, entries bool) 
 	return out
 }
 
+func objectDefineProperties(cx *engine.ExecutionContext, o *engine.Object, props engine.Value) {
+	src := cx.ToObject(props)
+	type entry struct {
+		k engine.PropKey
+		d engine.PropDesc
+	}
+	var list []entry
+	var pacer engine.Pacer
+	for _, k := range cx.OwnKeys(src) {
+		pacer.Step(cx)
+		d, ok := cx.GetOwnProperty(src, k)
+		if !ok || !d.Enumerable() {
+			continue
+		}
+		list = append(list, entry{
+			k: k,
+			d: cx.ToPropertyDescriptor(cx.Get(src, k)),
+		})
+	}
+	for _, e := range list {
+		pacer.Step(cx)
+		cx.DefinePropertyOrThrow(o, e.k, e.d)
+	}
+}
+
 func initObject(cx *engine.ExecutionContext, strs *objectStrings) {
 	proto := cx.Intrinsic(engine.IntrinsicObjectPrototype)
 	ctor := constructor(cx, "Object", 1, engine.IntrinsicObjectPrototype, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -477,30 +502,6 @@ func initObject(cx *engine.ExecutionContext, strs *objectStrings) {
 		}
 		return o
 	})
-	defineProperties := func(cx *engine.ExecutionContext, o *engine.Object, props engine.Value) {
-		src := cx.ToObject(props)
-		type entry struct {
-			k engine.PropKey
-			d engine.PropDesc
-		}
-		var list []entry
-		var pacer engine.Pacer
-		for _, k := range cx.OwnKeys(src) {
-			pacer.Step(cx)
-			d, ok := cx.GetOwnProperty(src, k)
-			if !ok || !d.Enumerable() {
-				continue
-			}
-			list = append(list, entry{
-				k: k,
-				d: cx.ToPropertyDescriptor(cx.Get(src, k)),
-			})
-		}
-		for _, e := range list {
-			pacer.Step(cx)
-			cx.DefinePropertyOrThrow(o, e.k, e.d)
-		}
-	}
 	method(cx, ctor, "create", 2, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		p := arg(args, 0)
 		if !p.IsObject() && !p.IsNull() {
@@ -512,7 +513,7 @@ func initObject(cx *engine.ExecutionContext, strs *objectStrings) {
 		}
 		o := cx.NewObject(po)
 		if props := arg(args, 1); !props.IsUndefined() {
-			defineProperties(cx, o, props)
+			objectDefineProperties(cx, o, props)
 		}
 		return engine.ObjectValue(o)
 	})
@@ -530,7 +531,7 @@ func initObject(cx *engine.ExecutionContext, strs *objectStrings) {
 		if !o.IsObject() {
 			cx.ThrowTypeError("Object.defineProperties called on non-object")
 		}
-		defineProperties(cx, o.Object(), arg(args, 1))
+		objectDefineProperties(cx, o.Object(), arg(args, 1))
 		return o
 	})
 	method(cx, ctor, "getOwnPropertyDescriptor", 2, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {

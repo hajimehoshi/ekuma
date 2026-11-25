@@ -253,6 +253,44 @@ func writeSeparators(cx *engine.ExecutionContext, b *wtf8.Buffer, sep wtf8.Strin
 	}
 }
 
+// flattenIntoArray implements FlattenIntoArray for the first l elements of src without a mapper function.
+// The nested arrays are kept on an explicit stack, as their depth is unbounded.
+func flattenIntoArray(cx *engine.ExecutionContext, a *engine.Object, src *engine.Object, l int64, depth float64, n *int64) {
+	type level struct {
+		src   *engine.Object
+		i, l  int64
+		depth float64
+	}
+	stack := []level{{
+		src:   src,
+		l:     l,
+		depth: depth,
+	}}
+	for len(stack) > 0 {
+		t := &stack[len(stack)-1]
+		if t.i = cx.Quiet().SkipHoles(t.src, t.i, t.l); t.i >= t.l {
+			stack = stack[:len(stack)-1]
+			continue
+		}
+		i := t.i
+		t.i++
+		if !hasAt(cx, t.src, i) {
+			continue
+		}
+		v := getAt(cx, t.src, i)
+		if t.depth > 0 && cx.IsArray(v) {
+			stack = append(stack, level{
+				src:   v.Object(),
+				l:     cx.LengthOfArrayLike(v.Object()),
+				depth: t.depth - 1,
+			})
+			continue
+		}
+		cx.CreateDataPropertyOrThrow(a, bigKey(cx, *n), v)
+		*n++
+	}
+}
+
 func initArray(cx *engine.ExecutionContext, strs *objectStrings) {
 	proto := cx.Intrinsic(engine.IntrinsicArrayPrototype)
 	var joins joinGuard
@@ -1004,43 +1042,6 @@ func initArray(cx *engine.ExecutionContext, strs *objectStrings) {
 		}
 		return engine.ObjectValue(o)
 	})
-	// flatten implements FlattenIntoArray for the first l elements of src without a mapper function.
-	// The nested arrays are kept on an explicit stack, as their depth is unbounded.
-	flatten := func(cx *engine.ExecutionContext, a *engine.Object, src *engine.Object, l int64, depth float64, n *int64) {
-		type level struct {
-			src   *engine.Object
-			i, l  int64
-			depth float64
-		}
-		stack := []level{{
-			src:   src,
-			l:     l,
-			depth: depth,
-		}}
-		for len(stack) > 0 {
-			t := &stack[len(stack)-1]
-			if t.i = cx.Quiet().SkipHoles(t.src, t.i, t.l); t.i >= t.l {
-				stack = stack[:len(stack)-1]
-				continue
-			}
-			i := t.i
-			t.i++
-			if !hasAt(cx, t.src, i) {
-				continue
-			}
-			v := getAt(cx, t.src, i)
-			if t.depth > 0 && cx.IsArray(v) {
-				stack = append(stack, level{
-					src:   v.Object(),
-					l:     cx.LengthOfArrayLike(v.Object()),
-					depth: t.depth - 1,
-				})
-				continue
-			}
-			cx.CreateDataPropertyOrThrow(a, bigKey(cx, *n), v)
-			*n++
-		}
-	}
 	method(cx, proto, "flat", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		o := cx.ToObject(this)
 		l := cx.LengthOfArrayLike(o)
@@ -1050,7 +1051,7 @@ func initArray(cx *engine.ExecutionContext, strs *objectStrings) {
 		}
 		a := arraySpeciesCreate(cx, o, 0)
 		var n int64
-		flatten(cx, a, o, l, depth, &n)
+		flattenIntoArray(cx, a, o, l, depth, &n)
 		return engine.ObjectValue(a)
 	})
 	method(cx, proto, "flatMap", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -1068,7 +1069,7 @@ func initArray(cx *engine.ExecutionContext, strs *objectStrings) {
 			}
 			v := cx.Call(cb, arg(args, 1), getAt(cx, o, i), engine.Number(float64(i)), engine.ObjectValue(o))
 			if cx.IsArray(v) {
-				flatten(cx, a, v.Object(), cx.LengthOfArrayLike(v.Object()), 0, &n)
+				flattenIntoArray(cx, a, v.Object(), cx.LengthOfArrayLike(v.Object()), 0, &n)
 				continue
 			}
 			cx.CreateDataPropertyOrThrow(a, bigKey(cx, n), v)

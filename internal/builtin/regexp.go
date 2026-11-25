@@ -487,6 +487,13 @@ var flagProps = []struct {
 	},
 }
 
+func thisRegExp(cx *engine.ExecutionContext, this engine.Value, what string) *engine.Object {
+	if !this.IsObject() || this.Object().RegExpMatcher() == nil {
+		cx.ThrowTypeError("RegExp.prototype." + what + " requires that 'this' be a RegExp object")
+	}
+	return this.Object()
+}
+
 func initRegExp(cx *engine.ExecutionContext) {
 	env := &regexpEnv{
 		lastIndex: cx.Intern("lastIndex"),
@@ -537,13 +544,6 @@ func initRegExp(cx *engine.ExecutionContext) {
 	cx.DefineAccessor(ctor, cx.WellKnownSymbol(engine.SymbolSpecies), cx.NewNative("get [Symbol.species]", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		return this
 	}), nil, engine.FlagConfigurable)
-
-	thisRegExp := func(cx *engine.ExecutionContext, this engine.Value, what string) *engine.Object {
-		if !this.IsObject() || this.Object().RegExpMatcher() == nil {
-			cx.ThrowTypeError("RegExp.prototype." + what + " requires that 'this' be a RegExp object")
-		}
-		return this.Object()
-	}
 
 	// exec and test borrow the RegExp object of a literal they are called on. They run no script
 	// code before the last use of it, except the conversion of an object argument.

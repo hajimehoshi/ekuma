@@ -531,25 +531,26 @@ func formattedString(cx *engine.ExecutionContext, s string) engine.Value {
 	return cx.NewString(wtf8.String(s))
 }
 
+func formatToLocaleString(cx *engine.ExecutionContext, args []engine.Value, x number.Decimal) engine.Value {
+	nf := createNumberFormat(cx, arg(args, 0), arg(args, 1))
+	return formattedString(cx, nf.f.FormatToString(x, cx.Poll))
+}
+
 // initToLocaleString replaces Number.prototype.toLocaleString and
 // BigInt.prototype.toLocaleString with the versions of ECMA-402.
 func initToLocaleString(cx *engine.ExecutionContext) {
-	format := func(cx *engine.ExecutionContext, args []engine.Value, x number.Decimal) engine.Value {
-		nf := createNumberFormat(cx, arg(args, 0), arg(args, 1))
-		return formattedString(cx, nf.f.FormatToString(x, cx.Poll))
-	}
 	method(cx, cx.Intrinsic(engine.IntrinsicNumberPrototype), "toLocaleString", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		x, ok := engine.ThisNumberValue(this)
 		if !ok {
 			cx.ThrowTypeError("Number.prototype.toLocaleString requires that 'this' be a Number")
 		}
-		return format(cx, args, number.FromFloat(x))
+		return formatToLocaleString(cx, args, number.FromFloat(x))
 	})
 	method(cx, cx.Intrinsic(engine.IntrinsicBigIntPrototype), "toLocaleString", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		x, ok := engine.ThisBigIntValue(this)
 		if !ok {
 			cx.ThrowTypeError("BigInt.prototype.toLocaleString requires that 'this' be a BigInt")
 		}
-		return format(cx, args, number.FromInteger(string(cx.BigIntToString(x, 10))))
+		return formatToLocaleString(cx, args, number.FromInteger(string(cx.BigIntToString(x, 10))))
 	})
 }

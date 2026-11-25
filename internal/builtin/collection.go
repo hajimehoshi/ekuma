@@ -483,6 +483,10 @@ func (r *setRecord) eachKey(cx *engine.ExecutionContext, f func(engine.Value) bo
 	cx.IterateRecord(it, next, f)
 }
 
+func newSet(cx *engine.ExecutionContext, t *collection.Table) engine.Value {
+	return engine.ObjectValue(cx.NewSetObject(cx.Intrinsic(engine.IntrinsicSetPrototype), t))
+}
+
 func initSet(cx *engine.ExecutionContext) {
 	proto := cx.Intrinsic(engine.IntrinsicSetPrototype)
 	addKey := cx.Intern("add")
@@ -534,10 +538,6 @@ func initSet(cx *engine.ExecutionContext) {
 		return engine.ObjectValue(s)
 	})
 	speciesGetter(cx, ctor)
-
-	newSet := func(cx *engine.ExecutionContext, t *collection.Table) engine.Value {
-		return engine.ObjectValue(cx.NewSetObject(cx.Intrinsic(engine.IntrinsicSetPrototype), t))
-	}
 
 	// The kernels of the methods are the methods for a Set object.
 	methods.adder = method(cx, proto, "add", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {

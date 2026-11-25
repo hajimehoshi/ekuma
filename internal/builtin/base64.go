@@ -291,67 +291,73 @@ func stringOption(cx *engine.ExecutionContext, opts engine.Value, name string, c
 	return ""
 }
 
+// thisUint8Array implements ValidateUint8Array with the access mode write when write is set.
+func thisUint8Array(cx *engine.ExecutionContext, this engine.Value, write bool, what string) *engine.TypedArray {
+	t := engine.TypedArrayData(this)
+	if t == nil || t.ElementType() != element.Uint8 {
+		cx.ThrowTypeError("Uint8Array.prototype." + what + ": this is not a Uint8Array")
+	}
+	if write && t.ArrayBuffer().IsImmutable() {
+		cx.ThrowTypeError("Uint8Array.prototype." + what + ": the typed array is backed by an immutable ArrayBuffer")
+	}
+	return t
+}
+
+func uint8ArrayLength(cx *engine.ExecutionContext, t *engine.TypedArray, what string) int {
+	n, ok := t.Length()
+	if !ok {
+		cx.ThrowTypeError("Uint8Array.prototype." + what + ": the typed array is detached or out of bounds")
+	}
+	return n
+}
+
+// uint8ArrayBytes implements GetUint8ArrayBytes.
+func uint8ArrayBytes(cx *engine.ExecutionContext, t *engine.TypedArray, what string) []byte {
+	uint8ArrayLength(cx, t, what)
+	return elementsOf(t)
+}
+
+func encodedStringArg(cx *engine.ExecutionContext, args []engine.Value) wtf8.String {
+	s := arg(args, 0)
+	if !s.IsString() {
+		cx.ThrowTypeError("the argument must be a string")
+	}
+	return s.Str()
+}
+
+func base64DecodeOptions(cx *engine.ExecutionContext, options engine.Value) (bool, wtf8.String) {
+	opts := optionsObject(cx, options)
+	alphabet := stringOption(cx, opts, "alphabet", "base64", "base64url")
+	last := stringOption(cx, opts, "lastChunkHandling", "loose", "strict", "stop-before-partial")
+	return alphabet == "base64url", last
+}
+
+// storeDecodeResult implements the end of setFromBase64 and setFromHex.
+func storeDecodeResult(cx *engine.ExecutionContext, t *engine.TypedArray, r decodeResult) engine.Value {
+	writeElements(t, 0, r.bytes)
+	if r.err != "" {
+		cx.ThrowSyntaxError(r.err)
+	}
+	o := cx.NewObjectFromProperties(
+		[]engine.PropKey{engine.NamedKey(cx.Intern("read")), engine.NamedKey(cx.Intern("written"))},
+		[]engine.Value{engine.Number(float64(r.read)), engine.Number(float64(len(r.bytes)))},
+	)
+	return engine.ObjectValue(o)
+}
+
 func initUint8ArrayBase64(cx *engine.ExecutionContext, bi *binaryIntrinsics) {
 	ctor := bi.ctors[element.Uint8]
 	proto := bi.protos[element.Uint8]
 
-	// thisUint8Array implements ValidateUint8Array with the access mode write when write is set.
-	thisUint8Array := func(cx *engine.ExecutionContext, this engine.Value, write bool, what string) *engine.TypedArray {
-		t := engine.TypedArrayData(this)
-		if t == nil || t.ElementType() != element.Uint8 {
-			cx.ThrowTypeError("Uint8Array.prototype." + what + ": this is not a Uint8Array")
-		}
-		if write && t.ArrayBuffer().IsImmutable() {
-			cx.ThrowTypeError("Uint8Array.prototype." + what + ": the typed array is backed by an immutable ArrayBuffer")
-		}
-		return t
-	}
-	lengthOf := func(cx *engine.ExecutionContext, t *engine.TypedArray, what string) int {
-		n, ok := t.Length()
-		if !ok {
-			cx.ThrowTypeError("Uint8Array.prototype." + what + ": the typed array is detached or out of bounds")
-		}
-		return n
-	}
-	// bytesOf implements GetUint8ArrayBytes.
-	bytesOf := func(cx *engine.ExecutionContext, t *engine.TypedArray, what string) []byte {
-		lengthOf(cx, t, what)
-		return elementsOf(t)
-	}
-	stringArg := func(cx *engine.ExecutionContext, args []engine.Value) wtf8.String {
-		s := arg(args, 0)
-		if !s.IsString() {
-			cx.ThrowTypeError("the argument must be a string")
-		}
-		return s.Str()
-	}
-	base64Options := func(cx *engine.ExecutionContext, options engine.Value) (bool, wtf8.String) {
-		opts := optionsObject(cx, options)
-		alphabet := stringOption(cx, opts, "alphabet", "base64", "base64url")
-		last := stringOption(cx, opts, "lastChunkHandling", "loose", "strict", "stop-before-partial")
-		return alphabet == "base64url", last
-	}
 	newUint8Array := func(cx *engine.ExecutionContext, b []byte) engine.Value {
 		o := bi.newTypedArray(cx, proto, element.Uint8, int64(len(b)))
 		writeElements(engine.TypedArrayData(engine.ObjectValue(o)), 0, b)
 		return engine.ObjectValue(o)
 	}
-	// setResult implements the end of setFromBase64 and setFromHex.
-	setResult := func(cx *engine.ExecutionContext, t *engine.TypedArray, r decodeResult) engine.Value {
-		writeElements(t, 0, r.bytes)
-		if r.err != "" {
-			cx.ThrowSyntaxError(r.err)
-		}
-		o := cx.NewObjectFromProperties(
-			[]engine.PropKey{engine.NamedKey(cx.Intern("read")), engine.NamedKey(cx.Intern("written"))},
-			[]engine.Value{engine.Number(float64(r.read)), engine.Number(float64(len(r.bytes)))},
-		)
-		return engine.ObjectValue(o)
-	}
 
 	method(cx, ctor, "fromBase64", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		s := stringArg(cx, args)
-		url, last := base64Options(cx, arg(args, 1))
+		s := encodedStringArg(cx, args)
+		url, last := base64DecodeOptions(cx, arg(args, 1))
 		r := fromBase64(cx, s, url, last, math.MaxInt)
 		if r.err != "" {
 			cx.ThrowSyntaxError(r.err)
@@ -359,7 +365,7 @@ func initUint8ArrayBase64(cx *engine.ExecutionContext, bi *binaryIntrinsics) {
 		return newUint8Array(cx, r.bytes)
 	})
 	method(cx, ctor, "fromHex", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		r := fromHex(cx, stringArg(cx, args), math.MaxInt)
+		r := fromHex(cx, encodedStringArg(cx, args), math.MaxInt)
 		if r.err != "" {
 			cx.ThrowSyntaxError(r.err)
 		}
@@ -367,23 +373,23 @@ func initUint8ArrayBase64(cx *engine.ExecutionContext, bi *binaryIntrinsics) {
 	})
 	method(cx, proto, "setFromBase64", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		t := thisUint8Array(cx, this, true, "setFromBase64")
-		s := stringArg(cx, args)
-		url, last := base64Options(cx, arg(args, 1))
-		n := lengthOf(cx, t, "setFromBase64")
-		return setResult(cx, t, fromBase64(cx, s, url, last, n))
+		s := encodedStringArg(cx, args)
+		url, last := base64DecodeOptions(cx, arg(args, 1))
+		n := uint8ArrayLength(cx, t, "setFromBase64")
+		return storeDecodeResult(cx, t, fromBase64(cx, s, url, last, n))
 	})
 	method(cx, proto, "setFromHex", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		t := thisUint8Array(cx, this, true, "setFromHex")
-		s := stringArg(cx, args)
-		n := lengthOf(cx, t, "setFromHex")
-		return setResult(cx, t, fromHex(cx, s, n))
+		s := encodedStringArg(cx, args)
+		n := uint8ArrayLength(cx, t, "setFromHex")
+		return storeDecodeResult(cx, t, fromHex(cx, s, n))
 	})
 	method(cx, proto, "toBase64", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		t := thisUint8Array(cx, this, false, "toBase64")
 		opts := optionsObject(cx, arg(args, 0))
 		alphabet := stringOption(cx, opts, "alphabet", "base64", "base64url")
 		omitPadding := engine.ToBoolean(cx.GetV(opts, cx.Intern("omitPadding")))
-		b := bytesOf(cx, t, "toBase64")
+		b := uint8ArrayBytes(cx, t, "toBase64")
 		enc := base64.StdEncoding
 		if alphabet == "base64url" {
 			enc = base64.URLEncoding
@@ -397,7 +403,7 @@ func initUint8ArrayBase64(cx *engine.ExecutionContext, bi *binaryIntrinsics) {
 	})
 	method(cx, proto, "toHex", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		t := thisUint8Array(cx, this, false, "toHex")
-		return cx.NewString(wtf8.String(encodeInChunks(cx, bytesOf(cx, t, "toHex"), 1, hex.EncodedLen, hex.AppendEncode)))
+		return cx.NewString(wtf8.String(encodeInChunks(cx, uint8ArrayBytes(cx, t, "toHex"), 1, hex.EncodedLen, hex.AppendEncode)))
 	})
 }
 

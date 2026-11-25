@@ -597,6 +597,16 @@ func fillElements(b []byte, typ element.Type, x uint64) {
 	}
 }
 
+func requireTypedArray(cx *engine.ExecutionContext, t *engine.TypedArray, what string) {
+	if t == nil {
+		throwNotTypedArray(cx, what)
+	}
+}
+
+func throwNotTypedArray(cx *engine.ExecutionContext, what string) {
+	cx.ThrowTypeError("%TypedArray%.prototype." + what + ": this is not a typed array")
+}
+
 func initTypedArrays(cx *engine.ExecutionContext, bi *binaryIntrinsics) {
 	proto := cx.NewOrdinaryObject()
 	bi.typedArrayProto = proto
@@ -655,30 +665,29 @@ func initTypedArrays(cx *engine.ExecutionContext, bi *binaryIntrinsics) {
 		return engine.ObjectValue(o)
 	})
 
-	thisTypedArray := func(cx *engine.ExecutionContext, this engine.Value, what string) *engine.TypedArray {
-		t := engine.TypedArrayData(this)
-		if t == nil {
-			cx.ThrowTypeError("%TypedArray%.prototype." + what + ": this is not a typed array")
-		}
-		return t
-	}
 	getter(cx, proto, cx.Intern("buffer"), "buffer", func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		return engine.ObjectValue(thisTypedArray(cx, this, "buffer").Buffer())
+		t := engine.TypedArrayData(this)
+		requireTypedArray(cx, t, "buffer")
+		return engine.ObjectValue(t.Buffer())
 	})
 	getter(cx, proto, cx.Intern("byteLength"), "byteLength", func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		t := thisTypedArray(cx, this, "byteLength")
+		t := engine.TypedArrayData(this)
+		requireTypedArray(cx, t, "byteLength")
 		n, _ := t.Length()
 		return engine.Number(float64(n * t.ElementType().Size()))
 	})
 	getter(cx, proto, cx.Intern("byteOffset"), "byteOffset", func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		t := thisTypedArray(cx, this, "byteOffset")
+		t := engine.TypedArrayData(this)
+		requireTypedArray(cx, t, "byteOffset")
 		if _, ok := t.Length(); !ok {
 			return engine.Number(0)
 		}
 		return engine.Number(float64(t.ByteOffset()))
 	})
 	lengthGetter := cx.NewNative("get length", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		n, _ := thisTypedArray(cx, this, "length").Length()
+		t := engine.TypedArrayData(this)
+		requireTypedArray(cx, t, "length")
+		n, _ := t.Length()
 		return engine.Number(float64(n))
 	})
 	cx.SetIntrinsic(engine.IntrinsicTypedArrayPrototypeLengthGetter, lengthGetter)

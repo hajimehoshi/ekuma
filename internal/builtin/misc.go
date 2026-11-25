@@ -15,6 +15,34 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
+func isIntegralNumber(v engine.Value) bool {
+	return v.IsNumber() && v.Number() == math.Trunc(v.Number()) && !math.IsInf(v.Number(), 0)
+}
+
+func thisNumber(cx *engine.ExecutionContext, this engine.Value, what string) float64 {
+	if this.IsNumber() {
+		return this.Number()
+	}
+	return thisNumberObject(cx, this, what)
+}
+
+// thisNumberObject is thisNumber for a receiver that is not a number.
+func thisNumberObject(cx *engine.ExecutionContext, this engine.Value, what string) float64 {
+	n, ok := engine.ThisNumberValue(this)
+	if !ok {
+		cx.ThrowTypeError("Number.prototype." + what + " requires that 'this' be a Number")
+	}
+	return n
+}
+
+func thisBoolean(cx *engine.ExecutionContext, this engine.Value, what string) bool {
+	b, ok := engine.ThisBooleanValue(this)
+	if !ok {
+		cx.ThrowTypeError("Boolean.prototype." + what + " requires that 'this' be a Boolean")
+	}
+	return b
+}
+
 // initNumber defines Number and Boolean.
 // parseFloat and parseInt are the functions to define as properties of Number.
 func initNumber(cx *engine.ExecutionContext, parseFloat, parseInt *engine.Object) {
@@ -44,15 +72,12 @@ func initNumber(cx *engine.ExecutionContext, parseFloat, parseInt *engine.Object
 	constant(cx, ctor, "POSITIVE_INFINITY", engine.Number(math.Inf(1)))
 	constant(cx, ctor, "NEGATIVE_INFINITY", engine.Number(math.Inf(-1)))
 	constant(cx, ctor, "NaN", engine.Number(math.NaN()))
-	isInteger := func(v engine.Value) bool {
-		return v.IsNumber() && v.Number() == math.Trunc(v.Number()) && !math.IsInf(v.Number(), 0)
-	}
 	method(cx, ctor, "isInteger", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		return engine.Bool(isInteger(arg(args, 0)))
+		return engine.Bool(isIntegralNumber(arg(args, 0)))
 	})
 	method(cx, ctor, "isSafeInteger", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		v := arg(args, 0)
-		return engine.Bool(isInteger(v) && math.Abs(v.Number()) <= numconv.MaxSafeInteger)
+		return engine.Bool(isIntegralNumber(v) && math.Abs(v.Number()) <= numconv.MaxSafeInteger)
 	})
 	method(cx, ctor, "isFinite", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		v := arg(args, 0)
@@ -65,13 +90,6 @@ func initNumber(cx *engine.ExecutionContext, parseFloat, parseInt *engine.Object
 	cx.Define(ctor, cx.Intern("parseFloat"), engine.ObjectValue(parseFloat), engine.FlagsHidden)
 	cx.Define(ctor, cx.Intern("parseInt"), engine.ObjectValue(parseInt), engine.FlagsHidden)
 
-	thisNumber := func(cx *engine.ExecutionContext, this engine.Value, what string) float64 {
-		n, ok := engine.ThisNumberValue(this)
-		if !ok {
-			cx.ThrowTypeError("Number.prototype." + what + " requires that 'this' be a Number")
-		}
-		return n
-	}
 	method(cx, proto, "valueOf", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		return engine.Number(thisNumber(cx, this, "valueOf"))
 	})
@@ -170,18 +188,11 @@ func initNumber(cx *engine.ExecutionContext, parseFloat, parseInt *engine.Object
 		}
 		return engine.Bool(b)
 	})
-	thisBool := func(cx *engine.ExecutionContext, this engine.Value, what string) bool {
-		b, ok := engine.ThisBooleanValue(this)
-		if !ok {
-			cx.ThrowTypeError("Boolean.prototype." + what + " requires that 'this' be a Boolean")
-		}
-		return b
-	}
 	method(cx, bproto, "valueOf", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		return engine.Bool(thisBool(cx, this, "valueOf"))
+		return engine.Bool(thisBoolean(cx, this, "valueOf"))
 	})
 	method(cx, bproto, "toString", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		if thisBool(cx, this, "toString") {
+		if thisBoolean(cx, this, "toString") {
 			return cx.NewString("true")
 		}
 		return cx.NewString("false")
@@ -605,6 +616,14 @@ func fixExponent(s []byte) []byte {
 	return append(s[:i+2], digits[j:]...)
 }
 
+func thisSymbol(cx *engine.ExecutionContext, this engine.Value, what string) *engine.Object {
+	s, ok := engine.ThisSymbolValue(this)
+	if !ok {
+		cx.ThrowTypeError("Symbol.prototype." + what + " requires that 'this' be a Symbol")
+	}
+	return s
+}
+
 func initSymbol(cx *engine.ExecutionContext) {
 	proto := cx.Intrinsic(engine.IntrinsicSymbolPrototype)
 	ctor := constructor(cx, "Symbol", 0, engine.IntrinsicSymbolPrototype, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -642,13 +661,6 @@ func initSymbol(cx *engine.ExecutionContext) {
 		}
 		return cx.NewString(key)
 	})
-	thisSymbol := func(cx *engine.ExecutionContext, this engine.Value, what string) *engine.Object {
-		s, ok := engine.ThisSymbolValue(this)
-		if !ok {
-			cx.ThrowTypeError("Symbol.prototype." + what + " requires that 'this' be a Symbol")
-		}
-		return s
-	}
 	method(cx, proto, "toString", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		desc, _ := engine.SymbolDescription(thisSymbol(cx, this, "toString"))
 		checkStringLength(cx, len(desc)+8)

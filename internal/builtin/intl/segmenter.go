@@ -153,6 +153,22 @@ func (r *realm) newSegmenter(cx *engine.ExecutionContext, this engine.Value, arg
 	return engine.ObjectValue(cx.NewIntlObject(proto, sd))
 }
 
+func thisSegmenter(cx *engine.ExecutionContext, this engine.Value, name string) *segmenterData {
+	sd, ok := engine.IntlData(this).(*segmenterData)
+	if !ok {
+		cx.ThrowTypeError("Intl.Segmenter.prototype." + name + " called on an object that is not an Intl.Segmenter")
+	}
+	return sd
+}
+
+func thisSegments(cx *engine.ExecutionContext, this engine.Value, name string) *segmentsData {
+	d, ok := engine.IntlData(this).(*segmentsData)
+	if !ok {
+		cx.ThrowTypeError("%Segments.prototype%." + name + " called on an object that is not a Segments object")
+	}
+	return d
+}
+
 // initSegmenter defines Intl.Segmenter.
 func (r *realm) initSegmenter(cx *engine.ExecutionContext) {
 	proto := cx.NewObject(cx.Intrinsic(engine.IntrinsicObjectPrototype))
@@ -168,13 +184,6 @@ func (r *realm) initSegmenter(cx *engine.ExecutionContext) {
 	method(cx, ctor, "supportedLocalesOf", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		return supportedLocalesOf(cx, args)
 	})
-	thisSegmenter := func(cx *engine.ExecutionContext, this engine.Value, name string) *segmenterData {
-		sd, ok := engine.IntlData(this).(*segmenterData)
-		if !ok {
-			cx.ThrowTypeError("Intl.Segmenter.prototype." + name + " called on an object that is not an Intl.Segmenter")
-		}
-		return sd
-	}
 	method(cx, proto, "resolvedOptions", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		sd := thisSegmenter(cx, this, "resolvedOptions")
 		out := cx.NewObjectFromProperties(
@@ -191,13 +200,6 @@ func (r *realm) initSegmenter(cx *engine.ExecutionContext) {
 	})
 	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Intl.Segmenter"), engine.FlagConfigurable)
 
-	thisSegments := func(cx *engine.ExecutionContext, this engine.Value, name string) *segmentsData {
-		d, ok := engine.IntlData(this).(*segmentsData)
-		if !ok {
-			cx.ThrowTypeError("%Segments.prototype%." + name + " called on an object that is not a Segments object")
-		}
-		return d
-	}
 	method(cx, segmentsProto, "containing", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		d := thisSegments(cx, this, "containing")
 		n := cx.ToIntegerOrInfinity(arg(args, 0))

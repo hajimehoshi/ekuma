@@ -21,6 +21,14 @@ func requireHoldable(cx *engine.ExecutionContext, v engine.Value, what string) {
 	}
 }
 
+func thisWeakMap(cx *engine.ExecutionContext, this engine.Value, name string) *engine.WeakTable {
+	t := engine.WeakMapData(this)
+	if t == nil {
+		cx.ThrowTypeError("WeakMap.prototype." + name + " called on incompatible receiver " + cx.DisplayString(this))
+	}
+	return t
+}
+
 func initWeakMap(cx *engine.ExecutionContext) {
 	proto := cx.NewOrdinaryObject()
 	cx.SetIntrinsic(engine.IntrinsicWeakMapPrototype, proto)
@@ -53,13 +61,6 @@ func initWeakMap(cx *engine.ExecutionContext) {
 		return engine.ObjectValue(m)
 	})
 
-	thisWeakMap := func(cx *engine.ExecutionContext, this engine.Value, name string) *engine.WeakTable {
-		t := engine.WeakMapData(this)
-		if t == nil {
-			cx.ThrowTypeError("WeakMap.prototype." + name + " called on incompatible receiver " + cx.DisplayString(this))
-		}
-		return t
-	}
 	method(cx, proto, "delete", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		t := thisWeakMap(cx, this, "delete")
 		k := arg(args, 0)
@@ -113,6 +114,14 @@ func initWeakMap(cx *engine.ExecutionContext) {
 	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("WeakMap"), engine.FlagConfigurable)
 }
 
+func thisWeakSet(cx *engine.ExecutionContext, this engine.Value, name string) *engine.WeakTable {
+	t := engine.WeakSetData(this)
+	if t == nil {
+		cx.ThrowTypeError("WeakSet.prototype." + name + " called on incompatible receiver " + cx.DisplayString(this))
+	}
+	return t
+}
+
 func initWeakSet(cx *engine.ExecutionContext) {
 	proto := cx.NewOrdinaryObject()
 	cx.SetIntrinsic(engine.IntrinsicWeakSetPrototype, proto)
@@ -142,13 +151,6 @@ func initWeakSet(cx *engine.ExecutionContext) {
 		return engine.ObjectValue(s)
 	})
 
-	thisWeakSet := func(cx *engine.ExecutionContext, this engine.Value, name string) *engine.WeakTable {
-		t := engine.WeakSetData(this)
-		if t == nil {
-			cx.ThrowTypeError("WeakSet.prototype." + name + " called on incompatible receiver " + cx.DisplayString(this))
-		}
-		return t
-	}
 	weakSetAdd = method(cx, proto, "add", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		t := thisWeakSet(cx, this, "add")
 		v := arg(args, 0)
@@ -193,6 +195,14 @@ func initWeakRef(cx *engine.ExecutionContext) {
 	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("WeakRef"), engine.FlagConfigurable)
 }
 
+func thisFinalizationRegistry(cx *engine.ExecutionContext, this engine.Value, name string) *engine.FinalizationRegistry {
+	r := engine.FinalizationRegistryData(this)
+	if r == nil {
+		cx.ThrowTypeError("FinalizationRegistry.prototype." + name + " called on incompatible receiver " + cx.DisplayString(this))
+	}
+	return r
+}
+
 func initFinalizationRegistry(cx *engine.ExecutionContext) {
 	proto := cx.NewOrdinaryObject()
 	cx.SetIntrinsic(engine.IntrinsicFinalizationRegistryPrototype, proto)
@@ -208,15 +218,8 @@ func initFinalizationRegistry(cx *engine.ExecutionContext) {
 		return engine.ObjectValue(cx.NewFinalizationRegistryObject(cx.GetPrototypeFromConstructor(nt, engine.IntrinsicFinalizationRegistryPrototype), cb.Object()))
 	})
 
-	thisRegistry := func(cx *engine.ExecutionContext, this engine.Value, name string) *engine.FinalizationRegistry {
-		r := engine.FinalizationRegistryData(this)
-		if r == nil {
-			cx.ThrowTypeError("FinalizationRegistry.prototype." + name + " called on incompatible receiver " + cx.DisplayString(this))
-		}
-		return r
-	}
 	method(cx, proto, "register", 2, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		r := thisRegistry(cx, this, "register")
+		r := thisFinalizationRegistry(cx, this, "register")
 		target, held, token := arg(args, 0), arg(args, 1), arg(args, 2)
 		requireHoldable(cx, target, "as FinalizationRegistry target")
 		if engine.SameValue(target, held) {
@@ -231,7 +234,7 @@ func initFinalizationRegistry(cx *engine.ExecutionContext) {
 		return engine.Undefined
 	})
 	method(cx, proto, "unregister", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		r := thisRegistry(cx, this, "unregister")
+		r := thisFinalizationRegistry(cx, this, "unregister")
 		token := arg(args, 0)
 		requireHoldable(cx, token, "as unregister token")
 		return engine.Bool(r.Unregister(token, cx.Poll))

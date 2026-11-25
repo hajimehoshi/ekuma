@@ -185,21 +185,26 @@ type wrappedIterator struct {
 	iterRecord
 }
 
+func requireWrappedIterator(cx *engine.ExecutionContext, w *wrappedIterator, what string) {
+	if w == nil {
+		throwNotWrappedIterator(cx, what)
+	}
+}
+
+func throwNotWrappedIterator(cx *engine.ExecutionContext, what string) {
+	cx.ThrowTypeError("%WrapForValidIteratorPrototype%." + what + " called on an incompatible receiver")
+}
+
 func initIteratorFrom(cx *engine.ExecutionContext, k *iteratorKeys, ctor *engine.Object) {
 	wrapProto := cx.NewObject(cx.Intrinsic(engine.IntrinsicIteratorPrototype))
-	thisWrapped := func(cx *engine.ExecutionContext, this engine.Value, what string) *wrappedIterator {
-		w, _ := engine.IteratorState(this).(*wrappedIterator)
-		if w == nil {
-			cx.ThrowTypeError("%WrapForValidIteratorPrototype%." + what + " called on an incompatible receiver")
-		}
-		return w
-	}
 	method(cx, wrapProto, "next", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		w := thisWrapped(cx, this, "next")
+		w, _ := engine.IteratorState(this).(*wrappedIterator)
+		requireWrappedIterator(cx, w, "next")
 		return cx.CallValue(w.next, w.it)
 	})
 	method(cx, wrapProto, "return", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		w := thisWrapped(cx, this, "return")
+		w, _ := engine.IteratorState(this).(*wrappedIterator)
+		requireWrappedIterator(cx, w, "return")
 		m := cx.GetMethod(w.it, k.ret)
 		if m == nil {
 			return cx.CreateIterResultObject(engine.Undefined, true)
@@ -373,6 +378,18 @@ func (h *zipHelper) close(cx *engine.ExecutionContext) {
 	cx.IteratorCloseAll(h.open)
 }
 
+func newZipHelper(open, next []engine.Value, mode zipMode) *zipHelper {
+	h := &zipHelper{
+		open: open,
+		next: next,
+		mode: mode,
+	}
+	if mode == zipLongest {
+		h.padding = make([]engine.Value, len(open))
+	}
+	return h
+}
+
 func initIteratorZip(cx *engine.ExecutionContext, ctor *engine.Object, newHelper func(*engine.ExecutionContext, helperBody) engine.Value) {
 	modeKey := cx.Intern("mode")
 	paddingKey := cx.Intern("padding")
@@ -409,17 +426,6 @@ func initIteratorZip(cx *engine.ExecutionContext, ctor *engine.Object, newHelper
 		}
 		return mode, pad
 	}
-	newZip := func(open, next []engine.Value, mode zipMode) *zipHelper {
-		h := &zipHelper{
-			open: open,
-			next: next,
-			mode: mode,
-		}
-		if mode == zipLongest {
-			h.padding = make([]engine.Value, len(open))
-		}
-		return h
-	}
 
 	method(cx, ctor, "zip", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		iterables := arg(args, 0)
@@ -444,7 +450,7 @@ func initIteratorZip(cx *engine.ExecutionContext, ctor *engine.Object, newHelper
 			next = append(next, r.next)
 		}
 		open[0] = engine.Undefined
-		h := newZip(open[1:], next, mode)
+		h := newZipHelper(open[1:], next, mode)
 		if mode == zipLongest && !pad.IsUndefined() {
 			var padIt, padNext engine.Value
 			cx.IfAbruptCloseIterators(h.open, func() {
@@ -497,7 +503,7 @@ func initIteratorZip(cx *engine.ExecutionContext, ctor *engine.Object, newHelper
 				next = append(next, r.next)
 			}
 		}
-		h := newZip(open, next, mode)
+		h := newZipHelper(open, next, mode)
 		h.keys = keys
 		if keys == nil {
 			h.keys = []engine.PropKey{}

@@ -29,6 +29,22 @@ func low64(i *big.Int) uint64 {
 	return u
 }
 
+func thisBigInt(cx *engine.ExecutionContext, this engine.Value, what string) engine.Value {
+	if this.IsBigInt() {
+		return this
+	}
+	return thisBigIntObject(cx, this, what)
+}
+
+// thisBigIntObject is thisBigInt for a receiver that is not a BigInt.
+func thisBigIntObject(cx *engine.ExecutionContext, this engine.Value, what string) engine.Value {
+	v, ok := engine.ThisBigIntValue(this)
+	if !ok {
+		cx.ThrowTypeError("BigInt.prototype." + what + " requires that 'this' be a BigInt")
+	}
+	return v
+}
+
 // initBigInt defines BigInt.
 func initBigInt(cx *engine.ExecutionContext) {
 	proto := cx.Intrinsic(engine.IntrinsicBigIntPrototype)
@@ -117,13 +133,6 @@ func initBigInt(cx *engine.ExecutionContext) {
 		return cx.NewBigInt(new(big.Int).And(i, m.Sub(m, big.NewInt(1))))
 	})
 
-	thisBigInt := func(cx *engine.ExecutionContext, this engine.Value, what string) engine.Value {
-		v, ok := engine.ThisBigIntValue(this)
-		if !ok {
-			cx.ThrowTypeError("BigInt.prototype." + what + " requires that 'this' be a BigInt")
-		}
-		return v
-	}
 	method(cx, proto, "toString", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		x := thisBigInt(cx, this, "toString")
 		radix := 10.0

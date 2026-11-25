@@ -9,6 +9,40 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
+func thisDataView(cx *engine.ExecutionContext, this engine.Value, what string) *engine.DataView {
+	d := engine.DataViewData(this)
+	if d == nil {
+		cx.ThrowTypeError("DataView.prototype." + what + " called on incompatible receiver " + cx.DisplayString(this))
+	}
+	return d
+}
+
+// viewElementBytes returns the bytes from the element of type typ at the converted index, as
+// GetViewValue and SetViewValue check it, from the bytes b of the view.
+func viewElementBytes(cx *engine.ExecutionContext, b []byte, inBounds bool, typ element.Type, i int64, what string) []byte {
+	if !inBounds {
+		cx.ThrowTypeError("DataView.prototype." + what + ": the view is detached or out of bounds")
+	}
+	if i+int64(typ.Size()) > int64(len(b)) {
+		cx.ThrowRangeError("offset is outside the bounds of the DataView")
+	}
+	return b[i:]
+}
+
+func loadViewElement(cx *engine.ExecutionContext, d *engine.DataView, typ element.Type, i int64, le bool, what string) engine.Value {
+	// A throw releases the lock of the buffer.
+	b, inBounds := d.Lock()
+	defer d.Unlock()
+	return cx.GetValueFromBuffer(viewElementBytes(cx, b, inBounds, typ, i, what), typ, le)
+}
+
+func storeViewElement(cx *engine.ExecutionContext, d *engine.DataView, typ element.Type, i int64, v engine.Value, le bool, what string) {
+	// A throw releases the lock of the buffer.
+	b, inBounds := d.Lock()
+	defer d.Unlock()
+	engine.SetValueInBuffer(viewElementBytes(cx, b, inBounds, typ, i, what), typ, v, le)
+}
+
 func initDataView(cx *engine.ExecutionContext, bi *binaryIntrinsics) {
 	proto := cx.NewOrdinaryObject()
 	cx.SetIntrinsic(engine.IntrinsicDataViewPrototype, proto)
@@ -59,22 +93,15 @@ func initDataView(cx *engine.ExecutionContext, bi *binaryIntrinsics) {
 		return engine.ObjectValue(cx.NewDataViewObject(p, buf.Object(), int(offset), int(viewLength)))
 	})
 
-	thisView := func(cx *engine.ExecutionContext, this engine.Value, what string) *engine.DataView {
-		d := engine.DataViewData(this)
-		if d == nil {
-			cx.ThrowTypeError("DataView.prototype." + what + " called on incompatible receiver " + cx.DisplayString(this))
-		}
-		return d
-	}
 	getter(cx, proto, cx.Intern("buffer"), "buffer", func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		return engine.ObjectValue(thisView(cx, this, "buffer").Buffer())
+		return engine.ObjectValue(thisDataView(cx, this, "buffer").Buffer())
 	})
 	getter(cx, proto, cx.Intern("byteLength"), "byteLength", func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		n, _ := thisView(cx, this, "byteLength").ByteLength()
+		n, _ := thisDataView(cx, this, "byteLength").ByteLength()
 		return engine.Number(float64(n))
 	})
 	getter(cx, proto, cx.Intern("byteOffset"), "byteOffset", func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		d := thisView(cx, this, "byteOffset")
+		d := thisDataView(cx, this, "byteOffset")
 		if _, ok := d.ByteLength(); !ok {
 			return engine.Number(0)
 		}
@@ -99,45 +126,23 @@ func initDataView(cx *engine.ExecutionContext, bi *binaryIntrinsics) {
 		{"BigUint64", element.BigUint64},
 	} {
 		typ := e.typ
-		// view returns the bytes of the element at the converted index, as GetViewValue and SetViewValue
-		// check it, from the bytes b of the view.
-		view := func(cx *engine.ExecutionContext, b []byte, inBounds bool, i int64, what string) []byte {
-			if !inBounds {
-				cx.ThrowTypeError("DataView.prototype." + what + ": the view is detached or out of bounds")
-			}
-			if i+int64(typ.Size()) > int64(len(b)) {
-				cx.ThrowRangeError("offset is outside the bounds of the DataView")
-			}
-			return b[i:]
-		}
-		// load and store hold the lock of the buffer, which a throw releases.
-		load := func(cx *engine.ExecutionContext, d *engine.DataView, i int64, le bool, what string) engine.Value {
-			b, inBounds := d.Lock()
-			defer d.Unlock()
-			return cx.GetValueFromBuffer(view(cx, b, inBounds, i, what), typ, le)
-		}
-		store := func(cx *engine.ExecutionContext, d *engine.DataView, i int64, v engine.Value, le bool, what string) {
-			b, inBounds := d.Lock()
-			defer d.Unlock()
-			engine.SetValueInBuffer(view(cx, b, inBounds, i, what), typ, v, le)
-		}
 		get := "get" + e.name
 		method(cx, proto, wtf8.String(get), 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-			d := thisView(cx, this, get)
+			d := thisDataView(cx, this, get)
 			i := toIndex(cx, arg(args, 0))
 			le := engine.ToBoolean(arg(args, 1))
-			return load(cx, d, i, le, get)
+			return loadViewElement(cx, d, typ, i, le, get)
 		})
 		set := "set" + e.name
 		method(cx, proto, wtf8.String(set), 2, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-			d := thisView(cx, this, set)
+			d := thisDataView(cx, this, set)
 			if engine.ArrayBufferData(engine.ObjectValue(d.Buffer())).IsImmutable() {
 				cx.ThrowTypeError("DataView.prototype." + set + ": the DataView is backed by an immutable ArrayBuffer")
 			}
 			i := toIndex(cx, arg(args, 0))
 			v := cx.ToElementValue(typ, arg(args, 1))
 			le := engine.ToBoolean(arg(args, 2))
-			store(cx, d, i, v, le, set)
+			storeViewElement(cx, d, typ, i, v, le, set)
 			return engine.Undefined
 		})
 	}
