@@ -448,13 +448,13 @@ func (v Value) PromiseState() (PromiseState, Value) {
 
 // SharedDataBlock is the memory of a SharedArrayBuffer, usable by any VM on any goroutine.
 type SharedDataBlock struct {
-	b *engine.SharedDataBlock
+	b *storage.SharedDataBlock
 }
 
 // SharedDataBlock returns the data block of the SharedArrayBuffer v. It panics with
 // a [*ValueError] when v is not a SharedArrayBuffer.
 func (v Value) SharedDataBlock() *SharedDataBlock {
-	if b := engine.ArrayBufferData(v.value); b != nil && b.IsShared() {
+	if b := storage.ArrayBufferData(v.value); b != nil && b.IsShared() {
 		return &SharedDataBlock{b: b.SharedDataBlock()}
 	}
 	panic(&ValueError{
@@ -465,8 +465,8 @@ func (v Value) SharedDataBlock() *SharedDataBlock {
 
 // uint8ArrayData returns the state of v when v is a Uint8Array or a Uint8ClampedArray,
 // and panics with a [*ValueError] otherwise.
-func uint8ArrayData(v Value, method string) *engine.TypedArray {
-	if t := engine.TypedArrayData(v.value); t != nil {
+func uint8ArrayData(v Value, method string) *storage.TypedArray {
+	if t := storage.TypedArrayData(v.value); t != nil {
 		if e := t.ElementType(); e == element.Uint8 || e == element.Uint8Clamped {
 			return t
 		}
@@ -526,7 +526,7 @@ func (vm *VM) NewArrayBuffer(b []byte) Value {
 func (vm *VM) DetachArrayBuffer(v Value) {
 	vm.initIfNeeded()
 	vm.acceptValue(v)
-	if b := engine.ArrayBufferData(v.value); b != nil && !b.IsShared() && !b.IsImmutable() {
+	if b := storage.ArrayBufferData(v.value); b != nil && !b.IsShared() && !b.IsImmutable() {
 		b.Detach()
 		return
 	}

@@ -59,7 +59,7 @@ var fastPathCalls = map[string]bool{
 	"storage.SetNumber":     true,
 	"numconv.InInt64Range":  true,
 	"ag.InterruptFlag.Load": true,
-	"t.typ.Size":            true,
+	"t.Type.Size":           true,
 	"math.Float32frombits":  true,
 	"math.Float32bits":      true,
 	"math.Float64frombits":  true,

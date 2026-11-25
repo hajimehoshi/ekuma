@@ -25,18 +25,18 @@ var typedArrayNames = [element.TypeCount]string{
 
 // validateTypedArray implements ValidateTypedArray with the access mode read: it returns this
 // as a typed array and its length.
-func validateTypedArray(cx *engine.ExecutionContext, this engine.Value, what string) (*engine.Object, *engine.TypedArray, int) {
+func validateTypedArray(cx *engine.ExecutionContext, this engine.Value, what string) (*engine.Object, *storage.TypedArray, int) {
 	return validateTypedArrayAccess(cx, this, false, what)
 }
 
 // validateWritableTypedArray implements ValidateTypedArray with the access mode write.
-func validateWritableTypedArray(cx *engine.ExecutionContext, this engine.Value, what string) (*engine.Object, *engine.TypedArray, int) {
+func validateWritableTypedArray(cx *engine.ExecutionContext, this engine.Value, what string) (*engine.Object, *storage.TypedArray, int) {
 	return validateTypedArrayAccess(cx, this, true, what)
 }
 
 // validateTypedArrayAccess implements ValidateTypedArray with the access mode write when write is set.
-func validateTypedArrayAccess(cx *engine.ExecutionContext, this engine.Value, write bool, what string) (*engine.Object, *engine.TypedArray, int) {
-	t := engine.TypedArrayData(this)
+func validateTypedArrayAccess(cx *engine.ExecutionContext, this engine.Value, write bool, what string) (*engine.Object, *storage.TypedArray, int) {
+	t := storage.TypedArrayData(this)
 	if t == nil {
 		cx.ThrowTypeError(what + ": this is not a typed array")
 	}
@@ -51,10 +51,10 @@ func validateTypedArrayAccess(cx *engine.ExecutionContext, this engine.Value, wr
 }
 
 // storeAt implements TypedArraySetElement for the typed array o, whose state is t, and the index i.
-func storeAt(cx *engine.ExecutionContext, o *engine.Object, t *engine.TypedArray, i int, v engine.Value) {
+func storeAt(cx *engine.ExecutionContext, o *engine.Object, t *storage.TypedArray, i int, v engine.Value) {
 	typ := t.ElementType()
 	if v.IsNumber() && !typ.IsBigInt() {
-		t.StoreElement(i, engine.ElementBits(typ, v))
+		t.StoreElement(i, storage.ElementBits(typ, v))
 		return
 	}
 	cx.Set(o, storage.IndexKey(uint32(i)), v)
@@ -68,7 +68,7 @@ func storeAt(cx *engine.ExecutionContext, o *engine.Object, t *engine.TypedArray
 // i and j of each run of at most [engine.PollInterval] indices from start up to end, the last
 // run first when backward is set. It checks for an interruption between runs, and stops when f
 // reports false.
-func lockedRuns(cx *engine.ExecutionContext, t *engine.TypedArray, start, end int, backward bool, f func(b []byte, i, j int) bool) {
+func lockedRuns(cx *engine.ExecutionContext, t *storage.TypedArray, start, end int, backward bool, f func(b []byte, i, j int) bool) {
 	for k := start; k < end; k += engine.PollInterval {
 		if k > start {
 			cx.Poll()
@@ -84,7 +84,7 @@ func lockedRuns(cx *engine.ExecutionContext, t *engine.TypedArray, start, end in
 }
 
 // lockedRun calls f with the bytes of the elements of t, while t is locked, and with i and j.
-func lockedRun(t *engine.TypedArray, i, j int, f func(b []byte, i, j int) bool) bool {
+func lockedRun(t *storage.TypedArray, i, j int, f func(b []byte, i, j int) bool) bool {
 	b := t.Lock()
 	defer t.Unlock()
 	return f(b, i, j)
@@ -92,7 +92,7 @@ func lockedRun(t *engine.TypedArray, i, j int, f func(b []byte, i, j int) bool) 
 
 // elementsOf returns the bytes of the elements of t, or nil when t is out of bounds. The bytes of
 // a shared buffer are a copy, as other agents may change them.
-func elementsOf(t *engine.TypedArray) []byte {
+func elementsOf(t *storage.TypedArray) []byte {
 	b := t.Lock()
 	defer t.Unlock()
 	if t.ArrayBuffer().IsShared() {
@@ -103,7 +103,7 @@ func elementsOf(t *engine.TypedArray) []byte {
 
 // writeElements copies src to the bytes of the elements of t from the element offset on, as far as
 // they reach.
-func writeElements(t *engine.TypedArray, offset int, src []byte) {
+func writeElements(t *storage.TypedArray, offset int, src []byte) {
 	b := t.Lock()
 	defer t.Unlock()
 	if o := offset * t.ElementType().Size(); o < len(b) {
@@ -113,14 +113,14 @@ func writeElements(t *engine.TypedArray, offset int, src []byte) {
 
 // copyElements copies the first n elements of src to the element offset in dst.
 // The element types must match and both ranges must be in bounds.
-func copyElements(dst *engine.TypedArray, offset int, src *engine.TypedArray, n int) {
+func copyElements(dst *storage.TypedArray, offset int, src *storage.TypedArray, n int) {
 	size := src.ElementType().Size()
-	engine.CopyBufferBytes(dst.ArrayBuffer(), dst.ByteOffset()+offset*size, src.ArrayBuffer(), src.ByteOffset(), n*size)
+	storage.CopyBufferBytes(dst.ArrayBuffer(), dst.ByteOffset()+offset*size, src.ArrayBuffer(), src.ByteOffset(), n*size)
 }
 
 // storeConverted stores the n elements of the type from in src as elements of t from the element
 // offset on. t must have enough elements.
-func storeConverted(cx *engine.ExecutionContext, t *engine.TypedArray, offset int, src []byte, from element.Type, n int) {
+func storeConverted(cx *engine.ExecutionContext, t *storage.TypedArray, offset int, src []byte, from element.Type, n int) {
 	to := t.ElementType()
 	ts, fs := to.Size(), from.Size()
 	lockedRuns(cx, t, 0, n, false, func(b []byte, i, j int) bool {
@@ -130,7 +130,7 @@ func storeConverted(cx *engine.ExecutionContext, t *engine.TypedArray, offset in
 }
 
 // reverseFirst reverses the first n elements of t.
-func reverseFirst(cx *engine.ExecutionContext, t *engine.TypedArray, n int) {
+func reverseFirst(cx *engine.ExecutionContext, t *storage.TypedArray, n int) {
 	size := t.ElementType().Size()
 	lockedRuns(cx, t, 0, n/2, false, func(b []byte, i, j int) bool {
 		m := min(n, len(b)/size)
@@ -146,7 +146,7 @@ func reverseFirst(cx *engine.ExecutionContext, t *engine.TypedArray, n int) {
 }
 
 // sortFirst sorts the first n elements of t numerically.
-func sortFirst(cx *engine.ExecutionContext, t *engine.TypedArray, n int) {
+func sortFirst(cx *engine.ExecutionContext, t *storage.TypedArray, n int) {
 	typ := t.ElementType()
 	switch typ {
 	case element.BigInt64:
@@ -178,13 +178,13 @@ func sortFirst(cx *engine.ExecutionContext, t *engine.TypedArray, n int) {
 			sortPolled(cx, vals, numberSortRunLength, slices.Sort, cmp.Compare)
 		}
 		storeElements(cx, t, vals, func(v float64) uint64 {
-			return engine.ElementBits(typ, storage.Number(v))
+			return storage.ElementBits(typ, storage.Number(v))
 		})
 	}
 }
 
 // loadElements returns the first n elements of t, which has them, decoded by decode.
-func loadElements[E any](cx *engine.ExecutionContext, t *engine.TypedArray, n int, decode func(x uint64) E) []E {
+func loadElements[E any](cx *engine.ExecutionContext, t *storage.TypedArray, n int, decode func(x uint64) E) []E {
 	typ := t.ElementType()
 	size := typ.Size()
 	vals := make([]E, n)
@@ -198,7 +198,7 @@ func loadElements[E any](cx *engine.ExecutionContext, t *engine.TypedArray, n in
 }
 
 // storeElements stores vals encoded by encode as the first elements of t, which has room for them.
-func storeElements[E any](cx *engine.ExecutionContext, t *engine.TypedArray, vals []E, encode func(v E) uint64) {
+func storeElements[E any](cx *engine.ExecutionContext, t *storage.TypedArray, vals []E, encode func(v E) uint64) {
 	typ := t.ElementType()
 	size := typ.Size()
 	lockedRuns(cx, t, 0, len(vals), false, func(b []byte, i, j int) bool {
@@ -210,7 +210,7 @@ func storeElements[E any](cx *engine.ExecutionContext, t *engine.TypedArray, val
 }
 
 // fillRange stores the encoding x in the elements of t from start up to end.
-func fillRange(cx *engine.ExecutionContext, t *engine.TypedArray, start, end int, x uint64) {
+func fillRange(cx *engine.ExecutionContext, t *storage.TypedArray, start, end int, x uint64) {
 	typ := t.ElementType()
 	size := typ.Size()
 	if end-start <= engine.PollInterval {
@@ -230,7 +230,7 @@ func fillRange(cx *engine.ExecutionContext, t *engine.TypedArray, start, end int
 }
 
 // searchRange is searchElements on the elements of t.
-func searchRange(cx *engine.ExecutionContext, t *engine.TypedArray, x engine.Value, from, to int, backward, sameValueZero bool) int {
+func searchRange(cx *engine.ExecutionContext, t *storage.TypedArray, x engine.Value, from, to int, backward, sameValueZero bool) int {
 	typ := t.ElementType()
 	found := -1
 	start, end := from, to
@@ -249,7 +249,7 @@ func searchRange(cx *engine.ExecutionContext, t *engine.TypedArray, x engine.Val
 }
 
 // copyBytesWithin copies c bytes of the elements of t from the byte offset from to the byte offset to.
-func copyBytesWithin(t *engine.TypedArray, to, from, c int) {
+func copyBytesWithin(t *storage.TypedArray, to, from, c int) {
 	b := t.Lock()
 	defer t.Unlock()
 	copy(b[to:to+c], b[from:from+c])
@@ -257,7 +257,7 @@ func copyBytesWithin(t *engine.TypedArray, to, from, c int) {
 
 // copyBytesForward copies n bytes of the buffer b from the byte index src to the byte index dst one
 // at a time from the first on.
-func copyBytesForward(cx *engine.ExecutionContext, b *engine.ArrayBuffer, dst, src, n int) {
+func copyBytesForward(cx *engine.ExecutionContext, b *storage.ArrayBuffer, dst, src, n int) {
 	for i := 0; i < n; i += engine.PollInterval {
 		if i > 0 {
 			cx.Poll()
@@ -267,7 +267,7 @@ func copyBytesForward(cx *engine.ExecutionContext, b *engine.ArrayBuffer, dst, s
 }
 
 // copyBytesForwardRun is copyBytesForward under one lock.
-func copyBytesForwardRun(b *engine.ArrayBuffer, dst, src, n int) {
+func copyBytesForwardRun(b *storage.ArrayBuffer, dst, src, n int) {
 	data := b.Lock()
 	defer b.Unlock()
 	for i := range n {
@@ -278,17 +278,17 @@ func copyBytesForwardRun(b *engine.ArrayBuffer, dst, src, n int) {
 // storeNumbers stores the elements of src from 0 on that are numbers that reading runs no
 // JavaScript for in the elements of t from the element offset on, as far as they reach, and
 // returns how many it stored.
-func storeNumbers(cx *engine.ExecutionContext, t *engine.TypedArray, offset int, src *engine.Object, n int64) int64 {
+func storeNumbers(cx *engine.ExecutionContext, t *storage.TypedArray, offset int, src *engine.Object, n int64) int64 {
 	typ := t.ElementType()
 	size := typ.Size()
 	var stored int64
 	lockedRuns(cx, t, 0, int(n), false, func(b []byte, i, j int) bool {
 		for k := i; k < j; k++ {
-			e, ok := engine.Element(src, int64(k))
+			e, ok := storage.Element(src, int64(k))
 			if !ok || !e.IsNumber() || (offset+k+1)*size > len(b) {
 				return false
 			}
-			element.Store(b[(offset+k)*size:], typ, engine.ElementBits(typ, e))
+			element.Store(b[(offset+k)*size:], typ, storage.ElementBits(typ, e))
 			stored++
 		}
 		return true
@@ -299,7 +299,7 @@ func storeNumbers(cx *engine.ExecutionContext, t *engine.TypedArray, offset int,
 // storeNumberValues stores the leading numbers of vals in the elements of t from 0 on, as far as
 // they reach, and returns how many it stored. It stores nothing in a typed array of BigInts.
 // It checks for an interruption while it stores many numbers.
-func storeNumberValues(cx *engine.ExecutionContext, t *engine.TypedArray, vals []engine.Value) int {
+func storeNumberValues(cx *engine.ExecutionContext, t *storage.TypedArray, vals []engine.Value) int {
 	var i int
 	for {
 		end := min(i+engine.PollInterval, len(vals))
@@ -314,7 +314,7 @@ func storeNumberValues(cx *engine.ExecutionContext, t *engine.TypedArray, vals [
 
 // storeNumberRange is [storeNumberValues] for the values from start up to end, whose indices in t
 // are those in vals. It returns the index of the first value that it did not store.
-func storeNumberRange(t *engine.TypedArray, vals []engine.Value, start, end int) int {
+func storeNumberRange(t *storage.TypedArray, vals []engine.Value, start, end int) int {
 	typ := t.ElementType()
 	if typ.IsBigInt() {
 		return start
@@ -327,7 +327,7 @@ func storeNumberRange(t *engine.TypedArray, vals []engine.Value, start, end int)
 		if !v.IsNumber() {
 			return start + i
 		}
-		element.Store(b[(start+i)*size:], typ, engine.ElementBits(typ, v))
+		element.Store(b[(start+i)*size:], typ, storage.ElementBits(typ, v))
 	}
 	return end
 }
@@ -339,7 +339,7 @@ func newTypedArray(cx *engine.ExecutionContext, proto *engine.Object, typ elemen
 }
 
 // createFromConstructor implements TypedArrayCreateFromConstructor. The access mode is write when write is set.
-func createFromConstructor(cx *engine.ExecutionContext, c *engine.Object, args []engine.Value, write bool) (*engine.Object, *engine.TypedArray) {
+func createFromConstructor(cx *engine.ExecutionContext, c *engine.Object, args []engine.Value, write bool) (*engine.Object, *storage.TypedArray) {
 	r := storage.ObjectValue(cx.Construct(c, args, c))
 	o, t, n := validateTypedArrayAccess(cx, r, write, "typed array constructor")
 	if len(args) == 1 && args[0].IsNumber() && float64(n) < args[0].Number() {
@@ -349,7 +349,7 @@ func createFromConstructor(cx *engine.ExecutionContext, c *engine.Object, args [
 }
 
 // typedArraySpeciesCreate implements TypedArraySpeciesCreate. The access mode is write when write is set.
-func typedArraySpeciesCreate(cx *engine.ExecutionContext, exemplar *engine.Object, t *engine.TypedArray, args []engine.Value, write bool) (*engine.Object, *engine.TypedArray) {
+func typedArraySpeciesCreate(cx *engine.ExecutionContext, exemplar *engine.Object, t *storage.TypedArray, args []engine.Value, write bool) (*engine.Object, *storage.TypedArray) {
 	c := speciesConstructor(cx, exemplar, cx.Intrinsic(engine.TypedArrayConstructorIntrinsic(t.ElementType())))
 	o, r := createFromConstructor(cx, c, args, write)
 	if r.ElementType().IsBigInt() != t.ElementType().IsBigInt() {
@@ -359,10 +359,10 @@ func typedArraySpeciesCreate(cx *engine.ExecutionContext, exemplar *engine.Objec
 }
 
 // typedArrayCreateSameType implements TypedArrayCreateSameType.
-func typedArrayCreateSameType(cx *engine.ExecutionContext, t *engine.TypedArray, n int) (*engine.Object, *engine.TypedArray) {
+func typedArrayCreateSameType(cx *engine.ExecutionContext, t *storage.TypedArray, n int) (*engine.Object, *storage.TypedArray) {
 	typ := t.ElementType()
 	o := newTypedArray(cx, cx.Intrinsic(engine.TypedArrayPrototypeIntrinsic(typ)), typ, int64(n))
-	return o, engine.TypedArrayData(storage.ObjectValue(o))
+	return o, storage.TypedArrayData(storage.ObjectValue(o))
 }
 
 // copyConverted stores the n elements of the type from in src as elements of the type to in dst.
@@ -397,7 +397,7 @@ func constructTypedArray(cx *engine.ExecutionContext, typ element.Type, args []e
 		return storage.ObjectValue(newTypedArray(cx, proto, typ, n))
 	}
 	proto := cx.GetPrototypeFromConstructor(nt, defaultProto)
-	if src := engine.TypedArrayData(first); src != nil {
+	if src := storage.TypedArrayData(first); src != nil {
 		n, ok := src.Length()
 		if !ok {
 			cx.ThrowTypeError("cannot construct " + name + " from a detached or out of bounds typed array")
@@ -406,10 +406,10 @@ func constructTypedArray(cx *engine.ExecutionContext, typ element.Type, args []e
 			cx.ThrowTypeError("cannot mix BigInt and other types, use explicit conversions")
 		}
 		o := newTypedArray(cx, proto, typ, int64(n))
-		storeConverted(cx, engine.TypedArrayData(storage.ObjectValue(o)), 0, elementsOf(src), src.ElementType(), n)
+		storeConverted(cx, storage.TypedArrayData(storage.ObjectValue(o)), 0, elementsOf(src), src.ElementType(), n)
 		return storage.ObjectValue(o)
 	}
-	if b := engine.ArrayBufferData(first); b != nil {
+	if b := storage.ArrayBufferData(first); b != nil {
 		offset := toIndex(cx, arg(args, 1))
 		if offset%int64(size) != 0 {
 			cx.ThrowRangeError("start offset of " + name + " should be a multiple of " + itoa(int64(size)))
@@ -450,7 +450,7 @@ func constructTypedArray(cx *engine.ExecutionContext, typ element.Type, args []e
 	if m := cx.GetMethod(first, cx.WellKnownSymbol(engine.SymbolIterator)); m != nil {
 		vals := cx.IteratorToList(first, m)
 		o := newTypedArray(cx, proto, typ, int64(len(vals)))
-		t := engine.TypedArrayData(storage.ObjectValue(o))
+		t := storage.TypedArrayData(storage.ObjectValue(o))
 		for i := storeNumberValues(cx, t, vals); i < len(vals); i++ {
 			storeAt(cx, o, t, i, vals[i])
 		}
@@ -459,7 +459,7 @@ func constructTypedArray(cx *engine.ExecutionContext, typ element.Type, args []e
 	src := first.Object()
 	n := cx.LengthOfArrayLike(src)
 	o := newTypedArray(cx, proto, typ, n)
-	t := engine.TypedArrayData(storage.ObjectValue(o))
+	t := storage.TypedArrayData(storage.ObjectValue(o))
 	for i := range n {
 		storeAt(cx, o, t, int(i), getAt(cx, src, i))
 	}
@@ -508,7 +508,7 @@ func searchElements(b []byte, typ element.Type, x engine.Value, from, to int, ba
 		// A number other than NaN, and other than a zero for a floating-point type, has at
 		// most one encoding, which the elements equal to it have.
 		if f := x.Number(); f == f && (f != 0 || !isFloat) {
-			bits := engine.ElementBits(typ, x)
+			bits := storage.ElementBits(typ, x)
 			if element.DecodeNumber(typ, bits) != f {
 				return -1
 			}
@@ -599,7 +599,7 @@ func fillElements(b []byte, typ element.Type, x uint64) {
 	}
 }
 
-func requireTypedArray(cx *engine.ExecutionContext, t *engine.TypedArray, what string) {
+func requireTypedArray(cx *engine.ExecutionContext, t *storage.TypedArray, what string) {
 	if t == nil {
 		throwNotTypedArray(cx, what)
 	}
@@ -760,20 +760,20 @@ func typedArrayOf(cx *engine.ExecutionContext, this engine.Value, args []engine.
 }
 
 func typedArrayBuffer(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-	t := engine.TypedArrayData(this)
+	t := storage.TypedArrayData(this)
 	requireTypedArray(cx, t, "buffer")
 	return storage.ObjectValue(t.Buffer())
 }
 
 func typedArrayByteLength(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-	t := engine.TypedArrayData(this)
+	t := storage.TypedArrayData(this)
 	requireTypedArray(cx, t, "byteLength")
 	n, _ := t.Length()
 	return storage.Number(float64(n * t.ElementType().Size()))
 }
 
 func typedArrayByteOffset(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-	t := engine.TypedArrayData(this)
+	t := storage.TypedArrayData(this)
 	requireTypedArray(cx, t, "byteOffset")
 	if _, ok := t.Length(); !ok {
 		return storage.Number(0)
@@ -782,14 +782,14 @@ func typedArrayByteOffset(cx *engine.ExecutionContext, this engine.Value, args [
 }
 
 func typedArrayLengthGetter(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-	t := engine.TypedArrayData(this)
+	t := storage.TypedArrayData(this)
 	requireTypedArray(cx, t, "length")
 	n, _ := t.Length()
 	return storage.Number(float64(n))
 }
 
 func typedArrayToStringTag(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-	t := engine.TypedArrayData(this)
+	t := storage.TypedArrayData(this)
 	if t == nil {
 		return storage.Undefined
 	}
@@ -924,7 +924,7 @@ func typedArrayFill(cx *engine.ExecutionContext, this engine.Value, args []engin
 	}
 	end = min(end, cur)
 	if start < end {
-		fillRange(cx, t, start, end, engine.ElementBits(typ, v))
+		fillRange(cx, t, start, end, storage.ElementBits(typ, v))
 	}
 	return storage.ObjectValue(o)
 }
@@ -1089,7 +1089,7 @@ func typedArrayReverse(cx *engine.ExecutionContext, this engine.Value, args []en
 }
 
 func typedArraySet(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-	t := engine.TypedArrayData(this)
+	t := storage.TypedArrayData(this)
 	if t == nil {
 		cx.ThrowTypeError("%TypedArray%.prototype.set: this is not a typed array")
 	}
@@ -1131,7 +1131,7 @@ func typedArraySlice(cx *engine.ExecutionContext, this engine.Value, args []engi
 		// The bytes are copied one at a time from the first on, as the specification says.
 		copyBytesForward(cx, t.ArrayBuffer(), dst, src, count*size)
 	} else {
-		engine.CopyBufferBytes(at.ArrayBuffer(), dst, t.ArrayBuffer(), src, count*size)
+		storage.CopyBufferBytes(at.ArrayBuffer(), dst, t.ArrayBuffer(), src, count*size)
 	}
 	return storage.ObjectValue(a)
 }
@@ -1158,7 +1158,7 @@ func typedArraySort(cx *engine.ExecutionContext, this engine.Value, args []engin
 }
 
 func typedArraySubarray(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-	t := engine.TypedArrayData(this)
+	t := storage.TypedArrayData(this)
 	if t == nil {
 		cx.ThrowTypeError("%TypedArray%.prototype.subarray: this is not a typed array")
 	}
@@ -1276,9 +1276,9 @@ func typedArrayConstructorNative(typ element.Type) engine.NativeFunc {
 }
 
 // setTypedArrayFrom implements the part of %TypedArray%.prototype.set after the offset is converted.
-func setTypedArrayFrom(cx *engine.ExecutionContext, target *engine.Object, t *engine.TypedArray, offset float64, source engine.Value) {
+func setTypedArrayFrom(cx *engine.ExecutionContext, target *engine.Object, t *storage.TypedArray, offset float64, source engine.Value) {
 	typ := t.ElementType()
-	if src := engine.TypedArrayData(source); src != nil {
+	if src := storage.TypedArrayData(source); src != nil {
 		targetLen, ok := t.Length()
 		if !ok {
 			cx.ThrowTypeError("%TypedArray%.prototype.set: the typed array is detached or out of bounds")

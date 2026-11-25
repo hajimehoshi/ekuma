@@ -148,7 +148,7 @@ var (
 	nativeMapKeys         = engine.RegisterNative(mapIterationNative("keys", quiet.IterateKeys))
 	nativeMapValues       = engine.RegisterNative(mapIterationNative("values", quiet.IterateValues))
 	nativeMapEntries      = engine.RegisterNative(mapIterationNative("entries", quiet.IterateEntries))
-	nativeMapIteratorNext = engine.RegisterPlainIteratorNext(engine.IteratorClosureRealm, "next method called on an object that is not a Map Iterator", quiet.MapIteratorStep, mapIteratorPairStep)
+	nativeMapIteratorNext = engine.RegisterPlainIteratorNext(engine.IteratorClosureRealm, "next method called on an object that is not a Map Iterator", quiet.MapIteratorStep, quiet.MapIteratorPairStep)
 )
 
 func initMap(cx *engine.ExecutionContext) {
@@ -318,23 +318,6 @@ func mapIterationNative(name string, kind quiet.IterationKind) engine.NativeFunc
 	}
 }
 
-func mapIteratorPairStep(state any) (engine.Value, engine.Value, engine.PairStep) {
-	it, _ := state.(*quiet.MapIterator)
-	if it == nil || it.Kind != quiet.IterateEntries {
-		return storage.Undefined, storage.Undefined, engine.PairDeclined
-	}
-	if it.Table == nil {
-		return storage.Undefined, storage.Undefined, engine.PairDone
-	}
-	k, v, ok := it.Table.Next(&it.Cursor)
-	if !ok {
-		it.Table = nil
-		it.Cursor = collection.Cursor{}
-		return storage.Undefined, storage.Undefined, engine.PairDone
-	}
-	return k, v, engine.PairYielded
-}
-
 // setRecord is a Set Record.
 type setRecord struct {
 	obj  *engine.Object
@@ -448,7 +431,7 @@ var (
 	nativeSetIsDisjointFrom      = engine.RegisterNative(setIsDisjointFrom)
 	nativeSetEntries             = engine.RegisterNative(setIterationNative("entries", quiet.IterateEntries))
 	nativeSetValues              = engine.RegisterNative(setIterationNative("values", quiet.IterateValues))
-	nativeSetIteratorNext        = engine.RegisterPlainIteratorNext(engine.IteratorClosureRealm, "next method called on an object that is not a Set Iterator", quiet.SetIteratorStep, setIteratorPairStep)
+	nativeSetIteratorNext        = engine.RegisterPlainIteratorNext(engine.IteratorClosureRealm, "next method called on an object that is not a Set Iterator", quiet.SetIteratorStep, quiet.SetIteratorPairStep)
 )
 
 func initSet(cx *engine.ExecutionContext) {
@@ -724,23 +707,6 @@ func setIterationNative(name string, kind quiet.IterationKind) engine.NativeFunc
 			Kind:   kind,
 		}))
 	}
-}
-
-func setIteratorPairStep(state any) (engine.Value, engine.Value, engine.PairStep) {
-	it, _ := state.(*quiet.SetIterator)
-	if it == nil || it.Kind != quiet.IterateEntries {
-		return storage.Undefined, storage.Undefined, engine.PairDeclined
-	}
-	if it.Table == nil {
-		return storage.Undefined, storage.Undefined, engine.PairDone
-	}
-	k, _, ok := it.Table.Next(&it.Cursor)
-	if !ok {
-		it.Table = nil
-		it.Cursor = collection.Cursor{}
-		return storage.Undefined, storage.Undefined, engine.PairDone
-	}
-	return k, k, engine.PairYielded
 }
 
 // nativeObjectGroupBy is Object.groupBy.

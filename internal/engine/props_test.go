@@ -75,7 +75,7 @@ func TestStringIndexKey(t *testing.T) {
 func TestPrimitiveElements(t *testing.T) {
 	cx, _ := engine.NewExecutionContext(nil)
 	o := cx.NewString("abc").Object()
-	if _, ok := engine.Element(o, 0); ok {
+	if _, ok := storage.Element(o, 0); ok {
 		t.Error("Element reported a stored element for a primitive")
 	}
 	if o.SetElement(0, storage.True) {
@@ -226,7 +226,7 @@ func TestPlainOwnPropertyQueryDefersLazyInitialization(t *testing.T) {
 	o := cx.NewLazyObject(nil, func(*engine.ExecutionContext, *engine.Object) {
 		t.Error("side-effect-free query ran the initializer")
 	})
-	if _, ok := engine.HasOwnPropertyPlain(cx.Quiet(), o, storage.Number(0)); ok {
+	if _, ok := cx.Quiet().HasOwnPropertyPlain(o, storage.Number(0)); ok {
 		t.Error("side-effect-free query accepted an uninitialized object")
 	}
 }

@@ -63,7 +63,7 @@ evalArg objectProperties.elems:ref
 
 # Read properties without the guards of the property operations.
 [reads]
-Element objectProperties.elems:read
+ArrayIterator.StepPlain objectProperties.elems:read
 ExecutionContext.CreateDataProperty objectProperties.elems:read
 ExecutionContext.GetOwnProperty Value.accessor:read objectProperties.elems:read objectProperties.slots:read shape.lookup:read
 ExecutionContext.HasOwnProperty objectProperties.elems:read shape.lookup:read
@@ -82,15 +82,14 @@ ExecutionContext.getValue objectProperties.elems:read
 ExecutionContext.iteratePlainArray objectProperties.elems:read
 ExecutionContext.readInstancePrototype Value.O:lit*2 Value.accessor:read
 ExecutionContext.setFuncName shape.lookup:read
-HasOwnPropertyPlain objectProperties.elems:read shape.lookup:read
 PushElements objectProperties.elems:read
 agent.observePush objectProperties.elems:read
-arrayIterator.step objectProperties.elems:read
-arrayIterator.stepPlain objectProperties.elems:read
+arrayIteratorStep objectProperties.elems:read
 decoratorAccessHas shape.lookup:read
 
 # Create values, property keys or descriptors from their parts.
 [values]
+ArrayIterator.Result Value.O:lit
 ExecutionContext.AddDisposableResource Value.O:lit*2
 ExecutionContext.BuiltinTag Value.O:lit
 ExecutionContext.Construct Value.O:lit
@@ -187,7 +186,6 @@ agent.CapabilityResolve Value.O:lit
 agent.callerOf Value.O:lit
 agent.newClassDecoration Value.O:lit
 agent.saveException Value.O:lit
-arrayIterator.result Value.O:lit
 arrayIteratorIndex Value.O:lit*2
 asyncDisposeFunction Value.O:lit*2
 defaultHasInstanceCall.enterThrough Value.O:lit

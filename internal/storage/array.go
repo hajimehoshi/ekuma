@@ -188,6 +188,23 @@ func ContainsHole(elems []Value) bool {
 	return false
 }
 
+// Element returns the own property of o with the integer index i when reading it
+// cannot run any JavaScript. It reports false when that is not known.
+func Element(o *Object, i int64) (Value, bool) {
+	if o.ObjectProperties != nil && i >= 0 && i < int64(len(o.Elems)) {
+		if e := o.Elems[i]; !e.IsHole() {
+			return e, true
+		}
+	}
+	if o.Class == ClassTypedArray && i >= 0 && i <= MaxArrayIndex {
+		t := o.ExtState().(*TypedArray)
+		if b, ok := t.ElementBytes(uint32(i)); ok {
+			return ElementFromBytes(t.Type, b), true
+		}
+	}
+	return Value{}, false
+}
+
 // SetElement stores v as the own property of o with the integer index i when
 // Element returns that property and o is not a typed array, and reports whether it did.
 func (o *Object) SetElement(i int64, v Value) bool {

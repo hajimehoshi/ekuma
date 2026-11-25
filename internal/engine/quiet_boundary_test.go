@@ -202,17 +202,21 @@ func TestQuietContextBoundary(t *testing.T) {
 								if info.Types[n.Args[i]].IsNil() {
 									continue
 								}
+								var id *ast.Ident
 								switch arg := ast.Unparen(n.Args[i]).(type) {
 								case *ast.FuncLit:
 									pairStep[arg] = true
 									pairSteps[p.fset.Position(arg.Pos()).String()] = true
 									continue
 								case *ast.Ident:
-									if f, ok := info.Uses[arg].(*types.Func); ok {
-										quiet = append(quiet, f.FullName())
-										pairSteps[f.FullName()] = true
-										continue
-									}
+									id = arg
+								case *ast.SelectorExpr:
+									id = arg.Sel
+								}
+								if f, ok := info.Uses[id].(*types.Func); ok {
+									quiet = append(quiet, f.FullName())
+									pairSteps[f.FullName()] = true
+									continue
 								}
 								t.Errorf("%v: pair step is neither a function literal nor a declared function", p.fset.Position(n.Args[i].Pos()))
 							}

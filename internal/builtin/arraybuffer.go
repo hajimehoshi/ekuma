@@ -33,8 +33,8 @@ func maxByteLengthOption(cx *engine.ExecutionContext, options engine.Value) int6
 }
 
 // thisArrayBuffer returns the data of this, which must be an ArrayBuffer that is shared when shared is set.
-func thisArrayBuffer(cx *engine.ExecutionContext, this engine.Value, shared bool, what string) *engine.ArrayBuffer {
-	b := engine.ArrayBufferData(this)
+func thisArrayBuffer(cx *engine.ExecutionContext, this engine.Value, shared bool, what string) *storage.ArrayBuffer {
+	b := storage.ArrayBufferData(this)
 	if b == nil || b.IsShared() != shared {
 		name := "ArrayBuffer"
 		if shared {
@@ -116,7 +116,7 @@ func arrayBufferConstructor(cx *engine.ExecutionContext, this engine.Value, args
 
 func arrayBufferIsView(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	a := arg(args, 0)
-	return storage.Bool(engine.TypedArrayData(a) != nil || engine.DataViewData(a) != nil)
+	return storage.Bool(storage.TypedArrayData(a) != nil || storage.DataViewData(a) != nil)
 }
 
 func arrayBufferByteLength(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -152,7 +152,7 @@ func arrayBufferSlice(cx *engine.ExecutionContext, this engine.Value, args []eng
 	newLen := max(final-first, 0)
 	c := speciesConstructor(cx, this.Object(), cx.Intrinsic(engine.IntrinsicArrayBuffer))
 	r := cx.Construct(c, []engine.Value{storage.Number(float64(newLen))}, c)
-	nb := engine.ArrayBufferData(storage.ObjectValue(r))
+	nb := storage.ArrayBufferData(storage.ObjectValue(r))
 	if nb == nil || nb.IsShared() {
 		cx.ThrowTypeError("species constructor did not return an ArrayBuffer")
 	}
@@ -205,7 +205,7 @@ func arrayBufferSliceToImmutable(cx *engine.ExecutionContext, this engine.Value,
 }
 
 func arrayBufferResize(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-	b := engine.ArrayBufferData(this)
+	b := storage.ArrayBufferData(this)
 	if b == nil || b.IsShared() || !b.IsResizable() {
 		cx.ThrowTypeError("ArrayBuffer.prototype.resize called on incompatible receiver " + cx.DisplayString(this))
 	}
@@ -307,7 +307,7 @@ func sharedArrayBufferGrowable(cx *engine.ExecutionContext, this engine.Value, a
 }
 
 func sharedArrayBufferGrow(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-	b := engine.ArrayBufferData(this)
+	b := storage.ArrayBufferData(this)
 	if b == nil || !b.IsShared() || !b.IsResizable() {
 		cx.ThrowTypeError("SharedArrayBuffer.prototype.grow called on incompatible receiver " + cx.DisplayString(this))
 	}
@@ -327,7 +327,7 @@ func sharedArrayBufferSlice(cx *engine.ExecutionContext, this engine.Value, args
 	newLen := max(final-first, 0)
 	c := speciesConstructor(cx, this.Object(), cx.Intrinsic(engine.IntrinsicSharedArrayBuffer))
 	r := cx.Construct(c, []engine.Value{storage.Number(float64(newLen))}, c)
-	nb := engine.ArrayBufferData(storage.ObjectValue(r))
+	nb := storage.ArrayBufferData(storage.ObjectValue(r))
 	if nb == nil || !nb.IsShared() {
 		cx.ThrowTypeError("species constructor did not return a SharedArrayBuffer")
 	}
@@ -338,7 +338,7 @@ func sharedArrayBufferSlice(cx *engine.ExecutionContext, this engine.Value, args
 		cx.ThrowTypeError("species constructor returned a too small SharedArrayBuffer")
 	}
 	if cur := b.ByteLength(); first < cur {
-		engine.CopyBufferBytes(nb, 0, b, first, min(newLen, cur-first))
+		storage.CopyBufferBytes(nb, 0, b, first, min(newLen, cur-first))
 	}
 	return storage.ObjectValue(r)
 }

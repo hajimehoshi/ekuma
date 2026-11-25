@@ -326,7 +326,7 @@ func objectDefineProperties(cx *engine.ExecutionContext, o *engine.Object, props
 var (
 	nativeObjectConstructor    = engine.RegisterNative(objectConstructor)
 	nativeObjectHasOwnProperty = engine.RegisterNativeWithKernels(objectHasOwnProperty, engine.Kernels{
-		Method1:  objectHasOwnPropertyKernel,
+		Method1:  quiet.ObjectHasOwnPropertyKernel,
 		Contract: shortContract,
 	})
 	nativeObjectIsPrototypeOf             = engine.RegisterNative(objectIsPrototypeOf)
@@ -424,14 +424,6 @@ func objectConstructor(cx *engine.ExecutionContext, this engine.Value, args []en
 func objectHasOwnProperty(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	k := cx.QueryKey(arg(args, 0))
 	return storage.Bool(cx.QueryOwnProperty(cx.ToObject(this), k))
-}
-
-func objectHasOwnPropertyKernel(q quiet.Context, this, k engine.Value) (engine.Value, bool) {
-	if !this.IsObject() {
-		return storage.Undefined, false
-	}
-	has, ok := engine.HasOwnPropertyPlain(q, this.Object(), k)
-	return storage.Bool(has), ok
 }
 
 func objectIsPrototypeOf(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {

@@ -19,6 +19,12 @@ func (q Context) HasPropertyPlain(o, key *storage.Object) (has, ok bool) {
 	return false, false
 }
 
+// HasOwnPropertyPlain is HasOwnProperty of o and the key k when finding out neither throws nor
+// runs code, and takes a short time. It reports false as ok otherwise.
+func (q Context) HasOwnPropertyPlain(o *storage.Object, k storage.Value) (has, ok bool) {
+	return q.Realm.HasOwnPropertyPlain(o, k)
+}
+
 // LookupNamed finds the named property key on o and its prototype chain, as far as that runs no
 // code.
 func (q Context) LookupNamed(o, key *storage.Object) storage.NamedLookup {

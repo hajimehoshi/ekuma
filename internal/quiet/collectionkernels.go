@@ -130,6 +130,24 @@ func MapIteratorStep(q Context, iterator *storage.Object, it *MapIterator) (stor
 	return storage.ObjectValue(CreationContext(iterator).NewArrayPair(k, v)), true
 }
 
+// MapIteratorPairStep is the pair step of the next method of Map Iterator objects.
+func MapIteratorPairStep(state any) (storage.Value, storage.Value, PairStep) {
+	it, _ := state.(*MapIterator)
+	if it == nil || it.Kind != IterateEntries {
+		return storage.Undefined, storage.Undefined, PairDeclined
+	}
+	if it.Table == nil {
+		return storage.Undefined, storage.Undefined, PairDone
+	}
+	k, v, ok := it.Table.Next(&it.Cursor)
+	if !ok {
+		it.Table = nil
+		it.Cursor = collection.Cursor{}
+		return storage.Undefined, storage.Undefined, PairDone
+	}
+	return k, v, PairYielded
+}
+
 func SetAddKernel(q Context, this, v storage.Value) (storage.Value, bool) {
 	t := setOf(this)
 	if t == nil {
@@ -176,4 +194,22 @@ func SetIteratorStep(q Context, iterator *storage.Object, it *SetIterator) (stor
 		return storage.ObjectValue(CreationContext(iterator).NewArrayPair(k, k)), true
 	}
 	return k, true
+}
+
+// SetIteratorPairStep is the pair step of the next method of Set Iterator objects.
+func SetIteratorPairStep(state any) (storage.Value, storage.Value, PairStep) {
+	it, _ := state.(*SetIterator)
+	if it == nil || it.Kind != IterateEntries {
+		return storage.Undefined, storage.Undefined, PairDeclined
+	}
+	if it.Table == nil {
+		return storage.Undefined, storage.Undefined, PairDone
+	}
+	k, _, ok := it.Table.Next(&it.Cursor)
+	if !ok {
+		it.Table = nil
+		it.Cursor = collection.Cursor{}
+		return storage.Undefined, storage.Undefined, PairDone
+	}
+	return k, k, PairYielded
 }

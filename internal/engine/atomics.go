@@ -54,7 +54,7 @@ type waiterData struct {
 	done chan struct{}
 
 	// block is the data block whose waiter lists the waiter is added to.
-	block *SharedDataBlock
+	block *storage.SharedDataBlock
 
 	// deadline is [[TimeoutTime]] of a waiter with a finite timeout.
 	deadline time.Time
@@ -165,67 +165,6 @@ func (ag *agent) AgentCanSuspend() bool {
 	return ag.canSuspend
 }
 
-// AtomicOp is the operation of [TypedArray.AtomicReadModifyWrite].
-type AtomicOp uint8
-
-const (
-	AtomicAdd AtomicOp = iota
-	AtomicAnd
-	AtomicExchange
-	AtomicOr
-	AtomicSub
-	AtomicXor
-
-	// AtomicCompareExchange stores the replacement when the element equals the operand.
-	AtomicCompareExchange
-)
-
-// AtomicReadModifyWrite implements the steps of AtomicReadModifyWrite and Atomics.compareExchange
-// that follow RevalidateAtomicAccess: it applies op with the encoding v to the element i of t,
-// which must be a valid integer index, and returns the encoding that the element had. replacement
-// is the encoding that AtomicCompareExchange stores.
-func (t *TypedArray) AtomicReadModifyWrite(i int, op AtomicOp, v, replacement uint64) uint64 {
-	b := t.Lock()
-	defer t.Unlock()
-	e := b[i*t.typ.Size():]
-	old := element.Load(e, t.typ)
-	var x uint64
-	switch op {
-	case AtomicAdd:
-		x = old + v
-	case AtomicAnd:
-		x = old & v
-	case AtomicExchange:
-		x = v
-	case AtomicOr:
-		x = old | v
-	case AtomicSub:
-		x = old - v
-	case AtomicXor:
-		x = old ^ v
-	case AtomicCompareExchange:
-		if !element.Equal(t.typ, old, v) {
-			return old
-		}
-		x = replacement
-	}
-	element.Store(e, t.typ, x)
-	return old
-}
-
-// AtomicLoad returns the encoding of the element i of t, which must be a valid integer index,
-// as a sequentially consistent read.
-func (t *TypedArray) AtomicLoad(i int) uint64 {
-	x, _ := t.LoadElement(i)
-	return x
-}
-
-// AtomicStore stores the encoding x as the element i of t, which must be a valid integer index,
-// as a sequentially consistent write.
-func (t *TypedArray) AtomicStore(i int, x uint64) {
-	t.StoreElement(i, x)
-}
-
 // Wait implements the steps of DoWait from the critical section on, for the element i of the
 // Int32Array or BigInt64Array t on a shared buffer, the encoding v and a timeout in milliseconds
 // that is not negative and may be +Inf. A synchronous wait suspends the agent, which must be able
@@ -234,9 +173,9 @@ func (t *TypedArray) AtomicStore(i int, x uint64) {
 // [ExecutionContext.NotifyWaiters] in any agent notifies the waiter, or to "timed-out" after the timeout.
 //
 // An interruption ends a synchronous wait.
-func (cx *ExecutionContext) Wait(t *TypedArray, i int, v uint64, timeout float64, async bool) (Value, bool) {
-	blk := t.data.block
-	byteIndex := t.offset + i*t.typ.Size()
+func (cx *ExecutionContext) Wait(t *storage.TypedArray, i int, v uint64, timeout float64, async bool) (Value, bool) {
+	blk := t.Data.SharedDataBlock()
+	byteIndex := t.Offset + i*t.Type.Size()
 	w := &waiter{
 		Data: waiterData{
 			agent:      cx.agent,
@@ -254,7 +193,7 @@ func (cx *ExecutionContext) Wait(t *TypedArray, i int, v uint64, timeout float64
 		}
 	}
 	add := timeout > 0
-	if !blk.compareAndAdd(w, byteIndex, t.typ, v, add) {
+	if !compareAndAdd(blk, w, byteIndex, t.Type, v, add) {
 		return cx.NewString("not-equal"), false
 	}
 	if !add {
@@ -271,40 +210,58 @@ func (cx *ExecutionContext) Wait(t *TypedArray, i int, v uint64, timeout float64
 	return Value{O: w.Data.promise}, true
 }
 
-// compareAndAdd reports whether the element of the type t at byteIndex has the encoding v,
+// compareAndAdd reports whether the element of the type t at byteIndex of blk has the encoding v,
 // and then adds w to the waiter list of byteIndex when add is set.
-func (blk *SharedDataBlock) compareAndAdd(w *waiter, byteIndex int, t element.Type, v uint64, add bool) bool {
-	blk.mu.Lock()
-	defer blk.mu.Unlock()
-	if !element.Equal(t, element.Load(blk.data[byteIndex:], t), v) {
+func compareAndAdd(blk *storage.SharedDataBlock, w *waiter, byteIndex int, t element.Type, v uint64, add bool) bool {
+	b := blk.Lock()
+	defer blk.Unlock()
+	if !element.Equal(t, element.Load(b[byteIndex:], t), v) {
 		return false
 	}
 	if add {
-		blk.waiterLists.Add(byteIndex, w)
+		lists := waiterListsOf(blk)
+		if lists == nil {
+			lists = &waiterlist.Lists[waiterData]{}
+			blk.WaiterLists = lists
+		}
+		lists.Add(byteIndex, w)
 	}
 	return true
 }
 
-// unlist removes w from its waiter list and reports whether it was there.
-func (blk *SharedDataBlock) unlist(w *waiter) bool {
-	blk.mu.Lock()
-	defer blk.mu.Unlock()
-	return blk.waiterLists.Remove(w)
+// waiterListsOf returns the waiter lists of the locked block blk by byte index, or nil when no
+// waiter was added. A waiter is held by its agent: by the suspended call of a synchronous wait, and
+// by the agent of an asynchronous one.
+func waiterListsOf(blk *storage.SharedDataBlock) *waiterlist.Lists[waiterData] {
+	lists, _ := blk.WaiterLists.(*waiterlist.Lists[waiterData])
+	return lists
+}
+
+// unlist removes w, which was added to a waiter list, from it and reports whether it was there.
+func unlist(w *waiter) bool {
+	blk := w.Data.block
+	blk.Lock()
+	defer blk.Unlock()
+	return waiterListsOf(blk).Remove(w)
 }
 
 // removeWaiters implements RemoveWaiters: it removes and returns the first count waiters of
-// byteIndex. count must not be negative and may be +Inf.
-func (blk *SharedDataBlock) removeWaiters(byteIndex int, count float64) []*waiter {
-	blk.mu.Lock()
-	defer blk.mu.Unlock()
-	return blk.waiterLists.RemoveFirst(byteIndex, count)
+// byteIndex of blk. count must not be negative and may be +Inf.
+func removeWaiters(blk *storage.SharedDataBlock, byteIndex int, count float64) []*waiter {
+	blk.Lock()
+	defer blk.Unlock()
+	lists := waiterListsOf(blk)
+	if lists == nil {
+		return nil
+	}
+	return lists.RemoveFirst(byteIndex, count)
 }
 
 // suspend implements SuspendThisAgent for the synchronous waiter w, which is in its list,
 // and returns the result of the wait.
 func (cx *ExecutionContext) suspend(w *waiter, timeout float64) Value {
 	// An interruption leaves the list.
-	defer w.Data.block.unlist(w)
+	defer unlist(w)
 	var deadline time.Time
 	var timer *time.Timer
 	var expired <-chan time.Time
@@ -324,7 +281,7 @@ func (cx *ExecutionContext) suspend(w *waiter, timeout float64) Value {
 				timer.Reset(d)
 				continue
 			}
-			if w.Data.block.unlist(w) {
+			if unlist(w) {
 				return cx.NewString("timed-out")
 			}
 			// A notification came first.
@@ -341,8 +298,8 @@ func (cx *ExecutionContext) suspend(w *waiter, timeout float64) Value {
 // NotifyWaiters implements RemoveWaiters and NotifyWaiter for the waiters of byteIndex of the
 // shared buffer b, which may belong to any agent: it notifies the first count waiters, and returns
 // how many it notified. count must not be negative and may be +Inf.
-func (cx *ExecutionContext) NotifyWaiters(b *ArrayBuffer, byteIndex int, count float64) int {
-	ws := b.block.removeWaiters(byteIndex, count)
+func (cx *ExecutionContext) NotifyWaiters(b *storage.ArrayBuffer, byteIndex int, count float64) int {
+	ws := removeWaiters(b.SharedDataBlock(), byteIndex, count)
 	for _, w := range ws {
 		switch {
 		case w.Data.done != nil:
@@ -463,7 +420,7 @@ func (cx *ExecutionContext) expireWaiters() bool {
 			break
 		}
 		// A waiter that another agent notified first is in the mailbox.
-		if w.Data.block.unlist(w) {
+		if unlist(w) {
 			cx.resolveWaiter(w, "timed-out")
 			expired = true
 		}

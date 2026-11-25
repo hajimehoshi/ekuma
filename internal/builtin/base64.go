@@ -293,8 +293,8 @@ func stringOption(cx *engine.ExecutionContext, opts engine.Value, name string, c
 }
 
 // thisUint8Array implements ValidateUint8Array with the access mode write when write is set.
-func thisUint8Array(cx *engine.ExecutionContext, this engine.Value, write bool, what string) *engine.TypedArray {
-	t := engine.TypedArrayData(this)
+func thisUint8Array(cx *engine.ExecutionContext, this engine.Value, write bool, what string) *storage.TypedArray {
+	t := storage.TypedArrayData(this)
 	if t == nil || t.ElementType() != element.Uint8 {
 		cx.ThrowTypeError("Uint8Array.prototype." + what + ": this is not a Uint8Array")
 	}
@@ -311,7 +311,7 @@ func requireUint8ArrayInBounds(cx *engine.ExecutionContext, inBounds bool, what 
 }
 
 // uint8ArrayBytes implements GetUint8ArrayBytes.
-func uint8ArrayBytes(cx *engine.ExecutionContext, t *engine.TypedArray, what string) []byte {
+func uint8ArrayBytes(cx *engine.ExecutionContext, t *storage.TypedArray, what string) []byte {
 	_, ok := t.Length()
 	requireUint8ArrayInBounds(cx, ok, what)
 	return elementsOf(t)
@@ -333,7 +333,7 @@ func base64DecodeOptions(cx *engine.ExecutionContext, options engine.Value) (boo
 }
 
 // storeDecodeResult implements the end of setFromBase64 and setFromHex.
-func storeDecodeResult(cx *engine.ExecutionContext, t *engine.TypedArray, r decodeResult) engine.Value {
+func storeDecodeResult(cx *engine.ExecutionContext, t *storage.TypedArray, r decodeResult) engine.Value {
 	writeElements(t, 0, r.bytes)
 	if r.err != "" {
 		cx.ThrowSyntaxError(r.err)
@@ -348,7 +348,7 @@ func storeDecodeResult(cx *engine.ExecutionContext, t *engine.TypedArray, r deco
 // newUint8Array returns a new Uint8Array of the elements b.
 func newUint8Array(cx *engine.ExecutionContext, b []byte) engine.Value {
 	o := newTypedArray(cx, cx.Intrinsic(engine.IntrinsicUint8ArrayPrototype), element.Uint8, int64(len(b)))
-	writeElements(engine.TypedArrayData(storage.ObjectValue(o)), 0, b)
+	writeElements(storage.TypedArrayData(storage.ObjectValue(o)), 0, b)
 	return storage.ObjectValue(o)
 }
 

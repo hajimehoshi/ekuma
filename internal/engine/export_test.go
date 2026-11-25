@@ -376,10 +376,10 @@ func (s *Shortcut) wrap(t *testing.T, observe func(s *Shortcut, form, event stri
 				return v
 			}
 		case "pairStep":
-			wrapped.pairStep = func(state any) (Value, Value, PairStep) {
+			wrapped.pairStep = func(state any) (Value, Value, quiet.PairStep) {
 				observe(s, form, "start")
 				a, b, st := fast.pairStep(state)
-				ended(form, st != PairDeclined)
+				ended(form, st != quiet.PairDeclined)
 				return a, b, st
 			}
 		case "number1":

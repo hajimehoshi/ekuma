@@ -9,7 +9,6 @@ import (
 	"strconv"
 
 	"github.com/hajimehoshi/ekuma/internal/numconv"
-	"github.com/hajimehoshi/ekuma/internal/quiet"
 	"github.com/hajimehoshi/ekuma/internal/storage"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
@@ -230,9 +229,9 @@ func (cx *ExecutionContext) getNamed(v Value, key *Object, c *propCache) (val Va
 		}
 		if e.Shape == start.Shape && e.Kind == cacheGetter && e.Epoch == cx.ProtoEpoch && e.Holder == cx.Intrinsic(IntrinsicTypedArrayPrototypeLengthGetter) {
 			if validateExec {
-				cx.checkTypedArrayLengthHit(nil, 0, v, float64(cx.typedArrayLength(start)))
+				cx.checkTypedArrayLengthHit(nil, 0, v, float64(storage.TypedArrayLength(start)))
 			}
-			return storage.Number(float64(cx.typedArrayLength(start))), nil
+			return storage.Number(float64(storage.TypedArrayLength(start))), nil
 		}
 	}
 	s, epoch := start.Shape, cx.ProtoEpoch
@@ -350,7 +349,7 @@ func (cx *ExecutionContext) getIndex(v Value, i uint32) (Value, *Object) {
 	start := v.O
 	if v.IsObject() {
 		if start.Class == classTypedArray {
-			return cx.typedArrayGet(start, i), nil
+			return storage.TypedArrayGet(start, i), nil
 		}
 	} else {
 		if v.IsShortString() && uint(i) < uint(v.StringLength()) {
@@ -372,7 +371,7 @@ func (cx *ExecutionContext) getIndex(v Value, i uint32) (Value, *Object) {
 		}
 		if h.Class == classTypedArray {
 			// An integer-indexed object answers for every index and never defers to its prototype.
-			return cx.typedArrayGet(h, i), nil
+			return storage.TypedArrayGet(h, i), nil
 		}
 		if h.Kind == kindString || h.Class == classString {
 			s := h
@@ -429,8 +428,8 @@ func (cx *ExecutionContext) GetOwnProperty(o *Object, k PropKey) (PropDesc, bool
 		}
 		switch o.Class {
 		case classTypedArray:
-			if v := cx.typedArrayGet(o, k.Idx); !v.IsUndefined() {
-				return storage.DataDesc(v, typedArrayFlags(o)), true
+			if v := storage.TypedArrayGet(o, k.Idx); !v.IsUndefined() {
+				return storage.DataDesc(v, storage.TypedArrayFlags(o)), true
 			}
 			return PropDesc{}, false
 		case classString:
@@ -484,78 +483,6 @@ func (cx *ExecutionContext) HasOwnProperty(o *Object, k PropKey) bool {
 	return ok
 }
 
-// HasOwnPropertyPlain is HasOwnProperty of o and the key k when finding out neither throws nor
-// runs code, and takes a short time. It reports false as ok otherwise.
-func HasOwnPropertyPlain(q quiet.Context, o *Object, k Value) (has, ok bool) {
-	r := q.Realm
-	var key QueryKey
-	switch {
-	case k.IsNumber():
-		i, ok := storage.NumberIndex(k.N)
-		if !ok {
-			return false, false
-		}
-		key = QueryKey(storage.IndexKey(i))
-	case k.IsString():
-		if k.IsShortString() && k.O.Flags&objInterned == 0 {
-			key = r.ShortQueryKey(k)
-		} else {
-			key = r.QueryStringKey(k.O)
-		}
-	case k.O != nil && k.O.Kind == kindSymbol:
-		key = QueryKey(storage.NamedKey(k.O))
-	default:
-		return false, false
-	}
-	if key.Key == nil {
-		if o.IndicesInElements() {
-			return int64(key.Idx) < int64(len(o.Elems)) && !o.Elems[key.Idx].IsHole(), true
-		}
-		if o.DelegatesPropertyAccess() {
-			return false, false
-		}
-		if o.ObjectProperties != nil && int64(key.Idx) < int64(len(o.Elems)) && !o.Elems[key.Idx].IsHole() {
-			return true, true
-		}
-		switch o.Class {
-		case classTypedArray:
-			return typedArrayHas(o, key.Idx), true
-		case classString:
-			s := o.ExtState().(*Object)
-			if uint(key.Idx) < uint(s.StringLength()) {
-				return true, true
-			}
-		}
-		if o.Flags&objSparse == 0 {
-			return false, true
-		}
-		name := r.IndexKey(key.Idx)
-		if name == nil {
-			return false, true
-		}
-		_, has = o.Shape.Lookup(name)
-		return has, true
-	}
-	switch o.Shape.Family {
-	case ordinaryRoot:
-	case arrayRoot:
-		if key.Key == r.Key(KeyLength) {
-			return true, true
-		}
-	case lazyFunctionRoot:
-		if r.IsLazyKey(key.Key) {
-			r.Materialize(o)
-		}
-	default:
-		return false, false
-	}
-	if key.Missing() {
-		return false, true
-	}
-	_, has = o.Shape.Lookup(key.Key)
-	return has, true
-}
-
 // HasProperty implements [[HasProperty]].
 func (cx *ExecutionContext) HasProperty(o *Object, k PropKey) bool {
 	for h := o; h != nil; h = h.Shape.Proto {
@@ -569,7 +496,7 @@ func (cx *ExecutionContext) HasProperty(o *Object, k PropKey) bool {
 				}
 			case classTypedArray:
 				if isNumericKey(k) {
-					return k.Key == nil && typedArrayHas(h, k.Idx)
+					return k.Key == nil && storage.TypedArrayHas(h, k.Idx)
 				}
 			}
 		}
@@ -611,7 +538,7 @@ func (cx *ExecutionContext) getProp(o *Object, k PropKey, receiver Value) Value 
 			if k.Key != nil {
 				return storage.Undefined
 			}
-			return cx.typedArrayGet(h, k.Idx)
+			return storage.TypedArrayGet(h, k.Idx)
 		}
 		d, ok := cx.GetOwnProperty(h, k)
 		if !ok {
@@ -822,7 +749,7 @@ func (cx *ExecutionContext) setProp(o *Object, k PropKey, val Value, receiver Va
 			return false
 		}
 		if h.Class == classTypedArray && isNumericKey(k) {
-			if typedArrayImmutable(h) {
+			if storage.TypedArrayImmutable(h) {
 				return false
 			}
 			if k.Key != nil {
@@ -830,10 +757,10 @@ func (cx *ExecutionContext) setProp(o *Object, k PropKey, val Value, receiver Va
 				return true
 			}
 			if receiver.O == h {
-				cx.typedArraySetElement(h.ExtState().(*TypedArray), k.Idx, val)
+				cx.typedArraySetElement(h.ExtState().(*storage.TypedArray), k.Idx, val)
 				return true
 			}
-			if !typedArrayHas(h, k.Idx) {
+			if !storage.TypedArrayHas(h, k.Idx) {
 				return true
 			}
 		}
@@ -994,7 +921,7 @@ func (cx *ExecutionContext) DeleteProp(o *Object, k PropKey) bool {
 		}
 		switch o.Class {
 		case classTypedArray:
-			return !typedArrayHas(o, k.Idx)
+			return !storage.TypedArrayHas(o, k.Idx)
 		case classString:
 			if uint(k.Idx) < uint(o.ExtState().(*Object).StringLength()) {
 				return false
@@ -1046,7 +973,7 @@ func (cx *ExecutionContext) OwnKeys(o *Object) []PropKey {
 	case classString:
 		keys = cx.appendIndexKeys(keys, o.ExtState().(*Object).StringLength())
 	case classTypedArray:
-		keys = cx.appendIndexKeys(keys, cx.typedArrayLength(o))
+		keys = cx.appendIndexKeys(keys, storage.TypedArrayLength(o))
 	}
 	keys = cx.appendElemKeys(keys, o.Elems)
 	names := o.Shape.Keys()
@@ -1146,7 +1073,7 @@ func (cx *ExecutionContext) PreventExtensions(o *Object) bool {
 	if o.Class == classProxy {
 		return cx.proxyPreventExtensions(o)
 	}
-	if o.Class == classTypedArray && !o.ExtState().(*TypedArray).isTypedArrayFixedLength() {
+	if o.Class == classTypedArray && !o.ExtState().(*storage.TypedArray).IsTypedArrayFixedLength() {
 		return false
 	}
 	if o.Flags&objNotExtensible == 0 {

@@ -98,7 +98,7 @@ func (cx *ExecutionContext) checkLengthHit(fp *funcProto, pc int, v Value, n flo
 func (cx *ExecutionContext) checkTypedArrayLengthHit(fp *funcProto, pc int, v Value, n float64) {
 	getter := cx.Intrinsic(IntrinsicTypedArrayPrototypeLengthGetter)
 	cx.checkGetterHit(fp, pc, v, cx.Key(KeyLength), getter)
-	if want := float64(cx.typedArrayLength(v.O)); n != want {
+	if want := float64(storage.TypedArrayLength(v.O)); n != want {
 		panic(cx.cacheFailure(fp, pc, "the typed array length cache", nil, fmt.Sprint(n), fmt.Sprint(want)))
 	}
 }

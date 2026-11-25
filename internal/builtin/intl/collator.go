@@ -560,7 +560,7 @@ func arrayToLocaleString(cx *engine.ExecutionContext, this engine.Value, args []
 
 func typedArrayToLocaleString(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	// ValidateTypedArray.
-	t := engine.TypedArrayData(this)
+	t := storage.TypedArrayData(this)
 	if t == nil {
 		cx.ThrowTypeError("%TypedArray%.prototype.toLocaleString: this is not a typed array")
 	}

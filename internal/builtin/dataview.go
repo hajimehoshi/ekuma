@@ -9,8 +9,8 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/storage"
 )
 
-func thisDataView(cx *engine.ExecutionContext, this engine.Value, what string) *engine.DataView {
-	d := engine.DataViewData(this)
+func thisDataView(cx *engine.ExecutionContext, this engine.Value, what string) *storage.DataView {
+	d := storage.DataViewData(this)
 	if d == nil {
 		cx.ThrowTypeError("DataView.prototype." + what + " called on incompatible receiver " + cx.DisplayString(this))
 	}
@@ -29,18 +29,18 @@ func viewElementBytes(cx *engine.ExecutionContext, b []byte, inBounds bool, typ 
 	return b[i:]
 }
 
-func loadViewElement(cx *engine.ExecutionContext, d *engine.DataView, typ element.Type, i int64, le bool, what string) engine.Value {
+func loadViewElement(cx *engine.ExecutionContext, d *storage.DataView, typ element.Type, i int64, le bool, what string) engine.Value {
 	// A throw releases the lock of the buffer.
 	b, inBounds := d.Lock()
 	defer d.Unlock()
-	return cx.GetValueFromBuffer(viewElementBytes(cx, b, inBounds, typ, i, what), typ, le)
+	return storage.GetValueFromBuffer(viewElementBytes(cx, b, inBounds, typ, i, what), typ, le)
 }
 
-func storeViewElement(cx *engine.ExecutionContext, d *engine.DataView, typ element.Type, i int64, v engine.Value, le bool, what string) {
+func storeViewElement(cx *engine.ExecutionContext, d *storage.DataView, typ element.Type, i int64, v engine.Value, le bool, what string) {
 	// A throw releases the lock of the buffer.
 	b, inBounds := d.Lock()
 	defer d.Unlock()
-	engine.SetValueInBuffer(viewElementBytes(cx, b, inBounds, typ, i, what), typ, v, le)
+	storage.SetValueInBuffer(viewElementBytes(cx, b, inBounds, typ, i, what), typ, v, le)
 }
 
 var (
@@ -90,7 +90,7 @@ func dataViewConstructor(cx *engine.ExecutionContext, this engine.Value, args []
 		cx.ThrowTypeError("constructor DataView requires 'new'")
 	}
 	buf := arg(args, 0)
-	b := engine.ArrayBufferData(buf)
+	b := storage.ArrayBufferData(buf)
 	if b == nil {
 		cx.ThrowTypeError("first argument to DataView constructor must be an ArrayBuffer")
 	}
@@ -193,7 +193,7 @@ var (
 func dataViewSetNative(name string, typ element.Type) engine.NativeFunc {
 	return func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		d := thisDataView(cx, this, name)
-		if engine.ArrayBufferData(storage.ObjectValue(d.Buffer())).IsImmutable() {
+		if storage.ArrayBufferData(storage.ObjectValue(d.Buffer())).IsImmutable() {
 			cx.ThrowTypeError("DataView.prototype." + name + ": the DataView is backed by an immutable ArrayBuffer")
 		}
 		i := toIndex(cx, arg(args, 0))

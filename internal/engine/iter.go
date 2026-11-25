@@ -64,23 +64,9 @@ func (cx *ExecutionContext) iteratorRecord(it Value) (Value, Value) {
 // It throws a TypeError when this is not an iterator of its kind.
 type IteratorStepFunc func(cx *ExecutionContext, this Value) (Value, bool)
 
-// PairStep is the outcome of an [IteratorPairStepFunc].
-type PairStep uint8
-
-const (
-	// PairDeclined says that the step did nothing.
-	PairDeclined PairStep = iota
-
-	// PairDone says that the iterator is done.
-	PairDone
-
-	// PairYielded says that the iterator yielded the two values of a pair.
-	PairYielded
-)
-
 // IteratorPairStepFunc advances an entries iterator that yields pairs in its creation realm.
 // It must decline incompatible state without advancing, and must neither throw nor run JavaScript.
-type IteratorPairStepFunc func(state any) (a, b Value, st PairStep)
+type IteratorPairStepFunc func(state any) (a, b Value, st quiet.PairStep)
 
 // IteratorYieldRealm identifies where a built-in iterator creates a yielded result.
 type IteratorYieldRealm uint8
@@ -93,22 +79,16 @@ const (
 	IteratorClosureRealm
 )
 
-type arrayIterator struct {
-	object    *Object
-	nextIndex int64
-	kind      quiet.IterationKind
-}
-
 // NewArrayIterator returns an array iterator over the array-like object o.
 func (cx *ExecutionContext) NewArrayIterator(o *Object, kind quiet.IterationKind) *Object {
 	return cx.newArrayIterator(o, kind, 0)
 }
 
 func (cx *ExecutionContext) newArrayIterator(o *Object, kind quiet.IterationKind, nextIndex int64) *Object {
-	return cx.NewIteratorObject(cx.Intrinsic(IntrinsicArrayIteratorPrototype), &arrayIterator{
-		object:    o,
-		nextIndex: nextIndex,
-		kind:      kind,
+	return cx.NewIteratorObject(cx.Intrinsic(IntrinsicArrayIteratorPrototype), &quiet.ArrayIterator{
+		Object:    o,
+		NextIndex: nextIndex,
+		Kind:      kind,
 	})
 }
 
@@ -129,30 +109,30 @@ func (cx *ExecutionContext) NewArrayIteratorNext() *Object {
 
 // arrayIteratorNext is the code of the next method of array iterators.
 func arrayIteratorNext(cx *ExecutionContext, this Value, args []Value) Value {
-	it, _ := storage.IteratorState(this).(*arrayIterator)
-	key, value, st := it.stepPlain(cx.Quiet())
-	if st == PairDeclined {
-		key, value, st = it.step(cx)
+	it, _ := storage.IteratorState(this).(*quiet.ArrayIterator)
+	key, value, st := it.StepPlain(cx.Quiet())
+	if st == quiet.PairDeclined {
+		key, value, st = arrayIteratorStep(it, cx)
 	}
-	if st != PairYielded {
+	if st != quiet.PairYielded {
 		return cx.CreateIterResultObject(storage.Undefined, true)
 	}
-	return cx.CreateIterResultObject(it.result(cx.Quiet(), key, value), false)
+	return cx.CreateIterResultObject(it.Result(cx.Quiet(), key, value), false)
 }
 
 // arrayIteratorFastStep is the step of the next method of array iterators of the running realm.
 func arrayIteratorFastStep(cx *ExecutionContext, this Value) (Value, bool) {
-	it, _ := storage.IteratorState(this).(*arrayIterator)
-	key, value, st := it.stepPlain(cx.Quiet())
-	if st == PairDeclined {
+	it, _ := storage.IteratorState(this).(*quiet.ArrayIterator)
+	key, value, st := it.StepPlain(cx.Quiet())
+	if st == quiet.PairDeclined {
 		cx.pushNative(cx.Intrinsic(IntrinsicArrayIteratorPrototypeNext), this, nil)
-		key, value, st = it.step(cx)
+		key, value, st = arrayIteratorStep(it, cx)
 		cx.popNative()
 	}
-	if st != PairYielded {
+	if st != quiet.PairYielded {
 		return storage.Undefined, false
 	}
-	return it.result(cx.Quiet(), key, value), true
+	return it.Result(cx.Quiet(), key, value), true
 }
 
 // arrayIteratorIndex reads the element i of o for the next method of array iterators of the running
@@ -168,98 +148,34 @@ func arrayIteratorIndex(cx *ExecutionContext, o *Object, i uint32) Value {
 	return v
 }
 
-func (cx *ExecutionContext) arrayIteratorPairStep(it, next Value) (Value, Value, PairStep) {
-	state, _ := storage.IteratorState(it).(*arrayIterator)
-	if state == nil || state.kind != quiet.IterateEntries {
-		return storage.Undefined, storage.Undefined, PairDeclined
+func (cx *ExecutionContext) arrayIteratorPairStep(it, next Value) (Value, Value, quiet.PairStep) {
+	state, _ := storage.IteratorState(it).(*quiet.ArrayIterator)
+	if state == nil || state.Kind != quiet.IterateEntries {
+		return storage.Undefined, storage.Undefined, quiet.PairDeclined
 	}
-	key, value, st := state.stepPlain(cx.Quiet())
-	if st == PairDeclined {
+	key, value, st := state.StepPlain(cx.Quiet())
+	if st == quiet.PairDeclined {
 		cx.pushNative(next.O, it, nil)
-		key, value, st = state.step(cx)
+		key, value, st = arrayIteratorStep(state, cx)
 		cx.popNative()
 	}
 	return key, value, st
 }
 
-// result returns what the iterator yields for key and value.
-func (it *arrayIterator) result(q quiet.Context, key, value Value) Value {
-	switch it.kind {
-	case quiet.IterateKeys:
-		return key
-	case quiet.IterateValues:
-		return value
-	default:
-		return Value{O: q.NewArrayPair(key, value)}
-	}
-}
-
-// stepPlain is step when that neither runs code nor throws. It declines without advancing
-// otherwise.
-func (it *arrayIterator) stepPlain(q quiet.Context) (key, value Value, st PairStep) {
-	if it == nil {
-		return storage.Undefined, storage.Undefined, PairDeclined
-	}
-	r := q.Realm
-	o := it.object
-	if o == nil {
-		return storage.Undefined, storage.Undefined, PairDone
-	}
-	i := it.nextIndex
-	var length int64
-	switch {
-	case o.Kind == kindArray:
-		length = int64(o.Length)
-	case o.Class == classTypedArray:
-		t := o.ExtState().(*TypedArray)
-		if it.kind != quiet.IterateKeys && i <= MaxArrayIndex {
-			if b, ok := t.element(uint32(i)); ok {
-				value = loadElement(t.typ, b)
-				it.nextIndex = i + 1
-				r.PollAtIndex(i)
-				return storage.Number(float64(i)), value, PairYielded
-			}
-		}
-		n, ok := t.Length()
-		if !ok {
-			return storage.Undefined, storage.Undefined, PairDeclined
-		}
-		length = int64(n)
-	default:
-		return storage.Undefined, storage.Undefined, PairDeclined
-	}
-	if i >= length {
-		it.object = nil
-		return storage.Undefined, storage.Undefined, PairDone
-	}
-	key = storage.Number(float64(i))
-	if it.kind == quiet.IterateKeys {
-		it.nextIndex = i + 1
-		return key, storage.Undefined, PairYielded
-	}
-	if i < int64(len(o.Elems)) && !o.Elems[i].IsHole() {
-		value = o.Elems[i]
-		it.nextIndex = i + 1
-		r.PollAtIndex(i)
-		return key, value, PairYielded
-	}
-	return storage.Undefined, storage.Undefined, PairDeclined
-}
-
-// step advances the iterator.
-func (it *arrayIterator) step(cx *ExecutionContext) (key, value Value, st PairStep) {
+// arrayIteratorStep advances the iterator.
+func arrayIteratorStep(it *quiet.ArrayIterator, cx *ExecutionContext) (key, value Value, st quiet.PairStep) {
 	if it == nil {
 		cx.ThrowTypeError("next method called on an object that is not an array iterator")
 	}
-	o := it.object
+	o := it.Object
 	if o == nil {
-		return storage.Undefined, storage.Undefined, PairDone
+		return storage.Undefined, storage.Undefined, quiet.PairDone
 	}
 	// Reading length can call next on this iterator again.
-	i := it.nextIndex
+	i := it.NextIndex
 	var length int64
 	if o.Class == classTypedArray {
-		n, ok := o.ExtState().(*TypedArray).Length()
+		n, ok := o.ExtState().(*storage.TypedArray).Length()
 		if !ok {
 			cx.ThrowTypeError("cannot iterate a detached or out of bounds typed array")
 		}
@@ -268,21 +184,21 @@ func (it *arrayIterator) step(cx *ExecutionContext) (key, value Value, st PairSt
 		length = cx.LengthOfArrayLike(o)
 	}
 	if i >= length {
-		it.object = nil
-		return storage.Undefined, storage.Undefined, PairDone
+		it.Object = nil
+		return storage.Undefined, storage.Undefined, quiet.PairDone
 	}
 	key = storage.Number(float64(i))
-	it.nextIndex = i + 1
-	if it.kind == quiet.IterateKeys {
-		return key, storage.Undefined, PairYielded
+	it.NextIndex = i + 1
+	if it.Kind == quiet.IterateKeys {
+		return key, storage.Undefined, quiet.PairYielded
 	}
 	if i < int64(len(o.Elems)) && !o.Elems[i].IsHole() {
 		value = o.Elems[i]
 		cx.PollAt(i)
-		return key, value, PairYielded
+		return key, value, quiet.PairYielded
 	}
 	cx.Poll()
-	return key, cx.Get(o, cx.ToPropertyKey(key)), PairYielded
+	return key, cx.Get(o, cx.ToPropertyKey(key)), quiet.PairYielded
 }
 
 // Outcomes of iterNext.

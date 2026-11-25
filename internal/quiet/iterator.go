@@ -17,6 +17,20 @@ const (
 	IterateEntries
 )
 
+// PairStep is the outcome of a step of an iterator that yields pairs.
+type PairStep uint8
+
+const (
+	// PairDeclined says that the step did nothing.
+	PairDeclined PairStep = iota
+
+	// PairDone says that the iterator is done.
+	PairDone
+
+	// PairYielded says that the iterator yielded the two values of a pair.
+	PairYielded
+)
+
 type StringIterator struct {
 	Str wtf8.String
 	pos int

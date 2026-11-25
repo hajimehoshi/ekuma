@@ -53,6 +53,11 @@ func TestExecutionContextBoundary(t *testing.T) {
 			owners: []string{"agent.newRealm", "executionContextOf", "agent.exec"},
 		},
 		useRule{
+			what:   "waiter lists of a shared data block",
+			objs:   []types.Object{prog.field(t, "SharedDataBlock", "waiterLists")},
+			owners: []string{"waiterListsOf", "compareAndAdd"},
+		},
+		useRule{
 			what:   "ScriptOrModule of linked code",
 			objs:   []types.Object{prog.field(t, "funcProto", "script")},
 			owners: []string{"ExecutionContext.linkFunc", "scriptOrModuleOf"},

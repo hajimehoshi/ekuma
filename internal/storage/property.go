@@ -428,3 +428,74 @@ func DiagnosticDataProperty(o, key *Object) (Value, bool) {
 	}
 	return Undefined, false
 }
+
+// HasOwnPropertyPlain is HasOwnProperty of o and the key k when finding out neither throws nor
+// runs code, and takes a short time. It reports false as ok otherwise.
+func (r *RealmPart) HasOwnPropertyPlain(o *Object, k Value) (has, ok bool) {
+	var key QueryKey
+	switch {
+	case k.IsNumber():
+		i, ok := NumberIndex(k.N)
+		if !ok {
+			return false, false
+		}
+		key = QueryKey(IndexKey(i))
+	case k.IsString():
+		if k.IsShortString() && k.O.Flags&ObjInterned == 0 {
+			key = r.ShortQueryKey(k)
+		} else {
+			key = r.QueryStringKey(k.O)
+		}
+	case k.O != nil && k.O.Kind == KindSymbol:
+		key = QueryKey(NamedKey(k.O))
+	default:
+		return false, false
+	}
+	if key.Key == nil {
+		if o.IndicesInElements() {
+			return int64(key.Idx) < int64(len(o.Elems)) && !o.Elems[key.Idx].IsHole(), true
+		}
+		if o.DelegatesPropertyAccess() {
+			return false, false
+		}
+		if o.ObjectProperties != nil && int64(key.Idx) < int64(len(o.Elems)) && !o.Elems[key.Idx].IsHole() {
+			return true, true
+		}
+		switch o.Class {
+		case ClassTypedArray:
+			return TypedArrayHas(o, key.Idx), true
+		case ClassString:
+			s := o.ExtState().(*Object)
+			if uint(key.Idx) < uint(s.StringLength()) {
+				return true, true
+			}
+		}
+		if o.Flags&ObjSparse == 0 {
+			return false, true
+		}
+		name := r.IndexKey(key.Idx)
+		if name == nil {
+			return false, true
+		}
+		_, has = o.Shape.Lookup(name)
+		return has, true
+	}
+	switch o.Shape.Family {
+	case OrdinaryRoot:
+	case ArrayRoot:
+		if key.Key == r.Key(KeyLength) {
+			return true, true
+		}
+	case LazyFunctionRoot:
+		if r.IsLazyKey(key.Key) {
+			r.Materialize(o)
+		}
+	default:
+		return false, false
+	}
+	if key.Missing() {
+		return false, true
+	}
+	_, has = o.Shape.Lookup(key.Key)
+	return has, true
+}

@@ -239,11 +239,9 @@ const (
 	cacheSetter                              = storage.CacheSetter
 	classArguments                           = storage.ClassArguments
 	classArray                               = storage.ClassArray
-	classArrayBuffer                         = storage.ClassArrayBuffer
 	classAsyncDisposableStack                = storage.ClassAsyncDisposableStack
 	classBigInt                              = storage.ClassBigInt
 	classBoolean                             = storage.ClassBoolean
-	classDataView                            = storage.ClassDataView
 	classDate                                = storage.ClassDate
 	classDisposableStack                     = storage.ClassDisposableStack
 	classError                               = storage.ClassError
@@ -339,7 +337,6 @@ const (
 	prependShift                             = storage.PrependShift
 	primitiveStringRoot                      = storage.PrimitiveStringRoot
 	privateShapeThreshold                    = storage.PrivateShapeThreshold
-	typedArrayRoot                           = storage.TypedArrayRoot
 	typeofBigInt                             = storage.TypeofBigInt
 	typeofBoolean                            = storage.TypeofBoolean
 	typeofCount                              = storage.TypeofCount

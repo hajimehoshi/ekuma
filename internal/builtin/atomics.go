@@ -15,7 +15,7 @@ import (
 
 // validateIntegerTypedArray implements ValidateIntegerTypedArray, with the access mode write when write is set,
 // and returns the typed array and its length.
-func validateIntegerTypedArray(cx *engine.ExecutionContext, v engine.Value, waitable, write bool, what string) (*engine.TypedArray, int) {
+func validateIntegerTypedArray(cx *engine.ExecutionContext, v engine.Value, waitable, write bool, what string) (*storage.TypedArray, int) {
 	_, t, n := validateTypedArrayAccess(cx, v, write, "Atomics."+what)
 	typ := t.ElementType()
 	if waitable {
@@ -38,7 +38,7 @@ func validateAtomicAccess(cx *engine.ExecutionContext, n int, index engine.Value
 }
 
 // revalidateAtomicAccess implements RevalidateAtomicAccess for the element i.
-func revalidateAtomicAccess(cx *engine.ExecutionContext, t *engine.TypedArray, i int) {
+func revalidateAtomicAccess(cx *engine.ExecutionContext, t *storage.TypedArray, i int) {
 	n, ok := t.Length()
 	if !ok {
 		cx.ThrowTypeError("the typed array is detached or out of bounds")
@@ -83,7 +83,7 @@ func doWait(cx *engine.ExecutionContext, async bool, args []engine.Value) engine
 		cx.ThrowTypeError("Atomics.wait cannot be called in this context")
 	}
 	revalidateAtomicAccess(cx, t, i)
-	r, isPromise := cx.Wait(t, i, engine.ElementBits(typ, v), timeout, async)
+	r, isPromise := cx.Wait(t, i, storage.ElementBits(typ, v), timeout, async)
 	if !async {
 		return r
 	}
@@ -133,26 +133,26 @@ func initAtomics(cx *engine.ExecutionContext) {
 }
 
 var (
-	nativeAtomicsAdd      = engine.RegisterNative(atomicsReadModifyWriteNative("add", engine.AtomicAdd))
-	nativeAtomicsAnd      = engine.RegisterNative(atomicsReadModifyWriteNative("and", engine.AtomicAnd))
-	nativeAtomicsExchange = engine.RegisterNative(atomicsReadModifyWriteNative("exchange", engine.AtomicExchange))
-	nativeAtomicsOr       = engine.RegisterNative(atomicsReadModifyWriteNative("or", engine.AtomicOr))
-	nativeAtomicsSub      = engine.RegisterNative(atomicsReadModifyWriteNative("sub", engine.AtomicSub))
-	nativeAtomicsXor      = engine.RegisterNative(atomicsReadModifyWriteNative("xor", engine.AtomicXor))
+	nativeAtomicsAdd      = engine.RegisterNative(atomicsReadModifyWriteNative("add", storage.AtomicAdd))
+	nativeAtomicsAnd      = engine.RegisterNative(atomicsReadModifyWriteNative("and", storage.AtomicAnd))
+	nativeAtomicsExchange = engine.RegisterNative(atomicsReadModifyWriteNative("exchange", storage.AtomicExchange))
+	nativeAtomicsOr       = engine.RegisterNative(atomicsReadModifyWriteNative("or", storage.AtomicOr))
+	nativeAtomicsSub      = engine.RegisterNative(atomicsReadModifyWriteNative("sub", storage.AtomicSub))
+	nativeAtomicsXor      = engine.RegisterNative(atomicsReadModifyWriteNative("xor", storage.AtomicXor))
 )
 
 // atomicsReadModifyWriteNative returns the function name of Atomics, which implements
 // AtomicReadModifyWrite with op on the encodings of the elements.
 //
 //go:noinline
-func atomicsReadModifyWriteNative(name string, op engine.AtomicOp) engine.NativeFunc {
+func atomicsReadModifyWriteNative(name string, op storage.AtomicOp) engine.NativeFunc {
 	return func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		t, n := validateIntegerTypedArray(cx, arg(args, 0), false, true, name)
 		i := validateAtomicAccess(cx, n, arg(args, 1))
 		typ := t.ElementType()
 		v := toAtomicValue(cx, typ, arg(args, 2))
 		revalidateAtomicAccess(cx, t, i)
-		return engine.ElementFromBits(typ, t.AtomicReadModifyWrite(i, op, engine.ElementBits(typ, v), 0))
+		return storage.ElementFromBits(typ, t.AtomicReadModifyWrite(i, op, storage.ElementBits(typ, v), 0))
 	}
 }
 
@@ -163,8 +163,8 @@ func atomicsCompareExchange(cx *engine.ExecutionContext, this engine.Value, args
 	expected := toAtomicValue(cx, typ, arg(args, 2))
 	replacement := toAtomicValue(cx, typ, arg(args, 3))
 	revalidateAtomicAccess(cx, t, i)
-	old := t.AtomicReadModifyWrite(i, engine.AtomicCompareExchange, engine.ElementBits(typ, expected), engine.ElementBits(typ, replacement))
-	return engine.ElementFromBits(typ, old)
+	old := t.AtomicReadModifyWrite(i, storage.AtomicCompareExchange, storage.ElementBits(typ, expected), storage.ElementBits(typ, replacement))
+	return storage.ElementFromBits(typ, old)
 }
 
 func atomicsIsLockFree(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -179,7 +179,7 @@ func atomicsLoad(cx *engine.ExecutionContext, this engine.Value, args []engine.V
 	t, n := validateIntegerTypedArray(cx, arg(args, 0), false, false, "load")
 	i := validateAtomicAccess(cx, n, arg(args, 1))
 	revalidateAtomicAccess(cx, t, i)
-	return engine.ElementFromBits(t.ElementType(), t.AtomicLoad(i))
+	return storage.ElementFromBits(t.ElementType(), t.AtomicLoad(i))
 }
 
 func atomicsStore(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -188,7 +188,7 @@ func atomicsStore(cx *engine.ExecutionContext, this engine.Value, args []engine.
 	typ := t.ElementType()
 	v := toAtomicValue(cx, typ, arg(args, 2))
 	revalidateAtomicAccess(cx, t, i)
-	t.AtomicStore(i, engine.ElementBits(typ, v))
+	t.AtomicStore(i, storage.ElementBits(typ, v))
 	return v
 }
 

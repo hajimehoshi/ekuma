@@ -296,7 +296,7 @@ func (cx *ExecutionContext) getValue(v, k Value) (Value, *Object) {
 	if ko := k.O; ko == storage.NumberObject {
 		if i, ok := storage.NumberIndex(k.N); ok {
 			if o := v.O; o != nil && o.Class == classTypedArray {
-				return cx.typedArrayGet(o, i), nil
+				return storage.TypedArrayGet(o, i), nil
 			}
 			return cx.getIndex(v, i)
 		}
