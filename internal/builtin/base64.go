@@ -345,15 +345,16 @@ func storeDecodeResult(cx *engine.ExecutionContext, t *engine.TypedArray, r deco
 	return engine.ObjectValue(o)
 }
 
-func initUint8ArrayBase64(cx *engine.ExecutionContext, bi *binaryIntrinsics) {
-	ctor := bi.ctors[element.Uint8]
-	proto := bi.protos[element.Uint8]
+// newUint8Array returns a new Uint8Array of the elements b.
+func newUint8Array(cx *engine.ExecutionContext, b []byte) engine.Value {
+	o := newTypedArray(cx, cx.Intrinsic(engine.IntrinsicUint8ArrayPrototype), element.Uint8, int64(len(b)))
+	writeElements(engine.TypedArrayData(engine.ObjectValue(o)), 0, b)
+	return engine.ObjectValue(o)
+}
 
-	newUint8Array := func(cx *engine.ExecutionContext, b []byte) engine.Value {
-		o := bi.newTypedArray(cx, proto, element.Uint8, int64(len(b)))
-		writeElements(engine.TypedArrayData(engine.ObjectValue(o)), 0, b)
-		return engine.ObjectValue(o)
-	}
+func initUint8ArrayBase64(cx *engine.ExecutionContext) {
+	ctor := cx.Intrinsic(engine.IntrinsicUint8Array)
+	proto := cx.Intrinsic(engine.IntrinsicUint8ArrayPrototype)
 
 	method(cx, ctor, "fromBase64", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		s := encodedStringArg(cx, args)

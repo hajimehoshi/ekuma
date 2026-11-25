@@ -6,31 +6,17 @@ package builtin
 import (
 	"slices"
 
-	"github.com/hajimehoshi/ekuma/internal/element"
 	"github.com/hajimehoshi/ekuma/internal/engine"
 	"github.com/hajimehoshi/ekuma/internal/numconv"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
-// binaryIntrinsics are the intrinsic objects of the binary data built-ins of one realm.
-type binaryIntrinsics struct {
-	arrayBufferProto                *engine.Object
-	sharedArrayBufferProto          *engine.Object
-	typedArrayCtor, typedArrayProto *engine.Object
-	dataViewProto                   *engine.Object
-
-	// ctors and protos are the typed array constructors and their prototypes, by element type.
-	ctors  [element.TypeCount]*engine.Object
-	protos [element.TypeCount]*engine.Object
-}
-
 // initBinary defines ArrayBuffer, SharedArrayBuffer, the typed arrays, DataView and Atomics.
 func initBinary(cx *engine.ExecutionContext) {
-	bi := &binaryIntrinsics{}
-	initArrayBuffer(cx, bi)
-	initSharedArrayBuffer(cx, bi)
-	initTypedArrays(cx, bi)
-	initDataView(cx, bi)
+	initArrayBuffer(cx)
+	initSharedArrayBuffer(cx)
+	initTypedArrays(cx)
+	initDataView(cx)
 	initAtomics(cx)
 }
 
@@ -83,9 +69,8 @@ func relativeRange(cx *engine.ExecutionContext, start, end engine.Value, length 
 	return first, final
 }
 
-func initArrayBuffer(cx *engine.ExecutionContext, bi *binaryIntrinsics) {
+func initArrayBuffer(cx *engine.ExecutionContext) {
 	proto := cx.NewOrdinaryObject()
-	bi.arrayBufferProto = proto
 	cx.SetIntrinsic(engine.IntrinsicArrayBufferPrototype, proto)
 	ctor := constructor(cx, "ArrayBuffer", 1, engine.IntrinsicArrayBufferPrototype, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		nt := cx.GetNewTarget()
@@ -234,9 +219,8 @@ func defineTransfer(cx *engine.ExecutionContext, name string, preserve, immutabl
 	})
 }
 
-func initSharedArrayBuffer(cx *engine.ExecutionContext, bi *binaryIntrinsics) {
+func initSharedArrayBuffer(cx *engine.ExecutionContext) {
 	proto := cx.NewOrdinaryObject()
-	bi.sharedArrayBufferProto = proto
 	cx.SetIntrinsic(engine.IntrinsicSharedArrayBufferPrototype, proto)
 	ctor := constructor(cx, "SharedArrayBuffer", 1, engine.IntrinsicSharedArrayBufferPrototype, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		nt := cx.GetNewTarget()

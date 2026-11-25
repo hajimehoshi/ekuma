@@ -331,8 +331,8 @@ func storeNumberRange(t *engine.TypedArray, vals []engine.Value, start, end int)
 }
 
 // newTypedArray returns a new typed array of n elements of the type typ on a new ArrayBuffer.
-func (bi *binaryIntrinsics) newTypedArray(cx *engine.ExecutionContext, proto *engine.Object, typ element.Type, n int64) *engine.Object {
-	buf := cx.NewArrayBufferObject(bi.arrayBufferProto, n*int64(typ.Size()), -1, false)
+func newTypedArray(cx *engine.ExecutionContext, proto *engine.Object, typ element.Type, n int64) *engine.Object {
+	buf := cx.NewArrayBufferObject(cx.Intrinsic(engine.IntrinsicArrayBufferPrototype), n*int64(typ.Size()), -1, false)
 	return cx.NewTypedArrayObject(proto, typ, buf, 0, int(n))
 }
 
@@ -346,9 +346,9 @@ func createFromConstructor(cx *engine.ExecutionContext, c *engine.Object, args [
 	return o, t
 }
 
-// speciesCreate implements TypedArraySpeciesCreate. The access mode is write when write is set.
-func (bi *binaryIntrinsics) speciesCreate(cx *engine.ExecutionContext, exemplar *engine.Object, t *engine.TypedArray, args []engine.Value, write bool) (*engine.Object, *engine.TypedArray) {
-	c := speciesConstructor(cx, exemplar, bi.ctors[t.ElementType()])
+// typedArraySpeciesCreate implements TypedArraySpeciesCreate. The access mode is write when write is set.
+func typedArraySpeciesCreate(cx *engine.ExecutionContext, exemplar *engine.Object, t *engine.TypedArray, args []engine.Value, write bool) (*engine.Object, *engine.TypedArray) {
+	c := speciesConstructor(cx, exemplar, cx.Intrinsic(engine.TypedArrayConstructorIntrinsic(t.ElementType())))
 	o, r := createFromConstructor(cx, c, args, write)
 	if r.ElementType().IsBigInt() != t.ElementType().IsBigInt() {
 		cx.ThrowTypeError("typed array species constructor returned a typed array of a different content type")
@@ -356,10 +356,10 @@ func (bi *binaryIntrinsics) speciesCreate(cx *engine.ExecutionContext, exemplar 
 	return o, r
 }
 
-// createSameType implements TypedArrayCreateSameType.
-func (bi *binaryIntrinsics) createSameType(cx *engine.ExecutionContext, t *engine.TypedArray, n int) (*engine.Object, *engine.TypedArray) {
+// typedArrayCreateSameType implements TypedArrayCreateSameType.
+func typedArrayCreateSameType(cx *engine.ExecutionContext, t *engine.TypedArray, n int) (*engine.Object, *engine.TypedArray) {
 	typ := t.ElementType()
-	o := bi.newTypedArray(cx, bi.protos[typ], typ, int64(n))
+	o := newTypedArray(cx, cx.Intrinsic(engine.TypedArrayPrototypeIntrinsic(typ)), typ, int64(n))
 	return o, engine.TypedArrayData(engine.ObjectValue(o))
 }
 
@@ -376,8 +376,8 @@ func copyConverted(dst []byte, to element.Type, src []byte, from element.Type, n
 	}
 }
 
-// construct implements the typed array constructors for the element type typ.
-func (bi *binaryIntrinsics) construct(cx *engine.ExecutionContext, typ element.Type, args []engine.Value) engine.Value {
+// constructTypedArray implements the typed array constructors for the element type typ.
+func constructTypedArray(cx *engine.ExecutionContext, typ element.Type, args []engine.Value) engine.Value {
 	nt := cx.GetNewTarget()
 	name := typedArrayNames[typ]
 	if nt == nil {
@@ -392,7 +392,7 @@ func (bi *binaryIntrinsics) construct(cx *engine.ExecutionContext, typ element.T
 			n = toIndex(cx, first)
 		}
 		proto := cx.GetPrototypeFromConstructor(nt, defaultProto)
-		return engine.ObjectValue(bi.newTypedArray(cx, proto, typ, n))
+		return engine.ObjectValue(newTypedArray(cx, proto, typ, n))
 	}
 	proto := cx.GetPrototypeFromConstructor(nt, defaultProto)
 	if src := engine.TypedArrayData(first); src != nil {
@@ -403,7 +403,7 @@ func (bi *binaryIntrinsics) construct(cx *engine.ExecutionContext, typ element.T
 		if src.ElementType().IsBigInt() != typ.IsBigInt() {
 			cx.ThrowTypeError("cannot mix BigInt and other types, use explicit conversions")
 		}
-		o := bi.newTypedArray(cx, proto, typ, int64(n))
+		o := newTypedArray(cx, proto, typ, int64(n))
 		storeConverted(cx, engine.TypedArrayData(engine.ObjectValue(o)), 0, elementsOf(src), src.ElementType(), n)
 		return engine.ObjectValue(o)
 	}
@@ -447,7 +447,7 @@ func (bi *binaryIntrinsics) construct(cx *engine.ExecutionContext, typ element.T
 	}
 	if m := cx.GetMethod(first, cx.WellKnownSymbol(engine.SymbolIterator)); m != nil {
 		vals := cx.IteratorToList(first, m)
-		o := bi.newTypedArray(cx, proto, typ, int64(len(vals)))
+		o := newTypedArray(cx, proto, typ, int64(len(vals)))
 		t := engine.TypedArrayData(engine.ObjectValue(o))
 		for i := storeNumberValues(cx, t, vals); i < len(vals); i++ {
 			storeAt(cx, o, t, i, vals[i])
@@ -456,7 +456,7 @@ func (bi *binaryIntrinsics) construct(cx *engine.ExecutionContext, typ element.T
 	}
 	src := first.Object()
 	n := cx.LengthOfArrayLike(src)
-	o := bi.newTypedArray(cx, proto, typ, n)
+	o := newTypedArray(cx, proto, typ, n)
 	t := engine.TypedArrayData(engine.ObjectValue(o))
 	for i := range n {
 		storeAt(cx, o, t, int(i), getAt(cx, src, i))
@@ -607,14 +607,12 @@ func throwNotTypedArray(cx *engine.ExecutionContext, what string) {
 	cx.ThrowTypeError("%TypedArray%.prototype." + what + ": this is not a typed array")
 }
 
-func initTypedArrays(cx *engine.ExecutionContext, bi *binaryIntrinsics) {
+func initTypedArrays(cx *engine.ExecutionContext) {
 	proto := cx.NewOrdinaryObject()
-	bi.typedArrayProto = proto
 	ctor := cx.NewNativeConstructor("TypedArray", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		cx.ThrowTypeError("abstract class TypedArray not directly constructable")
 		return engine.Undefined
 	})
-	bi.typedArrayCtor = ctor
 	cx.Define(ctor, cx.Key(engine.KeyPrototype), engine.ObjectValue(proto), 0)
 	cx.Define(proto, cx.Key(engine.KeyConstructor), engine.ObjectValue(ctor), engine.FlagsHidden)
 	speciesGetter(cx, ctor)
@@ -823,7 +821,7 @@ func initTypedArrays(cx *engine.ExecutionContext, bi *binaryIntrinsics) {
 				kept = append(kept, v)
 			}
 		}
-		a, at := bi.speciesCreate(cx, o, t, []engine.Value{engine.Number(float64(len(kept)))}, true)
+		a, at := typedArraySpeciesCreate(cx, o, t, []engine.Value{engine.Number(float64(len(kept)))}, true)
 		for i, v := range kept {
 			storeAt(cx, a, at, i, v)
 		}
@@ -907,7 +905,7 @@ func initTypedArrays(cx *engine.ExecutionContext, bi *binaryIntrinsics) {
 		o, t, n := validateTypedArray(cx, this, "%TypedArray%.prototype.map")
 		f := callback(cx, args, "map")
 		thisArg := arg(args, 1)
-		a, at := bi.speciesCreate(cx, o, t, []engine.Value{engine.Number(float64(n))}, true)
+		a, at := typedArraySpeciesCreate(cx, o, t, []engine.Value{engine.Number(float64(n))}, true)
 		for i := range n {
 			v := cx.Call(f, thisArg, getAt(cx, o, int64(i)), engine.Number(float64(i)), engine.ObjectValue(o))
 			storeAt(cx, a, at, i, v)
@@ -961,14 +959,14 @@ func initTypedArrays(cx *engine.ExecutionContext, bi *binaryIntrinsics) {
 		if offset < 0 {
 			cx.ThrowRangeError("offset is out of bounds")
 		}
-		bi.setFrom(cx, this.Object(), t, offset, arg(args, 0))
+		setTypedArrayFrom(cx, this.Object(), t, offset, arg(args, 0))
 		return engine.Undefined
 	})
 	method(cx, proto, "slice", 2, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		o, t, n := validateTypedArray(cx, this, "%TypedArray%.prototype.slice")
 		start, end := relativeRange(cx, arg(args, 0), arg(args, 1), n)
 		count := max(end-start, 0)
-		a, at := bi.speciesCreate(cx, o, t, []engine.Value{engine.Number(float64(count))}, true)
+		a, at := typedArraySpeciesCreate(cx, o, t, []engine.Value{engine.Number(float64(count))}, true)
 		if count == 0 {
 			return engine.ObjectValue(a)
 		}
@@ -1027,13 +1025,13 @@ func initTypedArrays(cx *engine.ExecutionContext, bi *binaryIntrinsics) {
 		buf := engine.ObjectValue(t.Buffer())
 		var a *engine.Object
 		if end := arg(args, 1); t.IsLengthTracking() && end.IsUndefined() {
-			a, _ = bi.speciesCreate(cx, this.Object(), t, []engine.Value{buf, begin}, false)
+			a, _ = typedArraySpeciesCreate(cx, this.Object(), t, []engine.Value{buf, begin}, false)
 		} else {
 			e := n
 			if !end.IsUndefined() {
 				e = numconv.RelativeIndex(cx.ToIntegerOrInfinity(end), n)
 			}
-			a, _ = bi.speciesCreate(cx, this.Object(), t, []engine.Value{buf, begin, engine.Number(float64(max(e-start, 0)))}, false)
+			a, _ = typedArraySpeciesCreate(cx, this.Object(), t, []engine.Value{buf, begin, engine.Number(float64(max(e-start, 0)))}, false)
 		}
 		return engine.ObjectValue(a)
 	})
@@ -1055,7 +1053,7 @@ func initTypedArrays(cx *engine.ExecutionContext, bi *binaryIntrinsics) {
 	})
 	method(cx, proto, "toReversed", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		_, t, n := validateTypedArray(cx, this, "%TypedArray%.prototype.toReversed")
-		a, at := bi.createSameType(cx, t, n)
+		a, at := typedArrayCreateSameType(cx, t, n)
 		copyElements(at, 0, t, n)
 		reverseFirst(cx, at, n)
 		return engine.ObjectValue(a)
@@ -1066,7 +1064,7 @@ func initTypedArrays(cx *engine.ExecutionContext, bi *binaryIntrinsics) {
 			cx.ThrowTypeError("the comparison function must be either a function or undefined")
 		}
 		o, t, n := validateTypedArray(cx, this, "%TypedArray%.prototype.toSorted")
-		a, at := bi.createSameType(cx, t, n)
+		a, at := typedArrayCreateSameType(cx, t, n)
 		if cmp.IsUndefined() {
 			copyElements(at, 0, t, n)
 			sortFirst(cx, at, n)
@@ -1095,7 +1093,7 @@ func initTypedArrays(cx *engine.ExecutionContext, bi *binaryIntrinsics) {
 		if idx < 0 || idx >= float64(cur) {
 			cx.ThrowRangeError("invalid typed array index")
 		}
-		a, at := bi.createSameType(cx, t, n)
+		a, at := typedArrayCreateSameType(cx, t, n)
 		copied := min(n, cur)
 		copyElements(at, 0, t, copied)
 		for i := copied; i < n; i++ {
@@ -1112,8 +1110,9 @@ func initTypedArrays(cx *engine.ExecutionContext, bi *binaryIntrinsics) {
 		p := cx.NewObject(proto)
 		cx.SetIntrinsic(engine.TypedArrayPrototypeIntrinsic(typ), p)
 		c := cx.NewNativeConstructor(wtf8.String(name), 3, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-			return bi.construct(cx, typ, args)
+			return constructTypedArray(cx, typ, args)
 		})
+		cx.SetIntrinsic(engine.TypedArrayConstructorIntrinsic(typ), c)
 		cx.SetPrototypeOf(c, ctor)
 		cx.DefineConstructorPrototype(c, engine.TypedArrayPrototypeIntrinsic(typ))
 		cx.Define(p, cx.Key(engine.KeyConstructor), engine.ObjectValue(c), engine.FlagsHidden)
@@ -1121,14 +1120,12 @@ func initTypedArrays(cx *engine.ExecutionContext, bi *binaryIntrinsics) {
 		bpe := engine.Number(float64(typ.Size()))
 		constant(cx, c, "BYTES_PER_ELEMENT", bpe)
 		constant(cx, p, "BYTES_PER_ELEMENT", bpe)
-		bi.ctors[typ] = c
-		bi.protos[typ] = p
 	}
-	initUint8ArrayBase64(cx, bi)
+	initUint8ArrayBase64(cx)
 }
 
-// setFrom implements the part of %TypedArray%.prototype.set after the offset is converted.
-func (bi *binaryIntrinsics) setFrom(cx *engine.ExecutionContext, target *engine.Object, t *engine.TypedArray, offset float64, source engine.Value) {
+// setTypedArrayFrom implements the part of %TypedArray%.prototype.set after the offset is converted.
+func setTypedArrayFrom(cx *engine.ExecutionContext, target *engine.Object, t *engine.TypedArray, offset float64, source engine.Value) {
 	typ := t.ElementType()
 	if src := engine.TypedArrayData(source); src != nil {
 		targetLen, ok := t.Length()

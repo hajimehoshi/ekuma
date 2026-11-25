@@ -43,10 +43,9 @@ func storeViewElement(cx *engine.ExecutionContext, d *engine.DataView, typ eleme
 	engine.SetValueInBuffer(viewElementBytes(cx, b, inBounds, typ, i, what), typ, v, le)
 }
 
-func initDataView(cx *engine.ExecutionContext, bi *binaryIntrinsics) {
+func initDataView(cx *engine.ExecutionContext) {
 	proto := cx.NewOrdinaryObject()
 	cx.SetIntrinsic(engine.IntrinsicDataViewPrototype, proto)
-	bi.dataViewProto = proto
 	constructor(cx, "DataView", 1, engine.IntrinsicDataViewPrototype, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		nt := cx.GetNewTarget()
 		if nt == nil {

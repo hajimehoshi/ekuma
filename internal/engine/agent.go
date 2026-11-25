@@ -797,6 +797,20 @@ const (
 	IntrinsicFunctionCallerGetter
 	IntrinsicFunctionArgumentsGetter
 
+	// The typed array constructors are in the order of [element.Type].
+	IntrinsicInt8Array
+	IntrinsicUint8Array
+	IntrinsicUint8ClampedArray
+	IntrinsicInt16Array
+	IntrinsicUint16Array
+	IntrinsicInt32Array
+	IntrinsicUint32Array
+	IntrinsicFloat16Array
+	IntrinsicFloat32Array
+	IntrinsicFloat64Array
+	IntrinsicBigInt64Array
+	IntrinsicBigUint64Array
+
 	// The prototypes of the typed array constructors are in the order of [element.Type].
 	IntrinsicInt8ArrayPrototype
 	IntrinsicUint8ArrayPrototype
@@ -836,6 +850,11 @@ const (
 // ErrorPrototypeIntrinsic returns the intrinsic that is the prototype of the native error type k.
 func ErrorPrototypeIntrinsic(k ErrorKind) Intrinsic {
 	return IntrinsicErrorPrototype + Intrinsic(k)
+}
+
+// TypedArrayConstructorIntrinsic returns the intrinsic constructor for the element type t.
+func TypedArrayConstructorIntrinsic(t element.Type) Intrinsic {
+	return IntrinsicInt8Array + Intrinsic(t)
 }
 
 // TypedArrayPrototypeIntrinsic returns the intrinsic prototype for the element type t.
