@@ -837,7 +837,13 @@ const (
 	IntrinsicGeneratorPrototypeNext
 
 	// The initial values of these functions are what the built-ins treat specially.
+	IntrinsicMapPrototypeSet
+	IntrinsicMapPrototypeEntries
+	IntrinsicMapIteratorPrototypeNext
+	IntrinsicSetPrototypeAdd
 	IntrinsicSetPrototypeHas
+	IntrinsicSetPrototypeValues
+	IntrinsicSetIteratorPrototypeNext
 	IntrinsicWeakMapPrototypeSet
 	IntrinsicWeakSetPrototypeAdd
 

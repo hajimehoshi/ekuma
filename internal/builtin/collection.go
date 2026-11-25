@@ -72,44 +72,38 @@ func addEntriesFromIterable(cx *engine.ExecutionContext, target *engine.Object, 
 }
 
 // iterationUnobservable reports whether iterating the Map or Set o calls the method iter as its
-// @@iterator, which proto holds, and the method next, which iterProto holds under nextKey.
-func iterationUnobservable(q engine.QuietContext, o, proto, iter, iterProto, next, nextKey *engine.Object) bool {
-	return q.InheritsMethod(o, proto, q.WellKnownSymbol(engine.SymbolIterator), iter) && q.HasOwnMethod(iterProto, nextKey, next)
-}
-
-// collectionMethods are the original methods that copying a Map or a Set calls, and the objects
-// and keys that hold them.
-type collectionMethods struct {
-	proto     *engine.Object
-	adderKey  *engine.Object
-	adder     *engine.Object
-	iter      *engine.Object
-	iterProto *engine.Object
-	nextKey   *engine.Object
-	next      *engine.Object
-}
-
-// copyUnobservable reports whether adding the entries of the Map or Set o to a new collection
-// calls the methods m only.
-func (m *collectionMethods) copyUnobservable(q engine.QuietContext, o *engine.Object) bool {
-	return q.HasOwnMethod(m.proto, m.adderKey, m.adder) && iterationUnobservable(q, o, m.proto, m.iter, m.iterProto, m.next, m.nextKey)
+// @@iterator, which proto holds, and the method next, which iterProto holds.
+func iterationUnobservable(q engine.QuietContext, o, proto, iter, iterProto, next *engine.Object) bool {
+	return q.InheritsMethod(o, proto, q.WellKnownSymbol(engine.SymbolIterator), iter) && q.HasOwnMethod(iterProto, q.Key(engine.KeyNext), next)
 }
 
 // newMapCopy returns the Map that the constructor makes with proto from iterable when that calls
-// the original methods m of a Map only. It reports false otherwise.
-func newMapCopy(q engine.QuietContext, m *collectionMethods, proto *engine.Object, iterable engine.Value) (*engine.Object, bool) {
+// the original methods of a Map only. It reports false otherwise.
+func newMapCopy(q engine.QuietContext, proto *engine.Object, iterable engine.Value) (*engine.Object, bool) {
 	src := mapOf(iterable)
-	if src == nil || proto != m.proto || !m.copyUnobservable(q, iterable.Object()) {
+	if src == nil || proto != q.Intrinsic(engine.IntrinsicMapPrototype) {
+		return nil, false
+	}
+	if !q.HasOwnMethod(proto, q.Key(engine.KeySet), q.Intrinsic(engine.IntrinsicMapPrototypeSet)) {
+		return nil, false
+	}
+	if !iterationUnobservable(q, iterable.Object(), proto, q.Intrinsic(engine.IntrinsicMapPrototypeEntries), q.Intrinsic(engine.IntrinsicMapIteratorPrototype), q.Intrinsic(engine.IntrinsicMapIteratorPrototypeNext)) {
 		return nil, false
 	}
 	return q.NewMapObject(proto, src.Clone(q.Poll)), true
 }
 
 // newSetCopy returns the Set that the constructor makes with proto from iterable when that calls
-// the original methods m of a Set only. It reports false otherwise.
-func newSetCopy(q engine.QuietContext, m *collectionMethods, proto *engine.Object, iterable engine.Value) (*engine.Object, bool) {
+// the original methods of a Set only. It reports false otherwise.
+func newSetCopy(q engine.QuietContext, proto *engine.Object, iterable engine.Value) (*engine.Object, bool) {
 	src := setOf(iterable)
-	if src == nil || proto != m.proto || !m.copyUnobservable(q, iterable.Object()) {
+	if src == nil || proto != q.Intrinsic(engine.IntrinsicSetPrototype) {
+		return nil, false
+	}
+	if !q.HasOwnMethod(proto, q.Key(engine.KeyAdd), q.Intrinsic(engine.IntrinsicSetPrototypeAdd)) {
+		return nil, false
+	}
+	if !iterationUnobservable(q, iterable.Object(), proto, q.Intrinsic(engine.IntrinsicSetPrototypeValues), q.Intrinsic(engine.IntrinsicSetIteratorPrototype), q.Intrinsic(engine.IntrinsicSetIteratorPrototypeNext)) {
 		return nil, false
 	}
 	return q.NewSetObject(proto, src.Clone(q.Poll)), true
@@ -196,11 +190,6 @@ func defineMapIteration(cx *engine.ExecutionContext, name string, kind engine.It
 
 func initMap(cx *engine.ExecutionContext) {
 	proto := cx.Intrinsic(engine.IntrinsicMapPrototype)
-	methods := &collectionMethods{
-		proto:    proto,
-		adderKey: cx.Key(engine.KeySet),
-		nextKey:  cx.Key(engine.KeyNext),
-	}
 	ctor := constructor(cx, "Map", 0, engine.IntrinsicMapPrototype, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		nt := cx.GetNewTarget()
 		if nt == nil {
@@ -209,7 +198,7 @@ func initMap(cx *engine.ExecutionContext) {
 		targetProto := cx.GetPrototypeFromConstructor(nt, engine.IntrinsicMapPrototype)
 		iterable := arg(args, 0)
 		if iterable.IsObject() {
-			if m, ok := newMapCopy(cx.Quiet(), methods, targetProto, iterable); ok {
+			if m, ok := newMapCopy(cx.Quiet(), targetProto, iterable); ok {
 				return engine.ObjectValue(m)
 			}
 		}
@@ -220,7 +209,7 @@ func initMap(cx *engine.ExecutionContext) {
 		}
 		adder := adderOf(cx, m, cx.Key(engine.KeySet))
 		var fast func(k, v engine.Value)
-		if adder == methods.adder {
+		if adder == cx.Intrinsic(engine.IntrinsicMapPrototypeSet) {
 			n := engine.ElementCount(iterable)
 			var i int
 			fast = func(k, v engine.Value) {
@@ -283,11 +272,12 @@ func initMap(cx *engine.ExecutionContext) {
 		}
 		return engine.Undefined, false
 	}, nil)
-	methods.adder = method(cx, proto, "set", 2, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	mapSet := method(cx, proto, "set", 2, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		thisMap(cx, this, "set").Set(arg(args, 0), arg(args, 1))
 		return this
 	})
-	cx.SetMethodKernels(methods.adder, shortContract, nil, nil, func(q engine.QuietContext, this, k, v engine.Value) (engine.Value, bool) {
+	cx.SetIntrinsic(engine.IntrinsicMapPrototypeSet, mapSet)
+	cx.SetMethodKernels(mapSet, shortContract, nil, nil, func(q engine.QuietContext, this, k, v engine.Value) (engine.Value, bool) {
 		if t := mapOf(this); t != nil {
 			t.Set(k, v)
 			return this, true
@@ -350,14 +340,14 @@ func initMap(cx *engine.ExecutionContext) {
 
 	iterProto := cx.NewObject(cx.Intrinsic(engine.IntrinsicIteratorPrototype))
 	cx.SetIntrinsic(engine.IntrinsicMapIteratorPrototype, iterProto)
-	methods.iterProto = iterProto
 	defineMapIteration(cx, "keys", engine.IterateKeys)
 	defineMapIteration(cx, "values", engine.IterateValues)
-	methods.iter = defineMapIteration(cx, "entries", engine.IterateEntries)
-	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolIterator), engine.ObjectValue(methods.iter), engine.FlagsHidden)
+	mapEntries := defineMapIteration(cx, "entries", engine.IterateEntries)
+	cx.SetIntrinsic(engine.IntrinsicMapPrototypeEntries, mapEntries)
+	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolIterator), engine.ObjectValue(mapEntries), engine.FlagsHidden)
 	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Map"), engine.FlagConfigurable)
 
-	methods.next = plainIteratorNext(cx, iterProto, engine.IteratorClosureRealm, "next method called on an object that is not a Map Iterator", func(q engine.QuietContext, iterator *engine.Object, it *mapIterator) (engine.Value, bool) {
+	next := plainIteratorNext(cx, iterProto, engine.IteratorClosureRealm, "next method called on an object that is not a Map Iterator", func(q engine.QuietContext, iterator *engine.Object, it *mapIterator) (engine.Value, bool) {
 		if it.table == nil {
 			return engine.Undefined, false
 		}
@@ -375,7 +365,8 @@ func initMap(cx *engine.ExecutionContext) {
 		}
 		return engine.ObjectValue(iterator.CreationQuietContext().NewArrayPair(k, v)), true
 	})
-	cx.SetIteratorPairStep(methods.next, func(state any) (engine.Value, engine.Value, engine.PairStep) {
+	cx.SetIntrinsic(engine.IntrinsicMapIteratorPrototypeNext, next)
+	cx.SetIteratorPairStep(next, func(state any) (engine.Value, engine.Value, engine.PairStep) {
 		it, _ := state.(*mapIterator)
 		if it == nil || it.kind != engine.IterateEntries {
 			return engine.Undefined, engine.Undefined, engine.PairDeclined
@@ -491,11 +482,6 @@ func defineSetIteration(cx *engine.ExecutionContext, name string, kind engine.It
 
 func initSet(cx *engine.ExecutionContext) {
 	proto := cx.Intrinsic(engine.IntrinsicSetPrototype)
-	methods := &collectionMethods{
-		proto:    proto,
-		adderKey: cx.Key(engine.KeyAdd),
-		nextKey:  cx.Key(engine.KeyNext),
-	}
 	ctor := constructor(cx, "Set", 0, engine.IntrinsicSetPrototype, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		nt := cx.GetNewTarget()
 		if nt == nil {
@@ -504,7 +490,7 @@ func initSet(cx *engine.ExecutionContext) {
 		targetProto := cx.GetPrototypeFromConstructor(nt, engine.IntrinsicSetPrototype)
 		iterable := arg(args, 0)
 		if iterable.IsObject() {
-			if s, ok := newSetCopy(cx.Quiet(), methods, targetProto, iterable); ok {
+			if s, ok := newSetCopy(cx.Quiet(), targetProto, iterable); ok {
 				return engine.ObjectValue(s)
 			}
 		}
@@ -514,7 +500,7 @@ func initSet(cx *engine.ExecutionContext) {
 			return engine.ObjectValue(s)
 		}
 		adder := adderOf(cx, s, cx.Key(engine.KeyAdd))
-		if adder == methods.adder {
+		if adder == cx.Intrinsic(engine.IntrinsicSetPrototypeAdd) {
 			n := engine.ElementCount(iterable)
 			var i int
 			cx.Iterate(iterable, func(e engine.Value) bool {
@@ -535,7 +521,7 @@ func initSet(cx *engine.ExecutionContext) {
 	speciesGetter(cx, ctor)
 
 	// The kernels of the methods are the methods for a Set object.
-	methods.adder = method(cx, proto, "add", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	setAdd := method(cx, proto, "add", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		t := thisSet(cx, this, "add")
 		v := arg(args, 0)
 		if !t.Has(v) {
@@ -543,7 +529,8 @@ func initSet(cx *engine.ExecutionContext) {
 		}
 		return this
 	})
-	cx.SetMethodKernels(methods.adder, shortContract, nil, func(q engine.QuietContext, this, v engine.Value) (engine.Value, bool) {
+	cx.SetIntrinsic(engine.IntrinsicSetPrototypeAdd, setAdd)
+	cx.SetMethodKernels(setAdd, shortContract, nil, func(q engine.QuietContext, this, v engine.Value) (engine.Value, bool) {
 		t := setOf(this)
 		if t == nil {
 			return engine.Undefined, false
@@ -743,14 +730,14 @@ func initSet(cx *engine.ExecutionContext) {
 
 	iterProto := cx.NewObject(cx.Intrinsic(engine.IntrinsicIteratorPrototype))
 	cx.SetIntrinsic(engine.IntrinsicSetIteratorPrototype, iterProto)
-	methods.iterProto = iterProto
 	defineSetIteration(cx, "entries", engine.IterateEntries)
-	methods.iter = defineSetIteration(cx, "values", engine.IterateValues)
-	cx.Define(proto, cx.Key(engine.KeyKeys), engine.ObjectValue(methods.iter), engine.FlagsHidden)
-	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolIterator), engine.ObjectValue(methods.iter), engine.FlagsHidden)
+	setValues := defineSetIteration(cx, "values", engine.IterateValues)
+	cx.SetIntrinsic(engine.IntrinsicSetPrototypeValues, setValues)
+	cx.Define(proto, cx.Key(engine.KeyKeys), engine.ObjectValue(setValues), engine.FlagsHidden)
+	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolIterator), engine.ObjectValue(setValues), engine.FlagsHidden)
 	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Set"), engine.FlagConfigurable)
 
-	methods.next = plainIteratorNext(cx, iterProto, engine.IteratorClosureRealm, "next method called on an object that is not a Set Iterator", func(q engine.QuietContext, iterator *engine.Object, it *setIterator) (engine.Value, bool) {
+	next := plainIteratorNext(cx, iterProto, engine.IteratorClosureRealm, "next method called on an object that is not a Set Iterator", func(q engine.QuietContext, iterator *engine.Object, it *setIterator) (engine.Value, bool) {
 		if it.table == nil {
 			return engine.Undefined, false
 		}
@@ -765,7 +752,8 @@ func initSet(cx *engine.ExecutionContext) {
 		}
 		return k, true
 	})
-	cx.SetIteratorPairStep(methods.next, func(state any) (engine.Value, engine.Value, engine.PairStep) {
+	cx.SetIntrinsic(engine.IntrinsicSetIteratorPrototypeNext, next)
+	cx.SetIteratorPairStep(next, func(state any) (engine.Value, engine.Value, engine.PairStep) {
 		it, _ := state.(*setIterator)
 		if it == nil || it.kind != engine.IterateEntries {
 			return engine.Undefined, engine.Undefined, engine.PairDeclined

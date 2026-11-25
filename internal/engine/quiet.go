@@ -55,6 +55,16 @@ func (q QuietContext) Poll() {
 	q.cx.Poll()
 }
 
+// Intrinsic is [ExecutionContext.Intrinsic].
+func (q QuietContext) Intrinsic(id Intrinsic) *Object {
+	return q.cx.Intrinsic(id)
+}
+
+// Key is [ExecutionContext.Key].
+func (q QuietContext) Key(k CommonKey) *Object {
+	return q.cx.Key(k)
+}
+
 // WellKnownSymbol is [ExecutionContext.WellKnownSymbol].
 func (q QuietContext) WellKnownSymbol(s WellKnownSymbol) *Object {
 	return q.cx.WellKnownSymbol(s)
