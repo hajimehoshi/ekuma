@@ -59,6 +59,7 @@ func TestExecutionContextBoundary(t *testing.T) {
 		},
 	)
 
+	checkRealmOwners(t, prog)
 	checkActiveReads(t, prog)
 
 	for _, p := range prog.pkgs {
@@ -139,6 +140,55 @@ func TestFrameRegisterBoundary(t *testing.T) {
 			owners: []string{"agent.captureRegister"},
 		},
 	)
+}
+
+// executionContextUses are the functions that call executionContextOf to run code in the realm
+// or to make its errors, with the number of calls. The functions of quietEngineOperations call it
+// besides them.
+var executionContextUses = map[string]int{
+	"ExecutionContext.FunctionContext":      1,
+	"ExecutionContext.ResumeAsyncGenerator": 1,
+	"ExecutionContext.asyncGeneratorResume": 2,
+	"ExecutionContext.callNative":           1,
+	"ExecutionContext.callSlow":             1,
+	"ExecutionContext.contextOf":            1,
+	"ExecutionContext.promiseJobContext":    1,
+	"ExecutionContext.resolvePromise":       1,
+	"ExecutionContext.runFrame":             1,
+	"ExecutionContext.throwReturnError":     1,
+	"Script.CallScript":                     1,
+	"Script.ScriptEvaluation":               1,
+	"generator.underFrame":                  1,
+	"engine.CreationContext":                1,
+	"IteratorStateAndContext":               1,
+}
+
+// checkRealmOwners tests that the functions that get from a realm part to its execution context
+// are the listed ones, and that those in quietEngineOperations are the ones with a quiet.Context.
+func checkRealmOwners(t *testing.T, prog *program) {
+	t.Helper()
+	quietUses := map[string]int{}
+	for name := range quietEngineOperations {
+		quietUses[name] = 1
+	}
+	users := prog.checkUseCounts(t, "way to the execution context of a realm part", prog.function(t, "executionContextOf"), useCounts{
+		"runs code in the realm or makes its errors": executionContextUses,
+		"has a quiet.Context":                        quietUses,
+	}, nil)
+	quietContext := prog.typ(t, "Context")
+	for name, f := range users {
+		sig := f.Signature()
+		vars := slices.Collect(sig.Params().Variables())
+		if r := sig.Recv(); r != nil {
+			vars = append(vars, r)
+		}
+		hasQuiet := slices.ContainsFunc(vars, func(v *types.Var) bool {
+			return isType(v.Type(), quietContext)
+		})
+		if _, ok := quietUses[name]; ok != hasQuiet {
+			t.Errorf("%s: got a quiet.Context %t, want %t", name, hasQuiet, ok)
+		}
+	}
 }
 
 // checkActiveReads tests that the interpreter loop uses the active context in place, so that no copy

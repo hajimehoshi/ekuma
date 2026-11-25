@@ -533,8 +533,9 @@ type useCounts map[string]map[string]int
 // checkUseCounts tests that the functions that use objs are exactly those in want, by the names of
 // the engine or, in other packages, by their paths and names, and that they do so as often as want
 // says. ignored, which may be nil, returns the uses in a file that do not count. Uses in the files
-// that check the others in the ekumavalidate build do not count either.
-func (prog *program) checkUseCounts(t *testing.T, what string, objs []types.Object, want useCounts, ignored func(*types.Info, *ast.File) map[*ast.Ident]bool) {
+// that check the others in the ekumavalidate build do not count either. The result holds the functions
+// among them by their names.
+func (prog *program) checkUseCounts(t *testing.T, what string, objs []types.Object, want useCounts, ignored func(*types.Info, *ast.File) map[*ast.Ident]bool) map[string]*types.Func {
 	t.Helper()
 	counts := map[string]int{}
 	for _, group := range want {
@@ -548,6 +549,7 @@ func (prog *program) checkUseCounts(t *testing.T, what string, objs []types.Obje
 	}
 	names := slices.Sorted(maps.Keys(counts))
 	got := map[string][]token.Position{}
+	users := map[string]*types.Func{}
 	for _, p := range prog.pkgs {
 		for _, file := range p.files {
 			if strings.HasPrefix(filepath.Base(p.fset.Position(file.Pos()).Filename), "validate_") && p.isEngine() {
@@ -570,6 +572,9 @@ func (prog *program) checkUseCounts(t *testing.T, what string, objs []types.Obje
 					if name == "" {
 						name = "the declaration of a variable"
 					}
+					if fn, ok := decl.(*ast.FuncDecl); ok {
+						users[name] = p.info.Defs[fn.Name].(*types.Func)
+					}
 					got[name] = append(got[name], p.fset.Position(id.Pos()))
 					return true
 				})
@@ -586,4 +591,5 @@ func (prog *program) checkUseCounts(t *testing.T, what string, objs []types.Obje
 			t.Errorf("%s: none in %s: remove it from the list", what, name)
 		}
 	}
+	return users
 }
