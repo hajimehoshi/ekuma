@@ -88,7 +88,7 @@ func TestSameValueZero(t *testing.T) {
 		tab.Set(o, storage.Number(4))
 
 		for _, tc := range []struct {
-			key  engine.Value
+			key  storage.Value
 			want float64
 		}{
 			{
@@ -136,7 +136,7 @@ func TestSameValueZero(t *testing.T) {
 
 func TestSameValueZeroBigInts(t *testing.T) {
 	cx, _ := engine.NewExecutionContext(nil)
-	big64 := func() engine.Value {
+	big64 := func() storage.Value {
 		return storage.NewBigInt(new(big.Int).Lsh(big.NewInt(1), 64))
 	}
 	// Below and above the size at which the table indexes its keys.
@@ -155,7 +155,7 @@ func TestSameValueZeroBigInts(t *testing.T) {
 		tab.Set(storage.NewBigInt(huge), storage.Number(5))
 
 		for _, tc := range []struct {
-			key  engine.Value
+			key  storage.Value
 			want float64
 		}{
 			{
@@ -196,7 +196,7 @@ func TestSameValueZeroBigInts(t *testing.T) {
 func TestFindAfterDeletes(t *testing.T) {
 	cx, _ := engine.NewExecutionContext(nil)
 	// A new string for every call, so that keys are found by their contents.
-	key := func(i int) engine.Value {
+	key := func(i int) storage.Value {
 		switch i % 3 {
 		case 0:
 			return storage.Number(float64(i))

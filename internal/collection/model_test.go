@@ -51,14 +51,14 @@ var modelSeeds = [...][2]uint64{
 // keySource makes the keys of a run.
 type keySource struct {
 	cx      *engine.ExecutionContext
-	objects map[int]engine.Value
+	objects map[int]storage.Value
 
 	// made counts the keys, which varies the representation of equal keys.
 	made int
 }
 
 // newKey returns the key number id of a kind, in one of its representations.
-func (s *keySource) newKey(kind, id int) engine.Value {
+func (s *keySource) newKey(kind, id int) storage.Value {
 	s.made++
 	alt := s.made&1 != 0
 	switch kind {
@@ -89,7 +89,7 @@ func (s *keySource) newKey(kind, id int) engine.Value {
 			str += "a string that is not short"
 		}
 		if alt && len(str) > 1 {
-			return s.cx.ConcatStrings([]engine.Value{
+			return s.cx.ConcatStrings([]storage.Value{
 				s.cx.NewString(wtf8.FromValidUTF8(str[:1])),
 				s.cx.NewString(wtf8.FromValidUTF8(str[1:])),
 			})
@@ -535,7 +535,7 @@ func runModel(t *testing.T, ops []byte) {
 		ops: ops,
 		keys: keySource{
 			cx:      cx,
-			objects: map[int]engine.Value{},
+			objects: map[int]storage.Value{},
 		},
 		maxKeys: maxModelKeys,
 	}

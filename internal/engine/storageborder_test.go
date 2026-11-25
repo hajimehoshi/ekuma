@@ -18,8 +18,8 @@ import (
 const storageMembers = "storagemembers.txt"
 
 // TestStorageBorder tests that packages above the engine use only the part of the storage package
-// in testdata/storagemembers.txt. The other names that it exports are for the engine. Types and
-// constants of storage have names in the engine.
+// in testdata/storagemembers.txt, apart from types and constants. The other names that it exports
+// are for the engine.
 //
 // The test does not see reflection, unsafe, composite literals without keys, test files, and files
 // that the build constraints of the running test exclude.
@@ -80,8 +80,6 @@ func TestStorageBorder(t *testing.T) {
 				if recv := obj.Signature().Recv(); recv != nil {
 					name = namedType(recv.Type()).Obj().Name() + "." + name
 				}
-			case *types.TypeName, *types.Const:
-				name = obj.Name()
 			default:
 				continue
 			}

@@ -19,7 +19,7 @@ func BenchmarkTableSet(b *testing.B) {
 	for _, kind := range []string{"number", "string", "bigint", "object"} {
 		for _, size := range []int{1, 4, 8, 1000, 100000} {
 			b.Run(fmt.Sprintf("%s/%d", kind, size), func(b *testing.B) {
-				keys := make([]engine.Value, size)
+				keys := make([]storage.Value, size)
 				for i := range keys {
 					switch kind {
 					case "number":

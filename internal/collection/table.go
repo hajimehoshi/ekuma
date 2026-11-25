@@ -14,7 +14,6 @@ import (
 	"slices"
 	"sort"
 
-	"github.com/hajimehoshi/ekuma/internal/engine"
 	"github.com/hajimehoshi/ekuma/internal/storage"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
@@ -83,14 +82,14 @@ type Table struct {
 	// strs maps the longer strings to the indices of their entries by their contents, and objs
 	// every other key by identity.
 	strs map[wtf8.String]int32
-	objs map[*engine.Object]int32
+	objs map[*storage.Object]int32
 
 	// gen is the generation that cursors start in, or nil when no cursor was ever created.
 	gen *generation
 }
 
 // deletedKey is private to this package and cannot be supplied as a collection key.
-var deletedKey = new(engine.Object)
+var deletedKey = new(storage.Object)
 
 // deletedEntry is what a deleted entry becomes.
 var deletedEntry = entry{
@@ -98,8 +97,8 @@ var deletedEntry = entry{
 }
 
 type entry struct {
-	key   engine.Value
-	value engine.Value
+	key   storage.Value
+	value storage.Value
 }
 
 // slot locates the entry at index, whose key has the hash hash. An empty slot has the index -1.
@@ -230,7 +229,7 @@ func (t *Table) Size() int {
 }
 
 // find returns the index of the live entry with the key k, or -1.
-func (t *Table) find(k engine.Value) int {
+func (t *Table) find(k storage.Value) int {
 	switch {
 	case !t.indexed:
 		return t.scan(k)
@@ -256,7 +255,7 @@ func (t *Table) find(k engine.Value) int {
 }
 
 // locate returns the hash of the key k, which the slots locate, and what a probe for k returns.
-func (t *Table) locate(k engine.Value) (h uint32, i int, s uint32) {
+func (t *Table) locate(k storage.Value) (h uint32, i int, s uint32) {
 	if k.IsNumber() {
 		n := numberKey(k.Number())
 		h = hashNumber(n)
@@ -269,12 +268,12 @@ func (t *Table) locate(k engine.Value) (h uint32, i int, s uint32) {
 }
 
 // hashed reports whether the slots, rather than strs or objs, locate the key k.
-func hashed(k engine.Value) bool {
+func hashed(k storage.Value) bool {
 	return k.IsNumber() || k.IsBigInt() || k.IsString() && k.StringByteLength() <= shortKeyBytes
 }
 
 // mapIndex records that the key k, which the slots do not locate, is at the index i.
-func (t *Table) mapIndex(k engine.Value, i int) {
+func (t *Table) mapIndex(k storage.Value, i int) {
 	if k.IsString() {
 		if t.strs == nil {
 			t.strs = map[wtf8.String]int32{}
@@ -283,13 +282,13 @@ func (t *Table) mapIndex(k engine.Value, i int) {
 		return
 	}
 	if t.objs == nil {
-		t.objs = map[*engine.Object]int32{}
+		t.objs = map[*storage.Object]int32{}
 	}
 	t.objs[k.Object()] = int32(i)
 }
 
 // mapUnindex forgets the location of the key k, which the slots do not locate.
-func (t *Table) mapUnindex(k engine.Value) {
+func (t *Table) mapUnindex(k storage.Value) {
 	if k.IsString() {
 		delete(t.strs, k.Str())
 		return
@@ -310,7 +309,7 @@ func hashNumber(n uint64) uint32 {
 
 // hashKey returns the hash of the key k, which the slots locate. Keys that are the same for
 // SameValueZero have the same hash.
-func hashKey(k engine.Value) uint32 {
+func hashKey(k storage.Value) uint32 {
 	switch {
 	case k.IsNumber():
 		return hashNumber(numberKey(k.Number()))
@@ -353,7 +352,7 @@ func (t *Table) probeNumber(n uint64, h uint32) (int, uint32) {
 }
 
 // probe is probeNumber for the key k, which is a string or a BigInt that the slots locate.
-func (t *Table) probe(k engine.Value, h uint32) (int, uint32) {
+func (t *Table) probe(k storage.Value, h uint32) (int, uint32) {
 	slots, small, blocks := t.slots, t.small, t.blocks
 	mask := uint32(len(slots) - 1)
 	s := h & mask
@@ -397,7 +396,7 @@ func (t *Table) probe(k engine.Value, h uint32) (int, uint32) {
 }
 
 // scan is find for a table that is not indexed.
-func (t *Table) scan(k engine.Value) int {
+func (t *Table) scan(k storage.Value) int {
 	entries := t.small[:t.n]
 	switch {
 	case k.IsNumber():
@@ -503,7 +502,7 @@ func emptySlots(slots []slot, n int) []slot {
 }
 
 // Get returns the value of the entry with the key k.
-func (t *Table) Get(k engine.Value) (engine.Value, bool) {
+func (t *Table) Get(k storage.Value) (storage.Value, bool) {
 	i := t.find(k)
 	if i < 0 {
 		return storage.Undefined, false
@@ -512,13 +511,13 @@ func (t *Table) Get(k engine.Value) (engine.Value, bool) {
 }
 
 // Has reports whether the table has an entry with the key k.
-func (t *Table) Has(k engine.Value) bool {
+func (t *Table) Has(k storage.Value) bool {
 	return t.find(k) >= 0
 }
 
 // Set sets the value of the entry with the key k, appending a new entry when there is none.
 // A key -0 is stored as +0.
-func (t *Table) Set(k, v engine.Value) {
+func (t *Table) Set(k, v storage.Value) {
 	if !t.indexed || !hashed(k) {
 		if i := t.find(k); i >= 0 {
 			t.at(i).value = v
@@ -537,7 +536,7 @@ func (t *Table) Set(k, v engine.Value) {
 
 // Append appends an entry with the key k, which the table must not have yet.
 // A key -0 is stored as +0.
-func (t *Table) Append(k, v engine.Value) {
+func (t *Table) Append(k, v storage.Value) {
 	if t.indexed && hashed(k) {
 		h, _, s := t.locate(k)
 		t.appendHashed(k, v, h, s)
@@ -563,7 +562,7 @@ func (t *Table) Append(k, v engine.Value) {
 
 // appendHashed appends an entry with the key k of the hash h, which the table must not have
 // yet and whose probe ended at the slot s.
-func (t *Table) appendHashed(k, v engine.Value, h, s uint32) {
+func (t *Table) appendHashed(k, v storage.Value, h, s uint32) {
 	if k.IsNumber() {
 		// probeNumber compares the stored bits.
 		k = storage.Number(math.Float64frombits(numberKey(k.Number())))
@@ -602,7 +601,7 @@ func (t *Table) makeRoom() bool {
 }
 
 // Delete deletes the entry with the key k and reports whether there was one.
-func (t *Table) Delete(k engine.Value) bool {
+func (t *Table) Delete(k storage.Value) bool {
 	i := t.find(k)
 	if i < 0 {
 		return false
@@ -740,7 +739,7 @@ func (t *Table) CopyFrom(src *Table, poll func()) {
 	}
 	t.setStorage(src.live)
 	for i := range src.n {
-		if poll != nil && i&(engine.PollInterval-1) == engine.PollInterval-1 {
+		if poll != nil && i&(storage.PollInterval-1) == storage.PollInterval-1 {
 			poll()
 		}
 		if e := src.at(i); !e.deleted() {
@@ -825,7 +824,7 @@ func (t *Table) Start() Cursor {
 
 // Next returns the entry at the cursor c, which must have been created by [Table.Start] of t,
 // and moves c past it. It reports false when there is no entry left.
-func (t *Table) Next(c *Cursor) (key, value engine.Value, ok bool) {
+func (t *Table) Next(c *Cursor) (key, value storage.Value, ok bool) {
 	if c.gen == t.gen && t.n == t.live {
 		i := c.pos
 		if i >= t.n {
@@ -838,7 +837,7 @@ func (t *Table) Next(c *Cursor) (key, value engine.Value, ok bool) {
 	return t.nextAfterDeletion(c)
 }
 
-func (t *Table) nextAfterDeletion(c *Cursor) (key, value engine.Value, ok bool) {
+func (t *Table) nextAfterDeletion(c *Cursor) (key, value storage.Value, ok bool) {
 	for c.gen.next != nil {
 		g := c.gen
 		if g.cleared {
