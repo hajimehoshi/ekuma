@@ -12,6 +12,7 @@ import (
 	"go/token"
 	"go/types"
 	"io"
+	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -522,6 +523,67 @@ func (prog *program) checkUses(t *testing.T, rules ...useRule) {
 					return true
 				})
 			}
+		}
+	}
+}
+
+// useCounts says how often functions use declarations, by the reason why they may.
+type useCounts map[string]map[string]int
+
+// checkUseCounts tests that the functions that use objs are exactly those in want, by the names of
+// the engine or, in other packages, by their paths and names, and that they do so as often as want
+// says. ignored, which may be nil, returns the uses in a file that do not count. Uses in the files
+// that check the others in the ekumavalidate build do not count either.
+func (prog *program) checkUseCounts(t *testing.T, what string, objs []types.Object, want useCounts, ignored func(*types.Info, *ast.File) map[*ast.Ident]bool) {
+	t.Helper()
+	counts := map[string]int{}
+	for _, group := range want {
+		for name, n := range group {
+			prog.checkUnique(t, name)
+			if _, ok := counts[name]; ok {
+				t.Errorf("%s: two entries for %s", what, name)
+			}
+			counts[name] = n
+		}
+	}
+	names := slices.Sorted(maps.Keys(counts))
+	got := map[string][]token.Position{}
+	for _, p := range prog.pkgs {
+		for _, file := range p.files {
+			if strings.HasPrefix(filepath.Base(p.fset.Position(file.Pos()).Filename), "validate_") && p.isEngine() {
+				continue
+			}
+			var skip map[*ast.Ident]bool
+			if ignored != nil {
+				skip = ignored(&p.info, file)
+			}
+			for _, decl := range file.Decls {
+				var name string
+				ast.Inspect(decl, func(n ast.Node) bool {
+					id, ok := n.(*ast.Ident)
+					if !ok || skip[id] || !slices.Contains(objs, used(p.info.Uses[id])) {
+						return true
+					}
+					if name == "" {
+						name = strings.TrimPrefix(prog.owner(&p, decl, names), modulePath+"/internal/")
+					}
+					if name == "" {
+						name = "the declaration of a variable"
+					}
+					got[name] = append(got[name], p.fset.Position(id.Pos()))
+					return true
+				})
+			}
+		}
+	}
+	for _, name := range slices.Sorted(maps.Keys(got)) {
+		if ps, n := got[name], counts[name]; len(ps) != n {
+			t.Errorf("%v: %s: got %d in %s, want %d", ps[0], what, len(ps), name, n)
+		}
+	}
+	for _, name := range names {
+		if got[name] == nil {
+			t.Errorf("%s: none in %s: remove it from the list", what, name)
 		}
 	}
 }
