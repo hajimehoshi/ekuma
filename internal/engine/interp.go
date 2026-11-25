@@ -80,7 +80,7 @@ var primObjects = [...]*Object{
 // maxFrames is the call depth at which a RangeError is thrown.
 const maxFrames = 10000
 
-var tdzObject = &Object{kind: kindHole}
+var tdzObject = newMarker(nil)
 
 // tdz is the content of a binding that is not initialized yet.
 var tdz = Value{o: tdzObject}

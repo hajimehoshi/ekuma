@@ -98,10 +98,7 @@ func newWeakTable() *WeakTable {
 
 // NewWeakMapObject returns a WeakMap object without entries with the prototype proto.
 func (cx *ExecutionContext) NewWeakMapObject(proto *Object) *Object {
-	o := cx.NewObject(proto)
-	o.class = classWeakMap
-	o.setExtState(newWeakTable())
-	return o
+	return newObjectWithState(cx.shapeFor(proto), classWeakMap, newWeakTable())
 }
 
 // WeakMapData returns the [[WeakMapData]] of the WeakMap object v, or nil when v is not a WeakMap object.
@@ -114,10 +111,7 @@ func WeakMapData(v Value) *WeakTable {
 
 // NewWeakSetObject returns a WeakSet object without entries with the prototype proto.
 func (cx *ExecutionContext) NewWeakSetObject(proto *Object) *Object {
-	o := cx.NewObject(proto)
-	o.class = classWeakSet
-	o.setExtState(newWeakTable())
-	return o
+	return newObjectWithState(cx.shapeFor(proto), classWeakSet, newWeakTable())
 }
 
 // WeakSetData returns the [[WeakSetData]] of the WeakSet object v, or nil when v is not a WeakSet object.
@@ -227,10 +221,7 @@ func (w *weakEntries) delete(table *weakTableKeys) bool {
 // NewWeakRefObject returns a WeakRef object with the prototype proto whose target is v,
 // for which CanBeHeldWeakly must hold.
 func (cx *ExecutionContext) NewWeakRefObject(proto *Object, v Value) *Object {
-	o := cx.NewObject(proto)
-	o.class = classWeakRef
-	o.setExtState(weak.Make(v.o))
-	return o
+	return newObjectWithState(cx.shapeFor(proto), classWeakRef, weak.Make(v.o))
 }
 
 // WeakRefDeref implements WeakRefDeref for the WeakRef object v.
@@ -377,10 +368,7 @@ func (cx *ExecutionContext) NewFinalizationRegistryObject(proto *Object, callbac
 	}
 	r.self = weak.Make(r)
 	runtime.AddCleanup(r, (*cellCleanups).stopAll, r.cleanups)
-	o := cx.NewObject(proto)
-	o.class = classFinalizationRegistry
-	o.setExtState(r)
-	return o
+	return newObjectWithState(cx.shapeFor(proto), classFinalizationRegistry, r)
 }
 
 // FinalizationRegistryData returns the state of the FinalizationRegistry object v,

@@ -64,13 +64,7 @@ func (cx *ExecutionContext) newModuleNamespace(m *Module, deferred bool) *Object
 		ns.targets[i] = e.Resolution
 		ns.index[k] = i
 	}
-	o := (&propertyObject{
-		kind:  kindObject,
-		class: classModuleNamespace,
-		flags: objExotic | objNotExtensible,
-		shape: cx.rootShape(nil, cx.realmPart, delegatedRoot),
-		ext:   ns,
-	}).init()
+	o := newNamespaceObject(cx.rootShape(nil, cx.realmPart, delegatedRoot), ns)
 	tag := wtf8.String("Module")
 	if deferred {
 		tag = "Deferred Module"

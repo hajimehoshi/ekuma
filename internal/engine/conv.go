@@ -210,40 +210,26 @@ func (cx *ExecutionContext) ToObject(v Value) *Object {
 		cx.ThrowTypeError("cannot convert undefined or null to object")
 	}
 	if o == numberObject {
-		w := cx.NewObject(cx.Intrinsic(IntrinsicNumberPrototype))
-		w.class = classNumber
-		w.setExtState(v.n)
-		return w
+		return newObjectWithState(cx.shapeFor(cx.Intrinsic(IntrinsicNumberPrototype)), classNumber, v.n)
 	}
 	switch o.kind {
 	case kindNull:
 		cx.ThrowTypeError("cannot convert undefined or null to object")
 	case kindFalse, kindTrue:
-		w := cx.NewObject(cx.Intrinsic(IntrinsicBooleanPrototype))
-		w.class = classBoolean
-		w.setExtState(o.kind == kindTrue)
-		return w
+		return newObjectWithState(cx.shapeFor(cx.Intrinsic(IntrinsicBooleanPrototype)), classBoolean, o.kind == kindTrue)
 	case kindString:
 		return cx.NewStringObject(v.stringObject(), cx.Intrinsic(IntrinsicStringPrototype))
 	case kindSymbol:
-		w := cx.NewObject(cx.Intrinsic(IntrinsicSymbolPrototype))
-		w.class = classSymbol
-		w.setExtState(o)
-		return w
+		return newObjectWithState(cx.shapeFor(cx.Intrinsic(IntrinsicSymbolPrototype)), classSymbol, o)
 	case kindBigInt:
-		w := cx.NewObject(cx.Intrinsic(IntrinsicBigIntPrototype))
-		w.class = classBigInt
-		w.setExtState(v)
-		return w
+		return newObjectWithState(cx.shapeFor(cx.Intrinsic(IntrinsicBigIntPrototype)), classBigInt, v)
 	}
 	panic("ekuma: internal value reached ToObject")
 }
 
 // NewStringObject returns the String object that wraps the string s.
 func (cx *ExecutionContext) NewStringObject(s *Object, proto *Object) *Object {
-	w := cx.NewObject(proto)
-	w.class = classString
-	w.setExtState(s)
+	w := newObjectWithState(cx.shapeFor(proto), classString, s)
 	cx.add(w, cx.Key(KeyLength), Number(float64(s.StringLength())), 0)
 	return w
 }

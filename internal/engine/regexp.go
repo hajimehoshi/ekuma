@@ -52,7 +52,7 @@ func (cx *ExecutionContext) RegExpAlloc(newTarget *Object) *Object {
 		proto := cx.GetPrototypeFromConstructor(newTarget, IntrinsicRegExpPrototype)
 		s = cx.shapeFor(proto).with(cx.Key(KeyLastIndex), FlagWritable)
 	}
-	return cx.newRegExpObject(s, &regExpState{
+	return newRegExpObject(s, &regExpState{
 		legacy: legacy,
 		realm:  cx.realmPart,
 	})
@@ -67,19 +67,6 @@ func (cx *ExecutionContext) regExpShape() *shape {
 	s := cx.shapeFor(proto).with(cx.Key(KeyLastIndex), FlagWritable)
 	cx.realm.shapes.regExp = s
 	return s
-}
-
-// newRegExpObject returns a new RegExp object with the shape s, whose only property is
-// lastIndex, and the internal state st.
-func (ag *agent) newRegExpObject(s *shape, st *regExpState) *Object {
-	o, slots := newObjectWithStorage(1)
-	o.kind = kindObject
-	o.class = classRegExp
-	o.shape = s
-	o.initSlots(slots)
-	o.slots[0] = Number(0)
-	o.setExtState(st)
-	return o
 }
 
 // RegExpInitialize implements RegExpInitialize for the RegExp object o and returns o.
@@ -126,7 +113,7 @@ func (cx *ExecutionContext) compileRegExp(r bytecode.RegExp) *regexp.Regexp {
 
 // newRegExpLiteral evaluates the regular expression literal site: it returns a new RegExp object.
 func (cx *ExecutionContext) newRegExpLiteral(site *regExpSite) *Object {
-	return cx.newRegExpObject(cx.regExpShape(), cx.regExpLiteralState(site))
+	return newRegExpObject(cx.regExpShape(), cx.regExpLiteralState(site))
 }
 
 // regExpLiteralState returns the state that the RegExp objects of the literal site share.
@@ -194,7 +181,7 @@ func (cx *ExecutionContext) resetLentRegExp(site *regExpSite) *Object {
 	if o == nil {
 		lent := *cx.regExpLiteralState(site)
 		lent.lent = true
-		o = cx.newRegExpObject(cx.regExpShape(), &lent)
+		o = newRegExpObject(cx.regExpShape(), &lent)
 		site.lent = o
 		return o
 	}
@@ -237,7 +224,7 @@ func (cx *ExecutionContext) OwnRegExp(v Value) Value {
 		if st := o.extState().(*regExpState); st.lent {
 			own := *st
 			own.lent = false
-			return Value{o: cx.newRegExpObject(cx.regExpShape(), &own)}
+			return Value{o: newRegExpObject(cx.regExpShape(), &own)}
 		}
 	}
 	return v

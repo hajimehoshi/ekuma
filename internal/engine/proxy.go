@@ -42,26 +42,20 @@ func (cx *ExecutionContext) ProxyCreate(target, handler Value) *Object {
 	if !target.IsObject() || !handler.IsObject() {
 		cx.ThrowTypeError("cannot create proxy with a non-object as target or handler")
 	}
-	p := (&propertyObject{
-		kind:  kindObject,
-		class: classProxy,
-		flags: objExotic,
-		shape: cx.realm.shapes.proxy,
-		ext: &proxyState{
-			target:  target.o,
-			handler: handler.o,
-		},
-	}).init()
+	var fn *function
 	if target.o.fn != nil {
 		// The native function is the [[Call]] and [[Construct]] of the proxy, so that every way
 		// of calling a function reaches them.
-		p.fn = &function{
+		fn = &function{
 			info:         &proxyInfo,
 			materialized: true,
 			constructor:  cx.IsConstructor(target.o),
 		}
 	}
-	return p
+	return newProxyObject(cx.realm.shapes.proxy, &proxyState{
+		target:  target.o,
+		handler: handler.o,
+	}, fn)
 }
 
 // InstallGlobalProxy makes a proxy the global this value of the current realm.
@@ -89,9 +83,11 @@ func (cx *ExecutionContext) InstallGlobalProxy(foreignView *Object, previous *Ex
 	cx.realm.globalProxyHandler = handler
 	cx.realm.foreignGlobalView = foreignView
 	if proxy == nil {
-		proxy = cx.ProxyCreate(ObjectValue(cx.realm.global), ObjectValue(handler))
 		// A global proxy can outlive its first realm and acquire a new target on navigation.
-		proxy.shape = cx.rootShape(nil, nil, delegatedRoot)
+		proxy = newProxyObject(cx.rootShape(nil, nil, delegatedRoot), &proxyState{
+			target:  cx.realm.global,
+			handler: handler,
+		}, nil)
 	} else {
 		state := proxy.extState().(*proxyState)
 		state.target = cx.realm.global
@@ -104,9 +100,7 @@ func (cx *ExecutionContext) InstallGlobalProxy(foreignView *Object, previous *Ex
 
 func (cx *ExecutionContext) defaultGlobalHandler() *Object {
 	if cx.realm.defaultGlobalProxyHandler == nil {
-		h := cx.NewObject(nil)
-		h.class = classGlobalProxyHandler
-		cx.realm.defaultGlobalProxyHandler = h
+		cx.realm.defaultGlobalProxyHandler = newObjectWithState(cx.shapeFor(nil), classGlobalProxyHandler, nil)
 	}
 	return cx.realm.defaultGlobalProxyHandler
 }
@@ -713,10 +707,7 @@ func (cx *ExecutionContext) ToPropertyDescriptor(v Value) PropDesc {
 
 // FromPropertyDescriptor implements FromPropertyDescriptor for a descriptor that is not undefined.
 func (cx *ExecutionContext) FromPropertyDescriptor(d PropDesc) Value {
-	o, slots := newObjectWithStorage(bits.OnesCount8(d.has))
-	o.kind = kindObject
-	o.shape = cx.realm.shapes.object
-	o.initSlots(slots[:0])
+	o := cx.newEmptyObjectWithRoom(bits.OnesCount8(d.has))
 	fn := func(f *Object) Value {
 		if f == nil {
 			return Undefined

@@ -176,11 +176,5 @@ func toSyntaxError(file string, err error) error {
 
 // newScriptFunction returns the function that runs the script fp.
 func (cx *ExecutionContext) newScriptFunction(fp *funcProto) *Object {
-	return (&propertyObject{
-		kind:  kindFunction,
-		class: classFunction,
-		flags: objExotic,
-		shape: cx.realm.shapes.function,
-		fn:    &function{code: fp},
-	}).init()
+	return newFunctionObject(cx.realm.shapes.function, &function{code: fp})
 }

@@ -1526,11 +1526,6 @@ func (cx *ExecutionContext) NewNative(name wtf8.String, length int, f Native) *O
 // f finds them with [agent.ActiveNativeState].
 func (cx *ExecutionContext) NewNativeWithState(name wtf8.String, length int, f Native, state any) *Object {
 	n := &nativeObject{
-		kind:  kindFunction,
-		class: classFunction,
-		flags: objExotic,
-		shape: cx.realm.shapes.function,
-		ext:   state,
 		info: nativeInfo{
 			native: f,
 			name:   name,
@@ -1538,9 +1533,8 @@ func (cx *ExecutionContext) NewNativeWithState(name wtf8.String, length int, f N
 			realm:  cx.realmPart,
 		},
 	}
-	n.fn = &n.state
 	n.state.info = &n.info
-	return n.init()
+	return n.initFunction(cx.realm.shapes.function, &n.state, state)
 }
 
 // ShortcutFrame states how a shortcut accounts for the frame that calls of its function show.
@@ -1762,6 +1756,7 @@ func (cx *ExecutionContext) deleteName(key *Object) bool {
 
 // BoundFunctionCreate implements BoundFunctionCreate. It copies args.
 func (cx *ExecutionContext) BoundFunctionCreate(target *Object, this Value, args []Value) *Object {
+	s := cx.shapeForRealm(cx.ProtoOf(target), target.shape.realm)
 	b := &boundObject{
 		bound: boundFunc{
 			target: target,
@@ -1769,19 +1764,13 @@ func (cx *ExecutionContext) BoundFunctionCreate(target *Object, this Value, args
 			args:   append([]Value(nil), args...),
 		},
 	}
-	b.fn = &b.state
 	b.state = function{
 		bound:        &b.bound,
 		materialized: true,
 		// The state of a bound target already says whether its own target is a constructor.
 		constructor: target.fn.constructor,
 	}
-	b.kind = kindFunction
-	b.class = classFunction
-	b.shape = cx.shapeForRealm(cx.ProtoOf(target), target.shape.realm)
-	b.slots = b.props[:0]
-	b.pinned = pinnedSlots
-	return b.init()
+	return b.initMaterializedFunction(s, &b.state, b.props[:])
 }
 
 // boundObject is a bound function object together with its state and the storage of its

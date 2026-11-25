@@ -74,12 +74,9 @@ type decorationState struct {
 
 // newClassDecoration returns a new state for the evaluation of the class with the name name.
 func (ag *agent) newClassDecoration(name Value) Value {
-	return Value{o: (&propertyObject{
-		kind: kindObject,
-		ext: &classDecoration{
-			name: name,
-		},
-	}).init()}
+	return Value{o: newObjectWithState(nil, classObject, &classDecoration{
+		name: name,
+	})}
 }
 
 // autoAccessorOp performs the instruction i, an [bytecode.OpAutoAccessor], on the registers regs.
@@ -150,14 +147,11 @@ func (cx *ExecutionContext) makeAutoAccessor(k Value) (storage, getter, setter *
 	if len("get ")+len(name) > MaxStringLength {
 		cx.ThrowRangeError("invalid string length")
 	}
-	storage = &Object{
-		kind:  kindSymbol,
-		class: classPrivateName,
-		str:   name + " accessor storage",
-	}
+	storageName := name
 	if k.o.class == classPrivateName {
-		storage.str = k.o.str + " accessor storage"
+		storageName = k.o.str
 	}
+	storage = newPrivateName(storageName + " accessor storage")
 	getter = cx.NewNativeWithState("get "+name, 0, nativeAutoAccessorGetter, storage)
 	setter = cx.NewNativeWithState("set "+name, 1, nativeAutoAccessorSetter, storage)
 	return storage, getter, setter

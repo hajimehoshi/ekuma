@@ -31,25 +31,6 @@ const minShrinkElems = 64
 // the other elements, so that the storage keeps its room for elements added later.
 const shiftCopyElems = 32
 
-// ArrayCreate implements ArrayCreate.
-func (r *realmPart) ArrayCreate(length uint32, proto *Object) *Object {
-	var a *Object
-	if length > 0 && length <= maxPresizedElems {
-		// The array is usually filled up to its length afterwards.
-		var elems []Value
-		a, elems = newObjectWithStorage(int(length))
-		a.kind = kindArray
-		a.class = classArray
-		a.shape = r.shapes.array
-		a.initElems(elems[:0])
-	} else {
-		a = r.NewArray(nil)
-	}
-	r.setProto(a, proto)
-	a.length = length
-	return a
-}
-
 // LengthOfArrayLike implements LengthOfArrayLike.
 func (cx *ExecutionContext) LengthOfArrayLike(o *Object) int64 {
 	if o.kind == kindArray {

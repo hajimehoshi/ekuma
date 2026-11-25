@@ -414,11 +414,7 @@ func (cx *ExecutionContext) resolveForKey(o *Object, key *Object) {
 // needs its own properties, or a call to [agent.InitLazyObject], runs init once.
 func (cx *ExecutionContext) NewLazyObject(proto *Object, init func(*ExecutionContext, *Object)) *Object {
 	// A cached miss on an ordinary object must still run this object's initializer.
-	o := newObject(cx.rootShape(proto, cx.realmPart, delegatedRoot))
-	o.class = classLazy
-	o.flags |= objExotic
-	o.setExtState(init)
-	return o
+	return newExoticObject(cx.rootShape(proto, cx.realmPart, delegatedRoot), classLazy, init)
 }
 
 // InitLazyObject runs the init function of o, an object of [ExecutionContext.NewLazyObject], unless it has

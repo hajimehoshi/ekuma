@@ -624,16 +624,10 @@ func (m *Module) initializeEnvironment() (Value, bool) {
 	for j, d := range m.body.Upvals {
 		upvals[j] = m.env[d.Index]
 	}
-	m.fn = (&propertyObject{
-		kind:  kindFunction,
-		class: classFunction,
-		flags: objExotic,
-		shape: cx.realm.shapes.function,
-		fn: &function{
-			code:   m.body,
-			upvals: upvals,
-		},
-	}).init()
+	m.fn = newFunctionObject(cx.realm.shapes.function, &function{
+		code:   m.body,
+		upvals: upvals,
+	})
 	for _, f := range code.Funcs {
 		*m.env[f.Binding].p = Value{o: cx.newClosure(m.body.protos[f.Proto], upvals)}
 	}
@@ -658,16 +652,11 @@ func (cx *ExecutionContext) newClosure(p *funcProto, upvals []*upvalue) *Object 
 		classConstructor: p.isClassConstructor,
 		derived:          p.isDerived,
 	}
-	o := (&propertyObject{
-		kind:  kindFunction,
-		class: classFunction,
-		flags: objExotic,
-		shape: cx.realm.shapes.function,
-		fn:    fn,
-	}).init()
+	s := cx.realm.shapes.function
 	if p.isGenerator || p.isAsync {
-		o.shape = cx.functionShapeFor(p.closurePrototype())
+		s = cx.functionShapeFor(p.closurePrototype())
 	}
+	o := newFunctionObject(s, fn)
 	if n := len(p.Upvals); n > 0 {
 		fn.upvals = make([]*upvalue, n)
 		for j, d := range p.Upvals {

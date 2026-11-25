@@ -128,32 +128,19 @@ func (cx *ExecutionContext) initRealmPrototypes() {
 	r := cx.realm
 	r.shapes.nullProto[ordinaryRoot] = cx.newShape(nil, cx.realmPart, ordinaryRoot)
 	r.shapes.proxy = cx.rootShape(nil, cx.realmPart, delegatedRoot)
-	objectProto := (&propertyObject{
-		kind:  kindObject,
-		shape: r.shapes.nullProto[ordinaryRoot],
-	}).init()
+	objectProto := newObject(r.shapes.nullProto[ordinaryRoot])
 	r.intrinsics[IntrinsicObjectPrototype] = objectProto
 	r.shapes.object = cx.shapeFor(objectProto)
-	functionProto := (&propertyObject{
-		kind:  kindFunction,
-		class: classFunction,
-		flags: objExotic,
-		shape: cx.functionShapeFor(objectProto),
-		fn: &function{
-			info: &nativeInfo{
-				native: nativeFunctionPrototype,
-				realm:  cx.realmPart,
-			},
+	functionProto := newFunctionObject(cx.functionShapeFor(objectProto), &function{
+		info: &nativeInfo{
+			native: nativeFunctionPrototype,
+			realm:  cx.realmPart,
 		},
-	}).init()
+	})
 	r.intrinsics[IntrinsicFunctionPrototype] = functionProto
 	r.shapes.function = cx.functionShapeFor(functionProto)
 	r.shapes.materializedFunction = cx.shapeFor(functionProto)
-	arrayProto := (&propertyObject{
-		kind:  kindArray,
-		class: classArray,
-		shape: cx.rootShape(objectProto, cx.realmPart, arrayRoot),
-	}).init()
+	arrayProto := newArray(cx.rootShape(objectProto, cx.realmPart, arrayRoot), nil)
 	r.intrinsics[IntrinsicArrayPrototype] = arrayProto
 	r.shapes.array = cx.rootShape(arrayProto, cx.realmPart, arrayRoot)
 	stringProto := cx.NewObject(objectProto)
@@ -180,14 +167,11 @@ func (cx *ExecutionContext) initRealmGlobals() {
 	cx.add(stringProto, cx.Key(KeyLength), Number(0), 0)
 	r.shapes.iterResult = r.shapes.object.with(cx.Key(KeyValue), FlagsData).with(cx.Key(keyDone), FlagsData)
 	r.shapes.arguments = r.shapes.object.with(cx.Key(KeyLength), FlagsHidden).with(cx.WellKnownSymbol(SymbolIterator), FlagsHidden)
-	r.global = cx.NewObject(r.intrinsics[IntrinsicObjectPrototype])
 	// Deleting a property can restore a shared shape and its cached global slot pointers.
 	// Keep the slots in place until adding a property gives the global object a private shape.
-	r.global.initSlots(make([]Value, 0, privateShapeThreshold))
-	r.global.pinned = pinnedGlobalSlots
+	r.global = newGlobalObject(cx.shapeFor(r.intrinsics[IntrinsicObjectPrototype]), privateShapeThreshold)
 	r.globalThis = r.global
-	r.globalLex = cx.NewObject(nil)
-	r.globalLex.pinned = pinnedGlobalSlots
+	r.globalLex = newGlobalObject(cx.shapeFor(nil), 0)
 }
 
 // CreateRealm returns the context of a new realm after calling install with that context active.

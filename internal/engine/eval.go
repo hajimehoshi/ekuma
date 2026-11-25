@@ -105,13 +105,7 @@ func (cx *ExecutionContext) directEval(x Value, site int) Value {
 		}
 	}
 	fn.scopes = cx.openScopes(fr.cl)
-	return cx.Call((&propertyObject{
-		kind:  kindFunction,
-		class: classFunction,
-		flags: objExotic,
-		shape: cx.realm.shapes.function,
-		fn:    fn,
-	}).init(), Undefined)
+	return cx.Call(newFunctionObject(cx.realm.shapes.function, fn), Undefined)
 }
 
 // PerformEval implements PerformEval for an indirect eval.
@@ -217,8 +211,7 @@ func hasTemplates(f *bytecode.Func) bool {
 
 // pushEvalScope opens a new scope for the variables that direct evals declare in the running function.
 func (cx *ExecutionContext) pushEvalScope() {
-	o := cx.NewObject(nil)
-	o.class = classEvalScope
+	o := newObjectWithState(cx.shapeFor(nil), classEvalScope, nil)
 	cur := &cx.frames[len(cx.frames)-1]
 	cur.scopes = append(cur.scopes, o)
 }

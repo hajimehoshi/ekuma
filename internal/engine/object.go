@@ -927,10 +927,15 @@ func (cx *ExecutionContext) NewOrdinaryObject() *Object {
 
 // NewArray returns a new array with the given elements, which it keeps.
 func (r *realmPart) NewArray(elems []Value) *Object {
+	return newArray(r.shapes.array, elems)
+}
+
+// newArray returns a new array with the shape s and the given elements, which it keeps.
+func newArray(s *shape, elems []Value) *Object {
 	return (&propertyObject{
 		kind:   kindArray,
 		class:  classArray,
-		shape:  r.shapes.array,
+		shape:  s,
 		elems:  elems,
 		length: uint32(len(elems)),
 	}).init()
@@ -948,6 +953,16 @@ func (cx *ExecutionContext) NewArrayCopy(elems []Value) *Object {
 	return a
 }
 
+// newEmptyObjectWithRoom returns a new empty ordinary object whose prototype is %Object.prototype%,
+// with room for n properties.
+func (r *realmPart) newEmptyObjectWithRoom(n int) *Object {
+	o, slots := newObjectWithStorage(n)
+	o.kind = kindObject
+	o.shape = r.shapes.object
+	o.initSlots(slots[:0])
+	return o
+}
+
 // NewEmptyArrayWithRoom returns a new empty array with room for n elements.
 func (cx *ExecutionContext) NewEmptyArrayWithRoom(n int) *Object {
 	a, storage := newObjectWithStorage(n)
@@ -955,6 +970,25 @@ func (cx *ExecutionContext) NewEmptyArrayWithRoom(n int) *Object {
 	a.class = classArray
 	a.shape = cx.realm.shapes.array
 	a.initElems(storage[:0])
+	return a
+}
+
+// ArrayCreate implements ArrayCreate.
+func (r *realmPart) ArrayCreate(length uint32, proto *Object) *Object {
+	var a *Object
+	if length > 0 && length <= maxPresizedElems {
+		// The array is usually filled up to its length afterwards.
+		var elems []Value
+		a, elems = newObjectWithStorage(int(length))
+		a.kind = kindArray
+		a.class = classArray
+		a.shape = r.shapes.array
+		a.initElems(elems[:0])
+	} else {
+		a = r.NewArray(nil)
+	}
+	r.setProto(a, proto)
+	a.length = length
 	return a
 }
 

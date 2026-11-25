@@ -25,16 +25,13 @@ func NewBigInt(i *big.Int) Value {
 	if i.IsInt64() {
 		return BigIntFromInt64(i.Int64())
 	}
-	o := &bigIntObject{
-		kind: kindBigInt,
-	}
+	o := &bigIntObject{}
 	// SetBits shares the immutable magnitude without retaining i's header.
 	o.integer.SetBits(i.Bits())
 	if i.Sign() < 0 {
 		o.integer.Neg(&o.integer)
 	}
-	o.setExtState(&o.integer)
-	return Value{o: &o.Object}
+	return o.initBigInt(&o.integer)
 }
 
 // MaxBigIntBits is the largest number of bits of the magnitude of a BigInt.
@@ -65,7 +62,6 @@ func (cx *ExecutionContext) multiplyBigInts(x, y *big.Int) Value {
 		bigIntObject
 		magnitude [bigIntProductWords]big.Word
 	}{}
-	o.kind = kindBigInt
 	// A product needs at most the sum of its operands' word lengths.
 	// The buffer belongs only to this result and is immutable once published.
 	o.integer.SetBits(o.magnitude[:0])
@@ -73,8 +69,7 @@ func (cx *ExecutionContext) multiplyBigInts(x, y *big.Int) Value {
 	if o.integer.IsInt64() {
 		return BigIntFromInt64(o.integer.Int64())
 	}
-	o.setExtState(&o.integer)
-	return Value{o: &o.Object}
+	return o.initBigInt(&o.integer)
 }
 
 const bigIntSumWords = 256 / bits.UintSize
@@ -92,7 +87,6 @@ func (cx *ExecutionContext) addBigInts(a, b Value) Value {
 		bigIntObject
 		magnitude [bigIntSumWords + 1]big.Word
 	}{}
-	o.kind = kindBigInt
 	// Addition needs one extra word for a carry. The storage belongs only to
 	// this result and is never reused after the value is published.
 	o.integer.SetBits(o.magnitude[:0])
@@ -100,8 +94,7 @@ func (cx *ExecutionContext) addBigInts(a, b Value) Value {
 	if o.integer.IsInt64() {
 		return BigIntFromInt64(o.integer.Int64())
 	}
-	o.setExtState(&o.integer)
-	return Value{o: &o.Object}
+	return o.initBigInt(&o.integer)
 }
 
 // maxDisplayBigIntBits is the number of bits up to which a message shows every digit of a BigInt.

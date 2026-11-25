@@ -152,12 +152,7 @@ func newPromiseObject(s *shape) *Object {
 			result: Undefined,
 		},
 	}
-	w.kind = kindObject
-	w.shape = s
-	o := w.init()
-	o.class = classPromise
-	o.setExtState(&w.state)
-	return o
+	return w.initWithState(s, classPromise, &w.state)
 }
 
 // promiseObject is a Promise object together with its state, so that creating one is a single

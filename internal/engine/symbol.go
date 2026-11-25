@@ -20,6 +20,15 @@ func (sp *space) NewSymbol(desc wtf8.String, hasDesc bool) *Object {
 	return s
 }
 
+// newPrivateName returns a new private name whose description is desc.
+func newPrivateName(desc wtf8.String) *Object {
+	return &Object{
+		kind:  kindSymbol,
+		class: classPrivateName,
+		str:   desc,
+	}
+}
+
 // RegisteredSymbol returns the symbol of the GlobalSymbolRegistry List with the key key,
 // which it adds when there is none.
 func (sp *space) RegisteredSymbol(key wtf8.String) *Object {

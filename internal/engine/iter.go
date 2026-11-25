@@ -299,7 +299,7 @@ const (
 )
 
 // stepDeclined is the value of a step that declines. No iterator yields it.
-var stepDeclined = &Object{kind: kindHole}
+var stepDeclined = newMarker(nil)
 
 // iterNext calls the next method next of the iterator it, as for-of and destructuring do.
 // It returns the value with iterValue, or iterDone when the iterator is done. When the result
@@ -670,16 +670,13 @@ type forIn struct {
 
 // newForIn returns the iterator of a for-in loop over v.
 func (cx *ExecutionContext) newForIn(v Value) Value {
-	it := &forIn{
-		kind:  kindObject,
-		class: classForIn,
-	}
-	it.setExtState(it)
+	it := &forIn{}
+	o := it.initWithState(nil, classForIn, it)
 	if !v.IsNullish() {
 		it.obj = cx.ToObject(v)
 		it.indices, it.length, it.keys = cx.forInOwnKeys(it.obj)
 	}
-	return Value{o: it.init()}
+	return Value{o: o}
 }
 
 // forInOwnKeys returns the own property keys of the receiver o of a for-in loop in the order of

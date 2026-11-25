@@ -267,15 +267,12 @@ func (cx *ExecutionContext) NewArrayBufferObject(proto *Object, byteLength, maxB
 // NewSharedArrayBufferObject returns a SharedArrayBuffer with the prototype proto over the data
 // block blk, which may come from another agent.
 func (cx *ExecutionContext) NewSharedArrayBufferObject(proto *Object, blk *SharedDataBlock) *Object {
-	o := cx.NewObject(proto)
-	o.class = classArrayBuffer
-	o.ext = &ArrayBuffer{
+	return newObjectWithState(cx.shapeFor(proto), classArrayBuffer, &ArrayBuffer{
 		block:      blk,
 		max:        blk.max,
 		state:      bufferShared,
 		slowLength: &blk.length,
-	}
-	return o
+	})
 }
 
 // newArrayBufferFromBytes returns an ArrayBuffer with the prototype proto whose data is b,
@@ -288,12 +285,7 @@ func (cx *ExecutionContext) newArrayBufferFromBytes(proto *Object, b []byte, max
 			max:  maxByteLength,
 		},
 	}
-	w.kind = kindObject
-	w.shape = cx.shapeFor(proto)
-	o := w.init()
-	o.class = classArrayBuffer
-	o.setExtState(&w.state)
-	return o
+	return w.initWithState(cx.shapeFor(proto), classArrayBuffer, &w.state)
 }
 
 // arrayBufferObject is an ArrayBuffer object together with its state, so that creating one is
@@ -449,13 +441,7 @@ func (cx *ExecutionContext) NewTypedArrayObject(proto *Object, t element.Type, b
 			numberStore: !t.IsBigInt() && !data.immutable && data.block == nil,
 		},
 	}
-	w.kind = kindObject
-	w.shape = cx.rootShape(proto, cx.realmPart, typedArrayRoot)
-	o := w.init()
-	o.class = classTypedArray
-	o.flags |= objExotic
-	o.setExtState(&w.state)
-	return o
+	return w.initExotic(cx.rootShape(proto, cx.realmPart, typedArrayRoot), classTypedArray, &w.state)
 }
 
 // typedArrayObject is a typed array object together with its state, so that creating one is
@@ -817,16 +803,13 @@ func isNumericKey(k PropKey) bool {
 // NewDataViewObject returns a DataView with the prototype proto on the buffer object buffer
 // from byteOffset on. byteLength is -1 for a view whose length tracks the length of the buffer.
 func (cx *ExecutionContext) NewDataViewObject(proto *Object, buffer *Object, byteOffset, byteLength int) *Object {
-	o := cx.NewObject(proto)
-	o.class = classDataView
-	o.ext = &DataView{
+	return newObjectWithState(cx.shapeFor(proto), classDataView, &DataView{
 		buffer:   buffer,
 		data:     buffer.extState().(*ArrayBuffer),
 		offset:   byteOffset,
 		length:   max(byteLength, 0),
 		tracking: byteLength < 0,
-	}
-	return o
+	})
 }
 
 // DataView is the state of a DataView object.

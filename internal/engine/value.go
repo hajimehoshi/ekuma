@@ -83,6 +83,21 @@ var (
 	hole = Value{o: holeObject}
 )
 
+// newMarker returns a new value with the internal state state that never reaches JavaScript.
+func newMarker(state any) *Object {
+	return &Object{
+		kind: kindHole,
+		ext:  state,
+	}
+}
+
+// initBigInt makes o, which must be zero, the BigInt i, which must not fit in an int64.
+func (o *Object) initBigInt(i *big.Int) Value {
+	o.kind = kindBigInt
+	o.ext = i
+	return Value{o: o}
+}
+
 // Number returns the number n as a value.
 func Number(n float64) Value {
 	return Value{

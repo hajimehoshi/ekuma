@@ -202,10 +202,7 @@ func (cx *ExecutionContext) continueDispose(dc *DisposeCapability, k AwaitHandle
 // creating it when d is undefined, and returns the new register value.
 func (cx *ExecutionContext) addDisposableOp(v, d Value, hint DisposeHint) Value {
 	if d.IsUndefined() {
-		d = Value{o: (&propertyObject{
-			kind: kindObject,
-			ext:  NewDisposeCapability(),
-		}).init()}
+		d = Value{o: newObjectWithState(nil, classObject, NewDisposeCapability())}
 	}
 	cx.AddDisposableResource(d.o.extState().(*DisposeCapability), v, hint, nil)
 	return d

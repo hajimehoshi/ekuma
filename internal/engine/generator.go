@@ -30,7 +30,7 @@ const (
 
 // closeSignal is thrown through a suspended generator to make it return:
 // only finally handlers intercept it. A JavaScript finally block saves the return value in its frame.
-var closeSignal = &Object{kind: kindHole}
+var closeSignal = newMarker(nil)
 
 // generator is the suspended activation of a generator or async function.
 // Its registers are not on the stack, so that closures can keep referring to them.
@@ -180,9 +180,7 @@ func (cx *ExecutionContext) newGeneratorObject(g *generator) *Object {
 	if p := cx.GetV(Value{o: g.f}, cx.Key(KeyPrototype)); p.IsObject() {
 		proto = p.o
 	}
-	o := newObject(cx.shapeForRealm(proto, r))
-	o.class = classGenerator
-	o.setExtState(g)
+	o := newObjectWithState(cx.shapeForRealm(proto, r), classGenerator, g)
 	g.object = o
 	return o
 }

@@ -133,7 +133,7 @@ func goFunction(cx *ExecutionContext, this Value, args []Value) Value {
 // NewHTMLDDA returns a function implemented by f that has the [[IsHTMLDDA]] internal slot.
 func (cx *ExecutionContext) NewHTMLDDA(f NativeFunc) Value {
 	o := cx.newGoFunction("", f)
-	o.kind = kindHTMLDDA
+	o.makeHTMLDDA()
 	cx.madeHTMLDDA = true
 	return Value{o: o}
 }

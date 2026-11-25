@@ -21,12 +21,14 @@ import (
 // storageFiles are the files that own raw storage, with the reasons. The fields of the structs that
 // they declare are raw.
 var storageFiles = map[string]string{
-	"value.go":       "values",
-	"object.go":      "objects, shapes, inline caches and strings",
-	"storage.go":     "slots and elements",
-	"concat.go":      "strings that concatenations extend",
-	"shortstring.go": "strings in values",
-	"symbol.go":      "symbols",
+	"value.go":          "values",
+	"object.go":         "objects, shapes, inline caches and strings",
+	"builtinobject.go":  "creation of built-in objects",
+	"functionobject.go": "creation of functions",
+	"storage.go":        "slots and elements",
+	"concat.go":         "strings that concatenations extend",
+	"shortstring.go":    "strings in values",
+	"symbol.go":         "symbols",
 }
 
 // validationFiles are the files that check raw storage in the ekumavalidate build. They are not

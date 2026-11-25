@@ -11,10 +11,7 @@ import (
 // NewShadowRealmObject returns a ShadowRealm object with the prototype proto whose
 // [[ShadowRealm]] is the realm of target.
 func (cx *ExecutionContext) NewShadowRealmObject(proto *Object, target *ExecutionContext) *Object {
-	o := cx.NewObject(proto)
-	o.class = classShadowRealm
-	o.setExtState(target.realm)
-	return o
+	return newObjectWithState(cx.shapeFor(proto), classShadowRealm, target.realm)
 }
 
 // ValidateShadowRealmObject implements ValidateShadowRealmObject, and returns the

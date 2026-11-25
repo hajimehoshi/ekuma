@@ -289,12 +289,10 @@ func (cx *ExecutionContext) asyncFromSyncIterator(it, next Value) (Value, Value)
 	if cx.realm.asyncFromSyncProto == nil {
 		cx.initAsyncFromSyncIteratorPrototype()
 	}
-	o := cx.NewObject(cx.realm.asyncFromSyncProto)
-	o.class = classIterator
-	o.ext = &asyncFromSyncIterator{
+	o := newObjectWithState(cx.shapeFor(cx.realm.asyncFromSyncProto), classIterator, &asyncFromSyncIterator{
 		iterator: it,
 		next:     next,
-	}
+	})
 	return Value{o: o}, cx.GetV(Value{o: o}, cx.Key(KeyNext))
 }
 

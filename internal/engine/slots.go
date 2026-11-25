@@ -9,18 +9,12 @@ import "github.com/hajimehoshi/ekuma/internal/wtf8"
 
 // NewNumberObject returns a Number object for n with the prototype proto.
 func (cx *ExecutionContext) NewNumberObject(n float64, proto *Object) *Object {
-	w := cx.NewObject(proto)
-	w.class = classNumber
-	w.setExtState(n)
-	return w
+	return newObjectWithState(cx.shapeFor(proto), classNumber, n)
 }
 
 // NewBooleanObject returns a Boolean object for b with the prototype proto.
 func (cx *ExecutionContext) NewBooleanObject(b bool, proto *Object) *Object {
-	w := cx.NewObject(proto)
-	w.class = classBoolean
-	w.setExtState(b)
-	return w
+	return newObjectWithState(cx.shapeFor(proto), classBoolean, b)
 }
 
 // errorData is the internal state of an error object that has a recorded stack trace.
@@ -41,9 +35,7 @@ type errorData struct {
 
 // NewErrorObject returns an Error object with prototype proto and no own properties.
 func (cx *ExecutionContext) NewErrorObject(proto *Object) *Object {
-	e := newObject(cx.shapeForRealm(proto, cx.realmPart))
-	e.class = classError
-	return e
+	return newObjectWithState(cx.shapeFor(proto), classError, nil)
 }
 
 // IsError reports whether v is an object with an [[ErrorData]] internal slot.
@@ -96,18 +88,12 @@ func GoError(v Value) error {
 // NewIteratorObject returns a built-in iterator object with the prototype proto.
 // state is what [IteratorState] returns for it.
 func (cx *ExecutionContext) NewIteratorObject(proto *Object, state any) *Object {
-	it := cx.NewObject(proto)
-	it.class = classIterator
-	it.setExtState(state)
-	return it
+	return newObjectWithState(cx.shapeFor(proto), classIterator, state)
 }
 
 // NewMapObject returns a Map object with the prototype proto whose [[MapData]] is data.
 func (r *realmPart) NewMapObject(proto *Object, data any) *Object {
-	o := r.NewObject(proto)
-	o.class = classMap
-	o.setExtState(data)
-	return o
+	return newObjectWithState(r.shapeFor(proto), classMap, data)
 }
 
 // MapData returns the [[MapData]] of the Map object v, or nil when v is not a Map object.
@@ -120,10 +106,7 @@ func MapData(v Value) any {
 
 // NewSetObject returns a Set object with the prototype proto whose [[SetData]] is data.
 func (r *realmPart) NewSetObject(proto *Object, data any) *Object {
-	o := r.NewObject(proto)
-	o.class = classSet
-	o.setExtState(data)
-	return o
+	return newObjectWithState(r.shapeFor(proto), classSet, data)
 }
 
 // SetData returns the [[SetData]] of the Set object v, or nil when v is not a Set object.
@@ -137,10 +120,7 @@ func SetData(v Value) any {
 // NewTemporalObject returns an object of one of the Temporal types with the prototype proto,
 // whose internal slots are data.
 func (cx *ExecutionContext) NewTemporalObject(proto *Object, data any) *Object {
-	o := cx.NewObject(proto)
-	o.class = classTemporal
-	o.setExtState(data)
-	return o
+	return newObjectWithState(cx.shapeFor(proto), classTemporal, data)
 }
 
 // TemporalData returns the internal slots of the Temporal object v, or nil when v is not one.
@@ -154,10 +134,7 @@ func TemporalData(v Value) any {
 // NewIntlObject returns an object of one of the Intl types with the prototype proto, whose
 // internal slots are data.
 func (cx *ExecutionContext) NewIntlObject(proto *Object, data any) *Object {
-	o := cx.NewObject(proto)
-	o.class = classIntl
-	o.setExtState(data)
-	return o
+	return newObjectWithState(cx.shapeFor(proto), classIntl, data)
 }
 
 // IntlData returns the internal slots of the Intl object v, or nil when v is not one.
@@ -177,15 +154,9 @@ type dateObject struct {
 
 // NewDateObject returns a Date object with the prototype proto whose [[DateValue]] is tv.
 func (cx *ExecutionContext) NewDateObject(proto *Object, tv float64) *Object {
-	d := &dateObject{
-		kind:  kindObject,
-		class: classDate,
-		shape: cx.shapeFor(proto),
-		tv:    tv,
-	}
-	o := d.init()
-	o.ext = &d.tv
-	return o
+	s := cx.shapeFor(proto)
+	d := &dateObject{tv: tv}
+	return d.initWithState(s, classDate, &d.tv)
 }
 
 // ThisTimeValue implements thisTimeValue. It reports false when the specification throws.
@@ -337,9 +308,7 @@ func (o *Object) IsRegExpObject() bool {
 // NewRawJSONObject returns an object without any property or prototype
 // that has the internal slot [[IsRawJSON]].
 func (cx *ExecutionContext) NewRawJSONObject() *Object {
-	o := cx.NewObject(nil)
-	o.class = classRawJSON
-	return o
+	return newObjectWithState(cx.shapeFor(nil), classRawJSON, nil)
 }
 
 // IsRawJSON reports whether o has the internal slot [[IsRawJSON]].
@@ -350,13 +319,11 @@ func (o *Object) IsRawJSON() bool {
 // NewDisposableStackObject returns a DisposableStack object, or an AsyncDisposableStack object
 // when async is set, with the prototype proto. state is what [DisposableStackState] returns for it.
 func (cx *ExecutionContext) NewDisposableStackObject(proto *Object, async bool, state any) *Object {
-	o := cx.NewObject(proto)
-	o.class = classDisposableStack
+	c := classDisposableStack
 	if async {
-		o.class = classAsyncDisposableStack
+		c = classAsyncDisposableStack
 	}
-	o.setExtState(state)
-	return o
+	return newObjectWithState(cx.shapeFor(proto), c, state)
 }
 
 // DisposableStackState returns the state of v when it is a DisposableStack object, or

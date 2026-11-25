@@ -82,14 +82,12 @@ func (cx *ExecutionContext) newArgumentsObject(fr *frame) *Object {
 	n := min(fr.argc, fr.fp.nparams)
 	elems = append(elems, cx.frameRegs(fr)[:n]...)
 	elems = append(elems, cx.extraArgs(fr)...)
-	a.kind = kindObject
-	a.class = classArguments
-	a.shape = cx.realm.shapes.arguments
+	o := a.initWithClass(cx.realm.shapes.arguments, classArguments)
 	a.elems = elems
 	a.storage = [3]Value{Number(float64(fr.argc)), {o: cx.Intrinsic(IntrinsicArrayPrototypeValues)}}
 	a.slots = a.storage[:2]
 	a.pinned = pinnedSlots | pinnedElems
-	return a.init()
+	return o
 }
 
 // argumentsObjectWith is an arguments object together with the storage S of its elements.

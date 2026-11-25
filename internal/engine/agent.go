@@ -1032,13 +1032,10 @@ type savedException struct {
 }
 
 func (ag *agent) saveException() Value {
-	return Value{o: &Object{
-		kind: kindHole,
-		ext: &savedException{
-			value: ag.thrown,
-			at:    ag.thrownAt,
-		},
-	}}
+	return Value{o: newMarker(&savedException{
+		value: ag.thrown,
+		at:    ag.thrownAt,
+	})}
 }
 
 func unpackException(v Value) (Value, *throwSite) {
