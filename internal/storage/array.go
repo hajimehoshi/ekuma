@@ -559,12 +559,25 @@ func (r *RealmPart) AppendElementsOf(dst *Object, n int64, src *Object) bool {
 
 // SkipHoles is quiet.Context.SkipHoles.
 func (r *RealmPart) SkipHoles(o *Object, i, end int64) int64 {
-	if i < 0 || i >= end || i < int64(len(o.elems)) && !o.elems[i].IsHole() || !o.HolesAreAbsent() {
+	elems := o.elems
+	if i < 0 || i >= end || i < int64(len(elems)) && !elems[i].IsHole() {
 		return i
 	}
-	j := end
-	for k := i; k < min(end, int64(len(o.elems))); k++ {
-		if !o.elems[k].IsHole() {
+	// The callers check for an interruption only at some of the elements, which holes may separate,
+	// and the prototype chain can be long.
+	if r.InterruptFlag.Load() {
+		r.Poll()
+	}
+	if !o.HolesAreAbsent() {
+		return i
+	}
+	j, n := end, min(end, int64(len(elems)))
+	if stop := i + PollInterval; n > stop {
+		// The caller continues from there.
+		j, n = stop, stop
+	}
+	for k := i; k < n; k++ {
+		if !elems[k].IsHole() {
 			j = k
 			break
 		}
@@ -580,12 +593,21 @@ func (r *RealmPart) SkipHoles(o *Object, i, end int64) int64 {
 
 // SkipHolesBackward is quiet.Context.SkipHolesBackward.
 func (r *RealmPart) SkipHolesBackward(o *Object, i, end int64) int64 {
-	if i <= end || i < 0 || i > MaxArrayIndex || i < int64(len(o.elems)) && !o.elems[i].IsHole() || !o.HolesAreAbsent() {
+	elems := o.elems
+	if i <= end || i < 0 || i > MaxArrayIndex || i < int64(len(elems)) && !elems[i].IsHole() {
 		return i
 	}
-	j := max(end, -1)
-	for k := min(i, int64(len(o.elems))-1); k > j; k-- {
-		if !o.elems[k].IsHole() {
+	// See [RealmPart.SkipHoles].
+	if r.InterruptFlag.Load() {
+		r.Poll()
+	}
+	if !o.HolesAreAbsent() {
+		return i
+	}
+	k := min(i, int64(len(elems))-1)
+	j := max(end, k-PollInterval, -1)
+	for ; k > j; k-- {
+		if !elems[k].IsHole() {
 			j = k
 			break
 		}

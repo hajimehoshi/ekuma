@@ -99,16 +99,16 @@ func (q Context) AppendElementsOf(dst *storage.Object, n int64, src *storage.Obj
 	return q.Realm.AppendElementsOf(dst, n, src)
 }
 
-// SkipHoles returns the greatest index j with i <= j <= end such that neither o nor its prototypes
-// have a property with an integer index from i to j-1. It returns i when that is not known
-// without running JavaScript.
+// SkipHoles returns an index j with i <= j <= end such that neither o nor its prototypes have a
+// property with an integer index from i to j-1. It returns i when that is not known without running
+// JavaScript, and an index below the greatest one when that is far from i.
 func (q Context) SkipHoles(o *storage.Object, i, end int64) int64 {
 	return q.Realm.SkipHoles(o, i, end)
 }
 
-// SkipHolesBackward returns the least index j with end <= j <= i such that neither o nor its
-// prototypes have a property with an integer index from j+1 to i. It returns i when that is not
-// known without running JavaScript.
+// SkipHolesBackward returns an index j with end <= j <= i such that neither o nor its prototypes
+// have a property with an integer index from j+1 to i. It returns i when that is not known without
+// running JavaScript, and an index above the least one when that is far from i.
 func (q Context) SkipHolesBackward(o *storage.Object, i, end int64) int64 {
 	return q.Realm.SkipHolesBackward(o, i, end)
 }

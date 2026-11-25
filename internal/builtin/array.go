@@ -48,8 +48,8 @@ func hasAt(cx *engine.ExecutionContext, o *storage.Object, i int64) bool {
 	return cx.HasProperty(o, bigKey(cx, i))
 }
 
-// skipHoles returns the next index from i toward end, which is excluded, that may have a property
-// on o, or end when there is none.
+// skipHoles returns an index from i toward end, which is excluded, such that o has no property from i
+// up to it, or end.
 func skipHoles(cx *engine.ExecutionContext, o *storage.Object, i, end int64, backward bool) int64 {
 	if backward {
 		return cx.Quiet().SkipHolesBackward(o, i, end)
@@ -57,8 +57,8 @@ func skipHoles(cx *engine.ExecutionContext, o *storage.Object, i, end int64, bac
 	return cx.Quiet().SkipHoles(o, i, end)
 }
 
-// holeSteps returns the number of consecutive indices from i, moving by dir (1 or -1) and at most
-// count, at which neither o nor its prototypes are known to have a property.
+// holeSteps returns a number of consecutive indices from i, moving by dir (1 or -1) and at most
+// count, at which neither o nor its prototypes have a property.
 func holeSteps(cx *engine.ExecutionContext, o *storage.Object, i, count, dir int64) int64 {
 	if _, ok := storage.Element(o, i); ok || i > storage.MaxArrayIndex {
 		return 0
@@ -73,9 +73,9 @@ func holeSteps(cx *engine.ExecutionContext, o *storage.Object, i, count, dir int
 // minMoveRun is the number of steps of the first look ahead of moveSteps.
 const minMoveRun = 256
 
-// moveSteps returns how many steps, at most count, of a loop that moves the property at src to dst,
-// or deletes the property at dst when src has none, change nothing. Both indices move by dir (1 or
-// -1).
+// moveSteps returns a number of steps, at most count, of a loop that moves the property at src to dst,
+// or deletes the property at dst when src has none, that change nothing. Both indices move by dir (1
+// or -1).
 func moveSteps(cx *engine.ExecutionContext, o *storage.Object, src, dst, count, dir int64) int64 {
 	// A long run of holes at one index can meet a property at the other, so each look ahead is
 	// limited in proportion to the steps found so far.
@@ -261,6 +261,7 @@ func flattenIntoArray(cx *engine.ExecutionContext, a *storage.Object, src *stora
 	}}
 	var pacer engine.Pacer
 	for len(stack) > 0 {
+		cx.PollStep()
 		t := &stack[len(stack)-1]
 		if i := cx.Quiet().SkipHoles(t.src, t.i, t.l); i > t.i {
 			pacer.Steps(cx, int(min(i-t.i, storage.PollInterval)))
@@ -709,7 +710,7 @@ func arrayConcat(cx *engine.ExecutionContext, this storage.Value, args []storage
 			n += l
 			continue
 		}
-		// Skipping the holes of an item does not check for an interruption.
+		// Skipping the holes of an item can look at many elements.
 		cx.Poll()
 		for i := int64(0); i < l; i++ {
 			if i = cx.Quiet().SkipHoles(item.Object(), i, l); i == l {

@@ -1917,6 +1917,18 @@ func TestCancelScans(t *testing.T) {
 				var o = Object.create({ a: 1 });
 				for (var k in (cancel(), o)) var after = true;`,
 		},
+		{
+			name: "holes",
+			src:  `[1, , 2].indexOf(3, { valueOf() { cancel(); return 0; } });`,
+		},
+		{
+			name: "holes backward",
+			src:  `[1, , 2].lastIndexOf(3, { valueOf() { cancel(); return 2; } });`,
+		},
+		{
+			name: "elements of nested arrays",
+			src:  `[[1, 2], [3, 4]].flat({ valueOf() { cancel(); return 1; } });`,
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			synctest.Test(t, func(t *testing.T) {
