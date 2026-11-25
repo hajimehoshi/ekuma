@@ -302,8 +302,8 @@ func (o *Object) elemsMovable() bool {
 
 // ContainsHole reports whether elems has a hole.
 func ContainsHole(elems []Value) bool {
-	for _, e := range elems {
-		if e.IsHole() {
+	for i := range elems {
+		if elems[i].IsHole() {
 			return true
 		}
 	}
