@@ -103,7 +103,7 @@ func canonicalizeLocaleList(cx *engine.ExecutionContext, locales storage.Value) 
 	var seen []string
 	var seenSet map[string]struct{}
 	for k := range n {
-		cx.PollAt(k)
+		cx.PollStep()
 		pk := cx.ToPropertyKey(storage.Number(float64(k)))
 		if !cx.HasProperty(o, pk) {
 			continue

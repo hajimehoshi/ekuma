@@ -316,6 +316,7 @@ func iteratorConcat(cx *engine.ExecutionContext, this storage.Value, args []stor
 		inputs: make([]concatInput, len(args)),
 	}
 	for i, item := range args {
+		cx.PollStep()
 		if !item.IsObject() {
 			cx.ThrowTypeError(cx.DisplayString(item) + " is not an object")
 		}
@@ -543,6 +544,7 @@ func iteratorZipKeyed(cx *engine.ExecutionContext, this storage.Value, args []st
 	var open, next []storage.Value
 	var keys []storage.PropKey
 	for _, key := range cx.OwnKeys(o) {
+		cx.PollStep()
 		var r iterRecord
 		var add bool
 		cx.IfAbruptCloseIterators(open, func() {
@@ -571,6 +573,7 @@ func iteratorZipKeyed(cx *engine.ExecutionContext, this storage.Value, args []st
 	if mode == zipLongest && !pad.IsUndefined() {
 		p := pad.Object()
 		for i, key := range keys {
+			cx.PollStep()
 			cx.IfAbruptCloseIterators(h.open, func() {
 				h.padding[i] = cx.Get(p, key)
 			})

@@ -305,9 +305,8 @@ func objectDefineProperties(cx *engine.ExecutionContext, o *storage.Object, prop
 		d storage.PropDesc
 	}
 	var list []entry
-	var pacer engine.Pacer
 	for _, k := range cx.OwnKeys(src) {
-		pacer.Step(cx)
+		cx.PollStep()
 		d, ok := cx.GetOwnProperty(src, k)
 		if !ok || !d.Enumerable() {
 			continue
@@ -318,7 +317,7 @@ func objectDefineProperties(cx *engine.ExecutionContext, o *storage.Object, prop
 		})
 	}
 	for _, e := range list {
-		pacer.Step(cx)
+		cx.PollStep()
 		cx.DefinePropertyOrThrow(o, e.k, e.d)
 	}
 }
@@ -681,12 +680,10 @@ func objectAssign(cx *engine.ExecutionContext, this storage.Value, args []storag
 		if cx.Quiet().AssignDataProperties(to, from) {
 			continue
 		}
-		// The pacer does not count across the sources, and reading the keys can look at many
-		// elements that are not present.
+		// Reading the keys of a source can look at many elements that are not present.
 		cx.Poll()
-		var pacer engine.Pacer
 		for _, k := range cx.OwnKeys(from) {
-			pacer.Step(cx)
+			cx.PollStep()
 			d, ok := cx.GetOwnProperty(from, k)
 			if !ok || !d.Enumerable() {
 				continue
@@ -774,20 +771,11 @@ func listFromArrayLike(cx *engine.ExecutionContext, v storage.Value) []storage.V
 		cx.ThrowRangeError("too many arguments")
 	}
 	list := make([]storage.Value, n)
-	for i := 0; i < len(list); i += storage.PollInterval {
-		if i > 0 {
-			cx.Poll()
-		}
-		indexValues(cx, list[i:min(i+storage.PollInterval, len(list))], v, i)
+	for i := range list {
+		cx.PollStep()
+		list[i] = cx.Index(v, uint32(i))
 	}
 	return list
-}
-
-// indexValues sets the elements of out to the properties of v from the index start on.
-func indexValues(cx *engine.ExecutionContext, out []storage.Value, v storage.Value, start int) {
-	for i := range out {
-		out[i] = cx.Index(v, uint32(start+i))
-	}
 }
 
 var (

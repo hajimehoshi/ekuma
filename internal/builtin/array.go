@@ -506,6 +506,7 @@ func arrayPush(cx *engine.ExecutionContext, this storage.Value, args []storage.V
 		cx.ThrowTypeError("pushing elements past the maximum length")
 	}
 	for _, v := range args {
+		cx.PollStep()
 		cx.Set(o, bigKey(cx, n), v)
 		n++
 	}
@@ -682,6 +683,7 @@ func arrayConcat(cx *engine.ExecutionContext, this storage.Value, args []storage
 	a := arraySpeciesCreate(cx, o, 0)
 	n := int64(0)
 	for k := -1; k < len(args); k++ {
+		cx.PollStep()
 		item := storage.ObjectValue(o)
 		if k >= 0 {
 			item = args[k]

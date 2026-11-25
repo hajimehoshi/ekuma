@@ -172,6 +172,8 @@ func execMatch(cx *engine.ExecutionContext, r *storage.Object, s storage.Value) 
 		index, _ = cx.Quiet().RegExpLastIndex(r)
 		exec = storage.ObjectValue(cx.Intrinsic(storage.IntrinsicRegExpPrototypeExec))
 	} else {
+		// The callers execute r once per match.
+		cx.PollStep()
 		exec = cx.Get(r, storage.NamedKey(cx.Key(storage.KeyExec)))
 		if exec.IsObject() && exec.Object() == cx.Intrinsic(storage.IntrinsicRegExpPrototypeExec) && r.RegExpMatcher() != nil {
 			if d, _ := cx.GetOwnProperty(r, storage.NamedKey(cx.Key(storage.KeyLastIndex))); d.Writable() {
@@ -215,6 +217,8 @@ func regExpExecWith(cx *engine.ExecutionContext, r *storage.Object, s storage.Va
 
 // regExpExec implements RegExpExec.
 func regExpExec(cx *engine.ExecutionContext, r *storage.Object, s storage.Value) storage.Value {
+	// The caller may execute r many times.
+	cx.PollStep()
 	exec := cx.Get(r, storage.NamedKey(cx.Key(storage.KeyExec)))
 	return regExpExecWith(cx, r, s, exec)
 }

@@ -286,6 +286,10 @@ func (r *RealmPart) AssignDataProperties(to, from *Object) bool {
 	}
 	// Set creates an own data property when the prototype lookup finds a writable data property or no property.
 	for t := s; t.Parent != nil; t = t.Parent {
+		// The prototype chain can be long.
+		if r.InterruptFlag.Load() {
+			r.Poll()
+		}
 		switch l := r.Lookup(to.shape.Proto, t.Key); l.Kind {
 		case LookupAbsent:
 		case LookupSlot:

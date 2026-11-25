@@ -35,9 +35,6 @@ type writer struct {
 	// stack holds the objects being serialized, to detect cycles.
 	stack []*storage.Object
 
-	// entered is the number of objects entered, which paces the checks for an interruption.
-	entered int
-
 	// keys is scratch storage for the keys of the objects being serialized.
 	keys []storage.PropKey
 
@@ -105,9 +102,9 @@ func (s *Stringifier) Stringify(cx *engine.ExecutionContext, value, replacer, sp
 		n := cx.LengthOfArrayLike(r)
 		seen := map[storage.PropKey]bool{}
 		for i := range n {
+			cx.PollStep()
 			var v storage.Value
 			if e, ok := storage.Element(r, i); ok {
-				cx.PollAt(i)
 				v = e
 			} else {
 				v = cx.Get(r, indexKey(cx, i))
@@ -203,6 +200,7 @@ func (w *writer) appendQuote(s wtf8.String) {
 func (w *writer) serialize(holder *storage.Object, key storage.PropKey, value storage.Value) bool {
 	cx := w.cx
 	if value.IsObject() || value.IsBigInt() {
+		cx.PollStep()
 		if f := cx.GetVCached(value, w.keyToJSON, cacheAt(&w.toJSONCaches, len(w.stack))); f.IsCallable() {
 			value = cx.Call(f.Object(), value, cx.KeyValue(key))
 		}
@@ -274,10 +272,6 @@ func isClass[T any](_ T, ok bool) bool {
 // enter pushes o on the stack of objects being serialized, and throws for a cycle or too deep a nesting.
 func (w *writer) enter(o *storage.Object) {
 	cx := w.cx
-	w.entered++
-	if w.entered&0x3ff == 0 {
-		cx.Poll()
-	}
 	for _, s := range w.stack {
 		if s == o {
 			cx.ThrowTypeError("converting circular structure to JSON")
@@ -320,8 +314,8 @@ func (w *writer) serializeObject(o *storage.Object) {
 	w.buf = append(w.buf, '{')
 	empty := true
 	for i := base; i < end; i++ {
+		cx.PollStep()
 		if j := i - base; j > 0 && j&0x3ff == 0 {
-			cx.Poll()
 			w.checkLength()
 		}
 		k := w.keys[i]
@@ -373,6 +367,7 @@ func (w *writer) serializeArray(o *storage.Object) {
 		if e, ok := storage.Element(o, i); ok {
 			v = e
 		} else {
+			cx.PollStep()
 			v = cx.Get(o, indexKey(cx, i))
 		}
 		if !w.serialize(o, indexKey(cx, i), v) {

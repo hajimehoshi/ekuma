@@ -524,7 +524,7 @@ func joinLocaleStrings(cx *engine.ExecutionContext, o *storage.Object, n int64, 
 	locales, options := arg(args, 0), arg(args, 1)
 	var b wtf8.Buffer
 	for k := range n {
-		cx.PollAt(k)
+		cx.PollStep()
 		if k > 0 {
 			b.WriteString(",")
 		}

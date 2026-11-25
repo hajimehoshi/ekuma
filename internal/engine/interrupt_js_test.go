@@ -17,13 +17,13 @@ import (
 // goroutine only when the running one yields.
 func TestInterruptBuiltinFromGoroutine(t *testing.T) {
 	cx := newTestContext(t)
-	// Object.assign checks for an interruption every PollInterval properties.
+	// Object.values checks for an interruption every PollInterval properties.
 	n := strconv.Itoa(4 * storage.PollInterval)
 	if _, err := runScript(cx, "setup", `var o = {}; for (let i = 0; i < `+n+`; i++) o["k" + i] = i;`); err != nil {
 		t.Fatalf("runScript: %v", err)
 	}
 	go cx.Interrupt(nil)
-	_, err := runScript(cx, "assign", `Object.assign({}, o)`)
+	_, err := runScript(cx, "values", `Object.values(o)`)
 	if _, ok := errors.AsType[*engine.InterruptedError](err); !ok {
 		t.Errorf("got %v, want *engine.InterruptedError", err)
 	}

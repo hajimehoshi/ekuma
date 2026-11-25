@@ -1929,6 +1929,91 @@ func TestCancelScans(t *testing.T) {
 			name: "elements of nested arrays",
 			src:  `[[1, 2], [3, 4]].flat({ valueOf() { cancel(); return 1; } });`,
 		},
+		{
+			name: "push",
+			src:  `Array.prototype.push.call({ get length() { cancel(); return 0; } }, 1, 2);`,
+		},
+		{
+			name: "concat",
+			src:  `[].concat({ get [Symbol.isConcatSpreadable]() { cancel(); } }, {});`,
+		},
+		{
+			name: "Object.assign",
+			src:  `Object.assign({}, { get a() { cancel(); }, b: 1 });`,
+		},
+		{
+			name: "Object.assign of data properties",
+			src: `
+				var empty = new Proxy({}, { ownKeys() { cancel(); return []; } });
+				Object.assign({}, empty, { a: 1 });`,
+		},
+		{
+			name: "Object.defineProperties",
+			src:  `Object.defineProperties({}, { get a() { cancel(); return {}; }, b: {} });`,
+		},
+		{
+			name: "ownKeys trap",
+			src: `
+				var keys = { get 0() { cancel(); return "a"; }, 1: "b", length: 2 };
+				Reflect.ownKeys(new Proxy({}, { ownKeys() { return keys; } }));`,
+		},
+		{
+			name: "Iterator.concat",
+			src:  `Iterator.concat({ get [Symbol.iterator]() { cancel(); return () => {}; } }, []);`,
+		},
+		{
+			name: "Iterator.zipKeyed",
+			src:  `Iterator.zipKeyed({ get a() { cancel(); }, b: undefined });`,
+		},
+		{
+			name: "padding of Iterator.zipKeyed",
+			src: `
+				var it = { next() {} };
+				Iterator.zipKeyed({ a: it, b: it }, { mode: "longest", padding: { get a() { cancel(); } } });`,
+		},
+		{
+			name: "replacer array",
+			src: `
+				var keys = [, , ,];
+				Object.defineProperty(keys, 0, { get() { cancel(); } });
+				JSON.stringify(1, keys);`,
+		},
+		{
+			name: "objects to serialize",
+			src:  `JSON.stringify([{ toJSON() { cancel(); } }, []]);`,
+		},
+		{
+			name: "properties to serialize",
+			src:  `JSON.stringify({ get a() { cancel(); }, b: 1 });`,
+		},
+		{
+			name: "holes to serialize",
+			src: `
+				var a = [, , ,];
+				Object.defineProperty(a, 0, { get() { cancel(); } });
+				JSON.stringify(a);`,
+		},
+		{
+			name: "replace",
+			src: `
+				// The matcher checks for an interruption when it first runs.
+				/x/.test("x");
+				var re = /x/g, exec = re.exec;
+				Object.defineProperty(re, "exec", {
+					get() { Object.defineProperty(re, "exec", { value: exec }); cancel(); return exec; },
+					configurable: true,
+				});
+				re[Symbol.replace]("xx", "y");`,
+		},
+		{
+			name: "split",
+			src: `
+				/x/.test("x");
+				class R extends RegExp {
+					get exec() { Object.defineProperty(this, "exec", { value: undefined }); cancel(); }
+				}
+				new R("x")[Symbol.split]("yy");`,
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			synctest.Test(t, func(t *testing.T) {

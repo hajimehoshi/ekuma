@@ -514,7 +514,7 @@ func (cx *ExecutionContext) propertyKeyList(v storage.Value) []storage.PropKey {
 	n := cx.LengthOfArrayLike(v.O)
 	var keys []storage.PropKey
 	for i := range n {
-		cx.PollAt(i)
+		cx.PollStep()
 		k := storage.IndexKey(uint32(i))
 		if i > storage.MaxArrayIndex {
 			k = cx.KeyOfString(wtf8.String(strconv.FormatInt(i, 10)))

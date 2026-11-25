@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/hajimehoshi/ekuma"
@@ -445,5 +446,46 @@ func TestCancelFormatting(t *testing.T) {
 			t.Errorf("%s: got %v, want context.DeadlineExceeded", tc.name, err)
 		}
 		cancel()
+	}
+}
+
+// TestCancelElementLookups checks that a loop over the elements of an array-like object stops at the
+// next element when its context is done.
+func TestCancelElementLookups(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		src  string
+	}{
+		{
+			name: "locales",
+			src:  `Intl.getCanonicalLocales({ get 0() { cancel(); return "en"; }, 1: "en", length: 2 });`,
+		},
+		{
+			name: "toLocaleString",
+			src:  `Array.prototype.toLocaleString.call({ get 0() { cancel(); }, length: 2 });`,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				var vm ekuma.VM
+				ctx, cancel := context.WithCancel(t.Context())
+				defer cancel()
+				if err := vm.Global().Set("cancel", vm.FuncOf("cancel", func(ekuma.Value, []ekuma.Value) (any, error) {
+					cancel()
+					// Wait until the VM has received the cancellation.
+					synctest.Wait()
+					return nil, nil
+				})); err != nil {
+					t.Fatal(err)
+				}
+				s, err := vm.ParseScript("test.js", tc.src)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if _, err := s.Evaluate(ctx); !errors.Is(err, context.Canceled) {
+					t.Errorf("got %v, want context.Canceled", err)
+				}
+			})
+		})
 	}
 }
