@@ -146,7 +146,7 @@ func (cx *ExecutionContext) IsArray(v Value) bool {
 }
 
 // IsArrayPlain is IsArray of v when v is not a proxy. It reports false as ok for a proxy.
-func IsArrayPlain(v Value) (is, ok bool) {
+func (q QuietContext) IsArrayPlain(v Value) (is, ok bool) {
 	o := v.o
 	if o != nil && o.class == classProxy {
 		return false, false

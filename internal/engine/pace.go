@@ -52,6 +52,13 @@ func (ag *agent) PollAt(i int64) {
 	}
 }
 
+// pollAt is [agent.PollAt] with [poller.poll].
+func (r *realmPart) pollAt(i int64) {
+	if i&(PollInterval-1) == PollInterval-1 {
+		r.poll()
+	}
+}
+
 // comparedBytes returns the largest number of bytes that a comparison of v with another value by
 // [IsStrictlyEqual] reads, or 0 when that is a small constant.
 func comparedBytes(v Value) int {

@@ -99,7 +99,7 @@ func (cx *ExecutionContext) asyncFunctionResume(g *generator, mode ResumeMode, v
 			return
 		}
 		if done {
-			if cx.Quiet().tryResolvePromise(promise, r) {
+			if cx.quietJobs().tryResolvePromise(promise, r) {
 				return
 			}
 			// The code that reading then runs sees the function at its return, as does the error

@@ -3417,7 +3417,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 					// Numeric kernels cannot observe the frame. Record the call for the other paths.
 					ag.frames[len(ag.frames)-1].pc = pc
 					if info.realm == ag.active.realmPart {
-						if v, ok := k.callMethod(ag.active, callThis, ag.stack[argBase:argBase+argc:argBase+argc]); ok {
+						if v, ok := k.callMethod(info.realm, callThis, ag.stack[argBase:argBase+argc:argBase+argc]); ok {
 							regs = ag.reload(regs, ag.frameBase(), fp)
 							regs[ret] = v
 							continue

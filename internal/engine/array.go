@@ -149,7 +149,7 @@ func (r *realmPart) arrayCtorPlain(o *Object) bool {
 		return false
 	}
 	ctor := r.Intrinsic(IntrinsicArray)
-	c := r.executionContext().Quiet().lookupDataSlot(r.Intrinsic(IntrinsicArrayPrototype), r.Key(KeyConstructor))
+	c := r.quiet().lookupDataSlot(r.Intrinsic(IntrinsicArrayPrototype), r.Key(KeyConstructor))
 	if c.holder == nil || c.value().o != ctor {
 		return false
 	}
@@ -161,11 +161,11 @@ func (r *realmPart) arrayCtorPlain(o *Object) bool {
 // %Array.prototype% when that is what ArraySpeciesCreate for o creates, because o is an array
 // with the original constructor of the current realm. It reports false otherwise.
 func (q QuietContext) ArraySpeciesCreatePlain(o *Object, n int64) (*Object, bool) {
-	cx := q.cx
-	if o.kind != kindArray || n > MaxArrayIndex+1 || !cx.arrayCtorPlain(o) {
+	r := q.realm
+	if o.kind != kindArray || n > MaxArrayIndex+1 || !r.arrayCtorPlain(o) {
 		return nil, false
 	}
-	return cx.ArrayCreate(uint32(n), cx.Intrinsic(IntrinsicArrayPrototype)), true
+	return r.ArrayCreate(uint32(n), r.Intrinsic(IntrinsicArrayPrototype)), true
 }
 
 // newElementsPlain reports whether storing a new element in the array o defines it as an own
@@ -176,14 +176,14 @@ func (r *realmPart) newElementsPlain(o *Object) bool {
 
 // AppendElements adds vals at the end of the array o and returns the new length.
 func (q QuietContext) AppendElements(o *Object, vals []Value) (uint32, bool) {
-	cx := q.cx
-	if o.kind != kindArray || int(o.length) != len(o.elems) || o.flags&(objSparse|objNotExtensible|objFrozenLength) != 0 || !cx.newElementsPlain(o) {
+	r := q.realm
+	if o.kind != kindArray || int(o.length) != len(o.elems) || o.flags&(objSparse|objNotExtensible|objFrozenLength) != 0 || !r.newElementsPlain(o) {
 		return 0, false
 	}
 	o.reserveElems(len(vals))
 	o.elems = append(o.elems, vals...)
 	o.length = uint32(len(o.elems))
-	cx.touchProto(o)
+	r.touchProto(o)
 	return o.length, true
 }
 
@@ -204,16 +204,20 @@ type pushSizeHint struct {
 // If o requires the generic Array.prototype.push algorithm, it leaves o unchanged
 // and returns 0, false.
 func (q QuietContext) PushElements(o *Object, vals []Value) (uint32, bool) {
-	cx := q.cx
 	n, ok := q.AppendElements(o, vals)
 	// Sample single-element pushes so earlier array lengths at this call site can
 	// guide how much space to reserve.
 	if ok && len(vals) == 1 && n > minElems && n <= maxPresizedElems {
 		if n == minElems+1 || int(n) == cap(o.elems) || n%pushSampleInterval == 0 {
-			cx.observePush(o)
+			q.observePush(o)
 		}
 	}
 	return n, ok
+}
+
+// observePush is [agent.observePush].
+func (q QuietContext) observePush(o *Object) {
+	q.realm.executionContext().observePush(o)
 }
 
 // observePush samples the array after a single-element push at the calling frame's pc.
@@ -263,13 +267,13 @@ func (ag *agent) observePush(o *Object) {
 
 // PrependElements adds vals at the start of the array o and returns the new length.
 func (q QuietContext) PrependElements(o *Object, vals []Value) (uint32, bool) {
-	cx := q.cx
-	if !o.elemsMovable() || !cx.newElementsPlain(o) {
+	r := q.realm
+	if !o.elemsMovable() || !r.newElementsPlain(o) {
 		return 0, false
 	}
 	n, k := len(o.elems), len(vals)
 	if n > pollChunk {
-		cx.Poll()
+		r.poll()
 	}
 	if cap(o.elems)-n >= k {
 		o.elems = o.elems[:n+k]
@@ -344,7 +348,7 @@ func (o *Object) RemoveFirstElement() (Value, bool) {
 // FillElements stores v as the elements of the array o from start up to end, as
 // Array.prototype.fill does when the length of o is n. It reports false when it did nothing.
 func (q QuietContext) FillElements(o *Object, n, start, end int64, v Value) bool {
-	cx := q.cx
+	r := q.realm
 	if o.kind != kindArray || int64(o.length) != n || o.flags&(objSparse|objNotExtensible|objFrozenLength) != 0 {
 		return false
 	}
@@ -352,10 +356,10 @@ func (q QuietContext) FillElements(o *Object, n, start, end int64, v Value) bool
 	if start < 0 || start > int64(len(o.elems)) || end > n || !holesAreAbsent(o) {
 		return false
 	}
-	cx.touchProto(o)
+	r.touchProto(o)
 	for i := start; i < end; i++ {
-		if cx.interrupt.Load() {
-			cx.Poll()
+		if r.interrupt.Load() {
+			r.poll()
 		}
 		if i < int64(len(o.elems)) {
 			o.elems[i] = v
@@ -392,7 +396,7 @@ func (q QuietContext) SearchElements(o *Object, i, end int64, target Value, same
 	if t := target.o; t != nil && (len(t.str) > maxQuickCompare || t.kind == kindBigInt) {
 		return q.searchElementsSlow(o, i, end, target)
 	}
-	cx := q.cx
+	r := q.realm
 	eq := IsStrictlyEqual
 	if sameValueZero {
 		eq = SameValueZero
@@ -413,7 +417,7 @@ func (q QuietContext) SearchElements(o *Object, i, end int64, target Value, same
 				}
 			}
 			if i > end && i&(PollInterval-1) == PollInterval-1 {
-				cx.Poll()
+				r.poll()
 			}
 		}
 		return -1, i
@@ -430,7 +434,7 @@ func (q QuietContext) SearchElements(o *Object, i, end int64, target Value, same
 			}
 		}
 		if i < end && i&(PollInterval-1) == 0 {
-			cx.Poll()
+			r.poll()
 		}
 	}
 	return -1, i
@@ -439,7 +443,7 @@ func (q QuietContext) SearchElements(o *Object, i, end int64, target Value, same
 // searchElementsSlow is [QuietContext.SearchElements] for a target that can take long to
 // compare. The target is not a number, so both comparisons are IsStrictlyEqual.
 func (q QuietContext) searchElementsSlow(o *Object, i, end int64, target Value) (found, next int64) {
-	cx := q.cx
+	r := q.realm
 	step := int64(1)
 	if end < i {
 		step = -1
@@ -452,7 +456,7 @@ func (q QuietContext) searchElementsSlow(o *Object, i, end int64, target Value) 
 		e := elems[i]
 		if e.isHole() {
 			// A caller that resumes after the hole does not count what was read before it.
-			cx.Poll()
+			r.poll()
 			return -1, i
 		}
 		if IsStrictlyEqual(e, target) {
@@ -460,7 +464,7 @@ func (q QuietContext) searchElementsSlow(o *Object, i, end int64, target Value) 
 		}
 		if read += n; read >= compareBudget {
 			read = 0
-			cx.Poll()
+			r.poll()
 		}
 	}
 	return -1, i
@@ -469,7 +473,7 @@ func (q QuietContext) searchElementsSlow(o *Object, i, end int64, target Value) 
 // JoinStrings joins an array of the given length with sep when its elements and sep are
 // ASCII strings and the result fits in MaxStringLength bytes. It reports false otherwise.
 func (q QuietContext) JoinStrings(o *Object, length int64, sep wtf8.String) (Value, bool) {
-	cx := q.cx
+	r := q.realm
 	if o.kind != kindArray || int64(o.length) != length || int64(len(o.elems)) != length || !wtf8.IsASCII(sep) {
 		return Value{}, false
 	}
@@ -483,7 +487,7 @@ func (q QuietContext) JoinStrings(o *Object, length int64, sep wtf8.String) (Val
 			return Value{}, false
 		}
 		if i&(PollInterval-1) == PollInterval-1 {
-			cx.Poll()
+			r.poll()
 		}
 	}
 	var b strings.Builder
@@ -499,10 +503,10 @@ func (q QuietContext) JoinStrings(o *Object, length int64, sep wtf8.String) (Val
 			b.WriteString(string(e.o.Str()))
 		}
 		if i&(PollInterval-1) == PollInterval-1 {
-			cx.Poll()
+			r.poll()
 		}
 	}
-	v := cx.NewString(wtf8.String(b.String()))
+	v := r.NewString(wtf8.String(b.String()))
 	if !v.isShortString() {
 		// A string longer than a short one is a new object.
 		v.o.flags |= objASCIIKnown | objASCII
@@ -512,12 +516,12 @@ func (q QuietContext) JoinStrings(o *Object, length int64, sep wtf8.String) (Val
 
 // ReverseElements reverses the order of the elements of the array o.
 func (q QuietContext) ReverseElements(o *Object) bool {
-	cx := q.cx
+	r := q.realm
 	if !o.isDense() {
 		return false
 	}
 	for i, j := 0, len(o.elems)-1; i < j; i, j = i+1, j-1 {
-		cx.PollAt(int64(i))
+		r.pollAt(int64(i))
 		o.elems[i], o.elems[j] = o.elems[j], o.elems[i]
 	}
 	return true
@@ -526,7 +530,7 @@ func (q QuietContext) ReverseElements(o *Object) bool {
 // CopyElementRange returns a new array with the elements of the array o from start up to end,
 // as Array.prototype.slice creates it. A range that ends before it starts is empty.
 func (q QuietContext) CopyElementRange(o *Object, start, end int64) (*Object, bool) {
-	cx := q.cx
+	r := q.realm
 	if o.kind != kindArray || int(o.length) != len(o.elems) || o.flags&(objSparse|objNotExtensible|objFrozenLength) != 0 {
 		return nil, false
 	}
@@ -537,28 +541,28 @@ func (q QuietContext) CopyElementRange(o *Object, start, end int64) (*Object, bo
 	if start < end {
 		elems = o.elems[start:end]
 	}
-	if slices.ContainsFunc(elems, Value.isHole) || !cx.arrayCtorPlain(o) {
+	if slices.ContainsFunc(elems, Value.isHole) || !r.arrayCtorPlain(o) {
 		return nil, false
 	}
-	return cx.NewArray(appendPolled(&cx.poller, nil, elems)), true
+	return r.NewArray(appendPolled(&r.poller, nil, elems)), true
 }
 
 // SpliceElements replaces del elements of the array o from start on with items, and returns
 // the removed elements as a new array, as Array.prototype.splice creates it.
 // length is the length of o that start and del were checked against.
 func (q QuietContext) SpliceElements(o *Object, length, start, del int64, items []Value) (*Object, bool) {
-	cx := q.cx
+	r := q.realm
 	if length != int64(len(o.elems)) || start < 0 || start > length || del < 0 || del > length-start {
 		return nil, false
 	}
-	if !o.elemsMovable() || !cx.arrayCtorPlain(o) || !cx.arrayProtoPlain() {
+	if !o.elemsMovable() || !r.arrayCtorPlain(o) || !r.arrayProtoPlain() {
 		return nil, false
 	}
-	removed := appendPolled(&cx.poller, nil, o.elems[start:start+del])
+	removed := appendPolled(&r.poller, nil, o.elems[start:start+del])
 	n, k := int(length), len(items)
 	newLen := n - int(del) + k
 	if n-int(start+del) > pollChunk {
-		cx.Poll()
+		r.poll()
 	}
 	elems := o.elems
 	if newLen > n {
@@ -575,23 +579,23 @@ func (q QuietContext) SpliceElements(o *Object, length, start, del int64, items 
 	o.elems = elems[:newLen]
 	o.length = uint32(newLen)
 	if o.elemsOversized() {
-		cx.reallocElems(o)
+		r.reallocElems(o)
 	}
-	return cx.NewArray(removed), true
+	return r.NewArray(removed), true
 }
 
 // AppendElementsOf adds the elements of the array src at the end of the array dst,
 // which must have the length n, exactly n elements and no other property.
 func (q QuietContext) AppendElementsOf(dst *Object, n int64, src *Object) bool {
-	cx := q.cx
-	if dst.kind != kindArray || int64(dst.length) != n || int64(len(dst.elems)) != n || dst.shape != cx.realm.shapes.array {
+	r := q.realm
+	if dst.kind != kindArray || int64(dst.length) != n || int64(len(dst.elems)) != n || dst.shape != r.shapes.array {
 		return false
 	}
 	if dst.flags&(objSparse|objNotExtensible|objFrozenLength) != 0 || !src.isDense() {
 		return false
 	}
 	old := dst.elems
-	dst.elems = appendPolled(&cx.poller, old, src.elems)
+	dst.elems = appendPolled(&r.poller, old, src.elems)
 	if cap(dst.elems) != cap(old) {
 		dst.leaveElems(old)
 	}
@@ -603,7 +607,7 @@ func (q QuietContext) AppendElementsOf(dst *Object, n int64, src *Object) bool {
 // have a property with an integer index from i to j-1. It returns i when that is not known
 // without running JavaScript.
 func (q QuietContext) SkipHoles(o *Object, i, end int64) int64 {
-	ag := q.cx.agent
+	r := q.realm
 	if i < 0 || i >= end || i < int64(len(o.elems)) && !o.elems[i].isHole() || !holesAreAbsent(o) {
 		return i
 	}
@@ -615,7 +619,7 @@ func (q QuietContext) SkipHoles(o *Object, i, end int64) int64 {
 		}
 	}
 	if o.flags&objSparse != 0 {
-		idxs := ag.sparseIndices.list(o)
+		idxs := r.sparseIndices.list(o)
 		if p, _ := slices.BinarySearch(idxs, uint32(i)); p < len(idxs) && int64(idxs[p]) < j {
 			j = int64(idxs[p])
 		}
@@ -627,7 +631,7 @@ func (q QuietContext) SkipHoles(o *Object, i, end int64) int64 {
 // prototypes have a property with an integer index from j+1 to i. It returns i when that is not
 // known without running JavaScript.
 func (q QuietContext) SkipHolesBackward(o *Object, i, end int64) int64 {
-	ag := q.cx.agent
+	r := q.realm
 	if i <= end || i < 0 || i > MaxArrayIndex || i < int64(len(o.elems)) && !o.elems[i].isHole() || !holesAreAbsent(o) {
 		return i
 	}
@@ -639,7 +643,7 @@ func (q QuietContext) SkipHolesBackward(o *Object, i, end int64) int64 {
 		}
 	}
 	if o.flags&objSparse != 0 {
-		idxs := ag.sparseIndices.list(o)
+		idxs := r.sparseIndices.list(o)
 		p, found := slices.BinarySearch(idxs, uint32(i))
 		if found {
 			p++

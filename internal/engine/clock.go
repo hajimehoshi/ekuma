@@ -73,7 +73,7 @@ func (ag *agent) SystemUTCEpochMilliseconds() float64 {
 // SystemUTCEpochMilliseconds is [agent.SystemUTCEpochMilliseconds] without a host clock. It
 // reports false with one.
 func (q QuietContext) SystemUTCEpochMilliseconds() (float64, bool) {
-	if q.cx.clock != nil {
+	if q.realm.clock != nil {
 		return 0, false
 	}
 	return epochMilliseconds(clampSystemTime(time.Now())), true

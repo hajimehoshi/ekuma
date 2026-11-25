@@ -206,7 +206,7 @@ func (it *arrayIterator) stepPlain(q QuietContext) (key, value Value, st PairSte
 	if it == nil {
 		return Undefined, Undefined, PairDeclined
 	}
-	cx := q.cx
+	r := q.realm
 	o := it.object
 	if o == nil {
 		return Undefined, Undefined, PairDone
@@ -222,7 +222,7 @@ func (it *arrayIterator) stepPlain(q QuietContext) (key, value Value, st PairSte
 			if b, ok := t.element(uint32(i)); ok {
 				value = loadElement(t.typ, b)
 				it.nextIndex = i + 1
-				cx.PollAt(i)
+				r.pollAt(i)
 				return Number(float64(i)), value, PairYielded
 			}
 		}
@@ -246,7 +246,7 @@ func (it *arrayIterator) stepPlain(q QuietContext) (key, value Value, st PairSte
 	if i < int64(len(o.elems)) && !o.elems[i].isHole() {
 		value = o.elems[i]
 		it.nextIndex = i + 1
-		cx.PollAt(i)
+		r.pollAt(i)
 		return key, value, PairYielded
 	}
 	return Undefined, Undefined, PairDeclined

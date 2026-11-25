@@ -18,6 +18,10 @@ func TestQuietContextBoundary(t *testing.T) {
 	prog := checkProgram(t, "../../...")
 	executionContext := prog.typ(t, "ExecutionContext")
 	quietContext := prog.typ(t, "QuietContext")
+	// The methods of these types are quiet without a QuietContext. The interpreter and the built-ins
+	// rely on many of them not to run code: they tell that arrays and reads are plain, or read, store
+	// or take values in one step.
+	quietReceivers := []*types.Named{prog.typ(t, "quietJobs"), prog.typ(t, "realmPart"), prog.typ(t, "Object"), prog.typ(t, "Value")}
 	pairStepFunc := prog.typ(t, "IteratorPairStepFunc")
 
 	// A quiet operation must preserve observable property lookups. Calling code and
@@ -36,32 +40,8 @@ func TestQuietContextBoundary(t *testing.T) {
 			forbidden[f.(*types.Func).FullName()] = reason
 		}
 	}
-	// An interruption unwinds to the host, which runs nothing in between.
-	poll := prog.implementation(t, "agent.Poll").FullName()
-
-	// Functions without a QuietContext that the interpreter and the built-ins rely on not to run
-	// code: they tell that arrays and reads are plain, or read, store or take values in one step.
+	// quiet holds the functions with a QuietContext, the methods of quietReceivers and the pair steps.
 	var quiet []string
-	for _, name := range []string{
-		"realmPart.DefineAccessor",
-		"realmPart.arrayIterationPlain",
-		"realmPart.arrayProtoPlain",
-		"realmPart.replaceOwn",
-		"Object.Element",
-		"Object.ElementList",
-		"Object.RemoveFirstElement",
-		"Object.RemoveLastElement",
-		"Object.SetElement",
-		"Object.plainElems",
-		"space.pairDestructuringPlain",
-		"IsArrayPlain",
-		"takeDataProperties",
-	} {
-		for _, f := range prog.function(t, name) {
-			quiet = append(quiet, f.(*types.Func).FullName())
-		}
-	}
-	listed := len(quiet)
 	pairSteps := map[string]bool{}
 
 	// Only these diagnostics may inspect stored data without applying property operations.
@@ -175,6 +155,11 @@ func TestQuietContextBoundary(t *testing.T) {
 					name, body, inQuiet = f.Origin().FullName(), decl.Body, hasQuiet(sig)
 					if sig.Recv() != nil {
 						methods[f.Name()] = append(methods[f.Name()], name)
+					}
+					if r := sig.Recv(); r != nil && slices.ContainsFunc(quietReceivers, func(typ *types.Named) bool {
+						return isType(r.Type(), typ)
+					}) {
+						quiet = append(quiet, name)
 					}
 					if inQuiet {
 						quiet = append(quiet, name)
@@ -308,7 +293,7 @@ func TestQuietContextBoundary(t *testing.T) {
 	if len(pairSteps) == 0 {
 		t.Error("no pair step")
 	}
-	if len(quiet) == listed {
+	if len(quiet) == 0 {
 		t.Error("no function with a QuietContext")
 	}
 	for name, ms := range interfaceUses {
@@ -333,9 +318,6 @@ func TestQuietContextBoundary(t *testing.T) {
 				}
 				t.Errorf("%v: %s: %s", pos[root], reason, strings.ReplaceAll(path, "github.com/hajimehoshi/ekuma/internal/", ""))
 				break
-			}
-			if name == poll {
-				continue
 			}
 			for _, u := range uses[name] {
 				if !seen[u] {

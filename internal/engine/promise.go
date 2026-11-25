@@ -317,19 +317,19 @@ func (cx *ExecutionContext) ResolveCapability(c *PromiseCapability, v Value) {
 // CallCapabilityResolve calls the [[Resolve]] function of c with v, as [ExecutionContext.ResolveCapability]
 // does, and shows the frame of the function where the call can be observed.
 func (cx *ExecutionContext) CallCapabilityResolve(c *PromiseCapability, v Value) {
-	if !cx.Quiet().tryCallCapabilityResolve(c, v) {
+	if !cx.quietJobs().tryCallCapabilityResolve(c, v) {
 		cx.Call(cx.CapabilityResolve(c).o, Undefined, v)
 	}
 }
 
-func (q QuietContext) tryCallCapabilityResolve(c *PromiseCapability, v Value) bool {
+func (q quietJobs) tryCallCapabilityResolve(c *PromiseCapability, v Value) bool {
 	if !c.canSettleDirectly(q.cx) {
 		return false
 	}
 	if c.alreadyResolved {
 		return true
 	}
-	then, ok := q.resolutionThen(c.promise, v)
+	then, ok := q.cx.Quiet().resolutionThen(c.promise, v)
 	if !ok {
 		return false
 	}
@@ -386,8 +386,8 @@ func (cx *ExecutionContext) resolvePromise(resolverRealm *realmPart, p *Object, 
 }
 
 // tryResolvePromise resolves p with v, or leaves p pending when resolution needs its caller's frame.
-func (q QuietContext) tryResolvePromise(p *Object, v Value) bool {
-	then, ok := q.resolutionThen(p, v)
+func (q quietJobs) tryResolvePromise(p *Object, v Value) bool {
+	then, ok := q.cx.Quiet().resolutionThen(p, v)
 	if ok {
 		q.cx.resolvePromiseWithThen(p, v, then)
 	}
@@ -407,7 +407,7 @@ func (q QuietContext) promiseThen(v Value) (Value, bool) {
 	if !v.IsObject() {
 		return Undefined, true
 	}
-	return q.GetVWithoutCall(v, q.cx.Key(KeyThen))
+	return q.GetVWithoutCall(v, q.realm.Key(KeyThen))
 }
 
 // resolvePromiseWithThen is the part of resolvePromise after the read of then from resolution.
@@ -568,7 +568,7 @@ func (cx *ExecutionContext) tryAwait(g *generator, v Value, kind reactionKind) b
 		kind: kind,
 		gen:  g,
 	}
-	if cx.Quiet().tryAwait(v, action) {
+	if cx.quietJobs().tryAwait(v, action) {
 		return true
 	}
 	if kind != reactionAwait {
@@ -587,7 +587,7 @@ func (cx *ExecutionContext) tryAwait(g *generator, v Value, kind reactionKind) b
 }
 
 // tryAwait registers action for v, or does nothing and returns false when a property read can run code.
-func (q QuietContext) tryAwait(v Value, action reactionAction) bool {
+func (q quietJobs) tryAwait(v Value, action reactionAction) bool {
 	cx := q.cx
 	r := pendingReaction{
 		action:           action,
@@ -595,7 +595,7 @@ func (q QuietContext) tryAwait(v Value, action reactionAction) bool {
 		builtinContext:   cx,
 	}
 	if IsPromise(v) {
-		ctor := q.lookupDataSlot(v.o, cx.Key(KeyConstructor))
+		ctor := cx.Quiet().lookupDataSlot(v.o, cx.Key(KeyConstructor))
 		if ctor.holder == nil {
 			return false
 		}
@@ -604,7 +604,7 @@ func (q QuietContext) tryAwait(v Value, action reactionAction) bool {
 			return true
 		}
 	}
-	then, ok := q.promiseThen(v)
+	then, ok := cx.Quiet().promiseThen(v)
 	if !ok {
 		return false
 	}

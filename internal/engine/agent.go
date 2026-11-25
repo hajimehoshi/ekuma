@@ -127,16 +127,16 @@ type nativeFast struct {
 	contract ShortcutContract
 }
 
-// callMethod calls the method kernel for this and the arguments args. It reports false when
+// callMethod calls the method kernel in the realm r for this and the arguments args. It reports false when
 // there is none for as many arguments or the kernel declines.
-func (k *nativeFast) callMethod(cx *ExecutionContext, this Value, args []Value) (Value, bool) {
+func (k *nativeFast) callMethod(r *realmPart, this Value, args []Value) (Value, bool) {
 	switch {
 	case len(args) == 0 && k.method0 != nil:
-		return k.method0(cx.Quiet(), this)
+		return k.method0(r.quiet(), this)
 	case len(args) == 1 && k.method1 != nil:
-		return k.method1(cx.Quiet(), this, args[0])
+		return k.method1(r.quiet(), this, args[0])
 	case len(args) == 2 && k.method2 != nil:
-		return k.method2(cx.Quiet(), this, args[0], args[1])
+		return k.method2(r.quiet(), this, args[0], args[1])
 	}
 	return Value{}, false
 }

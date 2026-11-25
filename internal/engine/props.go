@@ -903,7 +903,7 @@ func (cx *ExecutionContext) HasOwnProperty(o *Object, k PropKey) bool {
 // HasOwnPropertyPlain is HasOwnProperty of o and the key k when finding out neither throws nor
 // runs code, and takes a short time. It reports false as ok otherwise.
 func (q QuietContext) HasOwnPropertyPlain(o *Object, k Value) (has, ok bool) {
-	cx := q.cx
+	r := q.realm
 	var key QueryKey
 	switch {
 	case k.IsNumber():
@@ -914,9 +914,9 @@ func (q QuietContext) HasOwnPropertyPlain(o *Object, k Value) (has, ok bool) {
 		key.idx = i
 	case k.IsString():
 		if k.isShortString() && k.o.flags&objInterned == 0 {
-			key = cx.shortQueryKey(k)
+			key = r.shortQueryKey(k)
 		} else {
-			key = cx.queryStringKey(k.o)
+			key = r.queryStringKey(k.o)
 		}
 	case k.o != nil && k.o.kind == kindSymbol:
 		key.key = k.o
@@ -945,7 +945,7 @@ func (q QuietContext) HasOwnPropertyPlain(o *Object, k Value) (has, ok bool) {
 		if o.flags&objSparse == 0 {
 			return false, true
 		}
-		if key.key = cx.indexKey(key.idx); key.key == nil {
+		if key.key = r.indexKey(key.idx); key.key == nil {
 			return false, true
 		}
 		_, has = o.shape.lookup(key.key)
@@ -954,12 +954,12 @@ func (q QuietContext) HasOwnPropertyPlain(o *Object, k Value) (has, ok bool) {
 	switch o.shape.family {
 	case ordinaryRoot:
 	case arrayRoot:
-		if key.key == cx.Key(KeyLength) {
+		if key.key == r.Key(KeyLength) {
 			return true, true
 		}
 	case lazyFunctionRoot:
-		if cx.isLazyKey(key.key) {
-			cx.materialize(o)
+		if r.isLazyKey(key.key) {
+			r.materialize(o)
 		}
 	default:
 		return false, false

@@ -8,76 +8,83 @@ import "github.com/hajimehoshi/ekuma/internal/wtf8"
 // QuietContext binds operations that run no script or host code to one realm of an agent.
 // A shortcut must preserve the ordinary result and effects or decline before changing observable state.
 type QuietContext struct {
-	cx *ExecutionContext
+	realm *realmPart
 }
 
 // Quiet returns the quiet context of the realm of cx.
 func (cx *ExecutionContext) Quiet() QuietContext {
 	return QuietContext{
-		cx: cx,
+		realm: cx.realmPart,
+	}
+}
+
+// quiet returns the quiet context of the realm that embeds r.
+func (r *realmPart) quiet() QuietContext {
+	return QuietContext{
+		realm: r,
 	}
 }
 
 // NewArray is [ExecutionContext.NewArray].
 func (q QuietContext) NewArray(elems []Value) *Object {
-	return q.cx.NewArray(elems)
+	return q.realm.NewArray(elems)
 }
 
 // NewArrayPair is [ExecutionContext.NewArrayPair].
 func (q QuietContext) NewArrayPair(a, b Value) *Object {
-	return q.cx.NewArrayPair(a, b)
+	return q.realm.NewArrayPair(a, b)
 }
 
 // NewString is [ExecutionContext.NewString].
 func (q QuietContext) NewString(s wtf8.String) Value {
-	return q.cx.NewString(s)
+	return q.realm.NewString(s)
 }
 
 // UnitString is [ExecutionContext.UnitString].
 func (q QuietContext) UnitString(u uint16) Value {
-	return q.cx.UnitString(u)
+	return q.realm.UnitString(u)
 }
 
 // Substring is [ExecutionContext.Substring].
 func (q QuietContext) Substring(s Value, start, end int) Value {
-	return q.cx.Substring(s, start, end)
+	return q.realm.Substring(s, start, end)
 }
 
 // CreationQuietContext is the quiet context of [Object.CreationContext].
 func (o *Object) CreationQuietContext() QuietContext {
 	return QuietContext{
-		cx: o.CreationContext(),
+		realm: o.creationRealm(),
 	}
 }
 
 // Poll is [ExecutionContext.Poll].
 func (q QuietContext) Poll() {
-	q.cx.Poll()
+	q.realm.poll()
 }
 
 // Intrinsic is [ExecutionContext.Intrinsic].
 func (q QuietContext) Intrinsic(id Intrinsic) *Object {
-	return q.cx.Intrinsic(id)
+	return q.realm.Intrinsic(id)
 }
 
 // Key is [ExecutionContext.Key].
 func (q QuietContext) Key(k CommonKey) *Object {
-	return q.cx.Key(k)
+	return q.realm.Key(k)
 }
 
 // WellKnownSymbol is [ExecutionContext.WellKnownSymbol].
 func (q QuietContext) WellKnownSymbol(s WellKnownSymbol) *Object {
-	return q.cx.WellKnownSymbol(s)
+	return q.realm.WellKnownSymbol(s)
 }
 
 // NewMapObject is [ExecutionContext.NewMapObject].
 func (q QuietContext) NewMapObject(proto *Object, data any) *Object {
-	return q.cx.NewMapObject(proto, data)
+	return q.realm.NewMapObject(proto, data)
 }
 
 // NewSetObject is [ExecutionContext.NewSetObject].
 func (q QuietContext) NewSetObject(proto *Object, data any) *Object {
-	return q.cx.NewSetObject(proto, data)
+	return q.realm.NewSetObject(proto, data)
 }
 
 // HasOwnMethod reports whether method is the value of the own data property key of o. It can
@@ -106,7 +113,7 @@ func (q QuietContext) InheritsMethod(o, proto, key, method *Object) bool {
 // hasPropertyPlain is HasProperty of o and the named key when finding out runs no code. ok is
 // false otherwise.
 func (q QuietContext) hasPropertyPlain(o, key *Object) (has, ok bool) {
-	switch q.cx.lookup(o, key).kind {
+	switch q.realm.lookup(o, key).kind {
 	case lookupSlot, lookupLength:
 		return true, true
 	case lookupAbsent, lookupNumericMiss:
@@ -118,7 +125,7 @@ func (q QuietContext) hasPropertyPlain(o, key *Object) (has, ok bool) {
 // lookupNamed finds the named property key on o and its prototype chain, as far as that runs no
 // code.
 func (q QuietContext) lookupNamed(o, key *Object) namedLookup {
-	return q.cx.lookup(o, key)
+	return q.realm.lookup(o, key)
 }
 
 // delegates reports whether looking up a property that is not found on o and its prototype chain
@@ -141,31 +148,30 @@ func (q QuietContext) GetVWithoutCall(v Value, key *Object) (val Value, ok bool)
 // getVWithoutCall is GetVWithoutCall, which fills c, which may be nil, when the lookup can be
 // repeated from the cache.
 func (q QuietContext) getVWithoutCall(v Value, key *Object, c *propCache) (val Value, ok bool) {
-	cx := q.cx
 	start := v.o
 	switch {
 	case v.IsObject():
 	case v.IsNumber():
-		start = cx.Intrinsic(IntrinsicNumberPrototype)
+		start = q.realm.Intrinsic(IntrinsicNumberPrototype)
 	case v.IsBool():
-		start = cx.Intrinsic(IntrinsicBooleanPrototype)
+		start = q.realm.Intrinsic(IntrinsicBooleanPrototype)
 	case v.IsSymbol():
-		start = cx.Intrinsic(IntrinsicSymbolPrototype)
+		start = q.realm.Intrinsic(IntrinsicSymbolPrototype)
 	case v.IsBigInt():
-		start = cx.Intrinsic(IntrinsicBigIntPrototype)
-	case v.IsString() && key != cx.Key(KeyLength):
-		start = cx.Intrinsic(IntrinsicStringPrototype)
+		start = q.realm.Intrinsic(IntrinsicBigIntPrototype)
+	case v.IsString() && key != q.realm.Key(KeyLength):
+		start = q.realm.Intrinsic(IntrinsicStringPrototype)
 	default:
 		return Undefined, false
 	}
-	r := cx.lookup(start, key)
+	r := q.realm.lookup(start, key)
 	switch r.kind {
 	case lookupAbsent, lookupNumericMiss:
 		if c != nil {
 			// Both misses are stable for this shape and prototype epoch.
 			c.keep(start.shape)
-			c.setInherited(start.shape, cacheProto, cx.protoEpoch)
-			c.ref = &cx.missHolder.slots[0]
+			c.setInherited(start.shape, cacheProto, q.realm.protoEpoch)
+			c.ref = &q.realm.missHolder.slots[0]
 		}
 		return Undefined, true
 	case lookupLength:
@@ -175,9 +181,22 @@ func (q QuietContext) getVWithoutCall(v Value, key *Object, c *propCache) (val V
 			if c != nil {
 				c.keep(start.shape)
 			}
-			val, _ = cx.readNamedSlot(start, r.holder, r.prop, c)
+			val, _ = q.realm.readNamedSlot(start, r.holder, r.prop, c)
 			return val, true
 		}
 	}
 	return Undefined, false
+}
+
+// quietJobs provides the promise operations that run no script or host code. Their context stays
+// behind it, as they need the jobs of the agent.
+type quietJobs struct {
+	cx *ExecutionContext
+}
+
+// quietJobs returns the quiet promise operations of cx.
+func (cx *ExecutionContext) quietJobs() quietJobs {
+	return quietJobs{
+		cx: cx,
+	}
 }

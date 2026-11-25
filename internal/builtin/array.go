@@ -394,7 +394,7 @@ func arrayIsArray(cx *engine.ExecutionContext, this engine.Value, args []engine.
 }
 
 func arrayIsArrayKernel(q engine.QuietContext, this, v engine.Value) (engine.Value, bool) {
-	is, ok := engine.IsArrayPlain(v)
+	is, ok := q.IsArrayPlain(v)
 	return engine.Bool(is), ok
 }
 

@@ -100,6 +100,7 @@ Object.RemoveFirstElement Object.length:write objectMeta.shiftedCap:write object
 Object.RemoveLastElement Object.length:write objectProperties.elems:read
 Object.SetElement objectProperties.elems:read objectProperties.elems:write
 Object.plainElems objectProperties.elems:read objectProperties.elems:ref
+Object.takeDataProperties Object.shape:write objectProperties.elems:read objectProperties.elems:ref*2 objectProperties.slots:ref
 PropDesc.SetGetter PropDesc.getter:write PropDesc.has:write
 PropDesc.SetSetter PropDesc.has:write PropDesc.setter:write
 PropDesc.SetValue PropDesc.has:write PropDesc.value:write
@@ -145,7 +146,6 @@ space.readNamedSlot Value.accessor:read cacheEntry.holder:write cacheEntry.kind:
 space.shortQueryKey QueryKey.idx:lit*2 QueryKey.key:lit*2 space.strings:ref
 sparseIndexCache.addedKeys shape.order:ref
 stepDeclined Object.kind:lit
-takeDataProperties Object.shape:write objectProperties.elems:read objectProperties.elems:ref*2 objectProperties.slots:ref
 tdzObject Object.kind:lit
 
 # Read properties without the guards of the property operations.

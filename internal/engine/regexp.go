@@ -273,25 +273,25 @@ func (cx *ExecutionContext) IsRegExpOfCurrentRealm(o *Object) bool {
 // is sticky. It returns the code unit indices of the captures, or nil when there is no match. They
 // are valid until the next match.
 func (q QuietContext) MatchRegExp(re *regexp.Regexp, s Value, start int) []int {
-	m := &q.cx.regExpMatcher
+	m := &q.realm.regExpMatcher
 	str := s.Str()
 	m.SetASCII(str, s.IsASCII())
-	return re.Match(m, str, start, q.cx)
+	return re.Match(m, str, start, q)
 }
 
 // FindRegExp is like [QuietContext.MatchRegExp], but it finds the first match at start or after it
 // even when re is sticky.
 func (q QuietContext) FindRegExp(re *regexp.Regexp, s Value, start int) []int {
-	m := &q.cx.regExpMatcher
+	m := &q.realm.regExpMatcher
 	str := s.Str()
 	m.SetASCII(str, s.IsASCII())
-	return re.Find(m, str, start, q.cx)
+	return re.Find(m, str, start, q)
 }
 
 // RegExpMatchSpan returns the positions in the subject of the capture i of the last match, which
 // must have succeeded.
 func (q QuietContext) RegExpMatchSpan(i int) (start, end wtf8.Pos) {
-	return q.cx.regExpMatcher.Span(i)
+	return q.realm.regExpMatcher.Span(i)
 }
 
 // RegExpFlagsString returns the string of the flags f in the order of the flags getter.
@@ -322,7 +322,7 @@ type legacyRegExpStatics struct {
 // the current realm.
 func (q QuietContext) RecordRegExpMatch(r *Object, s Value, caps []int) {
 	st := r.extState().(*regExpState)
-	if st.realm != q.cx.realmPart {
+	if st.realm != q.realm {
 		return
 	}
 	if st.legacy {
@@ -330,7 +330,7 @@ func (q QuietContext) RecordRegExpMatch(r *Object, s Value, caps []int) {
 		return
 	}
 	// This is InvalidateLegacyRegExpStaticProperties.
-	l := &q.cx.realm.legacyRegExp
+	l := &q.realm.legacyRegExp
 	l.input = Undefined
 	l.str = Undefined
 	l.caps = l.caps[:0]
@@ -339,7 +339,7 @@ func (q QuietContext) RecordRegExpMatch(r *Object, s Value, caps []int) {
 // UpdateLegacyRegExpStaticProperties implements UpdateLegacyRegExpStaticProperties for %RegExp%
 // after a match against s with the capture indices caps.
 func (q QuietContext) UpdateLegacyRegExpStaticProperties(s Value, caps []int) {
-	l := &q.cx.realm.legacyRegExp
+	l := &q.realm.legacyRegExp
 	l.input = s
 	l.str = s
 	l.caps = append(l.caps[:0], caps...)
@@ -460,16 +460,15 @@ func (cx *ExecutionContext) RecordRegExpOriginals(protoKeys, ctorKeys []*Object)
 // otherwise. When it is not nil, those properties are the only ones that reading the recorded keys
 // from o finds, and lastIndex is an ordinary data property.
 func (q QuietContext) UnmodifiedRegExpMatcher(o *Object) *regexp.Regexp {
-	cx := q.cx
-	if o.class != classRegExp || !cx.hasRegExpShape(o) {
+	if o.class != classRegExp || !q.realm.hasRegExpShape(o) {
 		return nil
 	}
 	matcher := o.extState().(*regExpState).matcher
 	if matcher == nil {
 		return nil
 	}
-	r := &cx.realm.regExpOriginals
-	if !r.checked || r.epoch != cx.protoEpoch {
+	r := &q.realm.regExpOriginals
+	if !r.checked || r.epoch != q.realm.protoEpoch {
 		r.found = true
 		r.data = r.data[:0]
 		for i := range r.props {
@@ -485,7 +484,7 @@ func (q QuietContext) UnmodifiedRegExpMatcher(o *Object) *regexp.Regexp {
 				})
 			}
 		}
-		r.epoch = cx.protoEpoch
+		r.epoch = q.realm.protoEpoch
 		r.checked = true
 	}
 	if !r.found {
@@ -497,7 +496,7 @@ func (q QuietContext) UnmodifiedRegExpMatcher(o *Object) *regexp.Regexp {
 		}
 	}
 	if validateExec {
-		cx.checkUnmodifiedRegExp(o)
+		q.realm.checkUnmodifiedRegExp(o)
 	}
 	return matcher
 }
@@ -515,7 +514,7 @@ func (r *realmPart) hasRegExpShape(o *Object) bool {
 // RegExpLastIndex returns the value of the own lastIndex property of o, or false when o may not
 // have it as a writable data property where [ExecutionContext.RegExpAlloc] puts it.
 func (q QuietContext) RegExpLastIndex(o *Object) (Value, bool) {
-	if !q.cx.hasRegExpShape(o) {
+	if !q.realm.hasRegExpShape(o) {
 		return Undefined, false
 	}
 	return o.slots[0], true
@@ -524,11 +523,11 @@ func (q QuietContext) RegExpLastIndex(o *Object) (Value, bool) {
 // SetRegExpLastIndex sets the own lastIndex property of o to v and reports true, or reports
 // false when o may not have it as a writable data property where [ExecutionContext.RegExpAlloc] puts it.
 func (q QuietContext) SetRegExpLastIndex(o *Object, v Value) bool {
-	if !q.cx.hasRegExpShape(o) {
+	if !q.realm.hasRegExpShape(o) {
 		return false
 	}
 	o.slots[0] = v
-	q.cx.touchProto(o)
+	q.realm.touchProto(o)
 	return true
 }
 

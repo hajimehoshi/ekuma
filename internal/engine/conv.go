@@ -188,16 +188,16 @@ func (cx *ExecutionContext) toStringValue(v Value) Value {
 
 // NumberToString returns Number::toString of n as a string value.
 func (q QuietContext) NumberToString(n float64) Value {
-	cx := q.cx
+	r := q.realm
 	var buf [32]byte
 	text := numconv.AppendNumber(buf[:0], n)
 	if len(text) == 1 {
-		return cx.strings.character(text[0])
+		return r.strings.character(text[0])
 	}
 	if len(text) <= shortstrings.MaxBytes {
-		return cx.shortString(wtf8.String(text))
+		return r.shortString(wtf8.String(text))
 	}
-	return cx.NewString(wtf8.String(text))
+	return r.NewString(wtf8.String(text))
 }
 
 // ToObject implements ToObject.

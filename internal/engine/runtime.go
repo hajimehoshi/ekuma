@@ -80,7 +80,7 @@ func (cx *ExecutionContext) throwNotConstructor(fp *funcProto, pc int, regs []Va
 // getGlobal reads the global variable key, as strict code does when strict is set. When it does
 // not exist, it throws a ReferenceError unless orUndef is set.
 func (cx *ExecutionContext) getGlobal(key *Object, c *globalCache, orUndef, strict bool) Value {
-	r := cx.realm
+	r := cx.realmPart
 	g := r.global
 	if v, ok := cx.getGlobalLexical(key, c); ok {
 		return v
@@ -91,7 +91,7 @@ func (cx *ExecutionContext) getGlobal(key *Object, c *globalCache, orUndef, stri
 		c.ref = &g.slots[p.slot]
 		return g.slots[p.slot]
 	}
-	switch l := cx.Quiet().lookupNamed(g, key); l.kind {
+	switch l := r.quiet().lookupNamed(g, key); l.kind {
 	case lookupAbsent, lookupNumericMiss:
 		if orUndef {
 			return Undefined
@@ -126,7 +126,7 @@ func (cx *ExecutionContext) getGlobal(key *Object, c *globalCache, orUndef, stri
 }
 
 func (cx *ExecutionContext) getGlobalLexical(key *Object, c *globalCache) (Value, bool) {
-	r := cx.realm
+	r := cx.realmPart
 	p, ok := r.globalLex.shape.lookup(key)
 	if !ok {
 		return Undefined, false
@@ -1084,7 +1084,7 @@ func (cx *ExecutionContext) copyDataProperties(dst *Object, src Value, excluded 
 		return
 	}
 	from := cx.ToObject(src)
-	if len(excluded) == 0 && takeDataProperties(dst, from) {
+	if len(excluded) == 0 && dst.takeDataProperties(from) {
 		return
 	}
 	var skip []PropKey
@@ -1124,7 +1124,7 @@ keys:
 // takeDataProperties gives the empty ordinary object dst the properties of from and reports
 // true when creating them on dst one by one would give dst the shape and the elements of from.
 // Otherwise it does nothing and reports false.
-func takeDataProperties(dst, from *Object) bool {
+func (dst *Object) takeDataProperties(from *Object) bool {
 	s := takenShape(dst, from)
 	if s == nil || slices.ContainsFunc(from.elems, Value.isHole) {
 		return false
@@ -1280,7 +1280,7 @@ func (sp *space) arrayIterationUnmodified(r *realmPart) bool {
 	if c.epoch != sp.protoEpoch || !c.checked {
 		c.checked = true
 		c.epoch = sp.protoEpoch
-		q := r.executionContext().Quiet()
+		q := r.quiet()
 		c.iter = q.lookupDataSlot(r.intrinsics[IntrinsicArrayPrototype], sp.WellKnownSymbol(SymbolIterator))
 		c.next = q.lookupDataSlot(r.intrinsics[IntrinsicArrayIteratorPrototype], sp.Key(KeyNext))
 		c.found = c.iter.holder != nil && c.next.holder != nil
