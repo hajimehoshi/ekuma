@@ -17,7 +17,7 @@ const maxRetainedBuffer = 1 << 23
 
 // Record is a JSON Parse Record: what a part of the text produced, for [Revive].
 type Record struct {
-	value engine.Value
+	value storage.Value
 
 	// source is the text of a primitive value.
 	source wtf8.String
@@ -27,11 +27,11 @@ type Record struct {
 
 	// keys and entries are the records of the properties of an object, by key.
 	// A repeated key has the record of its last occurrence.
-	keys    []engine.PropKey
+	keys    []storage.PropKey
 	entries []*Record
 
 	// index maps a key to its position in keys, for an object with many keys.
-	index map[engine.PropKey]int
+	index map[storage.PropKey]int
 }
 
 // element returns the record of the element i of an array, or nil when there is none.
@@ -43,10 +43,10 @@ func (r *Record) element(i int64) *Record {
 }
 
 // entry returns the record of the property k of an object, or nil when there is none.
-func (r *Record) entry(k engine.PropKey) *Record {
+func (r *Record) entry(k storage.PropKey) *Record {
 	if len(r.keys) > 16 {
 		if r.index == nil {
-			r.index = make(map[engine.PropKey]int, len(r.keys))
+			r.index = make(map[storage.PropKey]int, len(r.keys))
 			for i, k := range r.keys {
 				r.index[k] = i
 			}
@@ -80,8 +80,8 @@ type Parser struct {
 	pos int
 
 	frames []frame
-	vals   []engine.Value
-	keys   []engine.PropKey
+	vals   []storage.Value
+	keys   []storage.PropKey
 
 	// recs runs parallel to vals when the parse records are wanted.
 	recs []*Record
@@ -91,17 +91,17 @@ type Parser struct {
 }
 
 // Parse parses the JSON text src into a value of cx. It throws a SyntaxError when src is not a JSON text.
-func (p *Parser) Parse(cx *engine.ExecutionContext, src wtf8.String) engine.Value {
+func (p *Parser) Parse(cx *engine.ExecutionContext, src wtf8.String) storage.Value {
 	v, _ := p.parse(cx, src, false)
 	return v
 }
 
 // ParseWithRecord is like [Parser.Parse], and also returns the parse record of the value.
-func (p *Parser) ParseWithRecord(cx *engine.ExecutionContext, src wtf8.String) (engine.Value, *Record) {
+func (p *Parser) ParseWithRecord(cx *engine.ExecutionContext, src wtf8.String) (storage.Value, *Record) {
 	return p.parse(cx, src, true)
 }
 
-func (p *Parser) parse(cx *engine.ExecutionContext, src wtf8.String, withRecords bool) (engine.Value, *Record) {
+func (p *Parser) parse(cx *engine.ExecutionContext, src wtf8.String, withRecords bool) (storage.Value, *Record) {
 	p.cx = cx
 	p.src = src
 	p.pos = 0
@@ -187,10 +187,10 @@ func (p *Parser) parseKey() {
 	p.pos++
 }
 
-func (p *Parser) parseText(withRecords bool) (engine.Value, *Record) {
+func (p *Parser) parseText(withRecords bool) (storage.Value, *Record) {
 	cx := p.cx
 	src := p.src
-	var v engine.Value
+	var v storage.Value
 	var rec *Record
 	for {
 		// A value starts here.
@@ -295,10 +295,10 @@ func (p *Parser) parseText(withRecords bool) (engine.Value, *Record) {
 }
 
 // close creates the array or object of the frame f from its members, and removes them from the scratch storage.
-func (p *Parser) close(f *frame, withRecords bool) (engine.Value, *Record) {
+func (p *Parser) close(f *frame, withRecords bool) (storage.Value, *Record) {
 	cx := p.cx
 	vals := p.vals[f.base:]
-	var o *engine.Object
+	var o *storage.Object
 	if f.array {
 		o = cx.NewArrayCopy(vals)
 	} else {
@@ -312,7 +312,7 @@ func (p *Parser) close(f *frame, withRecords bool) (engine.Value, *Record) {
 		if f.array {
 			rec.elems = recs
 		} else {
-			rec.keys = append([]engine.PropKey(nil), p.keys[f.keyBase:]...)
+			rec.keys = append([]storage.PropKey(nil), p.keys[f.keyBase:]...)
 			rec.entries = recs
 		}
 		clear(p.recs[f.base:])

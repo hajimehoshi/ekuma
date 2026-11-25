@@ -85,14 +85,14 @@ func (r *Realm) NewArrayBuffer(b []byte) Value {
 		panic("ekuma: NewArrayBuffer: the slice is too long for an ArrayBuffer")
 	}
 	cx := r.context()
-	proto := cx.Intrinsic(engine.IntrinsicArrayBufferPrototype)
+	proto := cx.Intrinsic(storage.IntrinsicArrayBufferPrototype)
 	return fromEngine(storage.ObjectValue(cx.NewHostArrayBufferObject(proto, b)))
 }
 
 // NewPromise returns a new pending promise of r and the resolver that settles it.
 func (r *Realm) NewPromise() (Value, *PromiseResolver) {
 	cx := r.context()
-	c := cx.NewPromiseCapability(storage.ObjectValue(cx.Intrinsic(engine.IntrinsicPromise)))
+	c := cx.NewPromiseCapability(storage.ObjectValue(cx.Intrinsic(storage.IntrinsicPromise)))
 	return fromEngine(c.Promise()), &PromiseResolver{
 		realm: r,
 		c:     c,

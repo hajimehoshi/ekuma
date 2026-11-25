@@ -39,12 +39,12 @@ func (pr *pluralRulesData) resolvePlural(n number.Decimal) (string, string) {
 }
 
 // newPluralRules implements the Intl.PluralRules constructor.
-func newPluralRules(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func newPluralRules(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	nt := cx.GetNewTarget()
 	if nt == nil {
 		cx.ThrowTypeError("constructor Intl.PluralRules requires 'new'")
 	}
-	proto := cx.GetPrototypeFromConstructor(nt, engine.IntrinsicIntlPluralRulesPrototype)
+	proto := cx.GetPrototypeFromConstructor(nt, storage.IntrinsicIntlPluralRulesPrototype)
 	requested := canonicalizeLocaleList(cx, arg(args, 0))
 	options := optionsObject(cx, arg(args, 1))
 	bestFit := localeMatcher(cx, options)
@@ -64,7 +64,7 @@ func newPluralRules(cx *engine.ExecutionContext, this engine.Value, args []engin
 }
 
 // thisPluralRules implements RequireInternalSlot for an Intl.PluralRules.
-func thisPluralRules(cx *engine.ExecutionContext, this engine.Value, name string) *pluralRulesData {
+func thisPluralRules(cx *engine.ExecutionContext, this storage.Value, name string) *pluralRulesData {
 	pr, ok := storage.IntlData(this).(*pluralRulesData)
 	if !ok {
 		cx.ThrowTypeError("Intl.PluralRules.prototype." + name + " called on an object that is not an Intl.PluralRules")
@@ -80,20 +80,20 @@ var (
 )
 
 // initPluralRules defines Intl.PluralRules.
-func initPluralRules(cx *engine.ExecutionContext, ns *engine.Object) {
-	ctor, proto := constructor(cx, ns, "PluralRules", 0, engine.IntrinsicIntlPluralRulesPrototype, nativeNewPluralRules)
+func initPluralRules(cx *engine.ExecutionContext, ns *storage.Object) {
+	ctor, proto := constructor(cx, ns, "PluralRules", 0, storage.IntrinsicIntlPluralRulesPrototype, nativeNewPluralRules)
 
 	method(cx, ctor, "supportedLocalesOf", 1, nativeSupportedLocalesOf)
 	method(cx, proto, "resolvedOptions", 0, nativePluralRulesResolvedOptions)
 	method(cx, proto, "select", 1, nativePluralRulesSelect)
 	method(cx, proto, "selectRange", 2, nativePluralRulesSelectRange)
-	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Intl.PluralRules"), engine.FlagConfigurable)
+	cx.Define(proto, cx.WellKnownSymbol(storage.SymbolToStringTag), cx.SharedString("Intl.PluralRules"), storage.FlagConfigurable)
 }
 
-func pluralRulesResolvedOptions(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func pluralRulesResolvedOptions(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	pr := thisPluralRules(cx, this, "resolvedOptions")
-	out := cx.NewObject(cx.Intrinsic(engine.IntrinsicObjectPrototype))
-	set := func(name string, v engine.Value) {
+	out := cx.NewObject(cx.Intrinsic(storage.IntrinsicObjectPrototype))
+	set := func(name string, v storage.Value) {
 		cx.CreateDataPropertyOrThrow(out, storage.NamedKey(cx.Intern(wtf8.String(name))), v)
 	}
 	num := func(name string, v int) {
@@ -131,13 +131,13 @@ func pluralRulesResolvedOptions(cx *engine.ExecutionContext, this engine.Value, 
 	return storage.ObjectValue(out)
 }
 
-func pluralRulesSelect(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func pluralRulesSelect(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	pr := thisPluralRules(cx, this, "select")
 	c, _ := pr.resolvePlural(toIntlMathematicalValue(cx, arg(args, 0)))
 	return cx.NewString(wtf8.String(c))
 }
 
-func pluralRulesSelectRange(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func pluralRulesSelectRange(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	pr := thisPluralRules(cx, this, "selectRange")
 	start, end := arg(args, 0), arg(args, 1)
 	if start.IsUndefined() || end.IsUndefined() {

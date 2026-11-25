@@ -12,7 +12,7 @@ import (
 )
 
 // RawJSON implements JSON.rawJSON.
-func RawJSON(cx *engine.ExecutionContext, text engine.Value) engine.Value {
+func RawJSON(cx *engine.ExecutionContext, text storage.Value) storage.Value {
 	s := cx.ToStringValue(text)
 	str := s.Str()
 	if str == "" || IsSpace(str[0]) || IsSpace(str[len(str)-1]) {
@@ -26,12 +26,12 @@ func RawJSON(cx *engine.ExecutionContext, text engine.Value) engine.Value {
 	}
 	// The object is frozen: its only property is read-only and it accepts no others.
 	o := cx.NewRawJSONObject()
-	cx.Define(o, cx.Intern("rawJSON"), s, engine.FlagEnumerable)
+	cx.Define(o, cx.Intern("rawJSON"), s, storage.FlagEnumerable)
 	cx.PreventExtensions(o)
 	return storage.ObjectValue(o)
 }
 
 // IsRawJSON implements JSON.isRawJSON.
-func IsRawJSON(v engine.Value) bool {
+func IsRawJSON(v storage.Value) bool {
 	return v.IsObject() && v.Object().IsRawJSON()
 }

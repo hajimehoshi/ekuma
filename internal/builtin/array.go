@@ -19,8 +19,8 @@ import (
 const maxArrayFromPresize = 1 << 16
 
 // bigKey returns the property key for an integer index, which may be beyond the array indices.
-func bigKey(cx *engine.ExecutionContext, i int64) engine.PropKey {
-	if i >= 0 && i <= engine.MaxArrayIndex {
+func bigKey(cx *engine.ExecutionContext, i int64) storage.PropKey {
+	if i >= 0 && i <= storage.MaxArrayIndex {
 		return storage.IndexKey(uint32(i))
 	}
 	return storage.NamedKey(cx.Intern(numconv.NumberToString(float64(i))))
@@ -28,7 +28,7 @@ func bigKey(cx *engine.ExecutionContext, i int64) engine.PropKey {
 
 // getAt returns the property of o with the integer index i. A loop over consecutive indices
 // that calls it checks for an interruption regularly.
-func getAt(cx *engine.ExecutionContext, o *engine.Object, i int64) engine.Value {
+func getAt(cx *engine.ExecutionContext, o *storage.Object, i int64) storage.Value {
 	if e, ok := storage.Element(o, i); ok {
 		cx.PollAt(i)
 		return e
@@ -39,7 +39,7 @@ func getAt(cx *engine.ExecutionContext, o *engine.Object, i int64) engine.Value 
 
 // hasAt reports whether o has a property with the integer index i. A loop over consecutive
 // indices that calls it checks for an interruption regularly.
-func hasAt(cx *engine.ExecutionContext, o *engine.Object, i int64) bool {
+func hasAt(cx *engine.ExecutionContext, o *storage.Object, i int64) bool {
 	if _, ok := storage.Element(o, i); ok {
 		cx.PollAt(i)
 		return true
@@ -50,7 +50,7 @@ func hasAt(cx *engine.ExecutionContext, o *engine.Object, i int64) bool {
 
 // skipHoles returns the next index from i toward end, which is excluded, that may have a property
 // on o, or end when there is none.
-func skipHoles(cx *engine.ExecutionContext, o *engine.Object, i, end int64, backward bool) int64 {
+func skipHoles(cx *engine.ExecutionContext, o *storage.Object, i, end int64, backward bool) int64 {
 	if backward {
 		return cx.Quiet().SkipHolesBackward(o, i, end)
 	}
@@ -59,12 +59,12 @@ func skipHoles(cx *engine.ExecutionContext, o *engine.Object, i, end int64, back
 
 // holeSteps returns the number of consecutive indices from i, moving by dir (1 or -1) and at most
 // count, at which neither o nor its prototypes are known to have a property.
-func holeSteps(cx *engine.ExecutionContext, o *engine.Object, i, count, dir int64) int64 {
-	if _, ok := storage.Element(o, i); ok || i > engine.MaxArrayIndex {
+func holeSteps(cx *engine.ExecutionContext, o *storage.Object, i, count, dir int64) int64 {
+	if _, ok := storage.Element(o, i); ok || i > storage.MaxArrayIndex {
 		return 0
 	}
 	if dir > 0 {
-		count = min(count, engine.MaxArrayIndex+1-i)
+		count = min(count, storage.MaxArrayIndex+1-i)
 		return cx.Quiet().SkipHoles(o, i, i+count) - i
 	}
 	return i - cx.Quiet().SkipHolesBackward(o, i, i-count)
@@ -76,7 +76,7 @@ const minMoveRun = 256
 // moveSteps returns how many steps, at most count, of a loop that moves the property at src to dst,
 // or deletes the property at dst when src has none, change nothing. Both indices move by dir (1 or
 // -1).
-func moveSteps(cx *engine.ExecutionContext, o *engine.Object, src, dst, count, dir int64) int64 {
+func moveSteps(cx *engine.ExecutionContext, o *storage.Object, src, dst, count, dir int64) int64 {
 	// A long run of holes at one index can meet a property at the other, so each look ahead is
 	// limited in proportion to the steps found so far.
 	n := int64(0)
@@ -96,7 +96,7 @@ func moveSteps(cx *engine.ExecutionContext, o *engine.Object, src, dst, count, d
 
 // putAt sets the property of o with the integer index i to v. A loop over consecutive indices
 // that calls it checks for an interruption regularly.
-func putAt(cx *engine.ExecutionContext, o *engine.Object, i int64, v engine.Value) {
+func putAt(cx *engine.ExecutionContext, o *storage.Object, i int64, v storage.Value) {
 	if o.SetElement(i, v) {
 		cx.PollAt(i)
 		return
@@ -107,7 +107,7 @@ func putAt(cx *engine.ExecutionContext, o *engine.Object, i int64, v engine.Valu
 
 // deleteAt deletes the property of o with the integer index i. A loop over consecutive indices
 // that calls it checks for an interruption regularly.
-func deleteAt(cx *engine.ExecutionContext, o *engine.Object, i int64) {
+func deleteAt(cx *engine.ExecutionContext, o *storage.Object, i int64) {
 	cx.Poll()
 	k := bigKey(cx, i)
 	if !cx.DeleteProp(o, k) {
@@ -115,40 +115,40 @@ func deleteAt(cx *engine.ExecutionContext, o *engine.Object, i int64) {
 	}
 }
 
-func setLength(cx *engine.ExecutionContext, o *engine.Object, n int64) {
-	cx.Set(o, storage.NamedKey(cx.Key(engine.KeyLength)), storage.Number(float64(n)))
+func setLength(cx *engine.ExecutionContext, o *storage.Object, n int64) {
+	cx.Set(o, storage.NamedKey(cx.Key(storage.KeyLength)), storage.Number(float64(n)))
 }
 
 // arraySpeciesCreate implements ArraySpeciesCreate.
-func arraySpeciesCreate(cx *engine.ExecutionContext, orig *engine.Object, n int64) *engine.Object {
+func arraySpeciesCreate(cx *engine.ExecutionContext, orig *storage.Object, n int64) *storage.Object {
 	if a, ok := cx.Quiet().ArraySpeciesCreatePlain(orig, n); ok {
 		return a
 	}
 	if cx.IsArray(storage.ObjectValue(orig)) {
-		c := cx.GetV(storage.ObjectValue(orig), cx.Key(engine.KeyConstructor))
+		c := cx.GetV(storage.ObjectValue(orig), cx.Key(storage.KeyConstructor))
 		if c.IsObject() {
-			if c.IsCallable() && cx.IsConstructor(c.Object()) && cx.IsIntrinsicOfOtherRealm(c.Object(), engine.IntrinsicArray) {
+			if c.IsCallable() && cx.IsConstructor(c.Object()) && cx.IsIntrinsicOfOtherRealm(c.Object(), storage.IntrinsicArray) {
 				c = storage.Undefined
-			} else if s := cx.GetV(c, cx.WellKnownSymbol(engine.SymbolSpecies)); s.IsNull() {
+			} else if s := cx.GetV(c, cx.WellKnownSymbol(storage.SymbolSpecies)); s.IsNull() {
 				c = storage.Undefined
 			} else {
 				c = s
 			}
 		}
-		if !c.IsUndefined() && !(c.IsObject() && c.Object() == cx.Intrinsic(engine.IntrinsicArray)) {
+		if !c.IsUndefined() && !(c.IsObject() && c.Object() == cx.Intrinsic(storage.IntrinsicArray)) {
 			if !c.IsCallable() || !cx.IsConstructor(c.Object()) {
 				cx.ThrowTypeError("object.constructor[Symbol.species] is not a constructor")
 			}
-			return cx.Construct(c.Object(), []engine.Value{storage.Number(float64(n))}, c.Object())
+			return cx.Construct(c.Object(), []storage.Value{storage.Number(float64(n))}, c.Object())
 		}
 	}
-	if n > engine.MaxArrayIndex+1 {
+	if n > storage.MaxArrayIndex+1 {
 		cx.ThrowRangeError("invalid array length")
 	}
-	return cx.ArrayCreate(uint32(n), cx.Intrinsic(engine.IntrinsicArrayPrototype))
+	return cx.ArrayCreate(uint32(n), cx.Intrinsic(storage.IntrinsicArrayPrototype))
 }
 
-func callback(cx *engine.ExecutionContext, args []engine.Value, what string) *engine.Object {
+func callback(cx *engine.ExecutionContext, args []storage.Value, what string) *storage.Object {
 	f := arg(args, 0)
 	if !f.IsCallable() {
 		cx.ThrowTypeError(cx.DisplayString(f) + " is not a function")
@@ -157,7 +157,7 @@ func callback(cx *engine.ExecutionContext, args []engine.Value, what string) *en
 }
 
 // joinArray implements Array.prototype.join for the first n elements of the object o.
-func joinArray(cx *engine.ExecutionContext, o *engine.Object, n int64, sep wtf8.String) engine.Value {
+func joinArray(cx *engine.ExecutionContext, o *storage.Object, n int64, sep wtf8.String) storage.Value {
 	if !cx.EnterJoin(o) {
 		return cx.NewString("")
 	}
@@ -169,7 +169,7 @@ func joinArray(cx *engine.ExecutionContext, o *engine.Object, n int64, sep wtf8.
 }
 
 // writeString writes ToString(v) to b.
-func writeString(cx *engine.ExecutionContext, b *wtf8.Buffer, v engine.Value) {
+func writeString(cx *engine.ExecutionContext, b *wtf8.Buffer, v storage.Value) {
 	if v.IsString() {
 		v.WriteStringTo(b)
 		return
@@ -185,20 +185,20 @@ func writeString(cx *engine.ExecutionContext, b *wtf8.Buffer, v engine.Value) {
 // joinElements joins the strings of the first n elements of the object o that are neither
 // undefined nor null, with sep between elements. The string of an element e is ToString(e),
 // or ToString(Invoke(e, method)) when method is not nil.
-func joinElements(cx *engine.ExecutionContext, o *engine.Object, n int64, sep wtf8.String, method *engine.Object) engine.Value {
+func joinElements(cx *engine.ExecutionContext, o *storage.Object, n int64, sep wtf8.String, method *storage.Object) storage.Value {
 	var b wtf8.Buffer
 	for i := int64(0); i < n; {
 		if i > 0 {
 			cx.Poll()
 		}
-		i = joinRun(cx, &b, o, i, min(n, i+engine.PollInterval), n, sep, method)
+		i = joinRun(cx, &b, o, i, min(n, i+storage.PollInterval), n, sep, method)
 	}
 	return cx.NewString(b.String())
 }
 
 // joinRun writes the elements of o from i up to end, or further when holes follow, to b as
 // joinElements joins the first n elements, and returns the index after the last one it wrote.
-func joinRun(cx *engine.ExecutionContext, b *wtf8.Buffer, o *engine.Object, i, end, n int64, sep wtf8.String, method *engine.Object) int64 {
+func joinRun(cx *engine.ExecutionContext, b *wtf8.Buffer, o *storage.Object, i, end, n int64, sep wtf8.String, method *storage.Object) int64 {
 	for ; i < end; i++ {
 		if i > 0 {
 			b.WriteString(sep)
@@ -221,7 +221,7 @@ func joinRun(cx *engine.ExecutionContext, b *wtf8.Buffer, o *engine.Object, i, e
 		default:
 			writeString(cx, b, e)
 		}
-		if b.Len() > engine.MaxStringLength {
+		if b.Len() > storage.MaxStringLength {
 			cx.ThrowRangeError("invalid string length")
 		}
 	}
@@ -237,20 +237,20 @@ func writeSeparators(cx *engine.ExecutionContext, b *wtf8.Buffer, sep wtf8.Strin
 	if wtf8.JoinsPair(sep, sep) {
 		per -= 2
 	}
-	if int64(b.Len())+count*per-2 > engine.MaxStringLength {
+	if int64(b.Len())+count*per-2 > storage.MaxStringLength {
 		cx.ThrowRangeError("invalid string length")
 	}
 	writeRepeated(cx, b, sep, int(count))
-	if b.Len() > engine.MaxStringLength {
+	if b.Len() > storage.MaxStringLength {
 		cx.ThrowRangeError("invalid string length")
 	}
 }
 
 // flattenIntoArray implements FlattenIntoArray for the first l elements of src without a mapper function.
 // The nested arrays are kept on an explicit stack, as their depth is unbounded.
-func flattenIntoArray(cx *engine.ExecutionContext, a *engine.Object, src *engine.Object, l int64, depth float64, n *int64) {
+func flattenIntoArray(cx *engine.ExecutionContext, a *storage.Object, src *storage.Object, l int64, depth float64, n *int64) {
 	type level struct {
-		src   *engine.Object
+		src   *storage.Object
 		i, l  int64
 		depth float64
 	}
@@ -263,7 +263,7 @@ func flattenIntoArray(cx *engine.ExecutionContext, a *engine.Object, src *engine
 	for len(stack) > 0 {
 		t := &stack[len(stack)-1]
 		if i := cx.Quiet().SkipHoles(t.src, t.i, t.l); i > t.i {
-			pacer.Steps(cx, int(min(i-t.i, engine.PollInterval)))
+			pacer.Steps(cx, int(min(i-t.i, storage.PollInterval)))
 			t.i = i
 		}
 		if t.i >= t.l {
@@ -331,12 +331,12 @@ var (
 )
 
 func initArray(cx *engine.ExecutionContext) {
-	proto := cx.Intrinsic(engine.IntrinsicArrayPrototype)
-	ctor := constructor(cx, "Array", 1, engine.IntrinsicArrayPrototype, nativeArrayConstructor)
-	cx.SetIntrinsic(engine.IntrinsicArray, ctor)
+	proto := cx.Intrinsic(storage.IntrinsicArrayPrototype)
+	ctor := constructor(cx, "Array", 1, storage.IntrinsicArrayPrototype, nativeArrayConstructor)
+	cx.SetIntrinsic(storage.IntrinsicArray, ctor)
 	speciesGetter := cx.NewNative("get [Symbol.species]", 0, nativeReturnThis)
-	cx.SetIntrinsic(engine.IntrinsicArraySpeciesGetter, speciesGetter)
-	cx.DefineAccessor(ctor, cx.WellKnownSymbol(engine.SymbolSpecies), speciesGetter, nil, engine.FlagConfigurable)
+	cx.SetIntrinsic(storage.IntrinsicArraySpeciesGetter, speciesGetter)
+	cx.DefineAccessor(ctor, cx.WellKnownSymbol(storage.SymbolSpecies), speciesGetter, nil, storage.FlagConfigurable)
 
 	method(cx, ctor, "isArray", 1, nativeArrayIsArray)
 	method(cx, ctor, "of", 0, nativeArrayOf)
@@ -378,15 +378,15 @@ func initArray(cx *engine.ExecutionContext) {
 
 	method(cx, proto, "keys", 0, nativeArrayKeys)
 	method(cx, proto, "entries", 0, nativeArrayEntries)
-	cx.SetIntrinsic(engine.IntrinsicArrayPrototypeValues, method(cx, proto, "values", 0, nativeArrayValues))
-	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolIterator), storage.ObjectValue(cx.Intrinsic(engine.IntrinsicArrayPrototypeValues)), engine.FlagsHidden)
+	cx.SetIntrinsic(storage.IntrinsicArrayPrototypeValues, method(cx, proto, "values", 0, nativeArrayValues))
+	cx.Define(proto, cx.WellKnownSymbol(storage.SymbolIterator), storage.ObjectValue(cx.Intrinsic(storage.IntrinsicArrayPrototypeValues)), storage.FlagsHidden)
 	initArrayAdditions(cx, proto)
 }
 
-func arrayConstructor(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-	proto := cx.Intrinsic(engine.IntrinsicArrayPrototype)
-	if nt := cx.GetNewTarget(); nt != nil && nt != cx.Intrinsic(engine.IntrinsicArray) {
-		proto = cx.GetPrototypeFromConstructor(nt, engine.IntrinsicArrayPrototype)
+func arrayConstructor(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
+	proto := cx.Intrinsic(storage.IntrinsicArrayPrototype)
+	if nt := cx.GetNewTarget(); nt != nil && nt != cx.Intrinsic(storage.IntrinsicArray) {
+		proto = cx.GetPrototypeFromConstructor(nt, storage.IntrinsicArrayPrototype)
 	}
 	if len(args) == 1 {
 		if n := args[0]; n.IsNumber() {
@@ -397,52 +397,52 @@ func arrayConstructor(cx *engine.ExecutionContext, this engine.Value, args []eng
 			return storage.ObjectValue(cx.ArrayCreate(u, proto))
 		}
 	}
-	var a *engine.Object
+	var a *storage.Object
 	if len(args) == 0 {
 		a = cx.NewEmptyArrayWithRoom(4)
 	} else {
-		a = cx.NewArray(append([]engine.Value(nil), args...))
+		a = cx.NewArray(append([]storage.Value(nil), args...))
 	}
-	if proto != cx.Intrinsic(engine.IntrinsicArrayPrototype) {
+	if proto != cx.Intrinsic(storage.IntrinsicArrayPrototype) {
 		cx.SetPrototypeOf(a, proto)
 	}
 	return storage.ObjectValue(a)
 }
 
-func arrayIsArray(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func arrayIsArray(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	return storage.Bool(cx.IsArray(arg(args, 0)))
 }
 
-func arrayOf(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-	if this.IsCallable() && cx.IsConstructor(this.Object()) && this.Object() != cx.Intrinsic(engine.IntrinsicArray) {
-		a := cx.Construct(this.Object(), []engine.Value{storage.Number(float64(len(args)))}, this.Object())
+func arrayOf(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
+	if this.IsCallable() && cx.IsConstructor(this.Object()) && this.Object() != cx.Intrinsic(storage.IntrinsicArray) {
+		a := cx.Construct(this.Object(), []storage.Value{storage.Number(float64(len(args)))}, this.Object())
 		for i, v := range args {
 			cx.CreateDataPropertyOrThrow(a, storage.IndexKey(uint32(i)), v)
 		}
 		setLength(cx, a, int64(len(args)))
 		return storage.ObjectValue(a)
 	}
-	return storage.ObjectValue(cx.NewArray(append([]engine.Value(nil), args...)))
+	return storage.ObjectValue(cx.NewArray(append([]storage.Value(nil), args...)))
 }
 
-func arrayFrom(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func arrayFrom(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	items, mapFn, thisArg := arg(args, 0), arg(args, 1), arg(args, 2)
 	if !mapFn.IsUndefined() && !mapFn.IsCallable() {
 		cx.ThrowTypeError(cx.DisplayString(mapFn) + " is not a function")
 	}
-	custom := this.IsCallable() && cx.IsConstructor(this.Object()) && this.Object() != cx.Intrinsic(engine.IntrinsicArray)
-	mapped := func(v engine.Value, i int64) engine.Value {
+	custom := this.IsCallable() && cx.IsConstructor(this.Object()) && this.Object() != cx.Intrinsic(storage.IntrinsicArray)
+	mapped := func(v storage.Value, i int64) storage.Value {
 		if mapFn.IsUndefined() {
 			return v
 		}
 		return cx.Call(mapFn.Object(), thisArg, v, storage.Number(float64(i)))
 	}
-	if m := cx.GetMethod(items, cx.WellKnownSymbol(engine.SymbolIterator)); m != nil {
+	if m := cx.GetMethod(items, cx.WellKnownSymbol(storage.SymbolIterator)); m != nil {
 		// A new array is out of reach of JavaScript until it is returned, so its
 		// elements are collected first while they fit in one.
 		var st struct {
-			a    *engine.Object
-			vals []engine.Value
+			a    *storage.Object
+			vals []storage.Value
 			i    int64
 		}
 		if custom {
@@ -455,11 +455,11 @@ func arrayFrom(cx *engine.ExecutionContext, this engine.Value, args []engine.Val
 			size = items.StringLength()
 		}
 		size = min(size, maxArrayFromPresize)
-		cx.IterateFromMethod(items, m, func(v engine.Value) bool {
+		cx.IterateFromMethod(items, m, func(v storage.Value) bool {
 			v = mapped(v, st.i)
-			if st.a == nil && st.i <= engine.MaxArrayIndex {
+			if st.a == nil && st.i <= storage.MaxArrayIndex {
 				if st.vals == nil {
-					st.vals = make([]engine.Value, 0, max(size, 8))
+					st.vals = make([]storage.Value, 0, max(size, 8))
 				}
 				st.vals = append(st.vals, v)
 			} else {
@@ -479,12 +479,12 @@ func arrayFrom(cx *engine.ExecutionContext, this engine.Value, args []engine.Val
 	}
 	src := cx.ToObject(items)
 	n := cx.LengthOfArrayLike(src)
-	var a *engine.Object
+	var a *storage.Object
 	switch {
 	case custom:
-		a = cx.Construct(this.Object(), []engine.Value{storage.Number(float64(n))}, this.Object())
-	case n <= engine.MaxArrayIndex+1:
-		a = cx.ArrayCreate(uint32(n), cx.Intrinsic(engine.IntrinsicArrayPrototype))
+		a = cx.Construct(this.Object(), []storage.Value{storage.Number(float64(n))}, this.Object())
+	case n <= storage.MaxArrayIndex+1:
+		a = cx.ArrayCreate(uint32(n), cx.Intrinsic(storage.IntrinsicArrayPrototype))
 	default:
 		cx.ThrowRangeError("invalid array length")
 	}
@@ -495,7 +495,7 @@ func arrayFrom(cx *engine.ExecutionContext, this engine.Value, args []engine.Val
 	return storage.ObjectValue(a)
 }
 
-func arrayPush(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func arrayPush(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	o := cx.ToObject(this)
 	if n, ok := engine.PushElements(cx.Quiet(), o, args); ok {
 		return storage.Number(float64(n))
@@ -513,11 +513,11 @@ func arrayPush(cx *engine.ExecutionContext, this engine.Value, args []engine.Val
 }
 
 // arrayPushKernel is the fast path of push for a single value.
-func arrayPushKernel(q quiet.Context, this, v engine.Value) (engine.Value, bool) {
+func arrayPushKernel(q quiet.Context, this, v storage.Value) (storage.Value, bool) {
 	if !this.IsObject() {
 		return storage.Undefined, false
 	}
-	vals := [...]engine.Value{v}
+	vals := [...]storage.Value{v}
 	n, ok := engine.PushElements(q, this.Object(), vals[:])
 	if !ok {
 		return storage.Undefined, false
@@ -525,7 +525,7 @@ func arrayPushKernel(q quiet.Context, this, v engine.Value) (engine.Value, bool)
 	return storage.Number(float64(n)), true
 }
 
-func arrayPop(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func arrayPop(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	o := cx.ToObject(this)
 	if v, ok := o.RemoveLastElement(); ok {
 		return v
@@ -541,7 +541,7 @@ func arrayPop(cx *engine.ExecutionContext, this engine.Value, args []engine.Valu
 	return v
 }
 
-func arrayShift(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func arrayShift(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	o := cx.ToObject(this)
 	if v, ok := o.RemoveFirstElement(); ok {
 		return v
@@ -565,7 +565,7 @@ func arrayShift(cx *engine.ExecutionContext, this engine.Value, args []engine.Va
 	return first
 }
 
-func arrayUnshift(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func arrayUnshift(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	o := cx.ToObject(this)
 	k := int64(len(args))
 	if n, ok := cx.Quiet().PrependElements(o, args); ok {
@@ -592,7 +592,7 @@ func arrayUnshift(cx *engine.ExecutionContext, this engine.Value, args []engine.
 	return storage.Number(float64(n + k))
 }
 
-func arraySlice(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func arraySlice(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	o := cx.ToObject(this)
 	n := cx.LengthOfArrayLike(o)
 	start := relIndex(cx.ToIntegerOrInfinity(arg(args, 0)), n)
@@ -616,11 +616,11 @@ func arraySlice(cx *engine.ExecutionContext, this engine.Value, args []engine.Va
 	return storage.ObjectValue(a)
 }
 
-func arraySplice(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func arraySplice(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	o := cx.ToObject(this)
 	n := cx.LengthOfArrayLike(o)
 	start := relIndex(cx.ToIntegerOrInfinity(arg(args, 0)), n)
-	var items []engine.Value
+	var items []storage.Value
 	del := int64(0)
 	switch {
 	case len(args) == 1:
@@ -676,7 +676,7 @@ func arraySplice(cx *engine.ExecutionContext, this engine.Value, args []engine.V
 	return storage.ObjectValue(a)
 }
 
-func arrayConcat(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func arrayConcat(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	o := cx.ToObject(this)
 	a := arraySpeciesCreate(cx, o, 0)
 	n := int64(0)
@@ -687,7 +687,7 @@ func arrayConcat(cx *engine.ExecutionContext, this engine.Value, args []engine.V
 		}
 		spreadable := false
 		if item.IsObject() {
-			if s := cx.GetV(item, cx.WellKnownSymbol(engine.SymbolIsConcatSpreadable)); !s.IsUndefined() {
+			if s := cx.GetV(item, cx.WellKnownSymbol(storage.SymbolIsConcatSpreadable)); !s.IsUndefined() {
 				spreadable = storage.ToBoolean(s)
 			} else {
 				spreadable = cx.IsArray(item)
@@ -725,7 +725,7 @@ func arrayConcat(cx *engine.ExecutionContext, this engine.Value, args []engine.V
 	return storage.ObjectValue(a)
 }
 
-func arrayJoin(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func arrayJoin(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	o := cx.ToObject(this)
 	n := cx.LengthOfArrayLike(o)
 	sep := wtf8.String(",")
@@ -735,7 +735,7 @@ func arrayJoin(cx *engine.ExecutionContext, this engine.Value, args []engine.Val
 	return joinArray(cx, o, n, sep)
 }
 
-func arrayToString(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func arrayToString(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	o := cx.ToObject(this)
 	if j := cx.GetV(storage.ObjectValue(o), cx.Intern("join")); j.IsCallable() {
 		return cx.Call(j.Object(), storage.ObjectValue(o))
@@ -743,7 +743,7 @@ func arrayToString(cx *engine.ExecutionContext, this engine.Value, args []engine
 	return objectToString(cx, o)
 }
 
-func arrayReverse(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func arrayReverse(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	o := cx.ToObject(this)
 	n := cx.LengthOfArrayLike(o)
 	if cx.Quiet().ReverseElements(o) {
@@ -751,7 +751,7 @@ func arrayReverse(cx *engine.ExecutionContext, this engine.Value, args []engine.
 	}
 	for lo, hi := int64(0), n-1; lo < hi; lo, hi = lo+1, hi-1 {
 		lok, hok := hasAt(cx, o, lo), false
-		var lv, hv engine.Value
+		var lv, hv storage.Value
 		if lok {
 			lv = getAt(cx, o, lo)
 		}
@@ -799,7 +799,7 @@ var (
 //
 //go:noinline
 func arraySearchNative(fromEnd, same bool) engine.NativeFunc {
-	return func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return func(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 		o := cx.ToObject(this)
 		n := cx.LengthOfArrayLike(o)
 		target := arg(args, 0)
@@ -898,7 +898,7 @@ func arraySearchNative(fromEnd, same bool) engine.NativeFunc {
 	}
 }
 
-func arrayForEach(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func arrayForEach(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	l := newEachLoop(cx, this, args, "forEach", true)
 	for {
 		if _, _, ok := l.next(); !ok {
@@ -907,7 +907,7 @@ func arrayForEach(cx *engine.ExecutionContext, this engine.Value, args []engine.
 	}
 }
 
-func arrayMap(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func arrayMap(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	l := newEachLoop(cx, this, args, "map", true)
 	a := arraySpeciesCreate(cx, l.o, l.n)
 	for {
@@ -919,7 +919,7 @@ func arrayMap(cx *engine.ExecutionContext, this engine.Value, args []engine.Valu
 	}
 }
 
-func arrayFilter(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func arrayFilter(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	l := newEachLoop(cx, this, args, "filter", true)
 	a := arraySpeciesCreate(cx, l.o, 0)
 	j := int64(0)
@@ -935,7 +935,7 @@ func arrayFilter(cx *engine.ExecutionContext, this engine.Value, args []engine.V
 	}
 }
 
-func arraySome(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func arraySome(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	l := newEachLoop(cx, this, args, "some", true)
 	for {
 		_, r, ok := l.next()
@@ -948,7 +948,7 @@ func arraySome(cx *engine.ExecutionContext, this engine.Value, args []engine.Val
 	}
 }
 
-func arrayEvery(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func arrayEvery(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	l := newEachLoop(cx, this, args, "every", true)
 	for {
 		_, r, ok := l.next()
@@ -961,7 +961,7 @@ func arrayEvery(cx *engine.ExecutionContext, this engine.Value, args []engine.Va
 	}
 }
 
-func arrayFind(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func arrayFind(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	l := newEachLoop(cx, this, args, "find", false)
 	for {
 		v, r, ok := l.next()
@@ -974,7 +974,7 @@ func arrayFind(cx *engine.ExecutionContext, this engine.Value, args []engine.Val
 	}
 }
 
-func arrayFindIndex(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func arrayFindIndex(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	l := newEachLoop(cx, this, args, "findIndex", false)
 	for {
 		_, r, ok := l.next()
@@ -997,7 +997,7 @@ var (
 //
 //go:noinline
 func arrayFindLastNative(name string, index bool) engine.NativeFunc {
-	return func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return func(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 		o := cx.ToObject(this)
 		n := cx.LengthOfArrayLike(o)
 		cb := callback(cx, args, name)
@@ -1027,7 +1027,7 @@ var (
 //
 //go:noinline
 func arrayReduceNative(name string, right bool) engine.NativeFunc {
-	return func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return func(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 		o := cx.ToObject(this)
 		n := cx.LengthOfArrayLike(o)
 		cb := callback(cx, args, name)
@@ -1035,7 +1035,7 @@ func arrayReduceNative(name string, right bool) engine.NativeFunc {
 		if right {
 			i, end, d = n-1, -1, -1
 		}
-		var acc engine.Value
+		var acc storage.Value
 		if len(args) >= 2 {
 			acc = args[1]
 		} else {
@@ -1070,7 +1070,7 @@ func arrayReduceNative(name string, right bool) engine.NativeFunc {
 	}
 }
 
-func arrayFill(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func arrayFill(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	o := cx.ToObject(this)
 	n := cx.LengthOfArrayLike(o)
 	start := relIndex(cx.ToIntegerOrInfinity(arg(args, 1)), n)
@@ -1087,7 +1087,7 @@ func arrayFill(cx *engine.ExecutionContext, this engine.Value, args []engine.Val
 	return storage.ObjectValue(o)
 }
 
-func arrayAt(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func arrayAt(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	o := cx.ToObject(this)
 	n := cx.LengthOfArrayLike(o)
 	i := cx.ToIntegerOrInfinity(arg(args, 0))
@@ -1100,14 +1100,14 @@ func arrayAt(cx *engine.ExecutionContext, this engine.Value, args []engine.Value
 	return getAt(cx, o, int64(i))
 }
 
-func arraySort(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func arraySort(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	cmp := arg(args, 0)
 	if !cmp.IsUndefined() && !cmp.IsCallable() {
 		cx.ThrowTypeError("the comparison function must be either a function or undefined")
 	}
 	o := cx.ToObject(this)
 	n := cx.LengthOfArrayLike(o)
-	var vals []engine.Value
+	var vals []storage.Value
 	undefs := int64(0)
 	for i := int64(0); i < n; i++ {
 		if i = cx.Quiet().SkipHoles(o, i, n); i == n {
@@ -1142,7 +1142,7 @@ func arraySort(cx *engine.ExecutionContext, this engine.Value, args []engine.Val
 	return storage.ObjectValue(o)
 }
 
-func arrayFlat(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func arrayFlat(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	o := cx.ToObject(this)
 	l := cx.LengthOfArrayLike(o)
 	depth := 1.0
@@ -1155,7 +1155,7 @@ func arrayFlat(cx *engine.ExecutionContext, this engine.Value, args []engine.Val
 	return storage.ObjectValue(a)
 }
 
-func arrayFlatMap(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func arrayFlatMap(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	o := cx.ToObject(this)
 	l := cx.LengthOfArrayLike(o)
 	cb := callback(cx, args, "flatMap")
@@ -1179,26 +1179,26 @@ func arrayFlatMap(cx *engine.ExecutionContext, this engine.Value, args []engine.
 	return storage.ObjectValue(a)
 }
 
-func arrayKeys(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func arrayKeys(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	return storage.ObjectValue(cx.NewArrayIterator(cx.ToObject(this), quiet.IterateKeys))
 }
 
-func arrayEntries(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func arrayEntries(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	return storage.ObjectValue(cx.NewArrayIterator(cx.ToObject(this), quiet.IterateEntries))
 }
 
-func arrayValues(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func arrayValues(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	return storage.ObjectValue(cx.NewArrayIterator(cx.ToObject(this), quiet.IterateValues))
 }
 
 // newArrayOfLength checks that n is a valid array length as ArrayCreate does, and returns the storage
 // for the elements of a new array of that length.
-func newArrayOfLength(cx *engine.ExecutionContext, n int64) []engine.Value {
-	if n > engine.MaxArrayIndex+1 {
+func newArrayOfLength(cx *engine.ExecutionContext, n int64) []storage.Value {
+	if n > storage.MaxArrayIndex+1 {
 		cx.ThrowRangeError("invalid array length")
 	}
 	// The length is not trusted to allocate: the values are read one by one, which may throw.
-	return make([]engine.Value, 0, min(n, 1024))
+	return make([]storage.Value, 0, min(n, 1024))
 }
 
 var (
@@ -1212,7 +1212,7 @@ var (
 
 // initArrayAdditions defines copyWithin, toLocaleString, the methods that change an array by copy,
 // and Symbol.unscopables on Array.prototype.
-func initArrayAdditions(cx *engine.ExecutionContext, proto *engine.Object) {
+func initArrayAdditions(cx *engine.ExecutionContext, proto *storage.Object) {
 	method(cx, proto, "copyWithin", 2, nativeArrayCopyWithin)
 	method(cx, proto, "toLocaleString", 0, nativeArrayToLocaleString)
 	method(cx, proto, "toReversed", 0, nativeArrayToReversed)
@@ -1225,12 +1225,12 @@ func initArrayAdditions(cx *engine.ExecutionContext, proto *engine.Object) {
 		"at", "copyWithin", "entries", "fill", "find", "findIndex", "findLast", "findLastIndex",
 		"flat", "flatMap", "includes", "keys", "toReversed", "toSorted", "toSpliced", "values",
 	} {
-		cx.Define(unscopables, cx.Intern(name), storage.True, engine.FlagsData)
+		cx.Define(unscopables, cx.Intern(name), storage.True, storage.FlagsData)
 	}
-	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolUnscopables), storage.ObjectValue(unscopables), engine.FlagConfigurable)
+	cx.Define(proto, cx.WellKnownSymbol(storage.SymbolUnscopables), storage.ObjectValue(unscopables), storage.FlagConfigurable)
 }
 
-func arrayCopyWithin(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func arrayCopyWithin(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	o := cx.ToObject(this)
 	n := cx.LengthOfArrayLike(o)
 	to := relIndex(cx.ToIntegerOrInfinity(arg(args, 0)), n)
@@ -1262,17 +1262,17 @@ func arrayCopyWithin(cx *engine.ExecutionContext, this engine.Value, args []engi
 	return storage.ObjectValue(o)
 }
 
-func arrayToLocaleString(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func arrayToLocaleString(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	o := cx.ToObject(this)
 	if !cx.EnterLocaleJoin(o) {
 		return cx.NewString("")
 	}
 	defer cx.LeaveLocaleJoin()
 	n := cx.LengthOfArrayLike(o)
-	return joinElements(cx, o, n, ",", cx.Key(engine.KeyToLocaleString))
+	return joinElements(cx, o, n, ",", cx.Key(storage.KeyToLocaleString))
 }
 
-func arrayToReversed(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func arrayToReversed(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	o := cx.ToObject(this)
 	n := cx.LengthOfArrayLike(o)
 	vals := newArrayOfLength(cx, n)
@@ -1282,7 +1282,7 @@ func arrayToReversed(cx *engine.ExecutionContext, this engine.Value, args []engi
 	return cx.NewArrayOf(vals)
 }
 
-func arrayToSorted(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func arrayToSorted(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	cmp := arg(args, 0)
 	if !cmp.IsUndefined() && !cmp.IsCallable() {
 		cx.ThrowTypeError("the comparison function must be either a function or undefined")
@@ -1307,11 +1307,11 @@ func arrayToSorted(cx *engine.ExecutionContext, this engine.Value, args []engine
 	return cx.NewArrayOf(vals)
 }
 
-func arrayToSpliced(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func arrayToSpliced(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	o := cx.ToObject(this)
 	n := cx.LengthOfArrayLike(o)
 	start := relIndex(cx.ToIntegerOrInfinity(arg(args, 0)), n)
-	var items []engine.Value
+	var items []storage.Value
 	if len(args) > 2 {
 		items = args[2:]
 	}
@@ -1338,7 +1338,7 @@ func arrayToSpliced(cx *engine.ExecutionContext, this engine.Value, args []engin
 	return cx.NewArrayOf(vals)
 }
 
-func arrayWith(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func arrayWith(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	o := cx.ToObject(this)
 	n := cx.LengthOfArrayLike(o)
 	rel := cx.ToIntegerOrInfinity(arg(args, 0))
@@ -1369,7 +1369,7 @@ func relIndex(f float64, n int64) int64 {
 }
 
 // sortValues sorts vals with the comparison function cmp, or as strings when cmp is undefined.
-func sortValues(cx *engine.ExecutionContext, vals []engine.Value, cmp engine.Value) {
+func sortValues(cx *engine.ExecutionContext, vals []storage.Value, cmp storage.Value) {
 	if len(vals) < 2 {
 		return
 	}
@@ -1382,7 +1382,7 @@ func sortValues(cx *engine.ExecutionContext, vals []engine.Value, cmp engine.Val
 			if v.IsObject() || v.IsSymbol() {
 				// Object conversion can run code and symbol conversion throws.
 				var pacer engine.Pacer
-				mergeSortPolled(cx, vals, func(a, b engine.Value) int {
+				mergeSortPolled(cx, vals, func(a, b storage.Value) int {
 					x, y := cx.ToString(a), cx.ToString(b)
 					pacer.Steps(cx, min(len(x), len(y)))
 					return wtf8.Compare(x, y)
@@ -1398,16 +1398,16 @@ func sortValues(cx *engine.ExecutionContext, vals []engine.Value, cmp engine.Val
 			if lengths < longSortKey {
 				mergeSortPolled(cx, vals, compareStringValues)
 			} else {
-				mergeSortLong(cx, vals, engine.Value.StringByteLength, compareStringValues)
+				mergeSortLong(cx, vals, storage.Value.StringByteLength, compareStringValues)
 			}
 			return
 		}
 		keyed := make([]keyedValue, len(vals))
-		for i := 0; i < len(vals); i += engine.PollInterval {
+		for i := 0; i < len(vals); i += storage.PollInterval {
 			if i > 0 {
 				cx.Poll()
 			}
-			lengths |= keyValues(cx, keyed[i:], vals[i:min(i+engine.PollInterval, len(vals))])
+			lengths |= keyValues(cx, keyed[i:], vals[i:min(i+storage.PollInterval, len(vals))])
 		}
 		if lengths < longSortKey {
 			mergeSortPolled(cx, keyed, compareKeyedValues)
@@ -1419,7 +1419,7 @@ func sortValues(cx *engine.ExecutionContext, vals []engine.Value, cmp engine.Val
 		}
 		return
 	}
-	mergeSort(vals, func(a, b engine.Value) int {
+	mergeSort(vals, func(a, b storage.Value) int {
 		if cx.ToNumber(cx.Call(cmp.Object(), storage.Undefined, a, b)) < 0 {
 			return -1
 		}
@@ -1513,13 +1513,13 @@ func insertionSort[E any](s []E, compare func(a, b E) int) {
 }
 
 // compareStringValues compares the strings a and b by their code units.
-func compareStringValues(a, b engine.Value) int {
+func compareStringValues(a, b storage.Value) int {
 	return storage.CompareStrings(a, b)
 }
 
 // keyedValue is a value with the string it sorts by.
 type keyedValue struct {
-	v   engine.Value
+	v   storage.Value
 	key wtf8.String
 }
 
@@ -1535,7 +1535,7 @@ func compareKeyedValues(a, b keyedValue) int {
 
 // keyValues sets the elements of keyed to vals with their strings, and returns the bitwise OR of
 // the lengths of the strings in bytes.
-func keyValues(cx *engine.ExecutionContext, keyed []keyedValue, vals []engine.Value) int {
+func keyValues(cx *engine.ExecutionContext, keyed []keyedValue, vals []storage.Value) int {
 	lengths := 0
 	for i, v := range vals {
 		key := cx.ToString(v)
@@ -1588,7 +1588,7 @@ func sortPolled[E any](cx *engine.ExecutionContext, s []E, run int, sortRun func
 func mergeRuns[E any](cx *engine.ExecutionContext, dst, a, b []E, compare func(a, b E) int) {
 	for len(a) > 0 && len(b) > 0 {
 		var k int
-		k, a, b = mergeSome(dst, a, b, engine.PollInterval, compare)
+		k, a, b = mergeSome(dst, a, b, storage.PollInterval, compare)
 		dst = dst[k:]
 		cx.Poll()
 	}
@@ -1616,10 +1616,10 @@ func mergeSome[E any](dst, a, b []E, max int, compare func(a, b E) int) (int, []
 // each element, its index and the object.
 type eachLoop struct {
 	cx        *engine.ExecutionContext
-	o         *engine.Object
+	o         *storage.Object
 	n         int64
-	cb        *engine.Object
-	thisArg   engine.Value
+	cb        *storage.Object
+	thisArg   storage.Value
 	skipHoles bool
 
 	// i is the index of the element of the last call of next.
@@ -1628,7 +1628,7 @@ type eachLoop struct {
 
 // newEachLoop converts this to an object, reads its length and checks the callback of the
 // method name. With skipHoles, the loop skips the indices that are not present.
-func newEachLoop(cx *engine.ExecutionContext, this engine.Value, args []engine.Value, name string, skipHoles bool) eachLoop {
+func newEachLoop(cx *engine.ExecutionContext, this storage.Value, args []storage.Value, name string, skipHoles bool) eachLoop {
 	o := cx.ToObject(this)
 	n := cx.LengthOfArrayLike(o)
 	return eachLoop{
@@ -1644,7 +1644,7 @@ func newEachLoop(cx *engine.ExecutionContext, this engine.Value, args []engine.V
 
 // next calls the callback with the next element. It returns the element and the result of
 // the callback, or false when no element is left.
-func (l *eachLoop) next() (v, r engine.Value, ok bool) {
+func (l *eachLoop) next() (v, r storage.Value, ok bool) {
 	cx, o := l.cx, l.o
 	for i := l.i + 1; i < l.n; i++ {
 		if l.skipHoles {

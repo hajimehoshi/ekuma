@@ -181,7 +181,7 @@ func FuzzBigIntOperators(f *testing.F) {
 
 	cx := engine.NewExecutionContextWithBigIntResultLimit(maxFuzzBigIntBits)
 	builtin.Install(cx)
-	var fns []engine.Value
+	var fns []storage.Value
 	for _, op := range bigIntOperators {
 		// The result of an operation that throws is undefined.
 		fn, err := runScript(cx, "operator", fmt.Sprintf(`(function(x, y) { try { return %s; } catch (e) { if (!(e instanceof RangeError)) throw e; } })`, op.expr))
@@ -196,7 +196,7 @@ func FuzzBigIntOperators(f *testing.F) {
 		}
 		x, y := bigIntFromBytes(xb), bigIntFromBytes(yb)
 		for i, op := range bigIntOperators {
-			var got engine.Value
+			var got storage.Value
 			cx.Run(func() {
 				got = cx.Call(fns[i].Object(), storage.Undefined, storage.NewBigInt(new(big.Int).Set(x)), storage.NewBigInt(new(big.Int).Set(y)))
 			})
@@ -246,12 +246,12 @@ func FuzzBigIntConversions(f *testing.F) {
 			t.Skip("too long")
 		}
 		x, n := bigIntFromBytes(xb), math.Float64frombits(nBits)
-		var result *engine.Object
+		var result *storage.Object
 		cx.Run(func() {
 			result = cx.Call(fn.Object(), storage.Undefined, storage.NewBigInt(new(big.Int).Set(x)), storage.Number(n), storage.Number(float64(bits))).Object()
 		})
-		element := func(i int) engine.Value {
-			var v engine.Value
+		element := func(i int) storage.Value {
+			var v storage.Value
 			cx.Run(func() {
 				v = cx.Get(result, cx.ToPropertyKey(storage.Number(float64(i))))
 			})

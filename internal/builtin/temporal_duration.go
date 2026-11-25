@@ -16,22 +16,22 @@ import (
 var durationFieldNames = [10]string{"years", "months", "weeks", "days", "hours", "minutes", "seconds", "milliseconds", "microseconds", "nanoseconds"}
 
 // newDuration implements CreateTemporalDuration for a valid duration.
-func newDuration(cx *engine.ExecutionContext, d temporal.Duration, nt *engine.Object) engine.Value {
-	proto := cx.GetPrototypeFromConstructor(nt, engine.IntrinsicTemporalDurationPrototype)
+func newDuration(cx *engine.ExecutionContext, d temporal.Duration, nt *storage.Object) storage.Value {
+	proto := cx.GetPrototypeFromConstructor(nt, storage.IntrinsicTemporalDurationPrototype)
 	return storage.ObjectValue(cx.NewTemporalObject(proto, &durationSlots{
 		d: d,
 	}))
 }
 
 // createDuration implements CreateTemporalDuration.
-func createDuration(cx *engine.ExecutionContext, d temporal.Duration, nt *engine.Object) engine.Value {
+func createDuration(cx *engine.ExecutionContext, d temporal.Duration, nt *storage.Object) storage.Value {
 	if !temporal.IsValidDuration(&d) {
 		cx.ThrowRangeError("duration is out of range")
 	}
 	return newDuration(cx, d, nt)
 }
 
-func thisDuration(cx *engine.ExecutionContext, this engine.Value, name string) *durationSlots {
+func thisDuration(cx *engine.ExecutionContext, this storage.Value, name string) *durationSlots {
 	s, ok := storage.TemporalData(this).(*durationSlots)
 	if !ok {
 		incompatible(cx, "Temporal.Duration.prototype."+name, this)
@@ -41,7 +41,7 @@ func thisDuration(cx *engine.ExecutionContext, this engine.Value, name string) *
 
 // toPartialDuration implements ToTemporalPartialDurationRecord. It returns the fields and
 // which of them are present.
-func toPartialDuration(cx *engine.ExecutionContext, v engine.Value) ([10]float64, [10]bool) {
+func toPartialDuration(cx *engine.ExecutionContext, v storage.Value) ([10]float64, [10]bool) {
 	var f [10]float64
 	var has [10]bool
 	if !v.IsObject() {
@@ -66,7 +66,7 @@ func toPartialDuration(cx *engine.ExecutionContext, v engine.Value) ([10]float64
 }
 
 // toTemporalDuration implements ToTemporalDuration, returning the fields.
-func toTemporalDuration(cx *engine.ExecutionContext, item engine.Value) temporal.Duration {
+func toTemporalDuration(cx *engine.ExecutionContext, item storage.Value) temporal.Duration {
 	if s, ok := storage.TemporalData(item).(*durationSlots); ok {
 		return s.d
 	}
@@ -93,7 +93,7 @@ type relativeTo struct {
 }
 
 // getRelativeToOption implements GetTemporalRelativeToOption.
-func getRelativeToOption(cx *engine.ExecutionContext, opts *engine.Object) relativeTo {
+func getRelativeToOption(cx *engine.ExecutionContext, opts *storage.Object) relativeTo {
 	v := get(cx, opts, "relativeTo")
 	if v.IsUndefined() {
 		return relativeTo{}
@@ -186,7 +186,7 @@ func getRelativeToOption(cx *engine.ExecutionContext, opts *engine.Object) relat
 }
 
 // addDurations implements AddDurations.
-func addDurations(cx *engine.ExecutionContext, d temporal.Duration, otherV engine.Value, subtract bool) temporal.Duration {
+func addDurations(cx *engine.ExecutionContext, d temporal.Duration, otherV storage.Value, subtract bool) temporal.Duration {
 	other := toTemporalDuration(cx, otherV)
 	if subtract {
 		other = other.Negated()
@@ -223,8 +223,8 @@ func validateDifferenceIncrement(cx *engine.ExecutionContext, unit temporal.Unit
 	}
 }
 
-func initTemporalDuration(cx *engine.ExecutionContext, ns *engine.Object) {
-	ctor, proto := temporalConstructor(cx, ns, "Duration", 0, engine.IntrinsicTemporalDurationPrototype, nativeDurationConstructor)
+func initTemporalDuration(cx *engine.ExecutionContext, ns *storage.Object) {
+	ctor, proto := temporalConstructor(cx, ns, "Duration", 0, storage.IntrinsicTemporalDurationPrototype, nativeDurationConstructor)
 	method(cx, ctor, "from", 1, nativeDurationFrom)
 	method(cx, ctor, "compare", 2, nativeDurationCompare)
 
@@ -288,7 +288,7 @@ var (
 //
 //go:noinline
 func durationFieldNative(i int, name string) engine.NativeFunc {
-	return temporalNative(func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return temporalNative(func(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 		f := thisDuration(cx, this, name).d.Fields()
 		return storage.Number(f[i])
 	})
@@ -299,7 +299,7 @@ func durationFieldNative(i int, name string) engine.NativeFunc {
 //
 //go:noinline
 func durationAddNative(name string) engine.NativeFunc {
-	return temporalNative(func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return temporalNative(func(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 		s := thisDuration(cx, this, name)
 		return newDuration(cx, addDurations(cx, s.d, arg(args, 0), name == "subtract"), nil)
 	})
@@ -310,12 +310,12 @@ func durationAddNative(name string) engine.NativeFunc {
 //
 //go:noinline
 func durationToJSONNative(name string) engine.NativeFunc {
-	return temporalNative(func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return temporalNative(func(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 		return cx.NewString(wtf8.String(temporal.TemporalDurationToString(&thisDuration(cx, this, name).d, temporal.PrecisionAuto)))
 	})
 }
 
-func durationConstructor(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func durationConstructor(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	nt := newTarget(cx, "Temporal.Duration")
 	var f [10]float64
 	for i := range f {
@@ -326,11 +326,11 @@ func durationConstructor(cx *engine.ExecutionContext, this engine.Value, args []
 	return createDuration(cx, temporal.DurationFromFields(f), nt)
 }
 
-func durationFrom(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func durationFrom(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	return newDuration(cx, toTemporalDuration(cx, arg(args, 0)), nil)
 }
 
-func durationCompare(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func durationCompare(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	one := toTemporalDuration(cx, arg(args, 0))
 	two := toTemporalDuration(cx, arg(args, 1))
 	opts := getOptionsObject(cx, arg(args, 2))
@@ -361,15 +361,15 @@ func durationCompare(cx *engine.ExecutionContext, this engine.Value, args []engi
 	return compareResult(t1.Cmp(t2))
 }
 
-func durationSign(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func durationSign(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	return storage.Number(float64(temporal.DurationSign(&thisDuration(cx, this, "sign").d)))
 }
 
-func durationBlank(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func durationBlank(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	return storage.Bool(temporal.DurationSign(&thisDuration(cx, this, "blank").d) == 0)
 }
 
-func durationWith(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func durationWith(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s := thisDuration(cx, this, "with")
 	pf, has := toPartialDuration(cx, arg(args, 0))
 	f := s.d.Fields()
@@ -381,11 +381,11 @@ func durationWith(cx *engine.ExecutionContext, this engine.Value, args []engine.
 	return createDuration(cx, temporal.DurationFromFields(f), nil)
 }
 
-func durationNegated(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func durationNegated(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	return newDuration(cx, thisDuration(cx, this, "negated").d.Negated(), nil)
 }
 
-func durationAbs(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func durationAbs(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	f := thisDuration(cx, this, "abs").d.Fields()
 	for i := range f {
 		f[i] = math.Abs(f[i])
@@ -393,7 +393,7 @@ func durationAbs(cx *engine.ExecutionContext, this engine.Value, args []engine.V
 	return newDuration(cx, temporal.DurationFromFields(f), nil)
 }
 
-func durationRound(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func durationRound(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s := thisDuration(cx, this, "round")
 	d := s.d
 	opts := roundToOptions(cx, arg(args, 0), "smallestUnit")
@@ -456,7 +456,7 @@ func durationRound(cx *engine.ExecutionContext, this engine.Value, args []engine
 	return newDuration(cx, must(temporal.TemporalDurationFromInternal(id, largest)), nil)
 }
 
-func durationTotal(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func durationTotal(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s := thisDuration(cx, this, "total")
 	d := s.d
 	opts := roundToOptions(cx, arg(args, 0), "unit")
@@ -480,7 +480,7 @@ func durationTotal(cx *engine.ExecutionContext, this engine.Value, args []engine
 	return storage.Number(temporal.TotalTimeDuration(id.Time, unit))
 }
 
-func durationToString(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func durationToString(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s := thisDuration(cx, this, "toString")
 	d := s.d
 	opts := getOptionsObject(cx, arg(args, 0))

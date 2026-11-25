@@ -42,12 +42,12 @@ func defaultDigits() number.Digits {
 }
 
 // newRelativeTimeFormat implements the Intl.RelativeTimeFormat constructor.
-func newRelativeTimeFormat(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func newRelativeTimeFormat(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	nt := cx.GetNewTarget()
 	if nt == nil {
 		cx.ThrowTypeError("constructor Intl.RelativeTimeFormat requires 'new'")
 	}
-	proto := cx.GetPrototypeFromConstructor(nt, engine.IntrinsicIntlRelativeTimeFormatPrototype)
+	proto := cx.GetPrototypeFromConstructor(nt, storage.IntrinsicIntlRelativeTimeFormatPrototype)
 	requested := canonicalizeLocaleList(cx, arg(args, 0))
 	options := optionsObject(cx, arg(args, 1))
 	res := resolveNumberingSystemLocale(cx, requested, options)
@@ -72,7 +72,7 @@ func newRelativeTimeFormat(cx *engine.ExecutionContext, this engine.Value, args 
 }
 
 // thisRelativeTimeFormat implements RequireInternalSlot for an Intl.RelativeTimeFormat.
-func thisRelativeTimeFormat(cx *engine.ExecutionContext, this engine.Value, name string) *relativeTimeFormatData {
+func thisRelativeTimeFormat(cx *engine.ExecutionContext, this storage.Value, name string) *relativeTimeFormatData {
 	rtf, ok := storage.IntlData(this).(*relativeTimeFormatData)
 	if !ok {
 		cx.ThrowTypeError("Intl.RelativeTimeFormat.prototype." + name + " called on an object that is not an Intl.RelativeTimeFormat")
@@ -131,7 +131,7 @@ func (rtf *relativeTimeFormatData) partition(cx *engine.ExecutionContext, value 
 
 // partitionArgs implements PartitionRelativeTimePattern for the arguments of format and
 // formatToParts, converting them first.
-func (rtf *relativeTimeFormatData) partitionArgs(cx *engine.ExecutionContext, args []engine.Value) []relativeTimePart {
+func (rtf *relativeTimeFormatData) partitionArgs(cx *engine.ExecutionContext, args []storage.Value) []relativeTimePart {
 	value := cx.ToNumber(arg(args, 0))
 	unit := wtf8.ToValidUTF8(cx.ToString(arg(args, 1)))
 	return rtf.partition(cx, value, unit)
@@ -145,17 +145,17 @@ var (
 )
 
 // initRelativeTimeFormat defines Intl.RelativeTimeFormat.
-func initRelativeTimeFormat(cx *engine.ExecutionContext, ns *engine.Object) {
-	ctor, proto := constructor(cx, ns, "RelativeTimeFormat", 0, engine.IntrinsicIntlRelativeTimeFormatPrototype, nativeNewRelativeTimeFormat)
+func initRelativeTimeFormat(cx *engine.ExecutionContext, ns *storage.Object) {
+	ctor, proto := constructor(cx, ns, "RelativeTimeFormat", 0, storage.IntrinsicIntlRelativeTimeFormatPrototype, nativeNewRelativeTimeFormat)
 
 	method(cx, ctor, "supportedLocalesOf", 1, nativeSupportedLocalesOf)
 	method(cx, proto, "format", 2, nativeRelativeTimeFormatFormat)
 	method(cx, proto, "formatToParts", 2, nativeRelativeTimeFormatFormatToParts)
 	method(cx, proto, "resolvedOptions", 0, nativeRelativeTimeFormatResolvedOptions)
-	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Intl.RelativeTimeFormat"), engine.FlagConfigurable)
+	cx.Define(proto, cx.WellKnownSymbol(storage.SymbolToStringTag), cx.SharedString("Intl.RelativeTimeFormat"), storage.FlagConfigurable)
 }
 
-func relativeTimeFormatFormat(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func relativeTimeFormatFormat(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	rtf := thisRelativeTimeFormat(cx, this, "format")
 	var b strings.Builder
 	for _, p := range rtf.partitionArgs(cx, args) {
@@ -164,7 +164,7 @@ func relativeTimeFormatFormat(cx *engine.ExecutionContext, this engine.Value, ar
 	return cx.NewString(wtf8.String(b.String()))
 }
 
-func relativeTimeFormatFormatToParts(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func relativeTimeFormatFormatToParts(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	rtf := thisRelativeTimeFormat(cx, this, "formatToParts")
 	parts := rtf.partitionArgs(cx, args)
 	return unitPartsArray(cx, len(parts), func(i int) (string, string, string) {
@@ -172,23 +172,23 @@ func relativeTimeFormatFormatToParts(cx *engine.ExecutionContext, this engine.Va
 	})
 }
 
-func relativeTimeFormatResolvedOptions(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func relativeTimeFormatResolvedOptions(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	rtf := thisRelativeTimeFormat(cx, this, "resolvedOptions")
 	return resolvedOptions(cx, "locale", rtf.locale, "style", rtf.style, "numeric", rtf.numeric, "numberingSystem", rtf.numberingSystem)
 }
 
 // unitPartsArray returns the parts as an array of objects with the properties "type" and
 // "value", and "unit" for the parts with a unit.
-func unitPartsArray(cx *engine.ExecutionContext, n int, part func(i int) (typ, value, unit string)) engine.Value {
-	keys := [...]engine.PropKey{
+func unitPartsArray(cx *engine.ExecutionContext, n int, part func(i int) (typ, value, unit string)) storage.Value {
+	keys := [...]storage.PropKey{
 		storage.NamedKey(cx.Intern("type")),
 		storage.NamedKey(cx.Intern("value")),
 		storage.NamedKey(cx.Intern("unit")),
 	}
-	vals := make([]engine.Value, n)
+	vals := make([]storage.Value, n)
 	for i := range n {
 		typ, value, unit := part(i)
-		props := [3]engine.Value{cx.NewString(wtf8.String(typ)), cx.NewString(wtf8.String(value))}
+		props := [3]storage.Value{cx.NewString(wtf8.String(typ)), cx.NewString(wtf8.String(value))}
 		propertyCount := 2
 		if unit != "" {
 			props[2] = cx.NewString(wtf8.String(unit))

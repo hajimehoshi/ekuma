@@ -95,7 +95,7 @@ func check(err error) {
 //
 //go:noinline
 func temporalNative(f engine.NativeFunc) engine.NativeFunc {
-	return func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return func(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 		defer func() {
 			if e := recover(); e != nil {
 				if tf, ok := e.(temporalFailure); ok {
@@ -109,12 +109,12 @@ func temporalNative(f engine.NativeFunc) engine.NativeFunc {
 }
 
 // get returns the property name of o.
-func get(cx *engine.ExecutionContext, o *engine.Object, name string) engine.Value {
+func get(cx *engine.ExecutionContext, o *storage.Object, name string) storage.Value {
 	return cx.Get(o, storage.NamedKey(cx.Intern(wtf8.String(name))))
 }
 
 // requireString returns v as a Go string, or throws a TypeError when it is not a String.
-func requireString(cx *engine.ExecutionContext, v engine.Value, what string) string {
+func requireString(cx *engine.ExecutionContext, v storage.Value, what string) string {
 	if !v.IsString() {
 		cx.ThrowTypeError(what + " must be a string, not " + cx.DisplayString(v))
 	}
@@ -122,7 +122,7 @@ func requireString(cx *engine.ExecutionContext, v engine.Value, what string) str
 }
 
 // toIntegerWithTruncation implements ToIntegerWithTruncation.
-func toIntegerWithTruncation(cx *engine.ExecutionContext, v engine.Value, what string) float64 {
+func toIntegerWithTruncation(cx *engine.ExecutionContext, v storage.Value, what string) float64 {
 	n := cx.ToNumber(v)
 	if math.IsNaN(n) || math.IsInf(n, 0) {
 		cx.ThrowRangeError(what + " must be a finite number")
@@ -131,7 +131,7 @@ func toIntegerWithTruncation(cx *engine.ExecutionContext, v engine.Value, what s
 }
 
 // toPositiveIntegerWithTruncation implements ToPositiveIntegerWithTruncation.
-func toPositiveIntegerWithTruncation(cx *engine.ExecutionContext, v engine.Value, what string) float64 {
+func toPositiveIntegerWithTruncation(cx *engine.ExecutionContext, v storage.Value, what string) float64 {
 	n := toIntegerWithTruncation(cx, v, what)
 	if n <= 0 {
 		cx.ThrowRangeError(what + " must be positive")
@@ -140,7 +140,7 @@ func toPositiveIntegerWithTruncation(cx *engine.ExecutionContext, v engine.Value
 }
 
 // toIntegerIfIntegral implements ToIntegerIfIntegral.
-func toIntegerIfIntegral(cx *engine.ExecutionContext, v engine.Value, what string) float64 {
+func toIntegerIfIntegral(cx *engine.ExecutionContext, v storage.Value, what string) float64 {
 	n := cx.ToNumber(v)
 	if math.IsNaN(n) || math.IsInf(n, 0) || n != math.Trunc(n) {
 		cx.ThrowRangeError(what + " must be an integer")
@@ -149,7 +149,7 @@ func toIntegerIfIntegral(cx *engine.ExecutionContext, v engine.Value, what strin
 }
 
 // getOptionsObject implements GetOptionsObject.
-func getOptionsObject(cx *engine.ExecutionContext, v engine.Value) *engine.Object {
+func getOptionsObject(cx *engine.ExecutionContext, v storage.Value) *storage.Object {
 	if v.IsUndefined() {
 		return cx.NewObject(nil)
 	}
@@ -163,7 +163,7 @@ func getOptionsObject(cx *engine.ExecutionContext, v engine.Value) *engine.Objec
 // temporalOption implements GetOption for a String option whose allowed values are values. It
 // returns the index of the value, or fallback when the option is undefined. A negative
 // fallback makes the option required.
-func temporalOption(cx *engine.ExecutionContext, opts *engine.Object, name string, values []string, fallback int) int {
+func temporalOption(cx *engine.ExecutionContext, opts *storage.Object, name string, values []string, fallback int) int {
 	v := get(cx, opts, name)
 	if v.IsUndefined() {
 		if fallback < 0 {
@@ -179,37 +179,37 @@ func temporalOption(cx *engine.ExecutionContext, opts *engine.Object, name strin
 	return 0
 }
 
-func getOverflowOption(cx *engine.ExecutionContext, opts *engine.Object) temporal.Overflow {
+func getOverflowOption(cx *engine.ExecutionContext, opts *storage.Object) temporal.Overflow {
 	return temporal.Overflow(temporalOption(cx, opts, "overflow", []string{"constrain", "reject"}, 0))
 }
 
-func getDisambiguationOption(cx *engine.ExecutionContext, opts *engine.Object) temporal.Disambiguation {
+func getDisambiguationOption(cx *engine.ExecutionContext, opts *storage.Object) temporal.Disambiguation {
 	return temporal.Disambiguation(temporalOption(cx, opts, "disambiguation", []string{"compatible", "earlier", "later", "reject"}, 0))
 }
 
-func getOffsetOption(cx *engine.ExecutionContext, opts *engine.Object, fallback temporal.OffsetOption) temporal.OffsetOption {
+func getOffsetOption(cx *engine.ExecutionContext, opts *storage.Object, fallback temporal.OffsetOption) temporal.OffsetOption {
 	return temporal.OffsetOption(temporalOption(cx, opts, "offset", []string{"prefer", "use", "ignore", "reject"}, int(fallback)))
 }
 
-func getRoundingModeOption(cx *engine.ExecutionContext, opts *engine.Object, fallback temporal.RoundingMode) temporal.RoundingMode {
+func getRoundingModeOption(cx *engine.ExecutionContext, opts *storage.Object, fallback temporal.RoundingMode) temporal.RoundingMode {
 	return temporal.RoundingMode(temporalOption(cx, opts, "roundingMode", temporal.RoundingModeNames, int(fallback)))
 }
 
-func getShowCalendarOption(cx *engine.ExecutionContext, opts *engine.Object) temporal.ShowCalendar {
+func getShowCalendarOption(cx *engine.ExecutionContext, opts *storage.Object) temporal.ShowCalendar {
 	return temporal.ShowCalendar(temporalOption(cx, opts, "calendarName", []string{"auto", "always", "never", "critical"}, 0))
 }
 
-func getShowTimeZoneOption(cx *engine.ExecutionContext, opts *engine.Object) temporal.ShowTimeZone {
+func getShowTimeZoneOption(cx *engine.ExecutionContext, opts *storage.Object) temporal.ShowTimeZone {
 	return temporal.ShowTimeZone(temporalOption(cx, opts, "timeZoneName", []string{"auto", "never", "critical"}, 0))
 }
 
 // getShowOffsetOption reports whether the offset option of toString is "auto".
-func getShowOffsetOption(cx *engine.ExecutionContext, opts *engine.Object) bool {
+func getShowOffsetOption(cx *engine.ExecutionContext, opts *storage.Object) bool {
 	return temporalOption(cx, opts, "offset", []string{"auto", "never"}, 0) == 0
 }
 
 // getRoundingIncrementOption implements GetRoundingIncrementOption.
-func getRoundingIncrementOption(cx *engine.ExecutionContext, opts *engine.Object) int64 {
+func getRoundingIncrementOption(cx *engine.ExecutionContext, opts *storage.Object) int64 {
 	v := get(cx, opts, "roundingIncrement")
 	if v.IsUndefined() {
 		return 1
@@ -222,7 +222,7 @@ func getRoundingIncrementOption(cx *engine.ExecutionContext, opts *engine.Object
 }
 
 // getFractionalSecondDigitsOption implements GetTemporalFractionalSecondDigitsOption.
-func getFractionalSecondDigitsOption(cx *engine.ExecutionContext, opts *engine.Object) temporal.Precision {
+func getFractionalSecondDigitsOption(cx *engine.ExecutionContext, opts *storage.Object) temporal.Precision {
 	v := get(cx, opts, "fractionalSecondDigits")
 	if v.IsUndefined() {
 		return temporal.PrecisionAuto
@@ -246,7 +246,7 @@ func getFractionalSecondDigitsOption(cx *engine.ExecutionContext, opts *engine.O
 
 // getUnitOption implements GetTemporalUnitValuedOption. It returns UnitUnset for an undefined
 // option that is not required.
-func getUnitOption(cx *engine.ExecutionContext, opts *engine.Object, key string, required bool) temporal.Unit {
+func getUnitOption(cx *engine.ExecutionContext, opts *storage.Object, key string, required bool) temporal.Unit {
 	v := get(cx, opts, key)
 	if v.IsUndefined() {
 		if required {
@@ -295,7 +295,7 @@ type differenceSettings struct {
 }
 
 // getDifferenceSettings implements GetDifferenceSettings.
-func getDifferenceSettings(cx *engine.ExecutionContext, since bool, opts *engine.Object, group unitGroup, disallowed []temporal.Unit, fallbackSmallest, smallestLargestDefault temporal.Unit) differenceSettings {
+func getDifferenceSettings(cx *engine.ExecutionContext, since bool, opts *storage.Object, group unitGroup, disallowed []temporal.Unit, fallbackSmallest, smallestLargestDefault temporal.Unit) differenceSettings {
 	largest := getUnitOption(cx, opts, "largestUnit", false)
 	increment := getRoundingIncrementOption(cx, opts)
 	mode := getRoundingModeOption(cx, opts, temporal.RoundTrunc)
@@ -337,7 +337,7 @@ func getDifferenceSettings(cx *engine.ExecutionContext, since bool, opts *engine
 
 // roundToOptions returns the options object of a round method, where a string stands for the
 // smallestUnit option (or the key option).
-func roundToOptions(cx *engine.ExecutionContext, v engine.Value, key string) *engine.Object {
+func roundToOptions(cx *engine.ExecutionContext, v storage.Value, key string) *storage.Object {
 	if v.IsUndefined() {
 		cx.ThrowTypeError("options are required")
 	}
@@ -359,7 +359,7 @@ func SystemTimeZone(cx *engine.ExecutionContext) temporal.TimeZone {
 }
 
 // toTimeZone implements ToTemporalTimeZoneIdentifier, returning the time zone.
-func toTimeZone(cx *engine.ExecutionContext, v engine.Value) temporal.TimeZone {
+func toTimeZone(cx *engine.ExecutionContext, v storage.Value) temporal.TimeZone {
 	if s, ok := storage.TemporalData(v).(*zonedDateTimeSlots); ok {
 		return s.tz
 	}
@@ -377,7 +377,7 @@ func toTimeZone(cx *engine.ExecutionContext, v engine.Value) temporal.TimeZone {
 }
 
 // calendarOf returns the calendar of v when it is an object with a [[Calendar]] slot.
-func calendarOf(v engine.Value) (string, bool) {
+func calendarOf(v storage.Value) (string, bool) {
 	switch s := storage.TemporalData(v).(type) {
 	case *plainDateSlots:
 		return s.cal, true
@@ -394,7 +394,7 @@ func calendarOf(v engine.Value) (string, bool) {
 }
 
 // toCalendar implements ToTemporalCalendarIdentifier.
-func toCalendar(cx *engine.ExecutionContext, v engine.Value) string {
+func toCalendar(cx *engine.ExecutionContext, v storage.Value) string {
 	if c, ok := calendarOf(v); ok {
 		return c
 	}
@@ -417,7 +417,7 @@ func parseCalendarString(cx *engine.ExecutionContext, s string) string {
 }
 
 // calendarWithISODefault implements GetTemporalCalendarIdentifierWithISODefault.
-func calendarWithISODefault(cx *engine.ExecutionContext, item *engine.Object) string {
+func calendarWithISODefault(cx *engine.ExecutionContext, item *storage.Object) string {
 	if c, ok := calendarOf(storage.ObjectValue(item)); ok {
 		return c
 	}
@@ -454,7 +454,7 @@ const (
 
 // prepareCalendarFields implements PrepareCalendarFields. names are
 // the names of the fields to read.
-func prepareCalendarFields(cx *engine.ExecutionContext, cal string, bag *engine.Object, names []string, req fieldsRequirement) temporal.CalendarFields {
+func prepareCalendarFields(cx *engine.ExecutionContext, cal string, bag *storage.Object, names []string, req fieldsRequirement) temporal.CalendarFields {
 	names = slices.Clone(names)
 	// CalendarExtraFields.
 	if slices.Contains(names, "year") && temporal.CalendarSupportsEra(cal) {
@@ -531,7 +531,7 @@ type timeRecordFields struct {
 }
 
 // toTemporalTimeRecord implements ToTemporalTimeRecord.
-func toTemporalTimeRecord(cx *engine.ExecutionContext, bag *engine.Object, partial bool) timeRecordFields {
+func toTemporalTimeRecord(cx *engine.ExecutionContext, bag *storage.Object, partial bool) timeRecordFields {
 	var r timeRecordFields
 	any := false
 	// The fields in alphabetical order, with their indices in values.
@@ -567,7 +567,7 @@ func interpretDateTimeFields(cx *engine.ExecutionContext, cal string, f temporal
 }
 
 // rejectTemporalLikeObject implements IsPartialTemporalObject's rejections.
-func rejectTemporalLikeObject(cx *engine.ExecutionContext, v engine.Value) *engine.Object {
+func rejectTemporalLikeObject(cx *engine.ExecutionContext, v storage.Value) *storage.Object {
 	if !v.IsObject() {
 		cx.ThrowTypeError("argument must be an object")
 	}
@@ -586,7 +586,7 @@ func rejectTemporalLikeObject(cx *engine.ExecutionContext, v engine.Value) *engi
 }
 
 // newTarget returns the new.target of a constructor, or throws a TypeError when it was called.
-func newTarget(cx *engine.ExecutionContext, name string) *engine.Object {
+func newTarget(cx *engine.ExecutionContext, name string) *storage.Object {
 	nt := cx.GetNewTarget()
 	if nt == nil {
 		cx.ThrowTypeError("constructor " + name + " requires 'new'")
@@ -595,14 +595,14 @@ func newTarget(cx *engine.ExecutionContext, name string) *engine.Object {
 }
 
 // temporalConstructor defines a Temporal constructor and returns it and its intrinsic prototype.
-func temporalConstructor(cx *engine.ExecutionContext, ns *engine.Object, name wtf8.String, length int, protoID engine.Intrinsic, f engine.Native) (*engine.Object, *engine.Object) {
+func temporalConstructor(cx *engine.ExecutionContext, ns *storage.Object, name wtf8.String, length int, protoID storage.Intrinsic, f storage.Native) (*storage.Object, *storage.Object) {
 	proto := cx.NewOrdinaryObject()
 	cx.SetIntrinsic(protoID, proto)
 	c := cx.NewNativeConstructor(name, length, f)
 	cx.DefineConstructorPrototype(c, protoID)
-	cx.Define(proto, cx.Key(engine.KeyConstructor), storage.ObjectValue(c), engine.FlagsHidden)
-	cx.Define(ns, cx.Intern(name), storage.ObjectValue(c), engine.FlagsHidden)
-	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Temporal."+name), engine.FlagConfigurable)
+	cx.Define(proto, cx.Key(storage.KeyConstructor), storage.ObjectValue(c), storage.FlagsHidden)
+	cx.Define(ns, cx.Intern(name), storage.ObjectValue(c), storage.FlagsHidden)
+	cx.Define(proto, cx.WellKnownSymbol(storage.SymbolToStringTag), cx.SharedString("Temporal."+name), storage.FlagConfigurable)
 	return c, proto
 }
 
@@ -610,20 +610,20 @@ func temporalConstructor(cx *engine.ExecutionContext, ns *engine.Object, name wt
 //
 //go:noinline
 func temporalValueOfNative(name string) engine.NativeFunc {
-	return temporalNative(func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return temporalNative(func(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 		cx.ThrowTypeError("use Temporal." + name + ".compare or equals to compare Temporal." + name + " values, and toString to convert them")
 		return storage.Undefined
 	})
 }
 
 // incompatible throws the TypeError of a method called on a receiver of a wrong type.
-func incompatible(cx *engine.ExecutionContext, what string, this engine.Value) {
+func incompatible(cx *engine.ExecutionContext, what string, this storage.Value) {
 	cx.ThrowTypeError(what + " called on incompatible receiver " + cx.DisplayString(this))
 }
 
 // bigIntToEpochNs returns the BigInt v as epoch nanoseconds, or throws a RangeError when they
 // are not valid.
-func bigIntToEpochNs(cx *engine.ExecutionContext, v engine.Value) temporal.Int128 {
+func bigIntToEpochNs(cx *engine.ExecutionContext, v storage.Value) temporal.Int128 {
 	b := cx.ToBigInt(v).BigInt()
 	ns, ok := temporal.Int128FromBig(b)
 	if !ok || !temporal.IsValidEpochNanoseconds(ns) {
@@ -633,26 +633,26 @@ func bigIntToEpochNs(cx *engine.ExecutionContext, v engine.Value) temporal.Int12
 }
 
 // epochNsValue returns ns as a BigInt.
-func epochNsValue(cx *engine.ExecutionContext, ns temporal.Int128) engine.Value {
+func epochNsValue(cx *engine.ExecutionContext, ns temporal.Int128) storage.Value {
 	return storage.NewBigInt(ns.Big())
 }
 
 // epochMilliseconds returns floor(ns / 10⁶) as a Number.
-func epochMilliseconds(ns temporal.Int128) engine.Value {
+func epochMilliseconds(ns temporal.Int128) storage.Value {
 	ms, _ := ns.FloorDivInt64(1_000_000)
 	return storage.Number(ms.Float64())
 }
 
 // compareResult returns c as a Number.
-func compareResult(c int) engine.Value {
+func compareResult(c int) storage.Value {
 	return storage.Number(float64(c))
 }
 
 // initTemporal defines the Temporal namespace and Date.prototype.toTemporalInstant. The
 // contents of the namespace are created when they are first needed.
 func initTemporal(cx *engine.ExecutionContext) {
-	ns := cx.NewLazyObject(cx.Intrinsic(engine.IntrinsicObjectPrototype), func(cx *engine.ExecutionContext, ns *engine.Object) {
-		cx.Define(ns, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Temporal"), engine.FlagConfigurable)
+	ns := cx.NewLazyObject(cx.Intrinsic(storage.IntrinsicObjectPrototype), func(cx *engine.ExecutionContext, ns *storage.Object) {
+		cx.Define(ns, cx.WellKnownSymbol(storage.SymbolToStringTag), cx.SharedString("Temporal"), storage.FlagConfigurable)
 		initTemporalInstant(cx, ns)
 		initTemporalDuration(cx, ns)
 		initTemporalPlainDate(cx, ns)
@@ -663,15 +663,15 @@ func initTemporal(cx *engine.ExecutionContext) {
 		initTemporalZonedDateTime(cx, ns)
 		initTemporalNow(cx, ns)
 	})
-	cx.SetIntrinsic(engine.IntrinsicTemporal, ns)
-	cx.Define(cx.GlobalObject().Object(), cx.Intern("Temporal"), storage.ObjectValue(ns), engine.FlagsHidden)
+	cx.SetIntrinsic(storage.IntrinsicTemporal, ns)
+	cx.Define(cx.GlobalObject().Object(), cx.Intern("Temporal"), storage.ObjectValue(ns), storage.FlagsHidden)
 
-	method(cx, cx.Intrinsic(engine.IntrinsicDatePrototype), "toTemporalInstant", 0, nativeDateToTemporalInstant)
+	method(cx, cx.Intrinsic(storage.IntrinsicDatePrototype), "toTemporalInstant", 0, nativeDateToTemporalInstant)
 }
 
 var nativeDateToTemporalInstant = engine.RegisterNative(temporalNative(dateToTemporalInstant))
 
-func dateToTemporalInstant(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func dateToTemporalInstant(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	tv := thisDate(cx, this, "toTemporalInstant")
 	if math.IsNaN(tv) {
 		cx.ThrowRangeError("invalid time value")
@@ -681,7 +681,7 @@ func dateToTemporalInstant(cx *engine.ExecutionContext, this engine.Value, args 
 
 // TemporalPlainDateOf returns the ISO date and the calendar of v, and reports whether v is a
 // Temporal.PlainDate.
-func TemporalPlainDateOf(v engine.Value) (temporal.ISODate, string, bool) {
+func TemporalPlainDateOf(v storage.Value) (temporal.ISODate, string, bool) {
 	s, ok := storage.TemporalData(v).(*plainDateSlots)
 	if !ok {
 		return temporal.ISODate{}, "", false
@@ -691,7 +691,7 @@ func TemporalPlainDateOf(v engine.Value) (temporal.ISODate, string, bool) {
 
 // TemporalPlainYearMonthOf returns the ISO date and the calendar of v, and reports whether v
 // is a Temporal.PlainYearMonth.
-func TemporalPlainYearMonthOf(v engine.Value) (temporal.ISODate, string, bool) {
+func TemporalPlainYearMonthOf(v storage.Value) (temporal.ISODate, string, bool) {
 	s, ok := storage.TemporalData(v).(*plainYearMonthSlots)
 	if !ok {
 		return temporal.ISODate{}, "", false
@@ -701,7 +701,7 @@ func TemporalPlainYearMonthOf(v engine.Value) (temporal.ISODate, string, bool) {
 
 // TemporalPlainMonthDayOf returns the ISO date and the calendar of v, and reports whether v
 // is a Temporal.PlainMonthDay.
-func TemporalPlainMonthDayOf(v engine.Value) (temporal.ISODate, string, bool) {
+func TemporalPlainMonthDayOf(v storage.Value) (temporal.ISODate, string, bool) {
 	s, ok := storage.TemporalData(v).(*plainMonthDaySlots)
 	if !ok {
 		return temporal.ISODate{}, "", false
@@ -710,7 +710,7 @@ func TemporalPlainMonthDayOf(v engine.Value) (temporal.ISODate, string, bool) {
 }
 
 // TemporalPlainTimeOf returns the time of v, and reports whether v is a Temporal.PlainTime.
-func TemporalPlainTimeOf(v engine.Value) (temporal.Time, bool) {
+func TemporalPlainTimeOf(v storage.Value) (temporal.Time, bool) {
 	s, ok := storage.TemporalData(v).(*plainTimeSlots)
 	if !ok {
 		return temporal.Time{}, false
@@ -720,7 +720,7 @@ func TemporalPlainTimeOf(v engine.Value) (temporal.Time, bool) {
 
 // TemporalPlainDateTimeOf returns the ISO date and time and the calendar of v, and reports
 // whether v is a Temporal.PlainDateTime.
-func TemporalPlainDateTimeOf(v engine.Value) (temporal.ISODateTime, string, bool) {
+func TemporalPlainDateTimeOf(v storage.Value) (temporal.ISODateTime, string, bool) {
 	s, ok := storage.TemporalData(v).(*plainDateTimeSlots)
 	if !ok {
 		return temporal.ISODateTime{}, "", false
@@ -730,7 +730,7 @@ func TemporalPlainDateTimeOf(v engine.Value) (temporal.ISODateTime, string, bool
 
 // TemporalZonedDateTimeOf returns the epoch nanoseconds, the time zone and the calendar of v,
 // and reports whether v is a Temporal.ZonedDateTime.
-func TemporalZonedDateTimeOf(v engine.Value) (temporal.Int128, temporal.TimeZone, string, bool) {
+func TemporalZonedDateTimeOf(v storage.Value) (temporal.Int128, temporal.TimeZone, string, bool) {
 	s, ok := storage.TemporalData(v).(*zonedDateTimeSlots)
 	if !ok {
 		return temporal.Int128{}, temporal.TimeZone{}, "", false
@@ -740,7 +740,7 @@ func TemporalZonedDateTimeOf(v engine.Value) (temporal.Int128, temporal.TimeZone
 
 // TemporalInstantOf returns the epoch nanoseconds of v, and reports whether v is a
 // Temporal.Instant.
-func TemporalInstantOf(v engine.Value) (temporal.Int128, bool) {
+func TemporalInstantOf(v storage.Value) (temporal.Int128, bool) {
 	s, ok := storage.TemporalData(v).(*instantSlots)
 	if !ok {
 		return temporal.Int128{}, false
@@ -749,7 +749,7 @@ func TemporalInstantOf(v engine.Value) (temporal.Int128, bool) {
 }
 
 // TemporalDurationOf returns the fields of v, and reports whether v is a Temporal.Duration.
-func TemporalDurationOf(v engine.Value) (temporal.Duration, bool) {
+func TemporalDurationOf(v storage.Value) (temporal.Duration, bool) {
 	s, ok := storage.TemporalData(v).(*durationSlots)
 	if !ok {
 		return temporal.Duration{}, false

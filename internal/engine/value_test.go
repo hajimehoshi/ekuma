@@ -17,7 +17,7 @@ func TestDisplayStringLoneSurrogates(t *testing.T) {
 	s := wtf8.FromUTF16([]uint16{'a', 0xDE00, 0xD83D})
 	for _, tc := range []struct {
 		name string
-		v    engine.Value
+		v    storage.Value
 		want string
 	}{
 		{
@@ -38,7 +38,7 @@ func TestDisplayStringLoneSurrogates(t *testing.T) {
 }
 
 func TestZeroValueUndefined(t *testing.T) {
-	var v engine.Value
+	var v storage.Value
 	if !v.IsUndefined() || v.IsNumber() || storage.ToBoolean(v) {
 		t.Error("zero value must be undefined, nonnumeric, and falsy")
 	}

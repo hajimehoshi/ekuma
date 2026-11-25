@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/hajimehoshi/ekuma/internal/engine"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
@@ -33,7 +34,7 @@ func TestSearchPollsForLongPattern(t *testing.T) {
 	// The text is too short for reading it to poll.
 	text := cx.NewString("é" + wtf8.String(strings.Repeat("x", 100)))
 	// The pattern starts with a lone low surrogate.
-	sub := cx.NewString(wtf8.String("\xed\xb0\x80" + strings.Repeat("x", parts*engine.PollInterval)))
+	sub := cx.NewString(wtf8.String("\xed\xb0\x80" + strings.Repeat("x", parts*storage.PollInterval)))
 	var polls int
 	if got := text.UnitIndexOf(sub, 0, func() { polls++ }); got != -1 {
 		t.Errorf("UnitIndexOf = %d, want -1", got)

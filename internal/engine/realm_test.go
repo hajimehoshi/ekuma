@@ -12,14 +12,14 @@ import (
 
 func TestRealmIntrinsic(t *testing.T) {
 	cx, _ := engine.NewExecutionContext(nil)
-	var want *engine.Object
+	var want *storage.Object
 	created := cx.CreateRealm(func(cx *engine.ExecutionContext) {
 		want = cx.ProtoOf(cx.GlobalObject().Object())
-		if got := cx.Intrinsic(engine.IntrinsicPromisePrototype); got != nil {
+		if got := cx.Intrinsic(storage.IntrinsicPromisePrototype); got != nil {
 			t.Errorf("unset Promise prototype = %p, want nil", got)
 		}
 	})
-	if got := created.Intrinsic(engine.IntrinsicObjectPrototype); got != want {
+	if got := created.Intrinsic(storage.IntrinsicObjectPrototype); got != want {
 		t.Errorf("Object prototype = %p, want %p from the selected realm", got, want)
 	}
 }
@@ -35,7 +35,7 @@ func TestCreateRealmThrow(t *testing.T) {
 		}()
 		cx.CreateRealm(func(cx *engine.ExecutionContext) {
 			created = cx
-			cx.Throw(storage.ObjectValue(created.Intrinsic(engine.IntrinsicObjectPrototype)))
+			cx.Throw(storage.ObjectValue(created.Intrinsic(storage.IntrinsicObjectPrototype)))
 		})
 	})
 	if ok {

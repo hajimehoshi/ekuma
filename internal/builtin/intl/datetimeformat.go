@@ -41,7 +41,7 @@ type dateTimeFormatData struct {
 	instant        *date.Format
 
 	formatters  map[*date.Format]*date.Formatter
-	boundFormat *engine.Object
+	boundFormat *storage.Object
 }
 
 // DateTimeZoneName returns the localized name for Date strings, or empty if unavailable.
@@ -77,7 +77,7 @@ func hourCyclesOf(string) []string {
 
 // typeOption reads the option name, which must match the type production of a Unicode locale
 // identifier.
-func typeOption(cx *engine.ExecutionContext, options *engine.Object, name string) (string, bool) {
+func typeOption(cx *engine.ExecutionContext, options *storage.Object, name string) (string, bool) {
 	s, ok := getOption(cx, options, name)
 	if !ok {
 		return "", false
@@ -110,13 +110,13 @@ var componentOptions = []struct {
 // createDateTimeFormat implements CreateDateTimeFormat after OrdinaryCreateFromConstructor.
 // toLocaleStringTZ is the time zone of Temporal.ZonedDateTime.prototype.toLocaleString, or
 // nil.
-func createDateTimeFormat(cx *engine.ExecutionContext, locales, opts engine.Value, required, defaults string, toLocaleStringTZ *temporal.TimeZone) *dateTimeFormatData {
+func createDateTimeFormat(cx *engine.ExecutionContext, locales, opts storage.Value, required, defaults string, toLocaleStringTZ *temporal.TimeZone) *dateTimeFormatData {
 	requested := canonicalizeLocaleList(cx, locales)
 	options := optionsObject(cx, opts)
 	bestFit := localeMatcher(cx, options)
 	cal, hasCal := typeOption(cx, options, "calendar")
 	nu, hasNu := typeOption(cx, options, "numberingSystem")
-	var hour12 engine.Value = cx.Get(options, storage.NamedKey(cx.Intern("hour12")))
+	var hour12 storage.Value = cx.Get(options, storage.NamedKey(cx.Intern("hour12")))
 	if !hour12.IsUndefined() {
 		hour12 = storage.Bool(storage.ToBoolean(hour12))
 	}
@@ -323,7 +323,7 @@ type temporalValue struct {
 
 // temporalValueOf implements IsTemporalObject: it returns the internal slots of v, and
 // reports whether v is a Temporal object that DateTimeFormat formats.
-func temporalValueOf(v engine.Value) (temporalValue, bool) {
+func temporalValueOf(v storage.Value) (temporalValue, bool) {
 	if d, cal, ok := builtin.TemporalPlainDateOf(v); ok {
 		return temporalValue{
 			kind: temporalPlainDate,
@@ -397,7 +397,7 @@ type formattable struct {
 }
 
 // toDateTimeFormattable implements ToDateTimeFormattable.
-func toDateTimeFormattable(cx *engine.ExecutionContext, v engine.Value) formattable {
+func toDateTimeFormattable(cx *engine.ExecutionContext, v storage.Value) formattable {
 	if tv, ok := temporalValueOf(v); ok {
 		return formattable{
 			temporal:   tv,
@@ -410,7 +410,7 @@ func toDateTimeFormattable(cx *engine.ExecutionContext, v engine.Value) formatta
 }
 
 // dateArg implements the conversion of the argument date of format and formatToParts.
-func dateArg(cx *engine.ExecutionContext, v engine.Value) formattable {
+func dateArg(cx *engine.ExecutionContext, v storage.Value) formattable {
 	if v.IsUndefined() {
 		return formattable{
 			t: cx.SystemUTCEpochMilliseconds(),
@@ -483,7 +483,7 @@ func (dtf *dateTimeFormatData) partitionDateTimePattern(cx *engine.ExecutionCont
 }
 
 // formatDateTime implements FormatDateTime.
-func (dtf *dateTimeFormatData) formatDateTime(cx *engine.ExecutionContext, x formattable) engine.Value {
+func (dtf *dateTimeFormatData) formatDateTime(cx *engine.ExecutionContext, x formattable) storage.Value {
 	var b strings.Builder
 	for _, p := range dtf.partitionDateTimePattern(cx, x) {
 		b.WriteString(p.Value)
@@ -504,13 +504,13 @@ func (dtf *dateTimeFormatData) partitionDateTimeRangePattern(cx *engine.Executio
 }
 
 // newDateTimeFormat implements the Intl.DateTimeFormat constructor.
-func newDateTimeFormat(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func newDateTimeFormat(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	nt := cx.GetNewTarget()
-	proto := cx.GetPrototypeFromConstructor(nt, engine.IntrinsicIntlDateTimeFormatPrototype)
+	proto := cx.GetPrototypeFromConstructor(nt, storage.IntrinsicIntlDateTimeFormatPrototype)
 	dtf := cx.NewIntlObject(proto, createDateTimeFormat(cx, arg(args, 0), arg(args, 1), date.Any, date.Date, nil))
 	// ChainDateTimeFormat.
-	if nt == nil && cx.OrdinaryHasInstance(storage.ObjectValue(cx.Intrinsic(engine.IntrinsicIntlDateTimeFormat)), this) {
-		var d engine.PropDesc
+	if nt == nil && cx.OrdinaryHasInstance(storage.ObjectValue(cx.Intrinsic(storage.IntrinsicIntlDateTimeFormat)), this) {
+		var d storage.PropDesc
 		d.SetValue(storage.ObjectValue(dtf))
 		d.SetWritable(false)
 		d.SetEnumerable(false)
@@ -523,14 +523,14 @@ func newDateTimeFormat(cx *engine.ExecutionContext, this engine.Value, args []en
 
 // unwrapDateTimeFormat implements UnwrapDateTimeFormat followed by the check of the internal
 // slot.
-func unwrapDateTimeFormat(cx *engine.ExecutionContext, this engine.Value, name string) *dateTimeFormatData {
+func unwrapDateTimeFormat(cx *engine.ExecutionContext, this storage.Value, name string) *dateTimeFormatData {
 	if !this.IsObject() {
 		cx.ThrowTypeError("Intl.DateTimeFormat.prototype." + name + " called on a value that is not an object")
 	}
 	if dtf, ok := storage.IntlData(this).(*dateTimeFormatData); ok {
 		return dtf
 	}
-	if cx.OrdinaryHasInstance(storage.ObjectValue(cx.Intrinsic(engine.IntrinsicIntlDateTimeFormat)), this) {
+	if cx.OrdinaryHasInstance(storage.ObjectValue(cx.Intrinsic(storage.IntrinsicIntlDateTimeFormat)), this) {
 		if dtf, ok := storage.IntlData(cx.Get(this.Object(), storage.NamedKey(cx.IntlFallbackSymbol()))).(*dateTimeFormatData); ok {
 			return dtf
 		}
@@ -540,7 +540,7 @@ func unwrapDateTimeFormat(cx *engine.ExecutionContext, this engine.Value, name s
 }
 
 // thisDateTimeFormat implements RequireInternalSlot for an Intl.DateTimeFormat.
-func thisDateTimeFormat(cx *engine.ExecutionContext, this engine.Value, name string) *dateTimeFormatData {
+func thisDateTimeFormat(cx *engine.ExecutionContext, this storage.Value, name string) *dateTimeFormatData {
 	dtf, ok := storage.IntlData(this).(*dateTimeFormatData)
 	if !ok {
 		cx.ThrowTypeError("Intl.DateTimeFormat.prototype." + name + " called on an object that is not an Intl.DateTimeFormat")
@@ -550,7 +550,7 @@ func thisDateTimeFormat(cx *engine.ExecutionContext, this engine.Value, name str
 
 // rangeArgs implements the checks and conversions of the arguments of formatRange and
 // formatRangeToParts.
-func rangeArgs(cx *engine.ExecutionContext, args []engine.Value) (formattable, formattable) {
+func rangeArgs(cx *engine.ExecutionContext, args []storage.Value) (formattable, formattable) {
 	start, end := arg(args, 0), arg(args, 1)
 	if start.IsUndefined() || end.IsUndefined() {
 		cx.ThrowTypeError("formatRange requires a start and an end")
@@ -560,7 +560,7 @@ func rangeArgs(cx *engine.ExecutionContext, args []engine.Value) (formattable, f
 
 // dateTimeFormatFunction is the code of the DateTime format functions. Their state is a
 // *dateTimeFormatData.
-func dateTimeFormatFunction(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func dateTimeFormatFunction(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	dtf := cx.ActiveNativeState().(*dateTimeFormatData)
 	return dtf.formatDateTime(cx, dateArg(cx, arg(args, 0)))
 }
@@ -575,9 +575,9 @@ var (
 )
 
 // initDateTimeFormat defines Intl.DateTimeFormat.
-func initDateTimeFormat(cx *engine.ExecutionContext, ns *engine.Object) {
-	ctor, proto := constructor(cx, ns, "DateTimeFormat", 0, engine.IntrinsicIntlDateTimeFormatPrototype, nativeNewDateTimeFormat)
-	cx.SetIntrinsic(engine.IntrinsicIntlDateTimeFormat, ctor)
+func initDateTimeFormat(cx *engine.ExecutionContext, ns *storage.Object) {
+	ctor, proto := constructor(cx, ns, "DateTimeFormat", 0, storage.IntrinsicIntlDateTimeFormatPrototype, nativeNewDateTimeFormat)
+	cx.SetIntrinsic(storage.IntrinsicIntlDateTimeFormat, ctor)
 
 	method(cx, ctor, "supportedLocalesOf", 1, nativeSupportedLocalesOf)
 	method(cx, proto, "resolvedOptions", 0, nativeDateTimeFormatResolvedOptions)
@@ -585,16 +585,16 @@ func initDateTimeFormat(cx *engine.ExecutionContext, ns *engine.Object) {
 	method(cx, proto, "formatToParts", 1, nativeDateTimeFormatFormatToParts)
 	method(cx, proto, "formatRange", 2, nativeDateTimeFormatFormatRange)
 	method(cx, proto, "formatRangeToParts", 2, nativeDateTimeFormatFormatRangeToParts)
-	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Intl.DateTimeFormat"), engine.FlagConfigurable)
+	cx.Define(proto, cx.WellKnownSymbol(storage.SymbolToStringTag), cx.SharedString("Intl.DateTimeFormat"), storage.FlagConfigurable)
 }
 
-func dateTimeFormatResolvedOptions(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func dateTimeFormatResolvedOptions(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	return unwrapDateTimeFormat(cx, this, "resolvedOptions").resolvedOptions(cx)
 }
 
 var nativeDateTimeFormatFunction = engine.RegisterNative(dateTimeFormatFunction)
 
-func dateTimeFormatFormat(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func dateTimeFormatFormat(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	dtf := unwrapDateTimeFormat(cx, this, "format")
 	if dtf.boundFormat == nil {
 		dtf.boundFormat = cx.NewNativeWithState("", 1, nativeDateTimeFormatFunction, dtf)
@@ -602,7 +602,7 @@ func dateTimeFormatFormat(cx *engine.ExecutionContext, this engine.Value, args [
 	return storage.ObjectValue(dtf.boundFormat)
 }
 
-func dateTimeFormatFormatToParts(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func dateTimeFormatFormatToParts(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	dtf := thisDateTimeFormat(cx, this, "formatToParts")
 	parts := dtf.partitionDateTimePattern(cx, dateArg(cx, arg(args, 0)))
 	return partsArray(cx, len(parts), func(i int) (string, string, string) {
@@ -610,7 +610,7 @@ func dateTimeFormatFormatToParts(cx *engine.ExecutionContext, this engine.Value,
 	})
 }
 
-func dateTimeFormatFormatRange(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func dateTimeFormatFormatRange(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	dtf := thisDateTimeFormat(cx, this, "formatRange")
 	x, y := rangeArgs(cx, args)
 	var b strings.Builder
@@ -620,7 +620,7 @@ func dateTimeFormatFormatRange(cx *engine.ExecutionContext, this engine.Value, a
 	return cx.NewString(wtf8.String(b.String()))
 }
 
-func dateTimeFormatFormatRangeToParts(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func dateTimeFormatFormatRangeToParts(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	dtf := thisDateTimeFormat(cx, this, "formatRangeToParts")
 	x, y := rangeArgs(cx, args)
 	parts := dtf.partitionDateTimeRangePattern(cx, x, y)
@@ -631,9 +631,9 @@ func dateTimeFormatFormatRangeToParts(cx *engine.ExecutionContext, this engine.V
 
 // resolvedOptions implements Intl.DateTimeFormat.prototype.resolvedOptions after the check of
 // the internal slot.
-func (dtf *dateTimeFormatData) resolvedOptions(cx *engine.ExecutionContext) engine.Value {
-	out := cx.NewObject(cx.Intrinsic(engine.IntrinsicObjectPrototype))
-	set := func(name string, v engine.Value) {
+func (dtf *dateTimeFormatData) resolvedOptions(cx *engine.ExecutionContext) storage.Value {
+	out := cx.NewObject(cx.Intrinsic(storage.IntrinsicObjectPrototype))
+	set := func(name string, v storage.Value) {
 		cx.CreateDataPropertyOrThrow(out, storage.NamedKey(cx.Intern(wtf8.String(name))), v)
 	}
 	str := func(name, v string) {
@@ -675,18 +675,18 @@ var nativeDurationToLocaleString = engine.RegisterNative(durationToLocaleString)
 // initTemporalToLocaleString installs the ECMA-402 toLocaleString methods on the Temporal prototypes.
 func initTemporalToLocaleString(cx *engine.ExecutionContext) {
 	global := cx.GlobalObject().Object()
-	orig := cx.Intrinsic(engine.IntrinsicTemporal)
+	orig := cx.Intrinsic(storage.IntrinsicTemporal)
 	if orig == nil {
 		return
 	}
-	ns := cx.NewLazyObject(cx.Intrinsic(engine.IntrinsicObjectPrototype), func(cx *engine.ExecutionContext, ns *engine.Object) {
+	ns := cx.NewLazyObject(cx.Intrinsic(storage.IntrinsicObjectPrototype), func(cx *engine.ExecutionContext, ns *storage.Object) {
 		for _, k := range cx.OwnKeys(orig) {
 			d, _ := cx.GetOwnProperty(orig, k)
 			cx.DefineOwnProperty(ns, k, d)
 		}
-		define := func(name string, f engine.Native) {
+		define := func(name string, f storage.Native) {
 			ctor := cx.Get(ns, storage.NamedKey(cx.Intern(wtf8.String(name))))
-			proto := cx.Get(ctor.Object(), storage.NamedKey(cx.Key(engine.KeyPrototype))).Object()
+			proto := cx.Get(ctor.Object(), storage.NamedKey(cx.Key(storage.KeyPrototype))).Object()
 			method(cx, proto, "toLocaleString", 0, f)
 		}
 		define("Instant", nativeInstantToLocaleString)
@@ -698,8 +698,8 @@ func initTemporalToLocaleString(cx *engine.ExecutionContext) {
 		define("ZonedDateTime", nativeZonedDateTimeToLocaleString)
 		define("Duration", nativeDurationToLocaleString)
 	})
-	cx.SetIntrinsic(engine.IntrinsicTemporal, ns)
-	cx.Define(global, cx.Intern("Temporal"), storage.ObjectValue(ns), engine.FlagsHidden)
+	cx.SetIntrinsic(storage.IntrinsicTemporal, ns)
+	cx.Define(global, cx.Intern("Temporal"), storage.ObjectValue(ns), storage.FlagsHidden)
 }
 
 var (
@@ -717,7 +717,7 @@ var (
 //
 //go:noinline
 func temporalToLocaleStringNative(name string, kind temporalKind) engine.NativeFunc {
-	return func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return func(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 		tv, ok := temporalValueOf(this)
 		if !ok || tv.kind != kind {
 			cx.ThrowTypeError("Temporal." + name + ".prototype.toLocaleString called on an object that is not a Temporal." + name)
@@ -727,7 +727,7 @@ func temporalToLocaleStringNative(name string, kind temporalKind) engine.NativeF
 }
 
 // formatTemporalLocaleString implements the toLocaleString method of the Temporal object tv.
-func formatTemporalLocaleString(cx *engine.ExecutionContext, tv temporalValue, locales, options engine.Value) engine.Value {
+func formatTemporalLocaleString(cx *engine.ExecutionContext, tv temporalValue, locales, options storage.Value) storage.Value {
 	switch tv.kind {
 	case temporalPlainDate, temporalPlainYearMonth, temporalPlainMonthDay:
 		dtf := createDateTimeFormat(cx, locales, options, date.Date, date.Date, nil)
@@ -756,7 +756,7 @@ func formatTemporalLocaleString(cx *engine.ExecutionContext, tv temporalValue, l
 // initDateToLocaleString replaces the toLocaleString, toLocaleDateString and
 // toLocaleTimeString of Date.prototype with the versions of ECMA-402.
 func initDateToLocaleString(cx *engine.ExecutionContext) {
-	proto := cx.Intrinsic(engine.IntrinsicDatePrototype)
+	proto := cx.Intrinsic(storage.IntrinsicDatePrototype)
 	method(cx, proto, "toLocaleString", 0, nativeDateToLocaleString)
 	method(cx, proto, "toLocaleDateString", 0, nativeDateToLocaleDateString)
 	method(cx, proto, "toLocaleTimeString", 0, nativeDateToLocaleTimeString)
@@ -773,7 +773,7 @@ var (
 //
 //go:noinline
 func dateToLocaleStringNative(name, required, defaults string) engine.NativeFunc {
-	return func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return func(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 		t, ok := storage.ThisTimeValue(this)
 		if !ok {
 			cx.ThrowTypeError("Date.prototype." + name + " requires that 'this' be a Date")

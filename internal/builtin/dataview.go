@@ -9,7 +9,7 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/storage"
 )
 
-func thisDataView(cx *engine.ExecutionContext, this engine.Value, what string) *storage.DataView {
+func thisDataView(cx *engine.ExecutionContext, this storage.Value, what string) *storage.DataView {
 	d := storage.DataViewData(this)
 	if d == nil {
 		cx.ThrowTypeError("DataView.prototype." + what + " called on incompatible receiver " + cx.DisplayString(this))
@@ -29,14 +29,14 @@ func viewElementBytes(cx *engine.ExecutionContext, b []byte, inBounds bool, typ 
 	return b[i:]
 }
 
-func loadViewElement(cx *engine.ExecutionContext, d *storage.DataView, typ element.Type, i int64, le bool, what string) engine.Value {
+func loadViewElement(cx *engine.ExecutionContext, d *storage.DataView, typ element.Type, i int64, le bool, what string) storage.Value {
 	// A throw releases the lock of the buffer.
 	b, inBounds := d.Lock()
 	defer d.Unlock()
 	return storage.GetValueFromBuffer(viewElementBytes(cx, b, inBounds, typ, i, what), typ, le)
 }
 
-func storeViewElement(cx *engine.ExecutionContext, d *storage.DataView, typ element.Type, i int64, v engine.Value, le bool, what string) {
+func storeViewElement(cx *engine.ExecutionContext, d *storage.DataView, typ element.Type, i int64, v storage.Value, le bool, what string) {
 	// A throw releases the lock of the buffer.
 	b, inBounds := d.Lock()
 	defer d.Unlock()
@@ -52,13 +52,13 @@ var (
 
 func initDataView(cx *engine.ExecutionContext) {
 	proto := cx.NewOrdinaryObject()
-	cx.SetIntrinsic(engine.IntrinsicDataViewPrototype, proto)
-	constructor(cx, "DataView", 1, engine.IntrinsicDataViewPrototype, nativeDataViewConstructor)
+	cx.SetIntrinsic(storage.IntrinsicDataViewPrototype, proto)
+	constructor(cx, "DataView", 1, storage.IntrinsicDataViewPrototype, nativeDataViewConstructor)
 
 	getter(cx, proto, cx.Intern("buffer"), "buffer", nativeDataViewBuffer)
 	getter(cx, proto, cx.Intern("byteLength"), "byteLength", nativeDataViewByteLength)
 	getter(cx, proto, cx.Intern("byteOffset"), "byteOffset", nativeDataViewByteOffset)
-	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("DataView"), engine.FlagConfigurable)
+	cx.Define(proto, cx.WellKnownSymbol(storage.SymbolToStringTag), cx.SharedString("DataView"), storage.FlagConfigurable)
 
 	method(cx, proto, "getInt8", 1, nativeDataViewGetInt8)
 	method(cx, proto, "setInt8", 2, nativeDataViewSetInt8)
@@ -84,7 +84,7 @@ func initDataView(cx *engine.ExecutionContext) {
 	method(cx, proto, "setBigUint64", 2, nativeDataViewSetBigUint64)
 }
 
-func dataViewConstructor(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func dataViewConstructor(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	nt := cx.GetNewTarget()
 	if nt == nil {
 		cx.ThrowTypeError("constructor DataView requires 'new'")
@@ -116,7 +116,7 @@ func dataViewConstructor(cx *engine.ExecutionContext, this engine.Value, args []
 			cx.ThrowRangeError("invalid DataView length " + itoa(viewLength))
 		}
 	}
-	p := cx.GetPrototypeFromConstructor(nt, engine.IntrinsicDataViewPrototype)
+	p := cx.GetPrototypeFromConstructor(nt, storage.IntrinsicDataViewPrototype)
 	// Getting the prototype may have detached or shrunk the buffer.
 	if b.IsDetached() {
 		cx.ThrowTypeError("cannot construct a DataView on a detached ArrayBuffer")
@@ -130,16 +130,16 @@ func dataViewConstructor(cx *engine.ExecutionContext, this engine.Value, args []
 	return storage.ObjectValue(cx.NewDataViewObject(p, buf.Object(), int(offset), int(viewLength)))
 }
 
-func dataViewBuffer(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func dataViewBuffer(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	return storage.ObjectValue(thisDataView(cx, this, "buffer").Buffer())
 }
 
-func dataViewByteLength(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func dataViewByteLength(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	n, _ := thisDataView(cx, this, "byteLength").ByteLength()
 	return storage.Number(float64(n))
 }
 
-func dataViewByteOffset(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func dataViewByteOffset(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	d := thisDataView(cx, this, "byteOffset")
 	if _, ok := d.ByteLength(); !ok {
 		return storage.Number(0)
@@ -165,7 +165,7 @@ var (
 //
 //go:noinline
 func dataViewGetNative(name string, typ element.Type) engine.NativeFunc {
-	return func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return func(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 		d := thisDataView(cx, this, name)
 		i := toIndex(cx, arg(args, 0))
 		le := storage.ToBoolean(arg(args, 1))
@@ -191,7 +191,7 @@ var (
 //
 //go:noinline
 func dataViewSetNative(name string, typ element.Type) engine.NativeFunc {
-	return func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return func(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 		d := thisDataView(cx, this, name)
 		if storage.ArrayBufferData(storage.ObjectValue(d.Buffer())).IsImmutable() {
 			cx.ThrowTypeError("DataView.prototype." + name + ": the DataView is backed by an immutable ArrayBuffer")

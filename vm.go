@@ -34,7 +34,7 @@ type VM struct {
 	args []Value
 
 	// callArgs is the storage of the arguments of the calls from Go that are running.
-	callArgs []engine.Value
+	callArgs []storage.Value
 
 	interrupts *interruptRequests
 
@@ -149,7 +149,7 @@ func (vm *VM) ValueOf(x any) Value {
 }
 
 // valueOf implements [Realm.ValueOf] in the execution realm.
-func (vm *VM) valueOf(cx *engine.ExecutionContext, x any) engine.Value {
+func (vm *VM) valueOf(cx *engine.ExecutionContext, x any) storage.Value {
 	switch x := x.(type) {
 	case Value:
 		return vm.acceptValue(x)
@@ -205,7 +205,7 @@ func (vm *VM) valueOf(cx *engine.ExecutionContext, x any) engine.Value {
 }
 
 // acceptValue checks ownership before passing v to the engine.
-func (vm *VM) acceptValue(v Value) engine.Value {
+func (vm *VM) acceptValue(v Value) storage.Value {
 	if o := v.value.Object(); o != nil {
 		if !vm.e.Owns(o) {
 			panic("ekuma: value belongs to another VM: " + v.String())
@@ -215,7 +215,7 @@ func (vm *VM) acceptValue(v Value) engine.Value {
 }
 
 // objectOf converts a host value into an object of the execution realm.
-func (vm *VM) objectOf(cx *engine.ExecutionContext, x any) engine.Value {
+func (vm *VM) objectOf(cx *engine.ExecutionContext, x any) storage.Value {
 	switch x := x.(type) {
 	case Func:
 		if x == nil {
@@ -226,13 +226,13 @@ func (vm *VM) objectOf(cx *engine.ExecutionContext, x any) engine.Value {
 		if x == nil || x.b == nil {
 			panic("ekuma: ValueOf: invalid *SharedDataBlock")
 		}
-		proto := cx.Intrinsic(engine.IntrinsicSharedArrayBufferPrototype)
+		proto := cx.Intrinsic(storage.IntrinsicSharedArrayBufferPrototype)
 		return storage.ObjectValue(cx.NewSharedArrayBufferObject(proto, x.b))
 	case []any:
 		if len(x) > 0 {
 			defer vm.leaveContainer(vm.enterContainer(containerID{elem0: &x[0], len: len(x)}))
 		}
-		elems := make([]engine.Value, len(x))
+		elems := make([]storage.Value, len(x))
 		for i, e := range x {
 			elems[i] = vm.valueOf(cx, e)
 		}
@@ -290,7 +290,7 @@ func (vm *VM) FuncOf(name string, f Func) Value {
 }
 
 // funcOf implements [Realm.FuncOf] for the execution context.
-func funcOf(cx *engine.ExecutionContext, name string, f Func) engine.Value {
+func funcOf(cx *engine.ExecutionContext, name string, f Func) storage.Value {
 	if f == nil {
 		panic("ekuma: FuncOf: nil Func")
 	}
@@ -298,14 +298,14 @@ func funcOf(cx *engine.ExecutionContext, name string, f Func) engine.Value {
 }
 
 // nativeHostFunction leads to the code that makes its function objects.
-var nativeHostFunction engine.Native
+var nativeHostFunction storage.Native
 
 func init() {
 	nativeHostFunction = engine.RegisterNative(hostFunction)
 }
 
 // hostFunction is the code of the functions that [Realm.FuncOf] makes. Their state is a [Func].
-func hostFunction(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func hostFunction(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	f := cx.ActiveNativeState().(Func)
 	vm := cx.HostDefined().(*VM)
 	n := len(vm.args)
@@ -341,7 +341,7 @@ func (vm *VM) dropArgs(n int) {
 }
 
 // withArgs converts the arguments of a call with [VM.ValueOf] and passes them to f.
-func (vm *VM) withArgs(args []any, f func(args []engine.Value) (engine.Value, error)) (engine.Value, error) {
+func (vm *VM) withArgs(args []any, f func(args []storage.Value) (storage.Value, error)) (storage.Value, error) {
 	n := len(vm.callArgs)
 	defer func() {
 		clear(vm.callArgs[n:])
@@ -354,7 +354,7 @@ func (vm *VM) withArgs(args []any, f func(args []engine.Value) (engine.Value, er
 }
 
 // run calls f, which executes JavaScript, and stops it when ctx is done.
-func (vm *VM) run(ctx context.Context, f func() (engine.Value, error)) (Value, error) {
+func (vm *VM) run(ctx context.Context, f func() (storage.Value, error)) (Value, error) {
 	if err := ctx.Err(); err != nil {
 		cause := context.Cause(ctx)
 		if vm.e.Running() {
@@ -397,7 +397,7 @@ func (vm *VM) AwaitJobs(ctx context.Context) (bool, error) {
 		return false, ErrRunning
 	}
 	var waited bool
-	_, err := vm.run(ctx, func() (engine.Value, error) {
+	_, err := vm.run(ctx, func() (storage.Value, error) {
 		var err error
 		if waited, err = vm.e.AwaitJobs(); !waited {
 			return storage.Undefined, err
@@ -490,7 +490,7 @@ func (vm *VM) SetUnhandledRejection(f func(promise, reason Value)) {
 		vm.e.SetHostUnhandledRejection(nil)
 		return
 	}
-	vm.e.SetHostUnhandledRejection(func(cx *engine.ExecutionContext, promise, reason engine.Value) {
+	vm.e.SetHostUnhandledRejection(func(cx *engine.ExecutionContext, promise, reason storage.Value) {
 		f(fromEngine(promise), fromEngine(reason))
 	})
 }

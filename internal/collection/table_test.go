@@ -287,7 +287,7 @@ func TestReserveBeforeEntries(t *testing.T) {
 // TestCopyFromPolls tests that copying many entries polls and copies every entry.
 func TestCopyFromPolls(t *testing.T) {
 	var src collection.Table
-	n := 2 * engine.PollInterval
+	n := 2 * storage.PollInterval
 	for i := range n {
 		src.Append(storage.Number(float64(i)), storage.Undefined)
 	}

@@ -34,7 +34,7 @@ func runAssignment(file, src string, conservative bool) (string, error) {
 		}
 		return cx.NewScript(code), nil
 	}
-	eval := cx.NewFunction("evalScript", func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	eval := cx.NewFunction("evalScript", func(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 		var input wtf8.String
 		if len(args) > 0 {
 			input = cx.ToString(args[0])
@@ -45,10 +45,10 @@ func runAssignment(file, src string, conservative bool) (string, error) {
 		}
 		return s.CallScript()
 	})
-	lazy := cx.NewFunction("setLazyPrototype", func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	lazy := cx.NewFunction("setLazyPrototype", func(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 		init := args[0].Object()
 		global := cx.GlobalObject().Object()
-		proto := cx.NewLazyObject(cx.ProtoOf(global), func(cx *engine.ExecutionContext, o *engine.Object) {
+		proto := cx.NewLazyObject(cx.ProtoOf(global), func(cx *engine.ExecutionContext, o *storage.Object) {
 			cx.Call(init, storage.Undefined, storage.ObjectValue(o))
 		})
 		return storage.Bool(cx.SetPrototypeOf(global, proto))

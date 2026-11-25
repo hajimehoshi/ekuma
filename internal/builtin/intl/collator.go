@@ -28,7 +28,7 @@ type collatorData struct {
 	caseFirst         string
 
 	c            *collate.Collator
-	boundCompare *engine.Object
+	boundCompare *storage.Object
 }
 
 // compare implements CompareStrings.
@@ -46,7 +46,7 @@ func sortCollationTypes(l string) []string {
 }
 
 // createCollator implements the steps of the Intl.Collator constructor after the prototype.
-func createCollator(cx *engine.ExecutionContext, locales, opts engine.Value) *collatorData {
+func createCollator(cx *engine.ExecutionContext, locales, opts storage.Value) *collatorData {
 	requested := canonicalizeLocaleList(cx, locales)
 	options := optionsObject(cx, opts)
 	usage := getStringOption(cx, options, "usage", "sort", "sort", "search")
@@ -140,15 +140,15 @@ func createCollator(cx *engine.ExecutionContext, locales, opts engine.Value) *co
 }
 
 // newCollator implements the Intl.Collator constructor.
-func newCollator(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func newCollator(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	nt := cx.GetNewTarget()
-	proto := cx.GetPrototypeFromConstructor(nt, engine.IntrinsicIntlCollatorPrototype)
+	proto := cx.GetPrototypeFromConstructor(nt, storage.IntrinsicIntlCollatorPrototype)
 	cd := createCollator(cx, arg(args, 0), arg(args, 1))
 	return storage.ObjectValue(cx.NewIntlObject(proto, cd))
 }
 
 // thisCollator implements RequireInternalSlot for an Intl.Collator.
-func thisCollator(cx *engine.ExecutionContext, this engine.Value, name string) *collatorData {
+func thisCollator(cx *engine.ExecutionContext, this storage.Value, name string) *collatorData {
 	cd, ok := storage.IntlData(this).(*collatorData)
 	if !ok {
 		cx.ThrowTypeError("Intl.Collator.prototype." + name + " called on an object that is not an Intl.Collator")
@@ -157,7 +157,7 @@ func thisCollator(cx *engine.ExecutionContext, this engine.Value, name string) *
 }
 
 // collatorCompare is the code of the collator compare functions. Their state is a *collatorData.
-func collatorCompare(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func collatorCompare(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	cd := cx.ActiveNativeState().(*collatorData)
 	x := cx.ToString(arg(args, 0))
 	y := cx.ToString(arg(args, 1))
@@ -172,18 +172,18 @@ var (
 )
 
 // initCollator defines Intl.Collator.
-func initCollator(cx *engine.ExecutionContext, ns *engine.Object) {
-	ctor, proto := constructor(cx, ns, "Collator", 0, engine.IntrinsicIntlCollatorPrototype, nativeNewCollator)
+func initCollator(cx *engine.ExecutionContext, ns *storage.Object) {
+	ctor, proto := constructor(cx, ns, "Collator", 0, storage.IntrinsicIntlCollatorPrototype, nativeNewCollator)
 
 	method(cx, ctor, "supportedLocalesOf", 1, nativeSupportedLocalesOf)
 	getter(cx, proto, "compare", nativeCollatorCompareGetter)
 	method(cx, proto, "resolvedOptions", 0, nativeCollatorResolvedOptions)
-	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Intl.Collator"), engine.FlagConfigurable)
+	cx.Define(proto, cx.WellKnownSymbol(storage.SymbolToStringTag), cx.SharedString("Intl.Collator"), storage.FlagConfigurable)
 }
 
 var nativeCollatorCompare = engine.RegisterNative(collatorCompare)
 
-func collatorCompareGetter(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func collatorCompareGetter(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	cd := thisCollator(cx, this, "compare")
 	if cd.boundCompare == nil {
 		cd.boundCompare = cx.NewNativeWithState("", 2, nativeCollatorCompare, cd)
@@ -191,10 +191,10 @@ func collatorCompareGetter(cx *engine.ExecutionContext, this engine.Value, args 
 	return storage.ObjectValue(cd.boundCompare)
 }
 
-func collatorResolvedOptions(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func collatorResolvedOptions(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	cd := thisCollator(cx, this, "resolvedOptions")
-	out := cx.NewObject(cx.Intrinsic(engine.IntrinsicObjectPrototype))
-	set := func(name string, v engine.Value) {
+	out := cx.NewObject(cx.Intrinsic(storage.IntrinsicObjectPrototype))
+	set := func(name string, v storage.Value) {
 		cx.CreateDataPropertyOrThrow(out, storage.NamedKey(cx.Intern(wtf8.String(name))), v)
 	}
 	set("locale", cx.NewString(wtf8.String(cd.locale)))
@@ -228,10 +228,10 @@ var nativeStringLocaleCompare = engine.RegisterNative(stringLocaleCompare)
 // initLocaleCompare replaces String.prototype.localeCompare with the version of ECMA-402.
 func initLocaleCompare(cx *engine.ExecutionContext) {
 	f := cx.NewNativeWithState("localeCompare", 1, nativeStringLocaleCompare, &localeCompareState{})
-	cx.Define(cx.Intrinsic(engine.IntrinsicStringPrototype), cx.Intern("localeCompare"), storage.ObjectValue(f), engine.FlagsHidden)
+	cx.Define(cx.Intrinsic(storage.IntrinsicStringPrototype), cx.Intern("localeCompare"), storage.ObjectValue(f), storage.FlagsHidden)
 }
 
-func stringLocaleCompare(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func stringLocaleCompare(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	if this.IsNullish() {
 		cx.ThrowTypeError("String.prototype.localeCompare called on null or undefined")
 	}
@@ -253,12 +253,12 @@ var caseLocales = []string{"az", "el", "hy", "lt", "tr"}
 // initLocaleCase replaces String.prototype.toLocaleUpperCase and toLocaleLowerCase with the
 // versions of ECMA-402.
 func initLocaleCase(cx *engine.ExecutionContext) {
-	proto := cx.Intrinsic(engine.IntrinsicStringPrototype)
-	define := func(name string, f engine.Native) {
+	proto := cx.Intrinsic(storage.IntrinsicStringPrototype)
+	define := func(name string, f storage.Native) {
 		key := cx.Intern(wtf8.String(name))
 		// The state of the method is that of the base, which maps the case without a language.
 		fn := cx.NewNativeWithState(wtf8.String(name), 0, f, cx.Get(proto, storage.NamedKey(key)).Object())
-		cx.Define(proto, key, storage.ObjectValue(fn), engine.FlagsHidden)
+		cx.Define(proto, key, storage.ObjectValue(fn), storage.FlagsHidden)
 	}
 	define("toLocaleUpperCase", nativeStringToLocaleUpperCase)
 	define("toLocaleLowerCase", nativeStringToLocaleLowerCase)
@@ -274,7 +274,7 @@ var (
 //
 //go:noinline
 func stringLocaleCaseNative(name string, upper bool) engine.NativeFunc {
-	return func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return func(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 		if this.IsNullish() {
 			cx.ThrowTypeError("String.prototype." + name + " called on null or undefined")
 		}
@@ -329,8 +329,8 @@ func stringLocaleCaseNative(name string, upper bool) engine.NativeFunc {
 }
 
 // baseCaseMethod returns the method of the base that the active case mapping method replaces.
-func baseCaseMethod(cx *engine.ExecutionContext) *engine.Object {
-	return cx.ActiveNativeState().(*engine.Object)
+func baseCaseMethod(cx *engine.ExecutionContext) *storage.Object {
+	return cx.ActiveNativeState().(*storage.Object)
 }
 
 // caseChunk is the number of bytes of a string that a language-sensitive case mapping maps
@@ -516,7 +516,7 @@ func beforeDot(s string) bool {
 
 // joinLocaleStrings implements the toLocaleString methods of arrays for the first n elements of
 // the object o.
-func joinLocaleStrings(cx *engine.ExecutionContext, o *engine.Object, n int64, args []engine.Value) engine.Value {
+func joinLocaleStrings(cx *engine.ExecutionContext, o *storage.Object, n int64, args []storage.Value) storage.Value {
 	if !cx.EnterLocaleJoin(o) {
 		return cx.NewString("")
 	}
@@ -530,9 +530,9 @@ func joinLocaleStrings(cx *engine.ExecutionContext, o *engine.Object, n int64, a
 		}
 		e := cx.Get(o, cx.ToPropertyKey(storage.Number(float64(k))))
 		if !e.IsNullish() {
-			b.WriteString(cx.ToString(cx.CallValue(cx.GetV(e, cx.Key(engine.KeyToLocaleString)), e, locales, options)))
+			b.WriteString(cx.ToString(cx.CallValue(cx.GetV(e, cx.Key(storage.KeyToLocaleString)), e, locales, options)))
 		}
-		if b.Len() > engine.MaxStringLength {
+		if b.Len() > storage.MaxStringLength {
 			cx.ThrowRangeError("invalid string length")
 		}
 	}
@@ -548,17 +548,17 @@ var (
 // %TypedArray%.prototype.toLocaleString with the versions of ECMA-402, which pass the locales
 // and the options to the elements.
 func initArrayToLocaleString(cx *engine.ExecutionContext) {
-	method(cx, cx.Intrinsic(engine.IntrinsicArrayPrototype), "toLocaleString", 0, nativeArrayToLocaleString)
-	typedArrayProto := cx.ProtoOf(cx.Intrinsic(engine.IntrinsicInt8ArrayPrototype))
+	method(cx, cx.Intrinsic(storage.IntrinsicArrayPrototype), "toLocaleString", 0, nativeArrayToLocaleString)
+	typedArrayProto := cx.ProtoOf(cx.Intrinsic(storage.IntrinsicInt8ArrayPrototype))
 	method(cx, typedArrayProto, "toLocaleString", 0, nativeTypedArrayToLocaleString)
 }
 
-func arrayToLocaleString(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func arrayToLocaleString(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	o := cx.ToObject(this)
 	return joinLocaleStrings(cx, o, cx.LengthOfArrayLike(o), args)
 }
 
-func typedArrayToLocaleString(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func typedArrayToLocaleString(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	// ValidateTypedArray.
 	t := storage.TypedArrayData(this)
 	if t == nil {

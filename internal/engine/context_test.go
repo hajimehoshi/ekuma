@@ -22,9 +22,9 @@ func TestExecutionContextHostReentry(t *testing.T) {
 	for _, outcome := range []string{"return", "allocate", "throw", "iterator step", "interrupt"} {
 		t.Run(outcome, func(t *testing.T) {
 			var outer *engine.ExecutionContext
-			var inner engine.Value
+			var inner storage.Value
 			c.Run(func() {
-				probe := c.NewFunction("probe", func(cx *engine.ExecutionContext, _ engine.Value, args []engine.Value) engine.Value {
+				probe := c.NewFunction("probe", func(cx *engine.ExecutionContext, _ storage.Value, args []storage.Value) storage.Value {
 					if host.ActiveContext() != c || !a.IsEnteredRealm() {
 						t.Error("expected running C and entered A during reentry")
 					}
@@ -46,7 +46,7 @@ func TestExecutionContextHostReentry(t *testing.T) {
 					}
 					return storage.Undefined
 				})
-				c.Define(c.GlobalObject().Object(), c.Intern("probe"), probe, engine.FlagsData)
+				c.Define(c.GlobalObject().Object(), c.Intern("probe"), probe, storage.FlagsData)
 				var err error
 				inner, err = runScript(c, "C", "(function () { return probe(() => 0) ?? []; })")
 				if err != nil {
@@ -54,9 +54,9 @@ func TestExecutionContextHostReentry(t *testing.T) {
 				}
 			})
 
-			var ctor *engine.Object
+			var ctor *storage.Object
 			b.Run(func() {
-				ctor = engine.NewGoConstructor(b, "Bridge", func(cx *engine.ExecutionContext, _ engine.Value, _ []engine.Value) engine.Value {
+				ctor = engine.NewGoConstructor(b, "Bridge", func(cx *engine.ExecutionContext, _ storage.Value, _ []storage.Value) storage.Value {
 					outer = cx
 					defer func() {
 						if host.ActiveContext() != b || !a.IsEnteredRealm() {
@@ -64,7 +64,7 @@ func TestExecutionContextHostReentry(t *testing.T) {
 						}
 					}()
 					v, err := cx.HostCall(inner, storage.Undefined, nil)
-					if ex, ok := errors.AsType[*engine.Error](err); ok {
+					if ex, ok := errors.AsType[*storage.Error](err); ok {
 						cx.Throw(ex.Value)
 					}
 					if err != nil {
@@ -83,15 +83,15 @@ func TestExecutionContextHostReentry(t *testing.T) {
 				if outcome == "allocate" {
 					want = b
 				}
-				if a.ProtoOf(v.Object()) != want.Intrinsic(engine.IntrinsicArrayPrototype) {
+				if a.ProtoOf(v.Object()) != want.Intrinsic(storage.IntrinsicArrayPrototype) {
 					t.Error("array has the wrong prototype")
 				}
 			case "throw", "iterator step":
-				ex, ok := errors.AsType[*engine.Error](err)
+				ex, ok := errors.AsType[*storage.Error](err)
 				if !ok {
 					t.Fatalf("got %v, want a JavaScript throw", err)
 				}
-				if a.ProtoOf(ex.Value.Object()) != b.Intrinsic(engine.IntrinsicTypeErrorPrototype) {
+				if a.ProtoOf(ex.Value.Object()) != b.Intrinsic(storage.IntrinsicTypeErrorPrototype) {
 					t.Error("B's context threw an error with the wrong prototype while C was running")
 				}
 			case "interrupt":
@@ -108,7 +108,7 @@ func TestExecutionContextHostReentry(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if a.ProtoOf(v.Object()) != a.Intrinsic(engine.IntrinsicArrayPrototype) {
+	if a.ProtoOf(v.Object()) != a.Intrinsic(storage.IntrinsicArrayPrototype) {
 		t.Error("script after interruption produced an array outside A")
 	}
 }
@@ -118,7 +118,7 @@ func TestSameRealmContextCallAllocations(t *testing.T) {
 		t.Skip("the checks of the interpreter allocate")
 	}
 	cx, _ := engine.NewExecutionContext(nil)
-	f := cx.NewFunction("noop", func(*engine.ExecutionContext, engine.Value, []engine.Value) engine.Value {
+	f := cx.NewFunction("noop", func(*engine.ExecutionContext, storage.Value, []storage.Value) storage.Value {
 		return storage.Undefined
 	}).Object()
 	if got := testing.AllocsPerRun(100, func() { cx.Call(f, storage.Undefined) }); got != 0 {

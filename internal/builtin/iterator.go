@@ -14,27 +14,27 @@ import (
 
 // iterRecord is an Iterator Record without [[Done]].
 type iterRecord struct {
-	it   engine.Value
-	next engine.Value
+	it   storage.Value
+	next storage.Value
 }
 
 // stepValue implements IteratorStepValue.
-func (r *iterRecord) stepValue(cx *engine.ExecutionContext) (engine.Value, bool) {
+func (r *iterRecord) stepValue(cx *engine.ExecutionContext) (storage.Value, bool) {
 	return cx.IteratorStepValue(r.it, r.next)
 }
 
 // getIteratorDirect implements GetIteratorDirect.
-func getIteratorDirect(cx *engine.ExecutionContext, it engine.Value) iterRecord {
+func getIteratorDirect(cx *engine.ExecutionContext, it storage.Value) iterRecord {
 	return iterRecord{
 		it:   it,
-		next: cx.GetV(it, cx.Key(engine.KeyNext)),
+		next: cx.GetV(it, cx.Key(storage.KeyNext)),
 	}
 }
 
 // helperBody is the algorithm of an iterator helper object.
 type helperBody interface {
 	// step returns the next value of the helper, or reports false when the helper is done.
-	step(cx *engine.ExecutionContext) (engine.Value, bool)
+	step(cx *engine.ExecutionContext) (storage.Value, bool)
 
 	// close closes the underlying iterators when return is called before the helper is done.
 	close(cx *engine.ExecutionContext)
@@ -64,7 +64,7 @@ func (h *iteratorHelper) complete() helperBody {
 }
 
 // resumeHelper runs a next or return resumption and reports whether the helper yielded.
-func resumeHelper(cx *engine.ExecutionContext, this engine.Value, mode engine.ResumeMode) (engine.Value, bool) {
+func resumeHelper(cx *engine.ExecutionContext, this storage.Value, mode engine.ResumeMode) (storage.Value, bool) {
 	state, bodyContext := engine.IteratorStateAndContext(this)
 	h, _ := state.(*iteratorHelper)
 	if h == nil {
@@ -90,7 +90,7 @@ func resumeHelper(cx *engine.ExecutionContext, this engine.Value, mode engine.Re
 	if cx == bodyContext {
 		return h.resumeBody(cx, mode)
 	}
-	var v engine.Value
+	var v storage.Value
 	var yielded bool
 	bodyContext.Run(func() {
 		v, yielded = h.resumeBody(bodyContext, mode)
@@ -99,7 +99,7 @@ func resumeHelper(cx *engine.ExecutionContext, this engine.Value, mode engine.Re
 }
 
 // resumeBody runs in the helper's creation realm.
-func (h *iteratorHelper) resumeBody(cx *engine.ExecutionContext, mode engine.ResumeMode) (v engine.Value, yielded bool) {
+func (h *iteratorHelper) resumeBody(cx *engine.ExecutionContext, mode engine.ResumeMode) (v storage.Value, yielded bool) {
 	h.state = helperExecuting
 	defer func() {
 		if yielded {
@@ -116,14 +116,14 @@ func (h *iteratorHelper) resumeBody(cx *engine.ExecutionContext, mode engine.Res
 }
 
 // newIteratorHelper returns a new iterator helper object with body.
-func newIteratorHelper(cx *engine.ExecutionContext, body helperBody) engine.Value {
-	return storage.ObjectValue(cx.NewIteratorObject(cx.Intrinsic(engine.IntrinsicIteratorHelperPrototype), &iteratorHelper{body: body}))
+func newIteratorHelper(cx *engine.ExecutionContext, body helperBody) storage.Value {
+	return storage.ObjectValue(cx.NewIteratorObject(cx.Intrinsic(storage.IntrinsicIteratorHelperPrototype), &iteratorHelper{body: body}))
 }
 
 // setIgnoringIteratorPrototype sets the property key of this to v as the setters of
 // Iterator.prototype do.
-func setIgnoringIteratorPrototype(cx *engine.ExecutionContext, this engine.Value, key *engine.Object, v engine.Value) {
-	setterThatIgnoresPrototypeProperties(cx, this, cx.Intrinsic(engine.IntrinsicIteratorPrototype), storage.NamedKey(key), v, "Iterator.prototype setter")
+func setIgnoringIteratorPrototype(cx *engine.ExecutionContext, this storage.Value, key *storage.Object, v storage.Value) {
+	setterThatIgnoresPrototypeProperties(cx, this, cx.Intrinsic(storage.IntrinsicIteratorPrototype), storage.NamedKey(key), v, "Iterator.prototype setter")
 }
 
 var (
@@ -138,31 +138,31 @@ var (
 
 // initIteratorHelpers defines Iterator and the iterator helpers.
 func initIteratorHelpers(cx *engine.ExecutionContext) {
-	proto := cx.Intrinsic(engine.IntrinsicIteratorPrototype)
+	proto := cx.Intrinsic(storage.IntrinsicIteratorPrototype)
 	ctor := cx.NewNativeConstructor("Iterator", 0, nativeIteratorConstructor)
-	cx.SetIntrinsic(engine.IntrinsicIterator, ctor)
-	cx.DefineConstructorPrototype(ctor, engine.IntrinsicIteratorPrototype)
-	cx.Define(cx.GlobalObject().Object(), cx.Intern("Iterator"), storage.ObjectValue(ctor), engine.FlagsHidden)
+	cx.SetIntrinsic(storage.IntrinsicIterator, ctor)
+	cx.DefineConstructorPrototype(ctor, storage.IntrinsicIteratorPrototype)
+	cx.Define(cx.GlobalObject().Object(), cx.Intern("Iterator"), storage.ObjectValue(ctor), storage.FlagsHidden)
 
 	// The properties that Iterator.prototype had in earlier editions are accessors whose setters
 	// ignore the prototype.
-	cx.DefineAccessor(proto, cx.Key(engine.KeyConstructor),
+	cx.DefineAccessor(proto, cx.Key(storage.KeyConstructor),
 		cx.NewNative("get constructor", 0, nativeIteratorConstructorGetter),
 		cx.NewNative("set constructor", 1, nativeIteratorConstructorSetter),
-		engine.FlagConfigurable)
+		storage.FlagConfigurable)
 	tag := cx.SharedString("Iterator")
-	cx.DefineAccessor(proto, cx.WellKnownSymbol(engine.SymbolToStringTag),
+	cx.DefineAccessor(proto, cx.WellKnownSymbol(storage.SymbolToStringTag),
 		cx.NewNativeWithState("get [Symbol.toStringTag]", 0, nativeIteratorToStringTagGetter, &tag),
 		cx.NewNative("set [Symbol.toStringTag]", 1, nativeIteratorToStringTagSetter),
-		engine.FlagConfigurable)
+		storage.FlagConfigurable)
 
-	symMethod(cx, proto, cx.WellKnownSymbol(engine.SymbolDispose), "[Symbol.dispose]", 0, nativeIteratorDispose)
+	symMethod(cx, proto, cx.WellKnownSymbol(storage.SymbolDispose), "[Symbol.dispose]", 0, nativeIteratorDispose)
 
 	helperProto := cx.NewObject(proto)
-	cx.SetIntrinsic(engine.IntrinsicIteratorHelperPrototype, helperProto)
+	cx.SetIntrinsic(storage.IntrinsicIteratorHelperPrototype, helperProto)
 	method(cx, helperProto, "next", 0, nativeIteratorHelperNext)
 	method(cx, helperProto, "return", 0, nativeIteratorHelperReturn)
-	cx.Define(helperProto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Iterator Helper"), engine.FlagConfigurable)
+	cx.Define(helperProto, cx.WellKnownSymbol(storage.SymbolToStringTag), cx.SharedString("Iterator Helper"), storage.FlagConfigurable)
 
 	initIteratorFrom(cx, ctor)
 	initIteratorConcat(cx, ctor)
@@ -171,34 +171,34 @@ func initIteratorHelpers(cx *engine.ExecutionContext) {
 	initEagerIteratorMethods(cx)
 }
 
-func iteratorConstructor(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func iteratorConstructor(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	nt := cx.GetNewTarget()
-	if nt == nil || nt == cx.Intrinsic(engine.IntrinsicIterator) {
+	if nt == nil || nt == cx.Intrinsic(storage.IntrinsicIterator) {
 		cx.ThrowTypeError("Iterator cannot be constructed directly")
 	}
-	return storage.ObjectValue(cx.NewInstance(cx.GetPrototypeFromConstructor(nt, engine.IntrinsicIteratorPrototype)))
+	return storage.ObjectValue(cx.NewInstance(cx.GetPrototypeFromConstructor(nt, storage.IntrinsicIteratorPrototype)))
 }
 
-func iteratorConstructorGetter(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-	return cx.IntrinsicValue(engine.IntrinsicIterator)
+func iteratorConstructorGetter(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
+	return cx.IntrinsicValue(storage.IntrinsicIterator)
 }
 
-func iteratorConstructorSetter(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-	setIgnoringIteratorPrototype(cx, this, cx.Key(engine.KeyConstructor), arg(args, 0))
+func iteratorConstructorSetter(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
+	setIgnoringIteratorPrototype(cx, this, cx.Key(storage.KeyConstructor), arg(args, 0))
 	return storage.Undefined
 }
 
-func iteratorToStringTagGetter(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-	return *cx.ActiveNativeState().(*engine.Value)
+func iteratorToStringTagGetter(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
+	return *cx.ActiveNativeState().(*storage.Value)
 }
 
-func iteratorToStringTagSetter(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-	setIgnoringIteratorPrototype(cx, this, cx.WellKnownSymbol(engine.SymbolToStringTag), arg(args, 0))
+func iteratorToStringTagSetter(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
+	setIgnoringIteratorPrototype(cx, this, cx.WellKnownSymbol(storage.SymbolToStringTag), arg(args, 0))
 	return storage.Undefined
 }
 
-func iteratorDispose(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-	if m := cx.GetMethod(this, cx.Key(engine.KeyReturn)); m != nil {
+func iteratorDispose(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
+	if m := cx.GetMethod(this, cx.Key(storage.KeyReturn)); m != nil {
 		cx.Call(m, this)
 	}
 	return storage.Undefined
@@ -207,11 +207,11 @@ func iteratorDispose(cx *engine.ExecutionContext, this engine.Value, args []engi
 // nativeIteratorHelperNext is %IteratorHelperPrototype%.next.
 var nativeIteratorHelperNext = engine.RegisterIteratorNext(engine.IteratorClosureRealm, iteratorHelperStep)
 
-func iteratorHelperStep(cx *engine.ExecutionContext, this engine.Value) (engine.Value, bool) {
+func iteratorHelperStep(cx *engine.ExecutionContext, this storage.Value) (storage.Value, bool) {
 	return resumeHelper(cx, this, engine.ResumeNext)
 }
 
-func iteratorHelperReturn(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func iteratorHelperReturn(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	resumeHelper(cx, this, engine.ResumeReturn)
 	return cx.CreateIterResultObject(storage.Undefined, true)
 }
@@ -237,37 +237,37 @@ var (
 	nativeIteratorFrom          = engine.RegisterNative(iteratorFrom)
 )
 
-func initIteratorFrom(cx *engine.ExecutionContext, ctor *engine.Object) {
-	wrapProto := cx.NewObject(cx.Intrinsic(engine.IntrinsicIteratorPrototype))
-	cx.SetIntrinsic(engine.IntrinsicWrapForValidIteratorPrototype, wrapProto)
+func initIteratorFrom(cx *engine.ExecutionContext, ctor *storage.Object) {
+	wrapProto := cx.NewObject(cx.Intrinsic(storage.IntrinsicIteratorPrototype))
+	cx.SetIntrinsic(storage.IntrinsicWrapForValidIteratorPrototype, wrapProto)
 	method(cx, wrapProto, "next", 0, nativeWrappedIteratorNext)
 	method(cx, wrapProto, "return", 0, nativeWrappedIteratorReturn)
 	method(cx, ctor, "from", 1, nativeIteratorFrom)
 }
 
-func wrappedIteratorNext(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func wrappedIteratorNext(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	w, _ := storage.IteratorState(this).(*wrappedIterator)
 	requireWrappedIterator(cx, w, "next")
 	return cx.CallValue(w.next, w.it)
 }
 
-func wrappedIteratorReturn(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func wrappedIteratorReturn(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	w, _ := storage.IteratorState(this).(*wrappedIterator)
 	requireWrappedIterator(cx, w, "return")
-	m := cx.GetMethod(w.it, cx.Key(engine.KeyReturn))
+	m := cx.GetMethod(w.it, cx.Key(storage.KeyReturn))
 	if m == nil {
 		return cx.CreateIterResultObject(storage.Undefined, true)
 	}
 	return cx.Call(m, w.it)
 }
 
-func iteratorFrom(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func iteratorFrom(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	var r iterRecord
 	r.it, r.next = cx.GetIteratorFlattenable(arg(args, 0), true)
-	if cx.OrdinaryHasInstance(storage.ObjectValue(cx.Intrinsic(engine.IntrinsicIterator)), r.it) {
+	if cx.OrdinaryHasInstance(storage.ObjectValue(cx.Intrinsic(storage.IntrinsicIterator)), r.it) {
 		return r.it
 	}
-	return storage.ObjectValue(cx.NewIteratorObject(cx.Intrinsic(engine.IntrinsicWrapForValidIteratorPrototype), &wrappedIterator{iterRecord: r}))
+	return storage.ObjectValue(cx.NewIteratorObject(cx.Intrinsic(storage.IntrinsicWrapForValidIteratorPrototype), &wrappedIterator{iterRecord: r}))
 }
 
 // concatHelper is the helper that Iterator.concat returns.
@@ -277,11 +277,11 @@ type concatHelper struct {
 }
 
 type concatInput struct {
-	iterable engine.Value
-	method   *engine.Object
+	iterable storage.Value
+	method   *storage.Object
 }
 
-func (h *concatHelper) step(cx *engine.ExecutionContext) (engine.Value, bool) {
+func (h *concatHelper) step(cx *engine.ExecutionContext) (storage.Value, bool) {
 	for {
 		if !h.inner.it.IsUndefined() {
 			if v, ok := h.inner.stepValue(cx); ok {
@@ -307,11 +307,11 @@ func (h *concatHelper) close(cx *engine.ExecutionContext) {
 
 var nativeIteratorConcat = engine.RegisterNative(iteratorConcat)
 
-func initIteratorConcat(cx *engine.ExecutionContext, ctor *engine.Object) {
+func initIteratorConcat(cx *engine.ExecutionContext, ctor *storage.Object) {
 	method(cx, ctor, "concat", 0, nativeIteratorConcat)
 }
 
-func iteratorConcat(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func iteratorConcat(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	h := &concatHelper{
 		inputs: make([]concatInput, len(args)),
 	}
@@ -319,7 +319,7 @@ func iteratorConcat(cx *engine.ExecutionContext, this engine.Value, args []engin
 		if !item.IsObject() {
 			cx.ThrowTypeError(cx.DisplayString(item) + " is not an object")
 		}
-		m := cx.GetMethod(item, cx.WellKnownSymbol(engine.SymbolIterator))
+		m := cx.GetMethod(item, cx.WellKnownSymbol(storage.SymbolIterator))
 		if m == nil {
 			cx.ThrowTypeError(cx.DisplayString(item) + " is not iterable")
 		}
@@ -343,18 +343,18 @@ const (
 type zipHelper struct {
 	// open and next hold the iterators and their next methods in input order.
 	// A finished iterator has undefined entries in both slices.
-	open    []engine.Value
-	next    []engine.Value
+	open    []storage.Value
+	next    []storage.Value
 	mode    zipMode
-	padding []engine.Value
+	padding []storage.Value
 
 	// keys are the property keys of the results of Iterator.zipKeyed. The results of Iterator.zip
 	// are arrays when keys is nil.
-	keys []engine.PropKey
+	keys []storage.PropKey
 }
 
-func (h *zipHelper) step(cx *engine.ExecutionContext) (engine.Value, bool) {
-	var results []engine.Value
+func (h *zipHelper) step(cx *engine.ExecutionContext) (storage.Value, bool) {
+	var results []storage.Value
 	cx.IfAbruptCloseIterators(h.open, func() {
 		results = h.nextRow(cx)
 	})
@@ -373,8 +373,8 @@ func (h *zipHelper) step(cx *engine.ExecutionContext) (engine.Value, bool) {
 }
 
 // nextRow returns the next row, or nil when iteration is done.
-func (h *zipHelper) nextRow(cx *engine.ExecutionContext) []engine.Value {
-	results := make([]engine.Value, len(h.open))
+func (h *zipHelper) nextRow(cx *engine.ExecutionContext) []storage.Value {
+	results := make([]storage.Value, len(h.open))
 	var yielded bool
 	for i, it := range h.open {
 		if it.IsUndefined() {
@@ -405,7 +405,7 @@ func (h *zipHelper) nextRow(cx *engine.ExecutionContext) []engine.Value {
 }
 
 // stepInput releases a finished or throwing input before the other inputs can be closed.
-func (h *zipHelper) stepInput(cx *engine.ExecutionContext, i int, readValue bool) (v engine.Value, yielded bool) {
+func (h *zipHelper) stepInput(cx *engine.ExecutionContext, i int, readValue bool) (v storage.Value, yielded bool) {
 	defer func() {
 		if !yielded {
 			h.open[i], h.next[i] = storage.Undefined, storage.Undefined
@@ -431,21 +431,21 @@ func (h *zipHelper) close(cx *engine.ExecutionContext) {
 	cx.IteratorCloseAll(h.open)
 }
 
-func newZipHelper(open, next []engine.Value, mode zipMode) *zipHelper {
+func newZipHelper(open, next []storage.Value, mode zipMode) *zipHelper {
 	h := &zipHelper{
 		open: open,
 		next: next,
 		mode: mode,
 	}
 	if mode == zipLongest {
-		h.padding = make([]engine.Value, len(open))
+		h.padding = make([]storage.Value, len(open))
 	}
 	return h
 }
 
 // zipOptions reads the options of Iterator.zip and Iterator.zipKeyed and returns the mode and
 // the padding option.
-func zipOptions(cx *engine.ExecutionContext, iterables, opts engine.Value) (zipMode, engine.Value) {
+func zipOptions(cx *engine.ExecutionContext, iterables, opts storage.Value) (zipMode, storage.Value) {
 	if !iterables.IsObject() {
 		cx.ThrowTypeError(cx.DisplayString(iterables) + " is not an object")
 	}
@@ -457,7 +457,7 @@ func zipOptions(cx *engine.ExecutionContext, iterables, opts engine.Value) (zipM
 		cx.ThrowTypeError("the options must be an object")
 	}
 	mode := zipShortest
-	switch m := cx.GetV(opts, cx.Key(engine.KeyMode)); {
+	switch m := cx.GetV(opts, cx.Key(storage.KeyMode)); {
 	case m.IsUndefined():
 	case m.IsString() && m.Str() == "shortest":
 	case m.IsString() && m.Str() == "longest":
@@ -469,7 +469,7 @@ func zipOptions(cx *engine.ExecutionContext, iterables, opts engine.Value) (zipM
 	}
 	pad := storage.Undefined
 	if mode == zipLongest {
-		pad = cx.GetV(opts, cx.Key(engine.KeyPadding))
+		pad = cx.GetV(opts, cx.Key(storage.KeyPadding))
 		if !pad.IsUndefined() && !pad.IsObject() {
 			cx.ThrowTypeError("the padding must be an object")
 		}
@@ -482,19 +482,19 @@ var (
 	nativeIteratorZipKeyed = engine.RegisterNative(iteratorZipKeyed)
 )
 
-func initIteratorZip(cx *engine.ExecutionContext, ctor *engine.Object) {
+func initIteratorZip(cx *engine.ExecutionContext, ctor *storage.Object) {
 	method(cx, ctor, "zip", 1, nativeIteratorZip)
 	method(cx, ctor, "zipKeyed", 1, nativeIteratorZipKeyed)
 }
 
-func iteratorZip(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func iteratorZip(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	iterables := arg(args, 0)
 	mode, pad := zipOptions(cx, iterables, arg(args, 1))
 	input, inputNext := cx.GetIterator(iterables)
-	open := []engine.Value{input}
-	var next []engine.Value
+	open := []storage.Value{input}
+	var next []storage.Value
 	for {
-		var v engine.Value
+		var v storage.Value
 		var ok bool
 		cx.IfAbruptCloseIterators(open[1:], func() {
 			v, ok = cx.IteratorStepValue(input, inputNext)
@@ -512,13 +512,13 @@ func iteratorZip(cx *engine.ExecutionContext, this engine.Value, args []engine.V
 	open[0] = storage.Undefined
 	h := newZipHelper(open[1:], next, mode)
 	if mode == zipLongest && !pad.IsUndefined() {
-		var padIt, padNext engine.Value
+		var padIt, padNext storage.Value
 		cx.IfAbruptCloseIterators(h.open, func() {
 			padIt, padNext = cx.GetIterator(pad)
 		})
 		using := true
 		for i := range h.padding {
-			var v engine.Value
+			var v storage.Value
 			cx.IfAbruptCloseIterators(h.open, func() {
 				v, using = cx.IteratorStepValue(padIt, padNext)
 			})
@@ -536,12 +536,12 @@ func iteratorZip(cx *engine.ExecutionContext, this engine.Value, args []engine.V
 	return newIteratorHelper(cx, h)
 }
 
-func iteratorZipKeyed(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func iteratorZipKeyed(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	iterables := arg(args, 0)
 	mode, pad := zipOptions(cx, iterables, arg(args, 1))
 	o := iterables.Object()
-	var open, next []engine.Value
-	var keys []engine.PropKey
+	var open, next []storage.Value
+	var keys []storage.PropKey
 	for _, key := range cx.OwnKeys(o) {
 		var r iterRecord
 		var add bool
@@ -566,7 +566,7 @@ func iteratorZipKeyed(cx *engine.ExecutionContext, this engine.Value, args []eng
 	h := newZipHelper(open, next, mode)
 	h.keys = keys
 	if keys == nil {
-		h.keys = []engine.PropKey{}
+		h.keys = []storage.PropKey{}
 	}
 	if mode == zipLongest && !pad.IsUndefined() {
 		p := pad.Object()
@@ -580,7 +580,7 @@ func iteratorZipKeyed(cx *engine.ExecutionContext, this engine.Value, args []eng
 }
 
 // receiver returns this as the iterator of an Iterator.prototype method.
-func receiver(cx *engine.ExecutionContext, this engine.Value, name string) engine.Value {
+func receiver(cx *engine.ExecutionContext, this storage.Value, name string) storage.Value {
 	if !this.IsObject() {
 		cx.ThrowTypeError("Iterator.prototype." + name + " called on non-object")
 	}
@@ -589,14 +589,14 @@ func receiver(cx *engine.ExecutionContext, this engine.Value, name string) engin
 
 // closeAndThrowTypeError closes the iterator it and throws a TypeError, as the methods
 // of Iterator.prototype do for an invalid argument.
-func closeAndThrowTypeError(cx *engine.ExecutionContext, it engine.Value, msg string) {
+func closeAndThrowTypeError(cx *engine.ExecutionContext, it storage.Value, msg string) {
 	cx.IfAbruptCloseIterator(it, func() {
 		cx.ThrowTypeError(msg)
 	})
 }
 
 // closeAndThrowRangeError is closeAndThrowTypeError for a RangeError.
-func closeAndThrowRangeError(cx *engine.ExecutionContext, it engine.Value, msg string) {
+func closeAndThrowRangeError(cx *engine.ExecutionContext, it storage.Value, msg string) {
 	cx.IfAbruptCloseIterator(it, func() {
 		cx.ThrowRangeError(msg)
 	})
@@ -604,7 +604,7 @@ func closeAndThrowRangeError(cx *engine.ExecutionContext, it engine.Value, msg s
 
 // callableArg returns the function argument of an Iterator.prototype method, closing it and throwing
 // a TypeError when f is not callable.
-func callableArg(cx *engine.ExecutionContext, it, f engine.Value) *engine.Object {
+func callableArg(cx *engine.ExecutionContext, it, f storage.Value) *storage.Object {
 	if !f.IsCallable() {
 		closeAndThrowTypeError(cx, it, cx.DisplayString(f)+" is not a function")
 	}
@@ -612,7 +612,7 @@ func callableArg(cx *engine.ExecutionContext, it, f engine.Value) *engine.Object
 }
 
 // limitArg converts the limit argument of take and drop, closing it when the argument is invalid.
-func limitArg(cx *engine.ExecutionContext, it, limit engine.Value) float64 {
+func limitArg(cx *engine.ExecutionContext, it, limit storage.Value) float64 {
 	var n float64
 	cx.IfAbruptCloseIterator(it, func() {
 		n = cx.ToNumber(limit)
@@ -628,7 +628,7 @@ func limitArg(cx *engine.ExecutionContext, it, limit engine.Value) float64 {
 }
 
 // sizeArg checks the size argument of chunks and windows, closing it when the argument is invalid.
-func sizeArg(cx *engine.ExecutionContext, it, size engine.Value) int {
+func sizeArg(cx *engine.ExecutionContext, it, size storage.Value) int {
 	if !size.IsNumber() || size.Number() != math.Trunc(size.Number()) || math.IsInf(size.Number(), 0) {
 		closeAndThrowTypeError(cx, it, cx.DisplayString(size)+" must be an integer")
 	}
@@ -641,16 +641,16 @@ func sizeArg(cx *engine.ExecutionContext, it, size engine.Value) int {
 
 type mapHelper struct {
 	src     iterRecord
-	f       *engine.Object
+	f       *storage.Object
 	counter float64
 }
 
-func (h *mapHelper) step(cx *engine.ExecutionContext) (engine.Value, bool) {
+func (h *mapHelper) step(cx *engine.ExecutionContext) (storage.Value, bool) {
 	v, ok := h.src.stepValue(cx)
 	if !ok {
 		return storage.Undefined, false
 	}
-	var r engine.Value
+	var r storage.Value
 	cx.IfAbruptCloseIterator(h.src.it, func() {
 		r = cx.Call(h.f, storage.Undefined, v, storage.Number(h.counter))
 	})
@@ -664,11 +664,11 @@ func (h *mapHelper) close(cx *engine.ExecutionContext) {
 
 type filterHelper struct {
 	src     iterRecord
-	f       *engine.Object
+	f       *storage.Object
 	counter float64
 }
 
-func (h *filterHelper) step(cx *engine.ExecutionContext) (engine.Value, bool) {
+func (h *filterHelper) step(cx *engine.ExecutionContext) (storage.Value, bool) {
 	for {
 		v, ok := h.src.stepValue(cx)
 		if !ok {
@@ -694,7 +694,7 @@ type takeHelper struct {
 	remaining float64
 }
 
-func (h *takeHelper) step(cx *engine.ExecutionContext) (engine.Value, bool) {
+func (h *takeHelper) step(cx *engine.ExecutionContext) (storage.Value, bool) {
 	if h.remaining == 0 {
 		cx.IteratorClose(h.src.it)
 		return storage.Undefined, false
@@ -714,7 +714,7 @@ type dropHelper struct {
 	remaining float64
 }
 
-func (h *dropHelper) step(cx *engine.ExecutionContext) (engine.Value, bool) {
+func (h *dropHelper) step(cx *engine.ExecutionContext) (storage.Value, bool) {
 	for h.remaining > 0 {
 		if !math.IsInf(h.remaining, 1) {
 			h.remaining--
@@ -732,15 +732,15 @@ func (h *dropHelper) close(cx *engine.ExecutionContext) {
 
 type flatMapHelper struct {
 	src     iterRecord
-	f       *engine.Object
+	f       *storage.Object
 	counter float64
 	inner   iterRecord
 }
 
-func (h *flatMapHelper) step(cx *engine.ExecutionContext) (engine.Value, bool) {
+func (h *flatMapHelper) step(cx *engine.ExecutionContext) (storage.Value, bool) {
 	for {
 		if !h.inner.it.IsUndefined() {
-			var v engine.Value
+			var v storage.Value
 			var ok bool
 			cx.IfAbruptCloseIterator(h.src.it, func() {
 				v, ok = h.inner.stepValue(cx)
@@ -778,10 +778,10 @@ type chunksHelper struct {
 	windows bool
 	// allowPartial is set for windows when undersized is "allow-partial".
 	allowPartial bool
-	buf          []engine.Value
+	buf          []storage.Value
 }
 
-func (h *chunksHelper) step(cx *engine.ExecutionContext) (engine.Value, bool) {
+func (h *chunksHelper) step(cx *engine.ExecutionContext) (storage.Value, bool) {
 	if h.src.it.IsUndefined() {
 		return storage.Undefined, false
 	}
@@ -812,7 +812,7 @@ func (h *chunksHelper) step(cx *engine.ExecutionContext) (engine.Value, bool) {
 			h.buf = append(h.buf, v)
 		}
 		if len(h.buf) == h.size {
-			return cx.NewArrayOf(append([]engine.Value(nil), h.buf...)), true
+			return cx.NewArrayOf(append([]storage.Value(nil), h.buf...)), true
 		}
 	}
 }
@@ -835,7 +835,7 @@ var (
 
 // initLazyIteratorMethods defines the methods of Iterator.prototype that return iterator helpers.
 func initLazyIteratorMethods(cx *engine.ExecutionContext) {
-	proto := cx.Intrinsic(engine.IntrinsicIteratorPrototype)
+	proto := cx.Intrinsic(storage.IntrinsicIteratorPrototype)
 	method(cx, proto, "map", 1, nativeIteratorMap)
 	method(cx, proto, "filter", 1, nativeIteratorFilter)
 	method(cx, proto, "take", 1, nativeIteratorTake)
@@ -845,7 +845,7 @@ func initLazyIteratorMethods(cx *engine.ExecutionContext) {
 	method(cx, proto, "windows", 1, nativeIteratorWindows)
 }
 
-func iteratorMap(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func iteratorMap(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	it := receiver(cx, this, "map")
 	f := callableArg(cx, it, arg(args, 0))
 	return newIteratorHelper(cx, &mapHelper{
@@ -854,7 +854,7 @@ func iteratorMap(cx *engine.ExecutionContext, this engine.Value, args []engine.V
 	})
 }
 
-func iteratorFilter(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func iteratorFilter(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	it := receiver(cx, this, "filter")
 	f := callableArg(cx, it, arg(args, 0))
 	return newIteratorHelper(cx, &filterHelper{
@@ -863,7 +863,7 @@ func iteratorFilter(cx *engine.ExecutionContext, this engine.Value, args []engin
 	})
 }
 
-func iteratorTake(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func iteratorTake(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	it := receiver(cx, this, "take")
 	n := limitArg(cx, it, arg(args, 0))
 	return newIteratorHelper(cx, &takeHelper{
@@ -872,7 +872,7 @@ func iteratorTake(cx *engine.ExecutionContext, this engine.Value, args []engine.
 	})
 }
 
-func iteratorDrop(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func iteratorDrop(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	it := receiver(cx, this, "drop")
 	n := limitArg(cx, it, arg(args, 0))
 	return newIteratorHelper(cx, &dropHelper{
@@ -881,7 +881,7 @@ func iteratorDrop(cx *engine.ExecutionContext, this engine.Value, args []engine.
 	})
 }
 
-func iteratorFlatMap(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func iteratorFlatMap(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	it := receiver(cx, this, "flatMap")
 	f := callableArg(cx, it, arg(args, 0))
 	return newIteratorHelper(cx, &flatMapHelper{
@@ -890,7 +890,7 @@ func iteratorFlatMap(cx *engine.ExecutionContext, this engine.Value, args []engi
 	})
 }
 
-func iteratorChunks(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func iteratorChunks(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	it := receiver(cx, this, "chunks")
 	size := sizeArg(cx, it, arg(args, 0))
 	return newIteratorHelper(cx, &chunksHelper{
@@ -899,7 +899,7 @@ func iteratorChunks(cx *engine.ExecutionContext, this engine.Value, args []engin
 	})
 }
 
-func iteratorWindows(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func iteratorWindows(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	it := receiver(cx, this, "windows")
 	size := sizeArg(cx, it, arg(args, 0))
 	allowPartial := false
@@ -921,14 +921,14 @@ func iteratorWindows(cx *engine.ExecutionContext, this engine.Value, args []engi
 
 // searchIterator stops at the first value for which the predicate's truth value equals want.
 // It returns that value and true, or undefined and false if the iterator is exhausted.
-func searchIterator(cx *engine.ExecutionContext, this engine.Value, args []engine.Value, name string, want bool) (engine.Value, bool) {
+func searchIterator(cx *engine.ExecutionContext, this storage.Value, args []storage.Value, name string, want bool) (storage.Value, bool) {
 	it := receiver(cx, this, name)
 	f := callableArg(cx, it, arg(args, 0))
 	r := getIteratorDirect(cx, it)
 	counter := 0.0
 	found := false
 	result := storage.Undefined
-	cx.IterateRecord(r.it, r.next, func(v engine.Value) bool {
+	cx.IterateRecord(r.it, r.next, func(v storage.Value) bool {
 		if storage.ToBoolean(cx.Call(f, storage.Undefined, v, storage.Number(counter))) == want {
 			found = true
 			result = v
@@ -953,7 +953,7 @@ var (
 
 // initEagerIteratorMethods defines the methods of Iterator.prototype that consume the iterator.
 func initEagerIteratorMethods(cx *engine.ExecutionContext) {
-	proto := cx.Intrinsic(engine.IntrinsicIteratorPrototype)
+	proto := cx.Intrinsic(storage.IntrinsicIteratorPrototype)
 	method(cx, proto, "reduce", 1, nativeIteratorReduce)
 	method(cx, proto, "toArray", 0, nativeIteratorToArray)
 	method(cx, proto, "forEach", 1, nativeIteratorForEach)
@@ -964,11 +964,11 @@ func initEagerIteratorMethods(cx *engine.ExecutionContext) {
 	method(cx, proto, "join", 1, nativeIteratorJoin)
 }
 
-func iteratorReduce(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func iteratorReduce(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	it := receiver(cx, this, "reduce")
 	f := callableArg(cx, it, arg(args, 0))
 	r := getIteratorDirect(cx, it)
-	var acc engine.Value
+	var acc storage.Value
 	counter := 0.0
 	if len(args) < 2 {
 		v, ok := cx.IteratorStepValue(r.it, r.next)
@@ -980,7 +980,7 @@ func iteratorReduce(cx *engine.ExecutionContext, this engine.Value, args []engin
 	} else {
 		acc = args[1]
 	}
-	cx.IterateRecord(r.it, r.next, func(v engine.Value) bool {
+	cx.IterateRecord(r.it, r.next, func(v storage.Value) bool {
 		acc = cx.Call(f, storage.Undefined, acc, v, storage.Number(counter))
 		counter++
 		return true
@@ -988,10 +988,10 @@ func iteratorReduce(cx *engine.ExecutionContext, this engine.Value, args []engin
 	return acc
 }
 
-func iteratorToArray(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func iteratorToArray(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	it := receiver(cx, this, "toArray")
 	r := getIteratorDirect(cx, it)
-	var items []engine.Value
+	var items []storage.Value
 	for {
 		v, ok := cx.IteratorStepValue(r.it, r.next)
 		if !ok {
@@ -1001,12 +1001,12 @@ func iteratorToArray(cx *engine.ExecutionContext, this engine.Value, args []engi
 	}
 }
 
-func iteratorForEach(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func iteratorForEach(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	it := receiver(cx, this, "forEach")
 	f := callableArg(cx, it, arg(args, 0))
 	r := getIteratorDirect(cx, it)
 	counter := 0.0
-	cx.IterateRecord(r.it, r.next, func(v engine.Value) bool {
+	cx.IterateRecord(r.it, r.next, func(v storage.Value) bool {
 		cx.Call(f, storage.Undefined, v, storage.Number(counter))
 		counter++
 		return true
@@ -1014,22 +1014,22 @@ func iteratorForEach(cx *engine.ExecutionContext, this engine.Value, args []engi
 	return storage.Undefined
 }
 
-func iteratorSome(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func iteratorSome(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	_, found := searchIterator(cx, this, args, "some", true)
 	return storage.Bool(found)
 }
 
-func iteratorEvery(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func iteratorEvery(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	_, found := searchIterator(cx, this, args, "every", false)
 	return storage.Bool(!found)
 }
 
-func iteratorFind(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func iteratorFind(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	v, _ := searchIterator(cx, this, args, "find", true)
 	return v
 }
 
-func iteratorIncludes(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func iteratorIncludes(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	it := receiver(cx, this, "includes")
 	target := arg(args, 0)
 	toSkip := 0.0
@@ -1064,7 +1064,7 @@ func iteratorIncludes(cx *engine.ExecutionContext, this engine.Value, args []eng
 	return storage.Bool(found)
 }
 
-func iteratorJoin(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func iteratorJoin(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	it := receiver(cx, this, "join")
 	sep := wtf8.String(",")
 	if s := arg(args, 0); !s.IsUndefined() {
@@ -1089,7 +1089,7 @@ func iteratorJoin(cx *engine.ExecutionContext, this engine.Value, args []engine.
 				sb.WriteString(cx.ToString(v))
 			})
 		}
-		if sb.Len() > engine.MaxStringLength {
+		if sb.Len() > storage.MaxStringLength {
 			closeAndThrowRangeError(cx, it, "invalid string length")
 		}
 	}

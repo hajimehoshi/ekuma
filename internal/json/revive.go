@@ -10,8 +10,8 @@ import (
 )
 
 // indexKey returns the property key for the integer index i, which may be beyond the array indices.
-func indexKey(cx *engine.ExecutionContext, i int64) engine.PropKey {
-	if i >= 0 && i <= engine.MaxArrayIndex {
+func indexKey(cx *engine.ExecutionContext, i int64) storage.PropKey {
+	if i >= 0 && i <= storage.MaxArrayIndex {
 		return storage.IndexKey(uint32(i))
 	}
 	return storage.NamedKey(cx.Intern(numconv.NumberToString(float64(i))))
@@ -20,13 +20,13 @@ func indexKey(cx *engine.ExecutionContext, i int64) engine.PropKey {
 // reviver is the state of one call of [Revive].
 type reviver struct {
 	cx        *engine.ExecutionContext
-	fn        *engine.Object
-	keySource *engine.Object
+	fn        *storage.Object
+	keySource *storage.Object
 }
 
 // Revive implements the steps of JSON.parse that call the function fn on the value v and
 // its parts. v and rec are the results of ParseWithRecord.
-func Revive(cx *engine.ExecutionContext, v engine.Value, rec *Record, fn *engine.Object) engine.Value {
+func Revive(cx *engine.ExecutionContext, v storage.Value, rec *Record, fn *storage.Object) storage.Value {
 	root := cx.NewOrdinaryObject()
 	k := storage.NamedKey(cx.Intern(""))
 	cx.CreateDataPropertyOrThrow(root, k, v)
@@ -39,7 +39,7 @@ func Revive(cx *engine.ExecutionContext, v engine.Value, rec *Record, fn *engine
 }
 
 // internalize implements InternalizeJSONProperty.
-func (r *reviver) internalize(holder *engine.Object, name engine.PropKey, rec *Record, depth int) engine.Value {
+func (r *reviver) internalize(holder *storage.Object, name storage.PropKey, rec *Record, depth int) storage.Value {
 	cx := r.cx
 	if depth > maxDepth {
 		cx.ThrowRangeError("maximum call stack size exceeded")
@@ -55,7 +55,7 @@ func (r *reviver) internalize(holder *engine.Object, name engine.PropKey, rec *R
 	}
 	if val.IsObject() {
 		o := val.Object()
-		update := func(k engine.PropKey, sub *Record) {
+		update := func(k storage.PropKey, sub *Record) {
 			v := r.internalize(o, k, sub, depth+1)
 			if v.IsUndefined() {
 				cx.DeleteProp(o, k)

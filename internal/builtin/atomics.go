@@ -15,7 +15,7 @@ import (
 
 // validateIntegerTypedArray implements ValidateIntegerTypedArray, with the access mode write when write is set,
 // and returns the typed array and its length.
-func validateIntegerTypedArray(cx *engine.ExecutionContext, v engine.Value, waitable, write bool, what string) (*storage.TypedArray, int) {
+func validateIntegerTypedArray(cx *engine.ExecutionContext, v storage.Value, waitable, write bool, what string) (*storage.TypedArray, int) {
 	_, t, n := validateTypedArrayAccess(cx, v, write, "Atomics."+what)
 	typ := t.ElementType()
 	if waitable {
@@ -29,7 +29,7 @@ func validateIntegerTypedArray(cx *engine.ExecutionContext, v engine.Value, wait
 }
 
 // validateAtomicAccess implements ValidateAtomicAccess and returns the element index.
-func validateAtomicAccess(cx *engine.ExecutionContext, n int, index engine.Value) int {
+func validateAtomicAccess(cx *engine.ExecutionContext, n int, index storage.Value) int {
 	i := toIndex(cx, index)
 	if i >= int64(n) {
 		cx.ThrowRangeError("invalid atomic access index")
@@ -49,7 +49,7 @@ func revalidateAtomicAccess(cx *engine.ExecutionContext, t *storage.TypedArray, 
 }
 
 // toAtomicValue converts v as the Atomics functions do for an element of the type typ.
-func toAtomicValue(cx *engine.ExecutionContext, typ element.Type, v engine.Value) engine.Value {
+func toAtomicValue(cx *engine.ExecutionContext, typ element.Type, v storage.Value) storage.Value {
 	if typ.IsBigInt() {
 		return cx.ToBigInt(v)
 	}
@@ -57,7 +57,7 @@ func toAtomicValue(cx *engine.ExecutionContext, typ element.Type, v engine.Value
 }
 
 // doWait implements DoWait.
-func doWait(cx *engine.ExecutionContext, async bool, args []engine.Value) engine.Value {
+func doWait(cx *engine.ExecutionContext, async bool, args []storage.Value) storage.Value {
 	what := "wait"
 	if async {
 		what = "waitAsync"
@@ -68,7 +68,7 @@ func doWait(cx *engine.ExecutionContext, async bool, args []engine.Value) engine
 	}
 	i := validateAtomicAccess(cx, n, arg(args, 1))
 	typ := t.ElementType()
-	var v engine.Value
+	var v storage.Value
 	if typ.IsBigInt() {
 		v = cx.ToBigInt(arg(args, 2))
 	} else {
@@ -91,10 +91,10 @@ func doWait(cx *engine.ExecutionContext, async bool, args []engine.Value) engine
 }
 
 // waitResult returns the result object of Atomics.waitAsync.
-func waitResult(cx *engine.ExecutionContext, async bool, value engine.Value) engine.Value {
+func waitResult(cx *engine.ExecutionContext, async bool, value storage.Value) storage.Value {
 	o := cx.NewObjectFromProperties(
-		[]engine.PropKey{storage.NamedKey(cx.Intern("async")), storage.NamedKey(cx.Intern("value"))},
-		[]engine.Value{storage.Bool(async), value},
+		[]storage.PropKey{storage.NamedKey(cx.Intern("async")), storage.NamedKey(cx.Intern("value"))},
+		[]storage.Value{storage.Bool(async), value},
 	)
 	return storage.ObjectValue(o)
 }
@@ -112,8 +112,8 @@ var (
 
 func initAtomics(cx *engine.ExecutionContext) {
 	atomics := cx.NewOrdinaryObject()
-	cx.Define(cx.GlobalObject().Object(), cx.Intern("Atomics"), storage.ObjectValue(atomics), engine.FlagsHidden)
-	cx.Define(atomics, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Atomics"), engine.FlagConfigurable)
+	cx.Define(cx.GlobalObject().Object(), cx.Intern("Atomics"), storage.ObjectValue(atomics), storage.FlagsHidden)
+	cx.Define(atomics, cx.WellKnownSymbol(storage.SymbolToStringTag), cx.SharedString("Atomics"), storage.FlagConfigurable)
 
 	method(cx, atomics, "add", 3, nativeAtomicsAdd)
 	method(cx, atomics, "and", 3, nativeAtomicsAnd)
@@ -146,7 +146,7 @@ var (
 //
 //go:noinline
 func atomicsReadModifyWriteNative(name string, op storage.AtomicOp) engine.NativeFunc {
-	return func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return func(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 		t, n := validateIntegerTypedArray(cx, arg(args, 0), false, true, name)
 		i := validateAtomicAccess(cx, n, arg(args, 1))
 		typ := t.ElementType()
@@ -156,7 +156,7 @@ func atomicsReadModifyWriteNative(name string, op storage.AtomicOp) engine.Nativ
 	}
 }
 
-func atomicsCompareExchange(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func atomicsCompareExchange(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	t, n := validateIntegerTypedArray(cx, arg(args, 0), false, true, "compareExchange")
 	i := validateAtomicAccess(cx, n, arg(args, 1))
 	typ := t.ElementType()
@@ -167,7 +167,7 @@ func atomicsCompareExchange(cx *engine.ExecutionContext, this engine.Value, args
 	return storage.ElementFromBits(typ, old)
 }
 
-func atomicsIsLockFree(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func atomicsIsLockFree(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	switch cx.ToIntegerOrInfinity(arg(args, 0)) {
 	case 1, 2, 4, 8:
 		return storage.True
@@ -175,14 +175,14 @@ func atomicsIsLockFree(cx *engine.ExecutionContext, this engine.Value, args []en
 	return storage.False
 }
 
-func atomicsLoad(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func atomicsLoad(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	t, n := validateIntegerTypedArray(cx, arg(args, 0), false, false, "load")
 	i := validateAtomicAccess(cx, n, arg(args, 1))
 	revalidateAtomicAccess(cx, t, i)
 	return storage.ElementFromBits(t.ElementType(), t.AtomicLoad(i))
 }
 
-func atomicsStore(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func atomicsStore(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	t, n := validateIntegerTypedArray(cx, arg(args, 0), false, true, "store")
 	i := validateAtomicAccess(cx, n, arg(args, 1))
 	typ := t.ElementType()
@@ -192,15 +192,15 @@ func atomicsStore(cx *engine.ExecutionContext, this engine.Value, args []engine.
 	return v
 }
 
-func atomicsWait(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func atomicsWait(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	return doWait(cx, false, args)
 }
 
-func atomicsWaitAsync(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func atomicsWaitAsync(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	return doWait(cx, true, args)
 }
 
-func atomicsNotify(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func atomicsNotify(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	t, n := validateIntegerTypedArray(cx, arg(args, 0), true, false, "notify")
 	i := validateAtomicAccess(cx, n, arg(args, 1))
 	c := math.Inf(1)
@@ -215,7 +215,7 @@ func atomicsNotify(cx *engine.ExecutionContext, this engine.Value, args []engine
 	return storage.Number(float64(cx.NotifyWaiters(b, byteIndex, c)))
 }
 
-func atomicsPause(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func atomicsPause(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	if v := arg(args, 0); !v.IsUndefined() {
 		if !v.IsNumber() || v.Number() != math.Trunc(v.Number()) || math.IsInf(v.Number(), 0) {
 			cx.ThrowTypeError("Atomics.pause: the argument must be an integral number")

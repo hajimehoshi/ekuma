@@ -75,7 +75,7 @@ func FuzzNumberWithPrecision(f *testing.F) {
 
 	cx, _ := engine.NewExecutionContext(nil)
 	builtin.Install(cx)
-	proto := cx.Intrinsic(engine.IntrinsicNumberPrototype)
+	proto := cx.Intrinsic(storage.IntrinsicNumberPrototype)
 	f.Fuzz(func(t *testing.T, bits uint64, digitsByte uint8) {
 		n := math.Float64frombits(bits)
 		digits := int(digitsByte) % 101

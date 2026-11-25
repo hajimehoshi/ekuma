@@ -8,7 +8,7 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/storage"
 )
 
-func requireReflectTarget(cx *engine.ExecutionContext, v engine.Value, name string) {
+func requireReflectTarget(cx *engine.ExecutionContext, v storage.Value, name string) {
 	if !v.IsObject() {
 		throwReflectTarget(cx, name)
 	}
@@ -21,7 +21,7 @@ func throwReflectTarget(cx *engine.ExecutionContext, name string) {
 
 // requireReflectArgumentList throws the TypeError of CreateListFromArrayLike for a v that is not an
 // object.
-func requireReflectArgumentList(cx *engine.ExecutionContext, v engine.Value, name string) {
+func requireReflectArgumentList(cx *engine.ExecutionContext, v storage.Value, name string) {
 	if !v.IsObject() {
 		throwReflectArgumentList(cx, name)
 	}
@@ -50,8 +50,8 @@ var (
 
 func initReflect(cx *engine.ExecutionContext) {
 	r := cx.NewOrdinaryObject()
-	cx.Define(cx.GlobalObject().Object(), cx.Intern("Reflect"), storage.ObjectValue(r), engine.FlagsHidden)
-	cx.Define(r, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Reflect"), engine.FlagConfigurable)
+	cx.Define(cx.GlobalObject().Object(), cx.Intern("Reflect"), storage.ObjectValue(r), storage.FlagsHidden)
+	cx.Define(r, cx.WellKnownSymbol(storage.SymbolToStringTag), cx.SharedString("Reflect"), storage.FlagConfigurable)
 
 	// Reflect.apply and Reflect.construct show no frame, as Function.prototype.call and apply.
 	apply := method(cx, r, "apply", 3, nativeReflectApply)
@@ -71,7 +71,7 @@ func initReflect(cx *engine.ExecutionContext) {
 	method(cx, r, "setPrototypeOf", 2, nativeReflectSetPrototypeOf)
 }
 
-func reflectApply(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func reflectApply(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	f := arg(args, 0)
 	if !f.IsCallable() {
 		cx.ThrowTypeError("Reflect.apply requires a function as the target")
@@ -80,7 +80,7 @@ func reflectApply(cx *engine.ExecutionContext, this engine.Value, args []engine.
 	return cx.Call(f.Object(), args[1], listFromArrayLike(cx, args[2])...)
 }
 
-func reflectConstruct(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func reflectConstruct(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	f := arg(args, 0)
 	if !f.IsObject() || !cx.IsConstructor(f.Object()) {
 		cx.ThrowTypeError("Reflect.construct requires a constructor as the target")
@@ -97,20 +97,20 @@ func reflectConstruct(cx *engine.ExecutionContext, this engine.Value, args []eng
 	return storage.ObjectValue(cx.Construct(f.Object(), list, nt.Object()))
 }
 
-func reflectDefineProperty(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func reflectDefineProperty(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	requireReflectTarget(cx, arg(args, 0), "defineProperty")
 	o := args[0].Object()
 	k := cx.ToPropertyKey(arg(args, 1))
 	return storage.Bool(cx.DefineOwnProperty(o, k, cx.ToPropertyDescriptor(arg(args, 2))))
 }
 
-func reflectDeleteProperty(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func reflectDeleteProperty(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	requireReflectTarget(cx, arg(args, 0), "deleteProperty")
 	o := args[0].Object()
 	return storage.Bool(cx.DeleteProp(o, cx.ToPropertyKey(arg(args, 1))))
 }
 
-func reflectGet(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func reflectGet(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	requireReflectTarget(cx, arg(args, 0), "get")
 	o := args[0].Object()
 	k := cx.ToPropertyKey(arg(args, 1))
@@ -121,7 +121,7 @@ func reflectGet(cx *engine.ExecutionContext, this engine.Value, args []engine.Va
 	return cx.GetWithReceiver(o, k, receiver)
 }
 
-func reflectGetOwnPropertyDescriptor(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func reflectGetOwnPropertyDescriptor(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	requireReflectTarget(cx, arg(args, 0), "getOwnPropertyDescriptor")
 	o := args[0].Object()
 	d, ok := cx.GetOwnProperty(o, cx.ToPropertyKey(arg(args, 1)))
@@ -131,7 +131,7 @@ func reflectGetOwnPropertyDescriptor(cx *engine.ExecutionContext, this engine.Va
 	return cx.FromPropertyDescriptor(d)
 }
 
-func reflectGetPrototypeOf(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func reflectGetPrototypeOf(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	requireReflectTarget(cx, arg(args, 0), "getPrototypeOf")
 	if p := cx.ProtoOf(args[0].Object()); p != nil {
 		return storage.ObjectValue(p)
@@ -139,21 +139,21 @@ func reflectGetPrototypeOf(cx *engine.ExecutionContext, this engine.Value, args 
 	return storage.Null
 }
 
-func reflectHas(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func reflectHas(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	requireReflectTarget(cx, arg(args, 0), "has")
 	o := args[0].Object()
 	return storage.Bool(cx.QueryProperty(o, cx.QueryKey(arg(args, 1))))
 }
 
-func reflectIsExtensible(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func reflectIsExtensible(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	requireReflectTarget(cx, arg(args, 0), "isExtensible")
 	return storage.Bool(cx.IsExtensible(args[0].Object()))
 }
 
-func reflectOwnKeys(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func reflectOwnKeys(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	requireReflectTarget(cx, arg(args, 0), "ownKeys")
 	keys := cx.OwnKeys(args[0].Object())
-	out := make([]engine.Value, len(keys))
+	out := make([]storage.Value, len(keys))
 	var pacer engine.Pacer
 	for i, k := range keys {
 		pacer.Step(cx)
@@ -162,12 +162,12 @@ func reflectOwnKeys(cx *engine.ExecutionContext, this engine.Value, args []engin
 	return storage.ObjectValue(cx.NewArray(out))
 }
 
-func reflectPreventExtensions(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func reflectPreventExtensions(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	requireReflectTarget(cx, arg(args, 0), "preventExtensions")
 	return storage.Bool(cx.PreventExtensions(args[0].Object()))
 }
 
-func reflectSet(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func reflectSet(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	requireReflectTarget(cx, arg(args, 0), "set")
 	o := args[0].Object()
 	k := cx.ToPropertyKey(arg(args, 1))
@@ -178,14 +178,14 @@ func reflectSet(cx *engine.ExecutionContext, this engine.Value, args []engine.Va
 	return storage.Bool(cx.SetWithReceiver(o, k, arg(args, 2), receiver))
 }
 
-func reflectSetPrototypeOf(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func reflectSetPrototypeOf(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	requireReflectTarget(cx, arg(args, 0), "setPrototypeOf")
 	o := args[0].Object()
 	p := arg(args, 1)
 	if !p.IsObject() && !p.IsNull() {
 		cx.ThrowTypeError("object prototype may only be an Object or null: " + cx.DisplayString(p))
 	}
-	var po *engine.Object
+	var po *storage.Object
 	if p.IsObject() {
 		po = p.Object()
 	}

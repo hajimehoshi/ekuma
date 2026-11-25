@@ -13,14 +13,14 @@ import (
 )
 
 // newInstant implements CreateTemporalInstant for valid epoch nanoseconds.
-func newInstant(cx *engine.ExecutionContext, ns temporal.Int128, nt *engine.Object) engine.Value {
-	proto := cx.GetPrototypeFromConstructor(nt, engine.IntrinsicTemporalInstantPrototype)
+func newInstant(cx *engine.ExecutionContext, ns temporal.Int128, nt *storage.Object) storage.Value {
+	proto := cx.GetPrototypeFromConstructor(nt, storage.IntrinsicTemporalInstantPrototype)
 	return storage.ObjectValue(cx.NewTemporalObject(proto, &instantSlots{
 		ns: ns,
 	}))
 }
 
-func thisInstant(cx *engine.ExecutionContext, this engine.Value, name string) *instantSlots {
+func thisInstant(cx *engine.ExecutionContext, this storage.Value, name string) *instantSlots {
 	s, ok := storage.TemporalData(this).(*instantSlots)
 	if !ok {
 		incompatible(cx, "Temporal.Instant.prototype."+name, this)
@@ -29,7 +29,7 @@ func thisInstant(cx *engine.ExecutionContext, this engine.Value, name string) *i
 }
 
 // toTemporalInstant implements ToTemporalInstant, returning the epoch nanoseconds.
-func toTemporalInstant(cx *engine.ExecutionContext, item engine.Value) temporal.Int128 {
+func toTemporalInstant(cx *engine.ExecutionContext, item storage.Value) temporal.Int128 {
 	if item.IsObject() {
 		switch s := storage.TemporalData(item).(type) {
 		case *instantSlots:
@@ -66,8 +66,8 @@ var maximumInstantIncrements = map[temporal.Unit]int64{
 	temporal.UnitNanosecond:  86400e9,
 }
 
-func initTemporalInstant(cx *engine.ExecutionContext, ns *engine.Object) {
-	ctor, proto := temporalConstructor(cx, ns, "Instant", 1, engine.IntrinsicTemporalInstantPrototype, nativeInstantConstructor)
+func initTemporalInstant(cx *engine.ExecutionContext, ns *storage.Object) {
+	ctor, proto := temporalConstructor(cx, ns, "Instant", 1, storage.IntrinsicTemporalInstantPrototype, nativeInstantConstructor)
 	method(cx, ctor, "from", 1, nativeInstantFrom)
 	method(cx, ctor, "fromEpochMilliseconds", 1, nativeInstantFromEpochMilliseconds)
 	method(cx, ctor, "fromEpochNanoseconds", 1, nativeInstantFromEpochNanoseconds)
@@ -114,7 +114,7 @@ var (
 //
 //go:noinline
 func instantAddNative(name string) engine.NativeFunc {
-	return temporalNative(func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return temporalNative(func(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 		s := thisInstant(cx, this, name)
 		d := toTemporalDuration(cx, arg(args, 0))
 		if name == "subtract" {
@@ -133,7 +133,7 @@ func instantAddNative(name string) engine.NativeFunc {
 //
 //go:noinline
 func instantUntilNative(name string) engine.NativeFunc {
-	return temporalNative(func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return temporalNative(func(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 		s := thisInstant(cx, this, name)
 		other := toTemporalInstant(cx, arg(args, 0))
 		opts := getOptionsObject(cx, arg(args, 1))
@@ -152,22 +152,22 @@ func instantUntilNative(name string) engine.NativeFunc {
 //
 //go:noinline
 func instantToJSONNative(name string) engine.NativeFunc {
-	return temporalNative(func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return temporalNative(func(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 		s := thisInstant(cx, this, name)
 		return cx.NewString(wtf8.String(temporal.TemporalInstantToString(s.ns, nil, temporal.PrecisionAuto)))
 	})
 }
 
-func instantConstructor(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func instantConstructor(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	nt := newTarget(cx, "Temporal.Instant")
 	return newInstant(cx, bigIntToEpochNs(cx, arg(args, 0)), nt)
 }
 
-func instantFrom(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func instantFrom(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	return newInstant(cx, toTemporalInstant(cx, arg(args, 0)), nil)
 }
 
-func instantFromEpochMilliseconds(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func instantFromEpochMilliseconds(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	n := cx.ToNumber(arg(args, 0))
 	if math.IsNaN(n) || math.IsInf(n, 0) || n != math.Trunc(n) {
 		cx.ThrowRangeError("epoch milliseconds must be an integer")
@@ -178,25 +178,25 @@ func instantFromEpochMilliseconds(cx *engine.ExecutionContext, this engine.Value
 	return newInstant(cx, temporal.Mul64(int64(n), 1_000_000), nil)
 }
 
-func instantFromEpochNanoseconds(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func instantFromEpochNanoseconds(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	return newInstant(cx, bigIntToEpochNs(cx, arg(args, 0)), nil)
 }
 
-func instantCompare(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func instantCompare(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	one := toTemporalInstant(cx, arg(args, 0))
 	two := toTemporalInstant(cx, arg(args, 1))
 	return compareResult(one.Cmp(two))
 }
 
-func instantEpochMilliseconds(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func instantEpochMilliseconds(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	return epochMilliseconds(thisInstant(cx, this, "epochMilliseconds").ns)
 }
 
-func instantEpochNanoseconds(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func instantEpochNanoseconds(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	return epochNsValue(cx, thisInstant(cx, this, "epochNanoseconds").ns)
 }
 
-func instantRound(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func instantRound(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s := thisInstant(cx, this, "round")
 	opts := roundToOptions(cx, arg(args, 0), "smallestUnit")
 	increment := getRoundingIncrementOption(cx, opts)
@@ -207,12 +207,12 @@ func instantRound(cx *engine.ExecutionContext, this engine.Value, args []engine.
 	return newInstant(cx, temporal.RoundTemporalInstant(s.ns, increment, unit, mode), nil)
 }
 
-func instantEquals(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func instantEquals(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s := thisInstant(cx, this, "equals")
 	return storage.Bool(s.ns.Cmp(toTemporalInstant(cx, arg(args, 0))) == 0)
 }
 
-func instantToString(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func instantToString(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s := thisInstant(cx, this, "toString")
 	opts := getOptionsObject(cx, arg(args, 0))
 	digits := getFractionalSecondDigitsOption(cx, opts)
@@ -233,7 +233,7 @@ func instantToString(cx *engine.ExecutionContext, this engine.Value, args []engi
 	return cx.NewString(wtf8.String(temporal.TemporalInstantToString(rounded, tz, p.Precision)))
 }
 
-func instantToZonedDateTimeISO(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func instantToZonedDateTimeISO(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s := thisInstant(cx, this, "toZonedDateTimeISO")
 	tz := toTimeZone(cx, arg(args, 0))
 	return newZonedDateTime(cx, s.ns, tz, temporal.ISO8601, nil)

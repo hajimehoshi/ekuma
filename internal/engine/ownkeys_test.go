@@ -15,16 +15,16 @@ func TestOwnKeysOfManyIndicesPoll(t *testing.T) {
 	cause := errors.New("stop")
 	for _, tc := range []struct {
 		name string
-		list func(cx *engine.ExecutionContext, o *engine.Object)
+		list func(cx *engine.ExecutionContext, o *storage.Object)
 	}{
 		{
 			name: "EnumerableOwnKeys",
-			list: func(cx *engine.ExecutionContext, o *engine.Object) { cx.EnumerableOwnKeys(o, nil) },
+			list: func(cx *engine.ExecutionContext, o *storage.Object) { cx.EnumerableOwnKeys(o, nil) },
 		},
 	} {
 		cx := newTestContext(t)
 		returned := false
-		list := cx.NewFunction("list", func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		list := cx.NewFunction("list", func(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 			// The interruption is seen at the next poll.
 			cx.Interrupt(cause)
 			tc.list(cx, args[0].Object())

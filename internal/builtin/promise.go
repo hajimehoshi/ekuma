@@ -10,12 +10,12 @@ import (
 )
 
 // invoke implements Invoke for the property key of v.
-func invoke(cx *engine.ExecutionContext, v engine.Value, key *engine.Object, args ...engine.Value) engine.Value {
+func invoke(cx *engine.ExecutionContext, v storage.Value, key *storage.Object, args ...storage.Value) storage.Value {
 	return cx.CallValue(cx.GetV(v, key), v, args...)
 }
 
 // getPromiseResolve implements GetPromiseResolve.
-func getPromiseResolve(cx *engine.ExecutionContext, c engine.Value) engine.Value {
+func getPromiseResolve(cx *engine.ExecutionContext, c storage.Value) storage.Value {
 	r := cx.GetV(c, cx.Intern("resolve"))
 	if !r.IsCallable() {
 		cx.ThrowTypeError("the resolve method of the promise constructor is not a function")
@@ -27,15 +27,15 @@ func getPromiseResolve(cx *engine.ExecutionContext, c engine.Value) engine.Value
 // and Promise.race share. perform is called for every value of the iterable with the result
 // of the resolve method of c, as their Perform operations do, and done when the iterator is
 // exhausted. The iterator is closed when the call of the resolve method or perform throws.
-func promiseCombinator(cx *engine.ExecutionContext, c, iterable engine.Value, perform func(c *engine.PromiseCapability, next engine.Value), done func(c *engine.PromiseCapability)) engine.Value {
+func promiseCombinator(cx *engine.ExecutionContext, c, iterable storage.Value, perform func(c *engine.PromiseCapability, next storage.Value), done func(c *engine.PromiseCapability)) storage.Value {
 	pc := cx.NewPromiseCapability(c)
-	var resolve engine.Value
+	var resolve storage.Value
 	if !cx.IfAbruptRejectPromise(pc, func() {
 		resolve = getPromiseResolve(cx, c)
 	}) {
 		return pc.Promise()
 	}
-	var it, next engine.Value
+	var it, next storage.Value
 	if !cx.IfAbruptRejectPromise(pc, func() {
 		it, next = cx.GetIterator(iterable)
 	}) {
@@ -58,7 +58,7 @@ func promiseCombinator(cx *engine.ExecutionContext, c, iterable engine.Value, pe
 
 // promiseElements collects promise combinator results in input order.
 type promiseElements struct {
-	values    []engine.Value
+	values    []storage.Value
 	remaining int
 }
 
@@ -83,7 +83,7 @@ func (e *promiseElements) complete() bool {
 }
 
 // take transfers the collected values to the caller.
-func (e *promiseElements) take() []engine.Value {
+func (e *promiseElements) take() []storage.Value {
 	vals := e.values
 	// Element callbacks can stay reachable after settlement.
 	e.values = nil
@@ -91,9 +91,9 @@ func (e *promiseElements) take() []engine.Value {
 }
 
 // aggregateError returns the AggregateError of the collected values.
-func (e *promiseElements) aggregateError(cx *engine.ExecutionContext) engine.Value {
+func (e *promiseElements) aggregateError(cx *engine.ExecutionContext) storage.Value {
 	err := cx.NewError(engine.ErrorKindAggregate, "all promises were rejected")
-	cx.Define(err.Object(), cx.Key(engine.KeyErrors), storage.ObjectValue(cx.NewArray(e.take())), engine.FlagsHidden)
+	cx.Define(err.Object(), cx.Key(storage.KeyErrors), storage.ObjectValue(cx.NewArray(e.take())), storage.FlagsHidden)
 	return err
 }
 
@@ -107,7 +107,7 @@ type promiseElement struct {
 
 // resolveWith completes the element with v, and resolves the capability with the array of the
 // collected values when it was the last.
-func (el *promiseElement) resolveWith(cx *engine.ExecutionContext, v engine.Value) {
+func (el *promiseElement) resolveWith(cx *engine.ExecutionContext, v storage.Value) {
 	e := el.elements
 	e.values[el.index] = v
 	if e.complete() {
@@ -117,7 +117,7 @@ func (el *promiseElement) resolveWith(cx *engine.ExecutionContext, v engine.Valu
 
 // promiseAllResolveElement is the code of the Promise.all resolve element functions. Their state
 // is a *promiseElement.
-func promiseAllResolveElement(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func promiseAllResolveElement(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	el := cx.ActiveNativeState().(*promiseElement)
 	if el.alreadyCalled {
 		return storage.Undefined
@@ -129,7 +129,7 @@ func promiseAllResolveElement(cx *engine.ExecutionContext, this engine.Value, ar
 
 // promiseAllSettledResolveElement is the code of the Promise.allSettled resolve element functions.
 // Their state is a *promiseElement, which the reject element function shares.
-func promiseAllSettledResolveElement(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func promiseAllSettledResolveElement(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	el := cx.ActiveNativeState().(*promiseElement)
 	if el.alreadyCalled {
 		return storage.Undefined
@@ -141,7 +141,7 @@ func promiseAllSettledResolveElement(cx *engine.ExecutionContext, this engine.Va
 
 // promiseAllSettledRejectElement is the code of the Promise.allSettled reject element functions.
 // Their state is a *promiseElement, which the resolve element function shares.
-func promiseAllSettledRejectElement(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func promiseAllSettledRejectElement(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	el := cx.ActiveNativeState().(*promiseElement)
 	if el.alreadyCalled {
 		return storage.Undefined
@@ -153,7 +153,7 @@ func promiseAllSettledRejectElement(cx *engine.ExecutionContext, this engine.Val
 
 // promiseAnyRejectElement is the code of the Promise.any reject element functions. Their state is
 // a *promiseElement.
-func promiseAnyRejectElement(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func promiseAnyRejectElement(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	el := cx.ActiveNativeState().(*promiseElement)
 	if el.alreadyCalled {
 		return storage.Undefined
@@ -168,27 +168,27 @@ func promiseAnyRejectElement(cx *engine.ExecutionContext, this engine.Value, arg
 }
 
 // fulfilledResult returns the object that describes an element fulfilled with v.
-func fulfilledResult(cx *engine.ExecutionContext, v engine.Value) engine.Value {
-	return settledResult(cx, "fulfilled", cx.Key(engine.KeyValue), v)
+func fulfilledResult(cx *engine.ExecutionContext, v storage.Value) storage.Value {
+	return settledResult(cx, "fulfilled", cx.Key(storage.KeyValue), v)
 }
 
 // rejectedResult returns the object that describes an element rejected with v.
-func rejectedResult(cx *engine.ExecutionContext, v engine.Value) engine.Value {
-	return settledResult(cx, "rejected", cx.Key(engine.KeyReason), v)
+func rejectedResult(cx *engine.ExecutionContext, v storage.Value) storage.Value {
+	return settledResult(cx, "rejected", cx.Key(storage.KeyReason), v)
 }
 
 // settledResult returns the object that describes a settled element, with v under key.
-func settledResult(cx *engine.ExecutionContext, status wtf8.String, key *engine.Object, v engine.Value) engine.Value {
+func settledResult(cx *engine.ExecutionContext, status wtf8.String, key *storage.Object, v storage.Value) storage.Value {
 	return storage.ObjectValue(cx.NewObjectFromProperties(
-		[]engine.PropKey{storage.NamedKey(cx.Key(engine.KeyStatus)), storage.NamedKey(key)},
-		[]engine.Value{cx.NewString(status), v},
+		[]storage.PropKey{storage.NamedKey(cx.Key(storage.KeyStatus)), storage.NamedKey(key)},
+		[]storage.Value{cx.NewString(status), v},
 	))
 }
 
 // keyedPromiseElements pairs each reserved slot with its property key.
 type keyedPromiseElements struct {
 	promiseElements
-	keys []engine.PropKey
+	keys []storage.PropKey
 }
 
 // resolveIfDone resolves pc with the result object when no element is left unsettled.
@@ -210,14 +210,14 @@ type keyedPromiseElement struct {
 }
 
 // resolveWith completes the element with v, and resolves the capability when it was the last.
-func (el *keyedPromiseElement) resolveWith(cx *engine.ExecutionContext, v engine.Value) {
+func (el *keyedPromiseElement) resolveWith(cx *engine.ExecutionContext, v storage.Value) {
 	el.elements.values[el.index] = v
 	el.elements.resolveIfDone(cx, el.capability)
 }
 
 // promiseAllKeyedResolveElement is the code of the Promise.allKeyed resolve element functions.
 // Their state is a *keyedPromiseElement.
-func promiseAllKeyedResolveElement(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func promiseAllKeyedResolveElement(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	el := cx.ActiveNativeState().(*keyedPromiseElement)
 	if el.alreadyCalled {
 		return storage.Undefined
@@ -229,7 +229,7 @@ func promiseAllKeyedResolveElement(cx *engine.ExecutionContext, this engine.Valu
 
 // promiseAllSettledKeyedResolveElement is the code of the Promise.allSettledKeyed resolve element
 // functions. Their state is a *keyedPromiseElement, which the reject element function shares.
-func promiseAllSettledKeyedResolveElement(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func promiseAllSettledKeyedResolveElement(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	el := cx.ActiveNativeState().(*keyedPromiseElement)
 	if el.alreadyCalled {
 		return storage.Undefined
@@ -241,7 +241,7 @@ func promiseAllSettledKeyedResolveElement(cx *engine.ExecutionContext, this engi
 
 // promiseAllSettledKeyedRejectElement is the code of the Promise.allSettledKeyed reject element
 // functions. Their state is a *keyedPromiseElement, which the resolve element function shares.
-func promiseAllSettledKeyedRejectElement(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func promiseAllSettledKeyedRejectElement(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	el := cx.ActiveNativeState().(*keyedPromiseElement)
 	if el.alreadyCalled {
 		return storage.Undefined
@@ -252,7 +252,7 @@ func promiseAllSettledKeyedRejectElement(cx *engine.ExecutionContext, this engin
 }
 
 // createKeyedPromiseCombinatorResultObject implements CreateKeyedPromiseCombinatorResultObject.
-func createKeyedPromiseCombinatorResultObject(cx *engine.ExecutionContext, keys []engine.PropKey, values []engine.Value) *engine.Object {
+func createKeyedPromiseCombinatorResultObject(cx *engine.ExecutionContext, keys []storage.PropKey, values []storage.Value) *storage.Object {
 	o := cx.NewObject(nil)
 	for i, k := range keys {
 		cx.CreateDataPropertyOrThrow(o, k, values[i])
@@ -262,9 +262,9 @@ func createKeyedPromiseCombinatorResultObject(cx *engine.ExecutionContext, keys 
 
 // promiseKeyedCombinator implements Promise.allKeyed, or Promise.allSettledKeyed when
 // settled is true.
-func promiseKeyedCombinator(cx *engine.ExecutionContext, c, promises engine.Value, settled bool, name string) engine.Value {
+func promiseKeyedCombinator(cx *engine.ExecutionContext, c, promises storage.Value, settled bool, name string) storage.Value {
 	pc := cx.NewPromiseCapability(c)
-	var resolve engine.Value
+	var resolve storage.Value
 	if !cx.IfAbruptRejectPromise(pc, func() {
 		resolve = getPromiseResolve(cx, c)
 	}) {
@@ -287,7 +287,7 @@ var (
 )
 
 // performPromiseAllKeyed implements PerformPromiseAllKeyed. settled selects the all-settled variant.
-func performPromiseAllKeyed(cx *engine.ExecutionContext, settled bool, promises *engine.Object, c engine.Value, pc *engine.PromiseCapability, resolve engine.Value) {
+func performPromiseAllKeyed(cx *engine.ExecutionContext, settled bool, promises *storage.Object, c storage.Value, pc *engine.PromiseCapability, resolve storage.Value) {
 	e := &keyedPromiseElements{
 		promiseElements: newPromiseElements(),
 	}
@@ -305,7 +305,7 @@ func performPromiseAllKeyed(cx *engine.ExecutionContext, settled bool, promises 
 			elements:   e,
 			capability: pc,
 		}
-		var onFulfilled, onRejected engine.Value
+		var onFulfilled, onRejected storage.Value
 		if settled {
 			onFulfilled = storage.ObjectValue(cx.NewNativeWithState("", 1, nativePromiseAllSettledKeyedResolveElement, el))
 			onRejected = storage.ObjectValue(cx.NewNativeWithState("", 1, nativePromiseAllSettledKeyedRejectElement, el))
@@ -313,51 +313,51 @@ func performPromiseAllKeyed(cx *engine.ExecutionContext, settled bool, promises 
 			onFulfilled = storage.ObjectValue(cx.NewNativeWithState("", 1, nativePromiseAllKeyedResolveElement, el))
 			onRejected = cx.CapabilityReject(pc)
 		}
-		invoke(cx, next, cx.Key(engine.KeyThen), onFulfilled, onRejected)
+		invoke(cx, next, cx.Key(storage.KeyThen), onFulfilled, onRejected)
 	}
 	e.resolveIfDone(cx, pc)
 }
 
 // promiseFinally is the state of the then finally and catch finally functions.
 type promiseFinally struct {
-	onFinally   *engine.Object
-	constructor *engine.Object
+	onFinally   *storage.Object
+	constructor *storage.Object
 }
 
 var nativePromiseValueThunk = engine.RegisterNative(promiseValueThunk)
 
 // promiseThenFinally is the code of the then finally functions. Their state is a *promiseFinally.
-func promiseThenFinally(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func promiseThenFinally(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	f := cx.ActiveNativeState().(*promiseFinally)
 	value := arg(args, 0)
 	result := cx.Call(f.onFinally, storage.Undefined)
 	p := cx.PromiseResolve(f.constructor, result)
 	valueThunk := cx.NewNativeWithState("", 0, nativePromiseValueThunk, value)
-	return invoke(cx, p, cx.Key(engine.KeyThen), storage.ObjectValue(valueThunk))
+	return invoke(cx, p, cx.Key(storage.KeyThen), storage.ObjectValue(valueThunk))
 }
 
 var nativePromiseThrower = engine.RegisterNative(promiseThrower)
 
 // promiseCatchFinally is the code of the catch finally functions. Their state is a *promiseFinally.
-func promiseCatchFinally(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func promiseCatchFinally(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	f := cx.ActiveNativeState().(*promiseFinally)
 	reason := arg(args, 0)
 	result := cx.Call(f.onFinally, storage.Undefined)
 	p := cx.PromiseResolve(f.constructor, result)
 	thrower := cx.NewNativeWithState("", 0, nativePromiseThrower, reason)
-	return invoke(cx, p, cx.Key(engine.KeyThen), storage.ObjectValue(thrower))
+	return invoke(cx, p, cx.Key(storage.KeyThen), storage.ObjectValue(thrower))
 }
 
 // promiseValueThunk is the code of the functions that return the value of a then finally function.
-// Their state is the value, an [engine.Value].
-func promiseValueThunk(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-	return cx.ActiveNativeState().(engine.Value)
+// Their state is the value, a [storage.Value].
+func promiseValueThunk(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
+	return cx.ActiveNativeState().(storage.Value)
 }
 
 // promiseThrower is the code of the functions that throw the reason of a catch finally function.
-// Their state is the reason, an [engine.Value].
-func promiseThrower(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-	cx.Throw(cx.ActiveNativeState().(engine.Value))
+// Their state is the reason, a [storage.Value].
+func promiseThrower(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
+	cx.Throw(cx.ActiveNativeState().(storage.Value))
 	return storage.Undefined
 }
 
@@ -379,9 +379,9 @@ var (
 )
 
 func initPromise(cx *engine.ExecutionContext) {
-	proto := cx.Intrinsic(engine.IntrinsicPromisePrototype)
-	ctor := constructor(cx, "Promise", 1, engine.IntrinsicPromisePrototype, nativePromiseConstructor)
-	cx.SetIntrinsic(engine.IntrinsicPromise, ctor)
+	proto := cx.Intrinsic(storage.IntrinsicPromisePrototype)
+	ctor := constructor(cx, "Promise", 1, storage.IntrinsicPromisePrototype, nativePromiseConstructor)
+	cx.SetIntrinsic(storage.IntrinsicPromise, ctor)
 	speciesGetter(cx, ctor)
 
 	method(cx, ctor, "all", 1, nativePromiseAll)
@@ -399,10 +399,10 @@ func initPromise(cx *engine.ExecutionContext) {
 	method(cx, proto, "finally", 1, nativePromiseFinallyMethod)
 	method(cx, proto, "then", 2, nativePromiseThen)
 
-	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Promise"), engine.FlagConfigurable)
+	cx.Define(proto, cx.WellKnownSymbol(storage.SymbolToStringTag), cx.SharedString("Promise"), storage.FlagConfigurable)
 }
 
-func promiseConstructor(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func promiseConstructor(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	nt := cx.GetNewTarget()
 	if nt == nil {
 		cx.ThrowTypeError("Promise constructor cannot be invoked without 'new'")
@@ -411,7 +411,7 @@ func promiseConstructor(cx *engine.ExecutionContext, this engine.Value, args []e
 	if !executor.IsCallable() {
 		cx.ThrowTypeError("Promise resolver " + cx.DisplayString(executor) + " is not a function")
 	}
-	p := cx.NewPromiseObject(cx.GetPrototypeFromConstructor(nt, engine.IntrinsicPromisePrototype))
+	p := cx.NewPromiseObject(cx.GetPrototypeFromConstructor(nt, storage.IntrinsicPromisePrototype))
 	rf := cx.CreateResolvingFunctions(p)
 	cx.IfAbruptRejectPromise(rf, func() {
 		cx.Call(executor.Object(), storage.Undefined, cx.CapabilityResolve(rf), cx.CapabilityReject(rf))
@@ -421,16 +421,16 @@ func promiseConstructor(cx *engine.ExecutionContext, this engine.Value, args []e
 
 var nativePromiseAllResolveElement = engine.RegisterNative(promiseAllResolveElement)
 
-func promiseAll(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func promiseAll(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	e := newPromiseElements()
-	return promiseCombinator(cx, this, arg(args, 0), func(pc *engine.PromiseCapability, next engine.Value) {
+	return promiseCombinator(cx, this, arg(args, 0), func(pc *engine.PromiseCapability, next storage.Value) {
 		el := &promiseElement{
 			index:      e.reserve(),
 			elements:   &e,
 			capability: pc,
 		}
 		onFulfilled := cx.NewNativeWithState("", 1, nativePromiseAllResolveElement, el)
-		invoke(cx, next, cx.Key(engine.KeyThen), storage.ObjectValue(onFulfilled), cx.CapabilityReject(pc))
+		invoke(cx, next, cx.Key(storage.KeyThen), storage.ObjectValue(onFulfilled), cx.CapabilityReject(pc))
 	}, func(pc *engine.PromiseCapability) {
 		if e.complete() {
 			cx.CallCapabilityResolve(pc, storage.ObjectValue(cx.NewArray(e.take())))
@@ -443,9 +443,9 @@ var (
 	nativePromiseAllSettledRejectElement  = engine.RegisterNative(promiseAllSettledRejectElement)
 )
 
-func promiseAllSettled(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func promiseAllSettled(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	e := newPromiseElements()
-	return promiseCombinator(cx, this, arg(args, 0), func(pc *engine.PromiseCapability, next engine.Value) {
+	return promiseCombinator(cx, this, arg(args, 0), func(pc *engine.PromiseCapability, next storage.Value) {
 		el := &promiseElement{
 			index:      e.reserve(),
 			elements:   &e,
@@ -453,7 +453,7 @@ func promiseAllSettled(cx *engine.ExecutionContext, this engine.Value, args []en
 		}
 		onFulfilled := cx.NewNativeWithState("", 1, nativePromiseAllSettledResolveElement, el)
 		onRejected := cx.NewNativeWithState("", 1, nativePromiseAllSettledRejectElement, el)
-		invoke(cx, next, cx.Key(engine.KeyThen), storage.ObjectValue(onFulfilled), storage.ObjectValue(onRejected))
+		invoke(cx, next, cx.Key(storage.KeyThen), storage.ObjectValue(onFulfilled), storage.ObjectValue(onRejected))
 	}, func(pc *engine.PromiseCapability) {
 		if e.complete() {
 			cx.CallCapabilityResolve(pc, storage.ObjectValue(cx.NewArray(e.take())))
@@ -461,26 +461,26 @@ func promiseAllSettled(cx *engine.ExecutionContext, this engine.Value, args []en
 	})
 }
 
-func promiseAllKeyed(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func promiseAllKeyed(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	return promiseKeyedCombinator(cx, this, arg(args, 0), false, "Promise.allKeyed")
 }
 
-func promiseAllSettledKeyed(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func promiseAllSettledKeyed(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	return promiseKeyedCombinator(cx, this, arg(args, 0), true, "Promise.allSettledKeyed")
 }
 
 var nativePromiseAnyRejectElement = engine.RegisterNative(promiseAnyRejectElement)
 
-func promiseAny(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func promiseAny(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	e := newPromiseElements()
-	return promiseCombinator(cx, this, arg(args, 0), func(pc *engine.PromiseCapability, next engine.Value) {
+	return promiseCombinator(cx, this, arg(args, 0), func(pc *engine.PromiseCapability, next storage.Value) {
 		el := &promiseElement{
 			index:      e.reserve(),
 			elements:   &e,
 			capability: pc,
 		}
 		onRejected := cx.NewNativeWithState("", 1, nativePromiseAnyRejectElement, el)
-		invoke(cx, next, cx.Key(engine.KeyThen), cx.CapabilityResolve(pc), storage.ObjectValue(onRejected))
+		invoke(cx, next, cx.Key(storage.KeyThen), cx.CapabilityResolve(pc), storage.ObjectValue(onRejected))
 	}, func(pc *engine.PromiseCapability) {
 		if e.complete() {
 			cx.Throw(e.aggregateError(cx))
@@ -488,30 +488,30 @@ func promiseAny(cx *engine.ExecutionContext, this engine.Value, args []engine.Va
 	})
 }
 
-func promiseRace(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-	return promiseCombinator(cx, this, arg(args, 0), func(pc *engine.PromiseCapability, next engine.Value) {
-		invoke(cx, next, cx.Key(engine.KeyThen), cx.CapabilityResolve(pc), cx.CapabilityReject(pc))
+func promiseRace(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
+	return promiseCombinator(cx, this, arg(args, 0), func(pc *engine.PromiseCapability, next storage.Value) {
+		invoke(cx, next, cx.Key(storage.KeyThen), cx.CapabilityResolve(pc), cx.CapabilityReject(pc))
 	}, func(pc *engine.PromiseCapability) {})
 }
 
-func promiseReject(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func promiseReject(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	pc := cx.NewPromiseCapability(this)
 	cx.RejectCapability(pc, arg(args, 0))
 	return pc.Promise()
 }
 
-func promiseResolve(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func promiseResolve(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	if !this.IsObject() {
 		cx.ThrowTypeError("Promise.resolve called on non-object")
 	}
 	return cx.PromiseResolve(this.Object(), arg(args, 0))
 }
 
-func promiseTry(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func promiseTry(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	if !this.IsObject() {
 		cx.ThrowTypeError("Promise.try called on non-object")
 	}
-	var status engine.Value
+	var status storage.Value
 	e, ok := cx.Completion(func() {
 		status = cx.CallValue(arg(args, 0), storage.Undefined, args[min(1, len(args)):]...)
 	})
@@ -523,21 +523,21 @@ func promiseTry(cx *engine.ExecutionContext, this engine.Value, args []engine.Va
 	return pc.Promise()
 }
 
-func promiseWithResolvers(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func promiseWithResolvers(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	pc := cx.NewPromiseCapability(this)
 	o := cx.NewObjectFromProperties(
-		[]engine.PropKey{
+		[]storage.PropKey{
 			storage.NamedKey(cx.Intern("promise")),
 			storage.NamedKey(cx.Intern("resolve")),
 			storage.NamedKey(cx.Intern("reject")),
 		},
-		[]engine.Value{pc.Promise(), cx.CapabilityResolve(pc), cx.CapabilityReject(pc)},
+		[]storage.Value{pc.Promise(), cx.CapabilityResolve(pc), cx.CapabilityReject(pc)},
 	)
 	return storage.ObjectValue(o)
 }
 
-func promiseCatch(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-	return invoke(cx, this, cx.Key(engine.KeyThen), storage.Undefined, arg(args, 0))
+func promiseCatch(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
+	return invoke(cx, this, cx.Key(storage.KeyThen), storage.Undefined, arg(args, 0))
 }
 
 var (
@@ -545,11 +545,11 @@ var (
 	nativePromiseCatchFinally = engine.RegisterNative(promiseCatchFinally)
 )
 
-func promiseFinallyMethod(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func promiseFinallyMethod(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	if !this.IsObject() {
 		cx.ThrowTypeError("Promise.prototype.finally called on non-object")
 	}
-	c := speciesConstructor(cx, this.Object(), cx.Intrinsic(engine.IntrinsicPromise))
+	c := speciesConstructor(cx, this.Object(), cx.Intrinsic(storage.IntrinsicPromise))
 	onFinally := arg(args, 0)
 	thenFinally, catchFinally := onFinally, onFinally
 	if onFinally.IsCallable() {
@@ -560,14 +560,14 @@ func promiseFinallyMethod(cx *engine.ExecutionContext, this engine.Value, args [
 		thenFinally = storage.ObjectValue(cx.NewNativeWithState("", 1, nativePromiseThenFinally, f))
 		catchFinally = storage.ObjectValue(cx.NewNativeWithState("", 1, nativePromiseCatchFinally, f))
 	}
-	return invoke(cx, this, cx.Key(engine.KeyThen), thenFinally, catchFinally)
+	return invoke(cx, this, cx.Key(storage.KeyThen), thenFinally, catchFinally)
 }
 
-func promiseThen(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func promiseThen(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	if !engine.IsPromise(this) {
 		cx.ThrowTypeError("Promise.prototype.then called on incompatible receiver " + cx.DisplayString(this))
 	}
-	c := speciesConstructor(cx, this.Object(), cx.Intrinsic(engine.IntrinsicPromise))
+	c := speciesConstructor(cx, this.Object(), cx.Intrinsic(storage.IntrinsicPromise))
 	pc := cx.NewPromiseCapability(storage.ObjectValue(c))
 	return cx.PerformPromiseThen(this, arg(args, 0), arg(args, 1), pc)
 }

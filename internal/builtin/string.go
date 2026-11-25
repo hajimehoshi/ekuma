@@ -19,7 +19,7 @@ import (
 )
 
 // thisStringValue converts a String.prototype receiver to a string value.
-func thisStringValue(cx *engine.ExecutionContext, this engine.Value, what string) engine.Value {
+func thisStringValue(cx *engine.ExecutionContext, this storage.Value, what string) storage.Value {
 	if this.IsString() {
 		return this
 	}
@@ -27,7 +27,7 @@ func thisStringValue(cx *engine.ExecutionContext, this engine.Value, what string
 	return cx.ToStringValue(this)
 }
 
-func requireThisString(cx *engine.ExecutionContext, this engine.Value, what string) engine.Value {
+func requireThisString(cx *engine.ExecutionContext, this storage.Value, what string) storage.Value {
 	if this.IsString() {
 		return this
 	}
@@ -35,7 +35,7 @@ func requireThisString(cx *engine.ExecutionContext, this engine.Value, what stri
 }
 
 // requireThisStringObject is requireThisString for a receiver that is not a string.
-func requireThisStringObject(cx *engine.ExecutionContext, this engine.Value, what string) engine.Value {
+func requireThisStringObject(cx *engine.ExecutionContext, this storage.Value, what string) storage.Value {
 	s, ok := storage.ThisStringValue(this)
 	if !ok {
 		cx.ThrowTypeError("String.prototype." + what + " requires that 'this' be a String")
@@ -44,13 +44,13 @@ func requireThisStringObject(cx *engine.ExecutionContext, this engine.Value, wha
 }
 
 // rejectRegExp throws a TypeError when the argument v of the method what is a regular expression.
-func rejectRegExp(cx *engine.ExecutionContext, v engine.Value, what string) {
+func rejectRegExp(cx *engine.ExecutionContext, v storage.Value, what string) {
 	if v.IsObject() {
 		rejectRegExpObject(cx, v, what)
 	}
 }
 
-func rejectRegExpObject(cx *engine.ExecutionContext, v engine.Value, what string) {
+func rejectRegExpObject(cx *engine.ExecutionContext, v storage.Value, what string) {
 	if isRegExp(cx, v) {
 		cx.ThrowTypeError("first argument to String.prototype." + what + " must not be a regular expression")
 	}
@@ -115,8 +115,8 @@ var (
 )
 
 func initString(cx *engine.ExecutionContext) {
-	proto := cx.Intrinsic(engine.IntrinsicStringPrototype)
-	ctor := constructor(cx, "String", 1, engine.IntrinsicStringPrototype, nativeStringConstructor)
+	proto := cx.Intrinsic(storage.IntrinsicStringPrototype)
+	ctor := constructor(cx, "String", 1, storage.IntrinsicStringPrototype, nativeStringConstructor)
 	method(cx, ctor, "fromCharCode", 1, nativeStringFromCharCode)
 	method(cx, ctor, "fromCodePoint", 1, nativeStringFromCodePoint)
 	method(cx, ctor, "raw", 1, nativeStringRaw)
@@ -142,8 +142,8 @@ func initString(cx *engine.ExecutionContext) {
 	method(cx, proto, "trim", 0, nativeStringTrim)
 	trimStart := method(cx, proto, "trimStart", 0, nativeStringTrimStart)
 	trimEnd := method(cx, proto, "trimEnd", 0, nativeStringTrimEnd)
-	cx.Define(proto, cx.Intern("trimLeft"), storage.ObjectValue(trimStart), engine.FlagsHidden)
-	cx.Define(proto, cx.Intern("trimRight"), storage.ObjectValue(trimEnd), engine.FlagsHidden)
+	cx.Define(proto, cx.Intern("trimLeft"), storage.ObjectValue(trimStart), storage.FlagsHidden)
+	cx.Define(proto, cx.Intern("trimRight"), storage.ObjectValue(trimEnd), storage.FlagsHidden)
 	// The HTML methods of Annex B.
 	method(cx, proto, "anchor", 1, nativeStringAnchor)
 	method(cx, proto, "big", 0, nativeStringBig)
@@ -178,10 +178,10 @@ func initString(cx *engine.ExecutionContext) {
 	cx.LendRegExpLiterals(method(cx, proto, "match", 1, nativeStringMatch))
 	method(cx, proto, "matchAll", 1, nativeStringMatchAll)
 	cx.LendRegExpLiterals(method(cx, proto, "search", 1, nativeStringSearch))
-	symMethod(cx, proto, cx.WellKnownSymbol(engine.SymbolIterator), "[Symbol.iterator]", 0, nativeStringIteratorMethod)
+	symMethod(cx, proto, cx.WellKnownSymbol(storage.SymbolIterator), "[Symbol.iterator]", 0, nativeStringIteratorMethod)
 }
 
-func stringConstructor(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func stringConstructor(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s := cx.NewString("")
 	if len(args) > 0 {
 		if cx.GetNewTarget() == nil && args[0].IsSymbol() {
@@ -193,12 +193,12 @@ func stringConstructor(cx *engine.ExecutionContext, this engine.Value, args []en
 		s = cx.ToStringValue(args[0])
 	}
 	if nt := cx.GetNewTarget(); nt != nil {
-		return storage.ObjectValue(cx.NewStringObject(s.Object(), cx.GetPrototypeFromConstructor(nt, engine.IntrinsicStringPrototype)))
+		return storage.ObjectValue(cx.NewStringObject(s.Object(), cx.GetPrototypeFromConstructor(nt, storage.IntrinsicStringPrototype)))
 	}
 	return s
 }
 
-func stringFromCharCode(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func stringFromCharCode(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	if len(args) == 1 {
 		return cx.UnitString(uint16(cx.ToUint32(args[0])))
 	}
@@ -212,7 +212,7 @@ func stringFromCharCode(cx *engine.ExecutionContext, this engine.Value, args []e
 	return s
 }
 
-func stringFromCodePoint(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func stringFromCodePoint(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	var buf [charactersOnStack]rune
 	points := slices.Grow(buf[:0], len(args))
 	for _, a := range args {
@@ -227,11 +227,11 @@ func stringFromCodePoint(cx *engine.ExecutionContext, this engine.Value, args []
 	return s
 }
 
-func stringRaw(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func stringRaw(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	cooked := cx.ToObject(arg(args, 0))
-	raw := cx.ToObject(cx.GetV(storage.ObjectValue(cooked), cx.Key(engine.KeyRaw)))
+	raw := cx.ToObject(cx.GetV(storage.ObjectValue(cooked), cx.Key(storage.KeyRaw)))
 	n := cx.LengthOfArrayLike(raw)
-	var buf [stringPartsOnStack]engine.Value
+	var buf [stringPartsOnStack]storage.Value
 	parts := buf[:0]
 	var length int
 	for i := range n {
@@ -243,20 +243,20 @@ func stringRaw(cx *engine.ExecutionContext, this engine.Value, args []engine.Val
 	return cx.ConcatStrings(parts)
 }
 
-func stringToString(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func stringToString(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	return requireThisString(cx, this, "toString")
 }
 
-func stringValueOf(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func stringValueOf(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	return requireThisString(cx, this, "valueOf")
 }
 
-func stringCharAt(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func stringCharAt(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s := thisStringValue(cx, this, "charAt")
 	return quiet.UnitStringAt(cx.Quiet(), s, cx.ToIntegerOrInfinity(arg(args, 0)))
 }
 
-func stringAt(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func stringAt(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s := thisStringValue(cx, this, "at")
 	n := float64(s.StringLength())
 	i := cx.ToIntegerOrInfinity(arg(args, 0))
@@ -269,12 +269,12 @@ func stringAt(cx *engine.ExecutionContext, this engine.Value, args []engine.Valu
 	return cx.UnitString(s.UnitAt(int(i)))
 }
 
-func stringCharCodeAt(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func stringCharCodeAt(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s := thisStringValue(cx, this, "charCodeAt")
 	return quiet.CodeUnitAt(s, cx.ToIntegerOrInfinity(arg(args, 0)))
 }
 
-func stringCodePointAt(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func stringCodePointAt(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s := thisStringValue(cx, this, "codePointAt")
 	i := cx.ToIntegerOrInfinity(arg(args, 0))
 	n := s.StringLength()
@@ -284,14 +284,14 @@ func stringCodePointAt(cx *engine.ExecutionContext, this engine.Value, args []en
 	return storage.Number(float64(s.CodePointAt(int(i))))
 }
 
-func stringIndexOf(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func stringIndexOf(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s := thisStringValue(cx, this, "indexOf")
 	sub := cx.ToStringValue(arg(args, 0))
 	from := numconv.RelativeIndex(math.Max(cx.ToIntegerOrInfinity(arg(args, 1)), 0), s.StringLength())
 	return storage.Number(float64(s.UnitIndexOf(sub, from, cx.Poll)))
 }
 
-func stringLastIndexOf(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func stringLastIndexOf(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s := thisStringValue(cx, this, "lastIndexOf")
 	sub := cx.ToStringValue(arg(args, 0))
 	n := s.StringLength()
@@ -302,7 +302,7 @@ func stringLastIndexOf(cx *engine.ExecutionContext, this engine.Value, args []en
 	return storage.Number(float64(s.UnitLastIndexOf(sub, from, cx.Poll)))
 }
 
-func stringIncludes(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func stringIncludes(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s := thisStringValue(cx, this, "includes")
 	rejectRegExp(cx, arg(args, 0), "includes")
 	sub := cx.ToStringValue(arg(args, 0))
@@ -310,7 +310,7 @@ func stringIncludes(cx *engine.ExecutionContext, this engine.Value, args []engin
 	return storage.Bool(s.UnitIndexOf(sub, from, cx.Poll) >= 0)
 }
 
-func stringStartsWith(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func stringStartsWith(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s := thisStringValue(cx, this, "startsWith")
 	rejectRegExp(cx, arg(args, 0), "startsWith")
 	sub := cx.ToStringValue(arg(args, 0))
@@ -320,7 +320,7 @@ func stringStartsWith(cx *engine.ExecutionContext, this engine.Value, args []eng
 	return storage.Bool(end <= n && s.SubstringEquals(from, end, sub))
 }
 
-func stringEndsWith(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func stringEndsWith(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s := thisStringValue(cx, this, "endsWith")
 	rejectRegExp(cx, arg(args, 0), "endsWith")
 	sub := cx.ToStringValue(arg(args, 0))
@@ -333,7 +333,7 @@ func stringEndsWith(cx *engine.ExecutionContext, this engine.Value, args []engin
 	return storage.Bool(start >= 0 && s.SubstringEquals(start, end, sub))
 }
 
-func stringSlice(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func stringSlice(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s := thisStringValue(cx, this, "slice")
 	start, end := cx.ToIntegerOrInfinity(arg(args, 0)), math.Inf(1)
 	if e := arg(args, 1); !e.IsUndefined() {
@@ -342,7 +342,7 @@ func stringSlice(cx *engine.ExecutionContext, this engine.Value, args []engine.V
 	return quiet.SliceString(cx.Quiet(), s, start, end)
 }
 
-func stringSubstring(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func stringSubstring(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s := thisStringValue(cx, this, "substring")
 	start, end := cx.ToIntegerOrInfinity(arg(args, 0)), math.Inf(1)
 	if e := arg(args, 1); !e.IsUndefined() {
@@ -351,7 +351,7 @@ func stringSubstring(cx *engine.ExecutionContext, this engine.Value, args []engi
 	return quiet.SubstringOf(cx.Quiet(), s, start, end)
 }
 
-func stringSubstr(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func stringSubstr(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s := thisStringValue(cx, this, "substr")
 	n := s.StringLength()
 	start := numconv.RelativeIndex(cx.ToIntegerOrInfinity(arg(args, 0)), n)
@@ -366,18 +366,18 @@ func stringSubstr(cx *engine.ExecutionContext, this engine.Value, args []engine.
 	return cx.Substring(s, start, end)
 }
 
-func stringConcat(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func stringConcat(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	cx.RequireObjectCoercible(this, "String.prototype.concat")
 	s := cx.ToStringValue(this)
 	byteLength := s.StringByteLength()
-	reserve := byteLength <= engine.MaxStringLength
+	reserve := byteLength <= storage.MaxStringLength
 	for _, a := range args {
 		if !a.IsString() {
 			reserve = false
 			break
 		}
 		n := a.StringByteLength()
-		if n > engine.MaxStringLength-byteLength {
+		if n > storage.MaxStringLength-byteLength {
 			reserve = false
 			break
 		}
@@ -395,7 +395,7 @@ func stringConcat(cx *engine.ExecutionContext, this engine.Value, args []engine.
 		}
 		return cx.NewString(b.String())
 	}
-	var buf [stringPartsOnStack]engine.Value
+	var buf [stringPartsOnStack]storage.Value
 	parts, length := append(buf[:0], s), s.StringByteLength()
 	for _, a := range args {
 		parts, length = appendStringPart(cx, parts, length, cx.ToStringValue(a))
@@ -403,7 +403,7 @@ func stringConcat(cx *engine.ExecutionContext, this engine.Value, args []engine.
 	return cx.ConcatStrings(parts)
 }
 
-func stringRepeat(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func stringRepeat(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s := thisStringValue(cx, this, "repeat")
 	n := cx.ToIntegerOrInfinity(arg(args, 0))
 	if n < 0 || math.IsInf(n, 0) {
@@ -416,7 +416,7 @@ func stringRepeat(cx *engine.ExecutionContext, this engine.Value, args []engine.
 	if byteLength == 0 {
 		return cx.NewString("")
 	}
-	if n*float64(byteLength) > engine.MaxStringLength {
+	if n*float64(byteLength) > storage.MaxStringLength {
 		cx.ThrowRangeError("invalid string length")
 	}
 	if n == 1 {
@@ -444,7 +444,7 @@ var (
 //
 //go:noinline
 func stringPadNative(name string, atStart bool) engine.NativeFunc {
-	return func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return func(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 		s := thisStringValue(cx, this, name)
 		target := numconv.ToLength(cx.ToNumber(arg(args, 0)))
 		n := int64(s.StringLength())
@@ -458,7 +458,7 @@ func stringPadNative(name string, atStart bool) engine.NativeFunc {
 		if fill.StringByteLength() == 0 {
 			return s
 		}
-		if target > engine.MaxStringLength {
+		if target > storage.MaxStringLength {
 			cx.ThrowRangeError("invalid string length")
 		}
 		need := target - n
@@ -490,7 +490,7 @@ var (
 //
 //go:noinline
 func stringTrimNative(name string, start, end bool) engine.NativeFunc {
-	return func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return func(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 		s := thisStringValue(cx, this, name)
 		return cx.TrimString(s, start, end)
 	}
@@ -517,7 +517,7 @@ var (
 //
 //go:noinline
 func stringHTMLNative(name string, tag, attr wtf8.String) engine.NativeFunc {
-	return func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return func(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 		// CreateHTML.
 		s := thisStringValue(cx, this, name)
 		var b wtf8.Buffer
@@ -531,14 +531,14 @@ func stringHTMLNative(name string, tag, attr wtf8.String) engine.NativeFunc {
 		b.WriteString(">")
 		s.WriteStringTo(&b)
 		b.WriteString("</" + tag + ">")
-		if b.Len() > engine.MaxStringLength {
+		if b.Len() > storage.MaxStringLength {
 			cx.ThrowRangeError("invalid string length")
 		}
 		return cx.NewString(b.String())
 	}
 }
 
-func stringLocaleCompare(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func stringLocaleCompare(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s := thisStringValue(cx, this, "localeCompare")
 	that := cx.ToStringValue(arg(args, 0))
 	if s.IsASCII() && that.IsASCII() {
@@ -548,7 +548,7 @@ func stringLocaleCompare(cx *engine.ExecutionContext, this engine.Value, args []
 	return storage.Number(float64(wtf8.Compare(mapWellFormed(cx, s.Str(), normalizations[unorm.NFC]), mapWellFormed(cx, that.Str(), normalizations[unorm.NFC]))))
 }
 
-func stringNormalize(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func stringNormalize(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s := thisStringValue(cx, this, "normalize")
 	form := unorm.NFC
 	if f := arg(args, 0); !f.IsUndefined() {
@@ -574,22 +574,22 @@ func stringNormalize(cx *engine.ExecutionContext, this engine.Value, args []engi
 	return cx.NewString(mapLimited(cx, str, normalizations[form]))
 }
 
-func stringIsWellFormed(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func stringIsWellFormed(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	return storage.Bool(thisStringValue(cx, this, "isWellFormed").IsWellFormed())
 }
 
-func stringToWellFormed(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func stringToWellFormed(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	return cx.ToWellFormed(thisStringValue(cx, this, "toWellFormed"))
 }
 
-func stringSplit(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func stringSplit(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	cx.RequireObjectCoercible(this, "String.prototype.split")
 	sepArg, limArg := arg(args, 0), arg(args, 1)
 	if !this.IsString() || limArg.IsObject() {
 		sepArg = cx.OwnRegExp(sepArg)
 	}
 	if sepArg.IsObject() {
-		if m := cx.GetMethod(sepArg, cx.WellKnownSymbol(engine.SymbolSplit)); m != nil {
+		if m := cx.GetMethod(sepArg, cx.WellKnownSymbol(storage.SymbolSplit)); m != nil {
 			return cx.Call(m, sepArg, this, limArg)
 		}
 	}
@@ -603,20 +603,20 @@ func stringSplit(cx *engine.ExecutionContext, this engine.Value, args []engine.V
 		return storage.ObjectValue(cx.NewArray(nil))
 	}
 	if sepArg.IsUndefined() {
-		return storage.ObjectValue(cx.NewArray([]engine.Value{s}))
+		return storage.ObjectValue(cx.NewArray([]storage.Value{s}))
 	}
 	if sep.StringByteLength() == 0 {
 		n := int(min(uint64(s.StringLength()), uint64(limit)))
-		out := make([]engine.Value, n)
-		for i := 0; i < n; i += engine.PollInterval {
+		out := make([]storage.Value, n)
+		for i := 0; i < n; i += storage.PollInterval {
 			if i > 0 {
 				cx.Poll()
 			}
-			unitStrings(cx, out[i:min(i+engine.PollInterval, n)], s, i)
+			unitStrings(cx, out[i:min(i+storage.PollInterval, n)], s, i)
 		}
 		return storage.ObjectValue(cx.NewArray(out))
 	}
-	var out []engine.Value
+	var out []storage.Value
 	sepLen := sep.StringLength()
 	var start int
 	var pacer engine.Pacer
@@ -644,7 +644,7 @@ var (
 //
 //go:noinline
 func stringReplaceNative(name string, all bool) engine.NativeFunc {
-	return func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return func(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 		cx.RequireObjectCoercible(this, "String.prototype."+name)
 		pat, rep := arg(args, 0), arg(args, 1)
 		if !this.IsString() || rep.IsObject() && !rep.IsCallable() {
@@ -654,7 +654,7 @@ func stringReplaceNative(name string, all bool) engine.NativeFunc {
 			if all {
 				requireGlobalRegExp(cx, pat.Object(), "replaceAll")
 			}
-			if m := cx.GetMethod(pat, cx.WellKnownSymbol(engine.SymbolReplace)); m != nil {
+			if m := cx.GetMethod(pat, cx.WellKnownSymbol(storage.SymbolReplace)); m != nil {
 				return cx.Call(m, pat, this, rep)
 			}
 		}
@@ -711,17 +711,17 @@ func stringReplaceNative(name string, all bool) engine.NativeFunc {
 }
 
 var (
-	nativeStringMatch    = engine.RegisterNative(stringMatchNative("match", engine.SymbolMatch))
-	nativeStringMatchAll = engine.RegisterNative(stringMatchNative("matchAll", engine.SymbolMatchAll))
-	nativeStringSearch   = engine.RegisterNative(stringMatchNative("search", engine.SymbolSearch))
+	nativeStringMatch    = engine.RegisterNative(stringMatchNative("match", storage.SymbolMatch))
+	nativeStringMatchAll = engine.RegisterNative(stringMatchNative("matchAll", storage.SymbolMatchAll))
+	nativeStringSearch   = engine.RegisterNative(stringMatchNative("search", storage.SymbolSearch))
 )
 
 // stringMatchNative returns the method name of String.prototype, which calls the method key of a
 // regular expression.
 //
 //go:noinline
-func stringMatchNative(name string, key engine.WellKnownSymbol) engine.NativeFunc {
-	return func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func stringMatchNative(name string, key storage.WellKnownSymbol) engine.NativeFunc {
+	return func(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 		cx.RequireObjectCoercible(this, "String.prototype."+name)
 		pat := arg(args, 0)
 		if !this.IsString() {
@@ -745,9 +745,9 @@ func stringMatchNative(name string, key engine.WellKnownSymbol) engine.NativeFun
 	}
 }
 
-func stringIteratorMethod(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func stringIteratorMethod(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s := thisStringValue(cx, this, "[Symbol.iterator]")
-	return storage.ObjectValue(cx.NewIteratorObject(cx.Intrinsic(engine.IntrinsicStringIteratorPrototype), &quiet.StringIterator{Str: s.Str()}))
+	return storage.ObjectValue(cx.NewIteratorObject(cx.Intrinsic(storage.IntrinsicStringIteratorPrototype), &quiet.StringIterator{Str: s.Str()}))
 }
 
 const (
@@ -764,7 +764,7 @@ func replacementCapacity(inputBytes, searchBytes, replacementBytes, matches int)
 	// A match can split a surrogate pair, so its standalone WTF-8 byte length
 	// can overstate the bytes removed. Substitutions can also change the result size.
 	size := int64(inputBytes) + int64(matches)*int64(replacementBytes-searchBytes)
-	if size < 0 || size > engine.MaxStringLength {
+	if size < 0 || size > storage.MaxStringLength {
 		return 0
 	}
 	return int(size)
@@ -772,7 +772,7 @@ func replacementCapacity(inputBytes, searchBytes, replacementBytes, matches int)
 
 // checkStringLength throws a RangeError when n is more bytes than a string may have.
 func checkStringLength(cx *engine.ExecutionContext, n int) {
-	if n > engine.MaxStringLength {
+	if n > storage.MaxStringLength {
 		cx.ThrowRangeError("invalid string length")
 	}
 }
@@ -781,7 +781,7 @@ func checkStringLength(cx *engine.ExecutionContext, n int) {
 // returns the new parts and length. It throws a RangeError instead when the length would pass
 // MaxStringLength. The strings of a full parts are first joined into one, so parts never grows
 // beyond its capacity.
-func appendStringPart(cx *engine.ExecutionContext, parts []engine.Value, length int, s engine.Value) ([]engine.Value, int) {
+func appendStringPart(cx *engine.ExecutionContext, parts []storage.Value, length int, s storage.Value) ([]storage.Value, int) {
 	length += s.StringByteLength()
 	checkStringLength(cx, length)
 	if len(parts) == cap(parts) {
@@ -792,7 +792,7 @@ func appendStringPart(cx *engine.ExecutionContext, parts []engine.Value, length 
 
 // writeStringLimited writes ToString(v) to b, and throws a RangeError when b gets longer than
 // MaxStringLength. A string v that would make b too long is not written.
-func writeStringLimited(cx *engine.ExecutionContext, b *wtf8.Buffer, v engine.Value) {
+func writeStringLimited(cx *engine.ExecutionContext, b *wtf8.Buffer, v storage.Value) {
 	if v.IsString() {
 		checkStringLength(cx, b.Len()+v.StringByteLength())
 		v.WriteStringTo(b)
@@ -804,7 +804,7 @@ func writeStringLimited(cx *engine.ExecutionContext, b *wtf8.Buffer, v engine.Va
 
 // unitStrings sets the elements of out to the strings of the code units of s from the index start
 // on.
-func unitStrings(cx *engine.ExecutionContext, out []engine.Value, s engine.Value, start int) {
+func unitStrings(cx *engine.ExecutionContext, out []storage.Value, s storage.Value, start int) {
 	for i := range out {
 		out[i] = cx.UnitString(s.UnitAt(start + i))
 	}
@@ -857,7 +857,7 @@ var (
 //
 //go:noinline
 func stringCaseNative(name string, toUpper bool, ascii func(s string, start, end int, poll func()) string, m stringMapping) engine.NativeFunc {
-	return func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return func(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 		s := thisStringValue(cx, this, name)
 		if mapped, ok := cx.MapASCII(s, toUpper); ok {
 			return mapped

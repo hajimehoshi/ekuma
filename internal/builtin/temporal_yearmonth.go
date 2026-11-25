@@ -11,11 +11,11 @@ import (
 )
 
 // createPlainYearMonth implements CreateTemporalYearMonth.
-func createPlainYearMonth(cx *engine.ExecutionContext, d temporal.ISODate, cal string, nt *engine.Object) engine.Value {
+func createPlainYearMonth(cx *engine.ExecutionContext, d temporal.ISODate, cal string, nt *storage.Object) storage.Value {
 	if !temporal.ISOYearMonthWithinLimits(d) {
 		cx.ThrowRangeError("year and month are out of range")
 	}
-	proto := cx.GetPrototypeFromConstructor(nt, engine.IntrinsicTemporalPlainYearMonthPrototype)
+	proto := cx.GetPrototypeFromConstructor(nt, storage.IntrinsicTemporalPlainYearMonthPrototype)
 	return storage.ObjectValue(cx.NewTemporalObject(proto, &plainYearMonthSlots{
 		date: d,
 		cal:  cal,
@@ -23,18 +23,18 @@ func createPlainYearMonth(cx *engine.ExecutionContext, d temporal.ISODate, cal s
 }
 
 // createPlainMonthDay implements CreateTemporalMonthDay.
-func createPlainMonthDay(cx *engine.ExecutionContext, d temporal.ISODate, cal string, nt *engine.Object) engine.Value {
+func createPlainMonthDay(cx *engine.ExecutionContext, d temporal.ISODate, cal string, nt *storage.Object) storage.Value {
 	if !temporal.ISODateWithinLimits(d) {
 		cx.ThrowRangeError("date is out of range")
 	}
-	proto := cx.GetPrototypeFromConstructor(nt, engine.IntrinsicTemporalPlainMonthDayPrototype)
+	proto := cx.GetPrototypeFromConstructor(nt, storage.IntrinsicTemporalPlainMonthDayPrototype)
 	return storage.ObjectValue(cx.NewTemporalObject(proto, &plainMonthDaySlots{
 		date: d,
 		cal:  cal,
 	}))
 }
 
-func thisPlainYearMonth(cx *engine.ExecutionContext, this engine.Value, name string) *plainYearMonthSlots {
+func thisPlainYearMonth(cx *engine.ExecutionContext, this storage.Value, name string) *plainYearMonthSlots {
 	s, ok := storage.TemporalData(this).(*plainYearMonthSlots)
 	if !ok {
 		incompatible(cx, "Temporal.PlainYearMonth.prototype."+name, this)
@@ -42,7 +42,7 @@ func thisPlainYearMonth(cx *engine.ExecutionContext, this engine.Value, name str
 	return s
 }
 
-func thisPlainMonthDay(cx *engine.ExecutionContext, this engine.Value, name string) *plainMonthDaySlots {
+func thisPlainMonthDay(cx *engine.ExecutionContext, this storage.Value, name string) *plainMonthDaySlots {
 	s, ok := storage.TemporalData(this).(*plainMonthDaySlots)
 	if !ok {
 		incompatible(cx, "Temporal.PlainMonthDay.prototype."+name, this)
@@ -51,7 +51,7 @@ func thisPlainMonthDay(cx *engine.ExecutionContext, this engine.Value, name stri
 }
 
 // toTemporalYearMonth implements ToTemporalYearMonth.
-func toTemporalYearMonth(cx *engine.ExecutionContext, item, options engine.Value) plainYearMonthSlots {
+func toTemporalYearMonth(cx *engine.ExecutionContext, item, options storage.Value) plainYearMonthSlots {
 	if item.IsObject() {
 		if s, ok := storage.TemporalData(item).(*plainYearMonthSlots); ok {
 			getOverflowOption(cx, getOptionsObject(cx, options))
@@ -81,7 +81,7 @@ func toTemporalYearMonth(cx *engine.ExecutionContext, item, options engine.Value
 }
 
 // toTemporalMonthDay implements ToTemporalMonthDay.
-func toTemporalMonthDay(cx *engine.ExecutionContext, item, options engine.Value) plainMonthDaySlots {
+func toTemporalMonthDay(cx *engine.ExecutionContext, item, options storage.Value) plainMonthDaySlots {
 	if item.IsObject() {
 		if s, ok := storage.TemporalData(item).(*plainMonthDaySlots); ok {
 			getOverflowOption(cx, getOptionsObject(cx, options))
@@ -118,8 +118,8 @@ func toTemporalMonthDay(cx *engine.ExecutionContext, item, options engine.Value)
 	}
 }
 
-func initTemporalPlainYearMonth(cx *engine.ExecutionContext, ns *engine.Object) {
-	ctor, proto := temporalConstructor(cx, ns, "PlainYearMonth", 2, engine.IntrinsicTemporalPlainYearMonthPrototype, nativePlainYearMonthConstructor)
+func initTemporalPlainYearMonth(cx *engine.ExecutionContext, ns *storage.Object) {
+	ctor, proto := temporalConstructor(cx, ns, "PlainYearMonth", 2, storage.IntrinsicTemporalPlainYearMonthPrototype, nativePlainYearMonthConstructor)
 	method(cx, ctor, "from", 1, nativePlainYearMonthFrom)
 	method(cx, ctor, "compare", 2, nativePlainYearMonthCompare)
 	getter(cx, proto, cx.Intern("calendarId"), "calendarId", nativePlainYearMonthCalendarId)
@@ -174,7 +174,7 @@ var (
 )
 
 // plainYearMonthCalendarDate returns the ISO date and the calendar of this for the getter name.
-func plainYearMonthCalendarDate(cx *engine.ExecutionContext, this engine.Value, name string) (temporal.ISODate, string) {
+func plainYearMonthCalendarDate(cx *engine.ExecutionContext, this storage.Value, name string) (temporal.ISODate, string) {
 	s := thisPlainYearMonth(cx, this, name)
 	return s.date, s.cal
 }
@@ -184,7 +184,7 @@ func plainYearMonthCalendarDate(cx *engine.ExecutionContext, this engine.Value, 
 //
 //go:noinline
 func plainYearMonthAddNative(name string) engine.NativeFunc {
-	return temporalNative(func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return temporalNative(func(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 		s := thisPlainYearMonth(cx, this, name)
 		d := toTemporalDuration(cx, arg(args, 0))
 		if name == "subtract" {
@@ -209,7 +209,7 @@ func plainYearMonthAddNative(name string) engine.NativeFunc {
 //
 //go:noinline
 func plainYearMonthUntilNative(name string) engine.NativeFunc {
-	return temporalNative(func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return temporalNative(func(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 		s := thisPlainYearMonth(cx, this, name)
 		other := toTemporalYearMonth(cx, arg(args, 0), storage.Undefined)
 		checkSameCalendar(cx, s.cal, other.cal)
@@ -252,13 +252,13 @@ func plainYearMonthUntilNative(name string) engine.NativeFunc {
 //
 //go:noinline
 func plainYearMonthToJSONNative(name string) engine.NativeFunc {
-	return temporalNative(func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return temporalNative(func(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 		s := thisPlainYearMonth(cx, this, name)
 		return cx.NewString(wtf8.String(temporal.TemporalYearMonthToString(s.date, s.cal, temporal.ShowCalendarAuto)))
 	})
 }
 
-func plainYearMonthConstructor(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func plainYearMonthConstructor(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	nt := newTarget(cx, "Temporal.PlainYearMonth")
 	y := toIntegerWithTruncation(cx, arg(args, 0), "year")
 	m := toIntegerWithTruncation(cx, arg(args, 1), "month")
@@ -274,18 +274,18 @@ func plainYearMonthConstructor(cx *engine.ExecutionContext, this engine.Value, a
 	return createPlainYearMonth(cx, date, cal, nt)
 }
 
-func plainYearMonthFrom(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func plainYearMonthFrom(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s := toTemporalYearMonth(cx, arg(args, 0), arg(args, 1))
 	return createPlainYearMonth(cx, s.date, s.cal, nil)
 }
 
-func plainYearMonthCompare(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func plainYearMonthCompare(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	one := toTemporalYearMonth(cx, arg(args, 0), storage.Undefined)
 	two := toTemporalYearMonth(cx, arg(args, 1), storage.Undefined)
 	return compareResult(temporal.CompareISODate(one.date, two.date))
 }
 
-func plainYearMonthWith(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func plainYearMonthWith(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s := thisPlainYearMonth(cx, this, "with")
 	bag := rejectTemporalLikeObject(cx, arg(args, 0))
 	f := temporal.ISODateToFields(s.cal, s.date, temporal.FieldsYearMonth)
@@ -295,19 +295,19 @@ func plainYearMonthWith(cx *engine.ExecutionContext, this engine.Value, args []e
 	return createPlainYearMonth(cx, must(temporal.CalendarYearMonthFromFields(s.cal, f, overflow)), s.cal, nil)
 }
 
-func plainYearMonthEquals(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func plainYearMonthEquals(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s := thisPlainYearMonth(cx, this, "equals")
 	other := toTemporalYearMonth(cx, arg(args, 0), storage.Undefined)
 	return storage.Bool(temporal.CompareISODate(s.date, other.date) == 0 && calendarEquals(s.cal, other.cal))
 }
 
-func plainYearMonthToString(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func plainYearMonthToString(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s := thisPlainYearMonth(cx, this, "toString")
 	show := getShowCalendarOption(cx, getOptionsObject(cx, arg(args, 0)))
 	return cx.NewString(wtf8.String(temporal.TemporalYearMonthToString(s.date, s.cal, show)))
 }
 
-func plainYearMonthToPlainDate(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func plainYearMonthToPlainDate(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s := thisPlainYearMonth(cx, this, "toPlainDate")
 	item := arg(args, 0)
 	if !item.IsObject() {
@@ -319,8 +319,8 @@ func plainYearMonthToPlainDate(cx *engine.ExecutionContext, this engine.Value, a
 	return createPlainDate(cx, must(temporal.CalendarDateFromFields(s.cal, f, temporal.OverflowConstrain)), s.cal, nil)
 }
 
-func initTemporalPlainMonthDay(cx *engine.ExecutionContext, ns *engine.Object) {
-	ctor, proto := temporalConstructor(cx, ns, "PlainMonthDay", 2, engine.IntrinsicTemporalPlainMonthDayPrototype, nativePlainMonthDayConstructor)
+func initTemporalPlainMonthDay(cx *engine.ExecutionContext, ns *storage.Object) {
+	ctor, proto := temporalConstructor(cx, ns, "PlainMonthDay", 2, storage.IntrinsicTemporalPlainMonthDayPrototype, nativePlainMonthDayConstructor)
 	method(cx, ctor, "from", 1, nativePlainMonthDayFrom)
 	getter(cx, proto, cx.Intern("calendarId"), "calendarId", nativePlainMonthDayCalendarId)
 	getter(cx, proto, cx.Intern("monthCode"), "monthCode", nativePlainMonthDayMonthCode)
@@ -351,7 +351,7 @@ var (
 )
 
 // plainMonthDayCalendarDate returns the ISO date and the calendar of this for the getter name.
-func plainMonthDayCalendarDate(cx *engine.ExecutionContext, this engine.Value, name string) (temporal.ISODate, string) {
+func plainMonthDayCalendarDate(cx *engine.ExecutionContext, this storage.Value, name string) (temporal.ISODate, string) {
 	s := thisPlainMonthDay(cx, this, name)
 	return s.date, s.cal
 }
@@ -361,13 +361,13 @@ func plainMonthDayCalendarDate(cx *engine.ExecutionContext, this engine.Value, n
 //
 //go:noinline
 func plainMonthDayToJSONNative(name string) engine.NativeFunc {
-	return temporalNative(func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return temporalNative(func(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 		s := thisPlainMonthDay(cx, this, name)
 		return cx.NewString(wtf8.String(temporal.TemporalMonthDayToString(s.date, s.cal, temporal.ShowCalendarAuto)))
 	})
 }
 
-func plainMonthDayConstructor(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func plainMonthDayConstructor(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	nt := newTarget(cx, "Temporal.PlainMonthDay")
 	m := toIntegerWithTruncation(cx, arg(args, 0), "month")
 	d := toIntegerWithTruncation(cx, arg(args, 1), "day")
@@ -383,12 +383,12 @@ func plainMonthDayConstructor(cx *engine.ExecutionContext, this engine.Value, ar
 	return createPlainMonthDay(cx, date, cal, nt)
 }
 
-func plainMonthDayFrom(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func plainMonthDayFrom(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s := toTemporalMonthDay(cx, arg(args, 0), arg(args, 1))
 	return createPlainMonthDay(cx, s.date, s.cal, nil)
 }
 
-func plainMonthDayWith(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func plainMonthDayWith(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s := thisPlainMonthDay(cx, this, "with")
 	bag := rejectTemporalLikeObject(cx, arg(args, 0))
 	f := temporal.ISODateToFields(s.cal, s.date, temporal.FieldsMonthDay)
@@ -398,19 +398,19 @@ func plainMonthDayWith(cx *engine.ExecutionContext, this engine.Value, args []en
 	return createPlainMonthDay(cx, must(temporal.CalendarMonthDayFromFields(s.cal, f, overflow)), s.cal, nil)
 }
 
-func plainMonthDayEquals(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func plainMonthDayEquals(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s := thisPlainMonthDay(cx, this, "equals")
 	other := toTemporalMonthDay(cx, arg(args, 0), storage.Undefined)
 	return storage.Bool(temporal.CompareISODate(s.date, other.date) == 0 && calendarEquals(s.cal, other.cal))
 }
 
-func plainMonthDayToString(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func plainMonthDayToString(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s := thisPlainMonthDay(cx, this, "toString")
 	show := getShowCalendarOption(cx, getOptionsObject(cx, arg(args, 0)))
 	return cx.NewString(wtf8.String(temporal.TemporalMonthDayToString(s.date, s.cal, show)))
 }
 
-func plainMonthDayToPlainDate(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func plainMonthDayToPlainDate(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s := thisPlainMonthDay(cx, this, "toPlainDate")
 	item := arg(args, 0)
 	if !item.IsObject() {

@@ -37,7 +37,7 @@ var durationStyles = [len(duration.Units)][]string{
 
 // createDurationFormat implements the steps of the Intl.DurationFormat constructor that
 // resolve the internal slots.
-func createDurationFormat(cx *engine.ExecutionContext, locales, opts engine.Value) *durationFormatData {
+func createDurationFormat(cx *engine.ExecutionContext, locales, opts storage.Value) *durationFormatData {
 	requested := canonicalizeLocaleList(cx, locales)
 	options := getOptionsObject(cx, opts, "Intl.DurationFormat")
 	res := resolveNumberingSystemLocale(cx, requested, options)
@@ -61,7 +61,7 @@ func createDurationFormat(cx *engine.ExecutionContext, locales, opts engine.Valu
 }
 
 // getDurationUnitOptions implements GetDurationUnitOptions.
-func getDurationUnitOptions(cx *engine.ExecutionContext, unit string, options *engine.Object, baseStyle string, styles []string, prevStyle string, twoDigitHours bool) duration.UnitOptions {
+func getDurationUnitOptions(cx *engine.ExecutionContext, unit string, options *storage.Object, baseStyle string, styles []string, prevStyle string, twoDigitHours bool) duration.UnitOptions {
 	style, ok := getOption(cx, options, unit, styles...)
 	displayDefault := "always"
 	fractional := unit == "milliseconds" || unit == "microseconds" || unit == "nanoseconds"
@@ -114,7 +114,7 @@ func getDurationUnitOptions(cx *engine.ExecutionContext, unit string, options *e
 
 // toDurationRecord implements ToDurationRecord, with the Temporal.Duration objects and the
 // strings of Temporal.
-func toDurationRecord(cx *engine.ExecutionContext, v engine.Value) duration.Duration {
+func toDurationRecord(cx *engine.ExecutionContext, v storage.Value) duration.Duration {
 	if d, ok := builtin.TemporalDurationOf(v); ok {
 		return d.Fields()
 	}
@@ -158,17 +158,17 @@ func toDurationRecord(cx *engine.ExecutionContext, v engine.Value) duration.Dura
 }
 
 // newDurationFormat implements the Intl.DurationFormat constructor.
-func newDurationFormat(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func newDurationFormat(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	nt := cx.GetNewTarget()
 	if nt == nil {
 		cx.ThrowTypeError("constructor Intl.DurationFormat requires 'new'")
 	}
-	proto := cx.GetPrototypeFromConstructor(nt, engine.IntrinsicIntlDurationFormatPrototype)
+	proto := cx.GetPrototypeFromConstructor(nt, storage.IntrinsicIntlDurationFormatPrototype)
 	return storage.ObjectValue(cx.NewIntlObject(proto, createDurationFormat(cx, arg(args, 0), arg(args, 1))))
 }
 
 // thisDurationFormat implements RequireInternalSlot for an Intl.DurationFormat.
-func thisDurationFormat(cx *engine.ExecutionContext, this engine.Value, name string) *durationFormatData {
+func thisDurationFormat(cx *engine.ExecutionContext, this storage.Value, name string) *durationFormatData {
 	df, ok := storage.IntlData(this).(*durationFormatData)
 	if !ok {
 		cx.ThrowTypeError("Intl.DurationFormat.prototype." + name + " called on an object that is not an Intl.DurationFormat")
@@ -193,17 +193,17 @@ var (
 )
 
 // initDurationFormat defines Intl.DurationFormat.
-func initDurationFormat(cx *engine.ExecutionContext, ns *engine.Object) {
-	ctor, proto := constructor(cx, ns, "DurationFormat", 0, engine.IntrinsicIntlDurationFormatPrototype, nativeNewDurationFormat)
+func initDurationFormat(cx *engine.ExecutionContext, ns *storage.Object) {
+	ctor, proto := constructor(cx, ns, "DurationFormat", 0, storage.IntrinsicIntlDurationFormatPrototype, nativeNewDurationFormat)
 
 	method(cx, ctor, "supportedLocalesOf", 1, nativeSupportedLocalesOf)
 	method(cx, proto, "resolvedOptions", 0, nativeDurationFormatResolvedOptions)
 	method(cx, proto, "format", 1, nativeDurationFormatFormat)
 	method(cx, proto, "formatToParts", 1, nativeDurationFormatFormatToParts)
-	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Intl.DurationFormat"), engine.FlagConfigurable)
+	cx.Define(proto, cx.WellKnownSymbol(storage.SymbolToStringTag), cx.SharedString("Intl.DurationFormat"), storage.FlagConfigurable)
 }
 
-func durationFormatResolvedOptions(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func durationFormatResolvedOptions(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	df := thisDurationFormat(cx, this, "resolvedOptions")
 	o := &df.opts
 	kv := []string{"locale", df.locale, "numberingSystem", o.NumberingSystem, "style", o.Style}
@@ -221,12 +221,12 @@ func durationFormatResolvedOptions(cx *engine.ExecutionContext, this engine.Valu
 	return out
 }
 
-func durationFormatFormat(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func durationFormatFormat(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	df := thisDurationFormat(cx, this, "format")
 	return cx.NewString(wtf8.String(df.format(toDurationRecord(cx, arg(args, 0)))))
 }
 
-func durationFormatFormatToParts(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func durationFormatFormatToParts(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	df := thisDurationFormat(cx, this, "formatToParts")
 	d := toDurationRecord(cx, arg(args, 0))
 	parts := df.opts.Format(&d)
@@ -236,7 +236,7 @@ func durationFormatFormatToParts(cx *engine.ExecutionContext, this engine.Value,
 }
 
 // durationToLocaleString implements Temporal.Duration.prototype.toLocaleString.
-func durationToLocaleString(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func durationToLocaleString(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	d, ok := builtin.TemporalDurationOf(this)
 	if !ok {
 		cx.ThrowTypeError("Temporal.Duration.prototype.toLocaleString called on an object that is not a Temporal.Duration")

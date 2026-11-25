@@ -16,13 +16,13 @@ func initWeak(cx *engine.ExecutionContext) {
 }
 
 // requireHoldable throws a TypeError when v cannot be held weakly.
-func requireHoldable(cx *engine.ExecutionContext, v engine.Value, what string) {
+func requireHoldable(cx *engine.ExecutionContext, v storage.Value, what string) {
 	if !cx.CanBeHeldWeakly(v) {
 		cx.ThrowTypeError("invalid value used " + what + ": " + cx.DisplayString(v))
 	}
 }
 
-func thisWeakMap(cx *engine.ExecutionContext, this engine.Value, name string) *engine.WeakTable {
+func thisWeakMap(cx *engine.ExecutionContext, this storage.Value, name string) *storage.WeakTable {
 	t := engine.WeakMapData(this)
 	if t == nil {
 		cx.ThrowTypeError("WeakMap.prototype." + name + " called on incompatible receiver " + cx.DisplayString(this))
@@ -42,34 +42,34 @@ var (
 
 func initWeakMap(cx *engine.ExecutionContext) {
 	proto := cx.NewOrdinaryObject()
-	cx.SetIntrinsic(engine.IntrinsicWeakMapPrototype, proto)
-	constructor(cx, "WeakMap", 0, engine.IntrinsicWeakMapPrototype, nativeWeakMapConstructor)
+	cx.SetIntrinsic(storage.IntrinsicWeakMapPrototype, proto)
+	constructor(cx, "WeakMap", 0, storage.IntrinsicWeakMapPrototype, nativeWeakMapConstructor)
 
 	method(cx, proto, "delete", 1, nativeWeakMapDelete)
 	method(cx, proto, "get", 1, nativeWeakMapGet)
 	method(cx, proto, "has", 1, nativeWeakMapHas)
 	set := method(cx, proto, "set", 2, nativeWeakMapSet)
-	cx.SetIntrinsic(engine.IntrinsicWeakMapPrototypeSet, set)
+	cx.SetIntrinsic(storage.IntrinsicWeakMapPrototypeSet, set)
 	method(cx, proto, "getOrInsert", 2, nativeWeakMapGetOrInsert)
 	method(cx, proto, "getOrInsertComputed", 2, nativeWeakMapGetOrInsertComputed)
-	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("WeakMap"), engine.FlagConfigurable)
+	cx.Define(proto, cx.WellKnownSymbol(storage.SymbolToStringTag), cx.SharedString("WeakMap"), storage.FlagConfigurable)
 }
 
-func weakMapConstructor(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func weakMapConstructor(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	nt := cx.GetNewTarget()
 	if nt == nil {
 		cx.ThrowTypeError("constructor WeakMap requires 'new'")
 	}
-	m := cx.NewWeakMapObject(cx.GetPrototypeFromConstructor(nt, engine.IntrinsicWeakMapPrototype))
+	m := cx.NewWeakMapObject(cx.GetPrototypeFromConstructor(nt, storage.IntrinsicWeakMapPrototype))
 	iterable := arg(args, 0)
 	if iterable.IsNullish() {
 		return storage.ObjectValue(m)
 	}
-	adder := adderOf(cx, m, cx.Key(engine.KeySet))
-	var fast func(k, v engine.Value)
-	if adder == cx.Intrinsic(engine.IntrinsicWeakMapPrototypeSet) {
+	adder := adderOf(cx, m, cx.Key(storage.KeySet))
+	var fast func(k, v storage.Value)
+	if adder == cx.Intrinsic(storage.IntrinsicWeakMapPrototypeSet) {
 		t := engine.WeakMapData(storage.ObjectValue(m))
-		fast = func(k, v engine.Value) {
+		fast = func(k, v storage.Value) {
 			if !cx.CanBeHeldWeakly(k) {
 				// The TypeError belongs to the native set call.
 				cx.Call(adder, storage.ObjectValue(m), k, v)
@@ -82,13 +82,13 @@ func weakMapConstructor(cx *engine.ExecutionContext, this engine.Value, args []e
 	return storage.ObjectValue(m)
 }
 
-func weakMapDelete(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func weakMapDelete(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	t := thisWeakMap(cx, this, "delete")
 	k := arg(args, 0)
 	return storage.Bool(cx.CanBeHeldWeakly(k) && t.Delete(k))
 }
 
-func weakMapGet(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func weakMapGet(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	t := thisWeakMap(cx, this, "get")
 	k := arg(args, 0)
 	if !cx.CanBeHeldWeakly(k) {
@@ -98,13 +98,13 @@ func weakMapGet(cx *engine.ExecutionContext, this engine.Value, args []engine.Va
 	return v
 }
 
-func weakMapHas(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func weakMapHas(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	t := thisWeakMap(cx, this, "has")
 	k := arg(args, 0)
 	return storage.Bool(cx.CanBeHeldWeakly(k) && t.Has(k))
 }
 
-func weakMapSet(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func weakMapSet(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	t := thisWeakMap(cx, this, "set")
 	k := arg(args, 0)
 	requireHoldable(cx, k, "as weak map key")
@@ -112,7 +112,7 @@ func weakMapSet(cx *engine.ExecutionContext, this engine.Value, args []engine.Va
 	return this
 }
 
-func weakMapGetOrInsert(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func weakMapGetOrInsert(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	t := thisWeakMap(cx, this, "getOrInsert")
 	k, v := arg(args, 0), arg(args, 1)
 	requireHoldable(cx, k, "as weak map key")
@@ -123,7 +123,7 @@ func weakMapGetOrInsert(cx *engine.ExecutionContext, this engine.Value, args []e
 	return v
 }
 
-func weakMapGetOrInsertComputed(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func weakMapGetOrInsertComputed(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	t := thisWeakMap(cx, this, "getOrInsertComputed")
 	k, cb := arg(args, 0), arg(args, 1)
 	if !cb.IsCallable() {
@@ -138,7 +138,7 @@ func weakMapGetOrInsertComputed(cx *engine.ExecutionContext, this engine.Value, 
 	return v
 }
 
-func thisWeakSet(cx *engine.ExecutionContext, this engine.Value, name string) *engine.WeakTable {
+func thisWeakSet(cx *engine.ExecutionContext, this storage.Value, name string) *storage.WeakTable {
 	t := engine.WeakSetData(this)
 	if t == nil {
 		cx.ThrowTypeError("WeakSet.prototype." + name + " called on incompatible receiver " + cx.DisplayString(this))
@@ -155,30 +155,30 @@ var (
 
 func initWeakSet(cx *engine.ExecutionContext) {
 	proto := cx.NewOrdinaryObject()
-	cx.SetIntrinsic(engine.IntrinsicWeakSetPrototype, proto)
-	constructor(cx, "WeakSet", 0, engine.IntrinsicWeakSetPrototype, nativeWeakSetConstructor)
+	cx.SetIntrinsic(storage.IntrinsicWeakSetPrototype, proto)
+	constructor(cx, "WeakSet", 0, storage.IntrinsicWeakSetPrototype, nativeWeakSetConstructor)
 
 	add := method(cx, proto, "add", 1, nativeWeakSetAdd)
-	cx.SetIntrinsic(engine.IntrinsicWeakSetPrototypeAdd, add)
+	cx.SetIntrinsic(storage.IntrinsicWeakSetPrototypeAdd, add)
 	method(cx, proto, "delete", 1, nativeWeakSetDelete)
 	method(cx, proto, "has", 1, nativeWeakSetHas)
-	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("WeakSet"), engine.FlagConfigurable)
+	cx.Define(proto, cx.WellKnownSymbol(storage.SymbolToStringTag), cx.SharedString("WeakSet"), storage.FlagConfigurable)
 }
 
-func weakSetConstructor(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func weakSetConstructor(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	nt := cx.GetNewTarget()
 	if nt == nil {
 		cx.ThrowTypeError("constructor WeakSet requires 'new'")
 	}
-	s := cx.NewWeakSetObject(cx.GetPrototypeFromConstructor(nt, engine.IntrinsicWeakSetPrototype))
+	s := cx.NewWeakSetObject(cx.GetPrototypeFromConstructor(nt, storage.IntrinsicWeakSetPrototype))
 	iterable := arg(args, 0)
 	if iterable.IsNullish() {
 		return storage.ObjectValue(s)
 	}
-	adder := adderOf(cx, s, cx.Key(engine.KeyAdd))
-	original := adder == cx.Intrinsic(engine.IntrinsicWeakSetPrototypeAdd)
+	adder := adderOf(cx, s, cx.Key(storage.KeyAdd))
+	original := adder == cx.Intrinsic(storage.IntrinsicWeakSetPrototypeAdd)
 	t := engine.WeakSetData(storage.ObjectValue(s))
-	cx.Iterate(iterable, func(e engine.Value) bool {
+	cx.Iterate(iterable, func(e storage.Value) bool {
 		if original && cx.CanBeHeldWeakly(e) {
 			t.Set(e, storage.True)
 		} else {
@@ -190,7 +190,7 @@ func weakSetConstructor(cx *engine.ExecutionContext, this engine.Value, args []e
 	return storage.ObjectValue(s)
 }
 
-func weakSetAdd(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func weakSetAdd(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	t := thisWeakSet(cx, this, "add")
 	v := arg(args, 0)
 	requireHoldable(cx, v, "in weak set")
@@ -198,13 +198,13 @@ func weakSetAdd(cx *engine.ExecutionContext, this engine.Value, args []engine.Va
 	return this
 }
 
-func weakSetDelete(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func weakSetDelete(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	t := thisWeakSet(cx, this, "delete")
 	v := arg(args, 0)
 	return storage.Bool(cx.CanBeHeldWeakly(v) && t.Delete(v))
 }
 
-func weakSetHas(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func weakSetHas(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	t := thisWeakSet(cx, this, "has")
 	v := arg(args, 0)
 	return storage.Bool(cx.CanBeHeldWeakly(v) && t.Has(v))
@@ -217,25 +217,25 @@ var (
 
 func initWeakRef(cx *engine.ExecutionContext) {
 	proto := cx.NewOrdinaryObject()
-	cx.SetIntrinsic(engine.IntrinsicWeakRefPrototype, proto)
-	constructor(cx, "WeakRef", 1, engine.IntrinsicWeakRefPrototype, nativeWeakRefConstructor)
+	cx.SetIntrinsic(storage.IntrinsicWeakRefPrototype, proto)
+	constructor(cx, "WeakRef", 1, storage.IntrinsicWeakRefPrototype, nativeWeakRefConstructor)
 	method(cx, proto, "deref", 0, nativeWeakRefDeref)
-	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("WeakRef"), engine.FlagConfigurable)
+	cx.Define(proto, cx.WellKnownSymbol(storage.SymbolToStringTag), cx.SharedString("WeakRef"), storage.FlagConfigurable)
 }
 
-func weakRefConstructor(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func weakRefConstructor(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	nt := cx.GetNewTarget()
 	if nt == nil {
 		cx.ThrowTypeError("constructor WeakRef requires 'new'")
 	}
 	target := arg(args, 0)
 	requireHoldable(cx, target, "as WeakRef target")
-	r := cx.NewWeakRefObject(cx.GetPrototypeFromConstructor(nt, engine.IntrinsicWeakRefPrototype), target)
+	r := cx.NewWeakRefObject(cx.GetPrototypeFromConstructor(nt, storage.IntrinsicWeakRefPrototype), target)
 	cx.AddToKeptObjects(target.Object())
 	return storage.ObjectValue(r)
 }
 
-func weakRefDeref(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func weakRefDeref(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	v, ok := cx.WeakRefDeref(this)
 	if !ok {
 		cx.ThrowTypeError("WeakRef.prototype.deref called on incompatible receiver " + cx.DisplayString(this))
@@ -243,7 +243,7 @@ func weakRefDeref(cx *engine.ExecutionContext, this engine.Value, args []engine.
 	return v
 }
 
-func thisFinalizationRegistry(cx *engine.ExecutionContext, this engine.Value, name string) *engine.FinalizationRegistry {
+func thisFinalizationRegistry(cx *engine.ExecutionContext, this storage.Value, name string) *engine.FinalizationRegistry {
 	r := engine.FinalizationRegistryData(this)
 	if r == nil {
 		cx.ThrowTypeError("FinalizationRegistry.prototype." + name + " called on incompatible receiver " + cx.DisplayString(this))
@@ -259,15 +259,15 @@ var (
 
 func initFinalizationRegistry(cx *engine.ExecutionContext) {
 	proto := cx.NewOrdinaryObject()
-	cx.SetIntrinsic(engine.IntrinsicFinalizationRegistryPrototype, proto)
-	constructor(cx, "FinalizationRegistry", 1, engine.IntrinsicFinalizationRegistryPrototype, nativeFinalizationRegistryConstructor)
+	cx.SetIntrinsic(storage.IntrinsicFinalizationRegistryPrototype, proto)
+	constructor(cx, "FinalizationRegistry", 1, storage.IntrinsicFinalizationRegistryPrototype, nativeFinalizationRegistryConstructor)
 
 	method(cx, proto, "register", 2, nativeFinalizationRegistryRegister)
 	method(cx, proto, "unregister", 1, nativeFinalizationRegistryUnregister)
-	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("FinalizationRegistry"), engine.FlagConfigurable)
+	cx.Define(proto, cx.WellKnownSymbol(storage.SymbolToStringTag), cx.SharedString("FinalizationRegistry"), storage.FlagConfigurable)
 }
 
-func finalizationRegistryConstructor(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func finalizationRegistryConstructor(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	nt := cx.GetNewTarget()
 	if nt == nil {
 		cx.ThrowTypeError("constructor FinalizationRegistry requires 'new'")
@@ -276,10 +276,10 @@ func finalizationRegistryConstructor(cx *engine.ExecutionContext, this engine.Va
 	if !cb.IsCallable() {
 		cx.ThrowTypeError(cx.DisplayString(cb) + " is not a function")
 	}
-	return storage.ObjectValue(cx.NewFinalizationRegistryObject(cx.GetPrototypeFromConstructor(nt, engine.IntrinsicFinalizationRegistryPrototype), cb.Object()))
+	return storage.ObjectValue(cx.NewFinalizationRegistryObject(cx.GetPrototypeFromConstructor(nt, storage.IntrinsicFinalizationRegistryPrototype), cb.Object()))
 }
 
-func finalizationRegistryRegister(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func finalizationRegistryRegister(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	r := thisFinalizationRegistry(cx, this, "register")
 	target, held, token := arg(args, 0), arg(args, 1), arg(args, 2)
 	requireHoldable(cx, target, "as FinalizationRegistry target")
@@ -295,7 +295,7 @@ func finalizationRegistryRegister(cx *engine.ExecutionContext, this engine.Value
 	return storage.Undefined
 }
 
-func finalizationRegistryUnregister(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func finalizationRegistryUnregister(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	r := thisFinalizationRegistry(cx, this, "unregister")
 	token := arg(args, 0)
 	requireHoldable(cx, token, "as unregister token")

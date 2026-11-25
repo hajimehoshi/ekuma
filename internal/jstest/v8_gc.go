@@ -16,7 +16,7 @@ import (
 type v8GCWithArguments struct{}
 
 func installV8GC(cx *engine.ExecutionContext) {
-	gc := cx.NewFunction("gc", func(cx *engine.ExecutionContext, _ engine.Value, args []engine.Value) engine.Value {
+	gc := cx.NewFunction("gc", func(cx *engine.ExecutionContext, _ storage.Value, args []storage.Value) storage.Value {
 		if len(args) != 0 {
 			readV8GCOptions(cx, args[0])
 			panic(v8GCWithArguments{})
@@ -25,12 +25,12 @@ func installV8GC(cx *engine.ExecutionContext) {
 		return storage.Undefined
 	})
 	// The V8 extension declares gc as a global var.
-	cx.Define(cx.GlobalObject().Object(), cx.Intern("gc"), gc, engine.FlagWritable|engine.FlagEnumerable)
+	cx.Define(cx.GlobalObject().Object(), cx.Intern("gc"), gc, storage.FlagWritable|storage.FlagEnumerable)
 }
 
 // d8 reads these properties in order before selecting a collection. A getter
 // can throw even when the collection itself would be unsupported.
-func readV8GCOptions(cx *engine.ExecutionContext, options engine.Value) {
+func readV8GCOptions(cx *engine.ExecutionContext, options storage.Value) {
 	if !options.IsObject() {
 		return
 	}

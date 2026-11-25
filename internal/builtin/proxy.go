@@ -15,12 +15,12 @@ var (
 
 func initProxy(cx *engine.ExecutionContext) {
 	ctor := cx.NewNativeConstructor("Proxy", 2, nativeProxyConstructor)
-	cx.Define(cx.GlobalObject().Object(), cx.Intern("Proxy"), storage.ObjectValue(ctor), engine.FlagsHidden)
+	cx.Define(cx.GlobalObject().Object(), cx.Intern("Proxy"), storage.ObjectValue(ctor), storage.FlagsHidden)
 
 	method(cx, ctor, "revocable", 2, nativeProxyRevocable)
 }
 
-func proxyConstructor(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func proxyConstructor(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	if cx.GetNewTarget() == nil {
 		cx.ThrowTypeError("constructor Proxy requires 'new'")
 	}
@@ -29,14 +29,14 @@ func proxyConstructor(cx *engine.ExecutionContext, this engine.Value, args []eng
 
 var nativeProxyRevoke = engine.RegisterNative(proxyRevoke)
 
-func proxyRevocable(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func proxyRevocable(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	p := cx.ProxyCreate(arg(args, 0), arg(args, 1))
 	revoke := cx.NewNativeWithState("", 0, nativeProxyRevoke, &proxyRevocation{
 		revocableProxy: p,
 	})
 	r := cx.NewObjectFromProperties(
-		[]engine.PropKey{storage.NamedKey(cx.Intern("proxy")), storage.NamedKey(cx.Intern("revoke"))},
-		[]engine.Value{storage.ObjectValue(p), storage.ObjectValue(revoke)},
+		[]storage.PropKey{storage.NamedKey(cx.Intern("proxy")), storage.NamedKey(cx.Intern("revoke"))},
+		[]storage.Value{storage.ObjectValue(p), storage.ObjectValue(revoke)},
 	)
 	return storage.ObjectValue(r)
 }
@@ -44,11 +44,11 @@ func proxyRevocable(cx *engine.ExecutionContext, this engine.Value, args []engin
 // proxyRevocation is the state of a proxy revocation function.
 type proxyRevocation struct {
 	// revocableProxy is nil when the proxy is revoked.
-	revocableProxy *engine.Object
+	revocableProxy *storage.Object
 }
 
 // proxyRevoke is the code of the proxy revocation functions. Their state is a *proxyRevocation.
-func proxyRevoke(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func proxyRevoke(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	r := cx.ActiveNativeState().(*proxyRevocation)
 	if p := r.revocableProxy; p != nil {
 		engine.RevokeProxy(p)

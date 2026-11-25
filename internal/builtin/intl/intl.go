@@ -17,9 +17,9 @@ import (
 
 // Install defines the Intl namespace in the realm of cx.
 func Install(cx *engine.ExecutionContext) {
-	ns := cx.NewLazyObject(cx.Intrinsic(engine.IntrinsicObjectPrototype), initNamespace)
-	cx.SetIntrinsic(engine.IntrinsicIntl, ns)
-	cx.Define(cx.GlobalObject().Object(), cx.Intern("Intl"), storage.ObjectValue(ns), engine.FlagsHidden)
+	ns := cx.NewLazyObject(cx.Intrinsic(storage.IntrinsicObjectPrototype), initNamespace)
+	cx.SetIntrinsic(storage.IntrinsicIntl, ns)
+	cx.Define(cx.GlobalObject().Object(), cx.Intern("Intl"), storage.ObjectValue(ns), storage.FlagsHidden)
 	initToLocaleString(cx)
 	initDateToLocaleString(cx)
 	initTemporalToLocaleString(cx)
@@ -34,8 +34,8 @@ var (
 )
 
 // initNamespace defines the properties of the Intl namespace ns.
-func initNamespace(cx *engine.ExecutionContext, ns *engine.Object) {
-	cx.Define(ns, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Intl"), engine.FlagConfigurable)
+func initNamespace(cx *engine.ExecutionContext, ns *storage.Object) {
+	cx.Define(ns, cx.WellKnownSymbol(storage.SymbolToStringTag), cx.SharedString("Intl"), storage.FlagConfigurable)
 	method(cx, ns, "getCanonicalLocales", 1, nativeIntlGetCanonicalLocales)
 	method(cx, ns, "supportedValuesOf", 1, nativeIntlSupportedValuesOf)
 	initLocale(cx, ns)
@@ -50,11 +50,11 @@ func initNamespace(cx *engine.ExecutionContext, ns *engine.Object) {
 	initDurationFormat(cx, ns)
 }
 
-func intlGetCanonicalLocales(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func intlGetCanonicalLocales(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	return stringArray(cx, canonicalizeLocaleList(cx, arg(args, 0)))
 }
 
-func intlSupportedValuesOf(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func intlSupportedValuesOf(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	var values []string
 	switch cx.ToString(arg(args, 0)) {
 	case "calendar":
@@ -89,13 +89,13 @@ var sanctionedUnits = []string{
 }
 
 // canonicalizeLocaleList implements CanonicalizeLocaleList.
-func canonicalizeLocaleList(cx *engine.ExecutionContext, locales engine.Value) []string {
+func canonicalizeLocaleList(cx *engine.ExecutionContext, locales storage.Value) []string {
 	if locales.IsUndefined() {
 		return nil
 	}
-	var o *engine.Object
+	var o *storage.Object
 	if _, ok := storage.IntlData(locales).(*localeData); ok || locales.IsString() {
-		o = cx.NewArray([]engine.Value{locales})
+		o = cx.NewArray([]storage.Value{locales})
 	} else {
 		o = cx.ToObject(locales)
 	}
@@ -130,7 +130,7 @@ func canonicalizeLocaleList(cx *engine.ExecutionContext, locales engine.Value) [
 }
 
 // arg returns the argument i, or undefined when it was not passed.
-func arg(args []engine.Value, i int) engine.Value {
+func arg(args []storage.Value, i int) storage.Value {
 	if i < len(args) {
 		return args[i]
 	}
@@ -139,36 +139,36 @@ func arg(args []engine.Value, i int) engine.Value {
 
 // checkStringLength throws a RangeError when n is more bytes than a string may have.
 func checkStringLength(cx *engine.ExecutionContext, n int) {
-	if n > engine.MaxStringLength {
+	if n > storage.MaxStringLength {
 		cx.ThrowRangeError("invalid string length")
 	}
 }
 
 // constructor creates the constructor function name with the intrinsic prototype protoID, and
 // defines it on the Intl namespace ns.
-func constructor(cx *engine.ExecutionContext, ns *engine.Object, name wtf8.String, length int, protoID engine.Intrinsic, f engine.Native) (ctor, proto *engine.Object) {
-	proto = cx.NewObject(cx.Intrinsic(engine.IntrinsicObjectPrototype))
+func constructor(cx *engine.ExecutionContext, ns *storage.Object, name wtf8.String, length int, protoID storage.Intrinsic, f storage.Native) (ctor, proto *storage.Object) {
+	proto = cx.NewObject(cx.Intrinsic(storage.IntrinsicObjectPrototype))
 	cx.SetIntrinsic(protoID, proto)
 	ctor = cx.NewNativeConstructor(name, length, f)
 	cx.DefineConstructorPrototype(ctor, protoID)
-	cx.Define(proto, cx.Key(engine.KeyConstructor), storage.ObjectValue(ctor), engine.FlagsHidden)
-	cx.Define(ns, cx.Intern(name), storage.ObjectValue(ctor), engine.FlagsHidden)
+	cx.Define(proto, cx.Key(storage.KeyConstructor), storage.ObjectValue(ctor), storage.FlagsHidden)
+	cx.Define(ns, cx.Intern(name), storage.ObjectValue(ctor), storage.FlagsHidden)
 	return ctor, proto
 }
 
 // method defines the non-enumerable function name on o.
-func method(cx *engine.ExecutionContext, o *engine.Object, name string, length int, f engine.Native) {
-	cx.Define(o, cx.Intern(wtf8.String(name)), storage.ObjectValue(cx.NewNative(wtf8.String(name), length, f)), engine.FlagsHidden)
+func method(cx *engine.ExecutionContext, o *storage.Object, name string, length int, f storage.Native) {
+	cx.Define(o, cx.Intern(wtf8.String(name)), storage.ObjectValue(cx.NewNative(wtf8.String(name), length, f)), storage.FlagsHidden)
 }
 
 // getter defines the accessor property name on o with the getter f.
-func getter(cx *engine.ExecutionContext, o *engine.Object, name string, f engine.Native) {
-	cx.DefineAccessor(o, cx.Intern(wtf8.String(name)), cx.NewNative(wtf8.String("get "+name), 0, f), nil, engine.FlagConfigurable)
+func getter(cx *engine.ExecutionContext, o *storage.Object, name string, f storage.Native) {
+	cx.DefineAccessor(o, cx.Intern(wtf8.String(name)), cx.NewNative(wtf8.String("get "+name), 0, f), nil, storage.FlagConfigurable)
 }
 
 // stringArray returns a new array of the strings ss.
-func stringArray(cx *engine.ExecutionContext, ss []string) engine.Value {
-	vals := make([]engine.Value, len(ss))
+func stringArray(cx *engine.ExecutionContext, ss []string) storage.Value {
+	vals := make([]storage.Value, len(ss))
 	for i, s := range ss {
 		vals[i] = cx.NewString(wtf8.String(s))
 	}
@@ -176,7 +176,7 @@ func stringArray(cx *engine.ExecutionContext, ss []string) engine.Value {
 }
 
 // stringOrUndefined returns s as a String when ok is true, or undefined otherwise.
-func stringOrUndefined(cx *engine.ExecutionContext, s string, ok bool) engine.Value {
+func stringOrUndefined(cx *engine.ExecutionContext, s string, ok bool) storage.Value {
 	if !ok {
 		return storage.Undefined
 	}
@@ -186,7 +186,7 @@ func stringOrUndefined(cx *engine.ExecutionContext, s string, ok bool) engine.Va
 // getOption implements GetOption for an option of the type string without a default: it
 // returns the option name of options converted to a String, and reports false when it is
 // undefined. A non-empty values lists the allowed values.
-func getOption(cx *engine.ExecutionContext, options *engine.Object, name string, values ...string) (string, bool) {
+func getOption(cx *engine.ExecutionContext, options *storage.Object, name string, values ...string) (string, bool) {
 	v := cx.Get(options, storage.NamedKey(cx.Intern(wtf8.String(name))))
 	if v.IsUndefined() {
 		return "", false

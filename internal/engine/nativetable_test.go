@@ -68,7 +68,7 @@ func TestInvalidNatives(t *testing.T) {
 	cx, _ := engine.NewExecutionContext(nil)
 	for name, f := range map[string]func(){
 		"registration of nil":       func() { engine.RegisterNative(nil) },
-		"call of no native":         func() { cx.Call(cx.NewNative("", 0, engine.Native{}), storage.Undefined) },
+		"call of no native":         func() { cx.Call(cx.NewNative("", 0, storage.Native{}), storage.Undefined) },
 		"function of a nil Go func": func() { cx.NewFunction("", nil) },
 	} {
 		func() {

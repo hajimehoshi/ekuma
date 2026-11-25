@@ -217,7 +217,7 @@ func TestValueSize(t *testing.T) {
 }
 
 func TestValueNotComparable(t *testing.T) {
-	for _, typ := range []reflect.Type{reflect.TypeFor[ekuma.Value](), reflect.TypeFor[engine.Value]()} {
+	for _, typ := range []reflect.Type{reflect.TypeFor[ekuma.Value](), reflect.TypeFor[storage.Value]()} {
 		if typ.Comparable() {
 			t.Errorf("%v must not be comparable", typ)
 		}
@@ -3709,7 +3709,7 @@ func TestRealmCatch(t *testing.T) {
 	}
 }
 
-var inlineStringSink engine.Value
+var inlineStringSink storage.Value
 var inlineTextSink wtf8.String
 
 func BenchmarkInlineString(b *testing.B) {

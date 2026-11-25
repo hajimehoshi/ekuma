@@ -15,11 +15,11 @@ var nativeQueueMicrotask = engine.RegisterNative(queueMicrotask)
 
 func installV8QueueMicrotask(cx *engine.ExecutionContext) {
 	f := cx.NewNative("queueMicrotask", 1, nativeQueueMicrotask)
-	cx.Define(cx.GlobalObject().Object(), cx.Intern("queueMicrotask"), storage.ObjectValue(f), engine.FlagsHidden)
+	cx.Define(cx.GlobalObject().Object(), cx.Intern("queueMicrotask"), storage.ObjectValue(f), storage.FlagsHidden)
 }
 
-func queueMicrotask(cx *engine.ExecutionContext, _ engine.Value, args []engine.Value) engine.Value {
-	var callback engine.Value
+func queueMicrotask(cx *engine.ExecutionContext, _ storage.Value, args []storage.Value) storage.Value {
+	var callback storage.Value
 	if len(args) != 0 {
 		callback = args[0]
 	}

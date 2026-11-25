@@ -12,12 +12,12 @@ import (
 
 // functionKindConstructor creates the constructor name, which calls f, of the functions whose
 // prototype object is proto, such as GeneratorFunction. It is not a global.
-func functionKindConstructor(cx *engine.ExecutionContext, name wtf8.String, f engine.Native, proto *engine.Object) {
+func functionKindConstructor(cx *engine.ExecutionContext, name wtf8.String, f storage.Native, proto *storage.Object) {
 	c := cx.NewNativeConstructor(name, 1, f)
-	cx.SetPrototypeOf(c, cx.Intrinsic(engine.IntrinsicFunction))
-	cx.Define(c, cx.Key(engine.KeyPrototype), storage.ObjectValue(proto), 0)
-	cx.Define(proto, cx.Key(engine.KeyConstructor), storage.ObjectValue(c), engine.FlagConfigurable)
-	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString(name), engine.FlagConfigurable)
+	cx.SetPrototypeOf(c, cx.Intrinsic(storage.IntrinsicFunction))
+	cx.Define(c, cx.Key(storage.KeyPrototype), storage.ObjectValue(proto), 0)
+	cx.Define(proto, cx.Key(storage.KeyConstructor), storage.ObjectValue(c), storage.FlagConfigurable)
+	cx.Define(proto, cx.WellKnownSymbol(storage.SymbolToStringTag), cx.SharedString(name), storage.FlagConfigurable)
 }
 
 var (
@@ -30,43 +30,43 @@ var (
 )
 
 func initAsync(cx *engine.ExecutionContext) {
-	functionKindConstructor(cx, "AsyncFunction", nativeAsyncFunctionConstructor, cx.Intrinsic(engine.IntrinsicAsyncFunctionPrototype))
-	functionKindConstructor(cx, "AsyncGeneratorFunction", nativeAsyncGeneratorFunctionConstructor, cx.Intrinsic(engine.IntrinsicAsyncGeneratorFunctionPrototype))
+	functionKindConstructor(cx, "AsyncFunction", nativeAsyncFunctionConstructor, cx.Intrinsic(storage.IntrinsicAsyncFunctionPrototype))
+	functionKindConstructor(cx, "AsyncGeneratorFunction", nativeAsyncGeneratorFunctionConstructor, cx.Intrinsic(storage.IntrinsicAsyncGeneratorFunctionPrototype))
 
-	gp := cx.Intrinsic(engine.IntrinsicAsyncGeneratorPrototype)
+	gp := cx.Intrinsic(storage.IntrinsicAsyncGeneratorPrototype)
 	method(cx, gp, "next", 1, nativeAsyncGeneratorNext)
 	method(cx, gp, "return", 1, nativeAsyncGeneratorReturn)
 	method(cx, gp, "throw", 1, nativeAsyncGeneratorThrow)
-	cx.Define(gp, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("AsyncGenerator"), engine.FlagConfigurable)
-	gf := cx.Intrinsic(engine.IntrinsicAsyncGeneratorFunctionPrototype)
-	cx.Define(gf, cx.Key(engine.KeyPrototype), storage.ObjectValue(gp), engine.FlagConfigurable)
-	cx.Define(gp, cx.Key(engine.KeyConstructor), storage.ObjectValue(gf), engine.FlagConfigurable)
+	cx.Define(gp, cx.WellKnownSymbol(storage.SymbolToStringTag), cx.SharedString("AsyncGenerator"), storage.FlagConfigurable)
+	gf := cx.Intrinsic(storage.IntrinsicAsyncGeneratorFunctionPrototype)
+	cx.Define(gf, cx.Key(storage.KeyPrototype), storage.ObjectValue(gp), storage.FlagConfigurable)
+	cx.Define(gp, cx.Key(storage.KeyConstructor), storage.ObjectValue(gf), storage.FlagConfigurable)
 
-	method(cx, cx.Intrinsic(engine.IntrinsicArray), "fromAsync", 1, nativeArrayFromAsync)
+	method(cx, cx.Intrinsic(storage.IntrinsicArray), "fromAsync", 1, nativeArrayFromAsync)
 }
 
-func asyncFunctionConstructor(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func asyncFunctionConstructor(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	return cx.CreateDynamicFunction(engine.AsyncFunction, args)
 }
 
-func asyncGeneratorFunctionConstructor(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func asyncGeneratorFunctionConstructor(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	return cx.CreateDynamicFunction(engine.AsyncGeneratorFunction, args)
 }
 
-func asyncGeneratorNext(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func asyncGeneratorNext(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	return cx.ResumeAsyncGenerator(this, engine.ResumeNext, arg(args, 0))
 }
 
-func asyncGeneratorReturn(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func asyncGeneratorReturn(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	return cx.ResumeAsyncGenerator(this, engine.ResumeReturn, arg(args, 0))
 }
 
-func asyncGeneratorThrow(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func asyncGeneratorThrow(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	return cx.ResumeAsyncGenerator(this, engine.ResumeThrow, arg(args, 0))
 }
 
 // getIteratorFromMethod implements GetIteratorFromMethod.
-func getIteratorFromMethod(cx *engine.ExecutionContext, v engine.Value, m *engine.Object) (it, next engine.Value) {
+func getIteratorFromMethod(cx *engine.ExecutionContext, v storage.Value, m *storage.Object) (it, next storage.Value) {
 	it = cx.Call(m, v)
 	if !it.IsObject() {
 		cx.ThrowTypeError("result of the iterator method is not an object")
@@ -77,21 +77,21 @@ func getIteratorFromMethod(cx *engine.ExecutionContext, v engine.Value, m *engin
 // fromAsync is the state of a call of Array.fromAsync.
 type fromAsync struct {
 	pc      *engine.PromiseCapability
-	array   *engine.Object
+	array   *storage.Object
 	k       int64
-	mapper  engine.Value
-	thisArg engine.Value
+	mapper  storage.Value
+	thisArg storage.Value
 
 	// it and next are the async iterator and its next method, or undefined for an array-like.
-	it, next engine.Value
+	it, next storage.Value
 
 	// arrayLike and length are the array-like object and its length.
-	arrayLike *engine.Object
+	arrayLike *storage.Object
 	length    int64
 }
 
-func arrayFromAsync(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-	pc := cx.NewPromiseCapability(storage.ObjectValue(cx.Intrinsic(engine.IntrinsicPromise)))
+func arrayFromAsync(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
+	pc := cx.NewPromiseCapability(storage.ObjectValue(cx.Intrinsic(storage.IntrinsicPromise)))
 	s := &fromAsync{
 		pc:      pc,
 		mapper:  arg(args, 1),
@@ -103,16 +103,16 @@ func arrayFromAsync(cx *engine.ExecutionContext, this engine.Value, args []engin
 		if !s.mapper.IsUndefined() && !s.mapper.IsCallable() {
 			cx.ThrowTypeError(cx.DisplayString(s.mapper) + " is not a function")
 		}
-		if m := cx.GetMethod(items, cx.WellKnownSymbol(engine.SymbolAsyncIterator)); m != nil {
+		if m := cx.GetMethod(items, cx.WellKnownSymbol(storage.SymbolAsyncIterator)); m != nil {
 			s.it, s.next = getIteratorFromMethod(cx, items, m)
-		} else if m := cx.GetMethod(items, cx.WellKnownSymbol(engine.SymbolIterator)); m != nil {
+		} else if m := cx.GetMethod(items, cx.WellKnownSymbol(storage.SymbolIterator)); m != nil {
 			s.it, s.next = cx.CreateAsyncFromSyncIterator(getIteratorFromMethod(cx, items, m))
 		}
 		if s.it.IsObject() {
 			if custom {
 				s.array = cx.Construct(this.Object(), nil, this.Object())
 			} else {
-				s.array = cx.ArrayCreate(0, cx.Intrinsic(engine.IntrinsicArrayPrototype))
+				s.array = cx.ArrayCreate(0, cx.Intrinsic(storage.IntrinsicArrayPrototype))
 			}
 			s.step(cx)
 			return
@@ -120,12 +120,12 @@ func arrayFromAsync(cx *engine.ExecutionContext, this engine.Value, args []engin
 		s.arrayLike = cx.ToObject(items)
 		s.length = cx.LengthOfArrayLike(s.arrayLike)
 		if custom {
-			s.array = cx.Construct(this.Object(), []engine.Value{storage.Number(float64(s.length))}, this.Object())
+			s.array = cx.Construct(this.Object(), []storage.Value{storage.Number(float64(s.length))}, this.Object())
 		} else {
-			if s.length > engine.MaxArrayIndex+1 {
+			if s.length > storage.MaxArrayIndex+1 {
 				cx.ThrowRangeError("invalid array length")
 			}
-			s.array = cx.ArrayCreate(uint32(s.length), cx.Intrinsic(engine.IntrinsicArrayPrototype))
+			s.array = cx.ArrayCreate(uint32(s.length), cx.Intrinsic(storage.IntrinsicArrayPrototype))
 		}
 		s.stepArrayLike(cx)
 	})
@@ -133,14 +133,14 @@ func arrayFromAsync(cx *engine.ExecutionContext, this engine.Value, args []engin
 }
 
 // reject rejects the promise with e.
-func (s *fromAsync) reject(cx *engine.ExecutionContext, e engine.Value) {
+func (s *fromAsync) reject(cx *engine.ExecutionContext, e storage.Value) {
 	cx.RejectCapability(s.pc, e)
 }
 
 // closeAndReject closes the iterator and then rejects the promise with e, as
 // IfAbruptCloseAsyncIterator does.
-func (s *fromAsync) closeAndReject(cx *engine.ExecutionContext, e engine.Value) {
-	cx.AsyncIteratorClose(s.it, e, true, func(cx *engine.ExecutionContext, v engine.Value, thrown bool) {
+func (s *fromAsync) closeAndReject(cx *engine.ExecutionContext, e storage.Value) {
+	cx.AsyncIteratorClose(s.it, e, true, func(cx *engine.ExecutionContext, v storage.Value, thrown bool) {
 		s.reject(cx, v)
 	})
 }
@@ -155,13 +155,13 @@ func (s *fromAsync) step(cx *engine.ExecutionContext) {
 	cx.Await(r, s.onNext)
 }
 
-func (s *fromAsync) onNext(cx *engine.ExecutionContext, r engine.Value, rejected bool) {
+func (s *fromAsync) onNext(cx *engine.ExecutionContext, r storage.Value, rejected bool) {
 	if rejected {
 		s.reject(cx, r)
 		return
 	}
 	var done bool
-	var v engine.Value
+	var v storage.Value
 	if e, ok := cx.Completion(func() {
 		if !r.IsObject() {
 			cx.ThrowTypeError("iterator result " + cx.DisplayString(r) + " is not an object")
@@ -171,7 +171,7 @@ func (s *fromAsync) onNext(cx *engine.ExecutionContext, r engine.Value, rejected
 			setLength(cx, s.array, s.k)
 			return
 		}
-		v = cx.GetV(r, cx.Key(engine.KeyValue))
+		v = cx.GetV(r, cx.Key(storage.KeyValue))
 	}); !ok {
 		s.reject(cx, e)
 		return
@@ -184,7 +184,7 @@ func (s *fromAsync) onNext(cx *engine.ExecutionContext, r engine.Value, rejected
 		s.define(cx, v)
 		return
 	}
-	var mapped engine.Value
+	var mapped storage.Value
 	if e, ok := cx.Completion(func() {
 		mapped = cx.Call(s.mapper.Object(), s.thisArg, v, storage.Number(float64(s.k)))
 		cx.Await(mapped, s.onMapped)
@@ -193,7 +193,7 @@ func (s *fromAsync) onNext(cx *engine.ExecutionContext, r engine.Value, rejected
 	}
 }
 
-func (s *fromAsync) onMapped(cx *engine.ExecutionContext, v engine.Value, rejected bool) {
+func (s *fromAsync) onMapped(cx *engine.ExecutionContext, v storage.Value, rejected bool) {
 	if rejected {
 		s.closeAndReject(cx, v)
 		return
@@ -201,7 +201,7 @@ func (s *fromAsync) onMapped(cx *engine.ExecutionContext, v engine.Value, reject
 	s.define(cx, v)
 }
 
-func (s *fromAsync) define(cx *engine.ExecutionContext, v engine.Value) {
+func (s *fromAsync) define(cx *engine.ExecutionContext, v storage.Value) {
 	if e, ok := cx.Completion(func() {
 		cx.CreateDataPropertyOrThrow(s.array, bigKey(cx, s.k), v)
 	}); !ok {
@@ -228,7 +228,7 @@ func (s *fromAsync) stepArrayLike(cx *engine.ExecutionContext) {
 	cx.Await(v, s.onArrayLikeValue)
 }
 
-func (s *fromAsync) onArrayLikeValue(cx *engine.ExecutionContext, v engine.Value, rejected bool) {
+func (s *fromAsync) onArrayLikeValue(cx *engine.ExecutionContext, v storage.Value, rejected bool) {
 	cx.IfAbruptRejectPromise(s.pc, func() {
 		if rejected {
 			cx.Throw(v)
@@ -238,7 +238,7 @@ func (s *fromAsync) onArrayLikeValue(cx *engine.ExecutionContext, v engine.Value
 			return
 		}
 		mapped := cx.Call(s.mapper.Object(), s.thisArg, v, storage.Number(float64(s.k)))
-		cx.Await(mapped, func(cx *engine.ExecutionContext, v engine.Value, rejected bool) {
+		cx.Await(mapped, func(cx *engine.ExecutionContext, v storage.Value, rejected bool) {
 			cx.IfAbruptRejectPromise(s.pc, func() {
 				if rejected {
 					cx.Throw(v)
@@ -249,7 +249,7 @@ func (s *fromAsync) onArrayLikeValue(cx *engine.ExecutionContext, v engine.Value
 	})
 }
 
-func (s *fromAsync) defineArrayLike(cx *engine.ExecutionContext, v engine.Value) {
+func (s *fromAsync) defineArrayLike(cx *engine.ExecutionContext, v storage.Value) {
 	cx.CreateDataPropertyOrThrow(s.array, bigKey(cx, s.k), v)
 	s.k++
 	s.stepArrayLike(cx)

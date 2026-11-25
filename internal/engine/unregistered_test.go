@@ -40,12 +40,12 @@ func newProbeRealm(t *testing.T, generic bool) *probeRealm {
 		starts: map[string]int{},
 	}
 	r.eval(t, "var generic = "+strconv.FormatBool(generic)+", setWatching")
-	set := r.cx.NewFunction("setWatching", func(cx *engine.ExecutionContext, _ engine.Value, args []engine.Value) engine.Value {
+	set := r.cx.NewFunction("setWatching", func(cx *engine.ExecutionContext, _ storage.Value, args []storage.Value) storage.Value {
 		old := r.watching
 		r.watching = storage.ToBoolean(args[0])
 		return storage.Bool(old)
 	})
-	if _, err := r.cx.HostCall(r.eval(t, "f => { setWatching = f; }"), storage.Undefined, []engine.Value{set}); err != nil {
+	if _, err := r.cx.HostCall(r.eval(t, "f => { setWatching = f; }"), storage.Undefined, []storage.Value{set}); err != nil {
 		t.Fatal(err)
 	}
 	for _, src := range []string{kernelProbes, shortcutProbes} {
@@ -66,7 +66,7 @@ func newProbeRealm(t *testing.T, generic bool) *probeRealm {
 	return r
 }
 
-func (r *probeRealm) eval(t *testing.T, src string) engine.Value {
+func (r *probeRealm) eval(t *testing.T, src string) storage.Value {
 	t.Helper()
 	v, err := runScript(r.cx, "eval.js", src)
 	if err != nil {
@@ -177,11 +177,11 @@ func TestUnregisteredShortcuts(t *testing.T) {
 
 // interrupted runs f with a function that requests an interruption and args, and reports whether
 // the interruption stopped it.
-func (r *probeRealm) interrupted(t *testing.T, f engine.Value, args ...engine.Value) bool {
+func (r *probeRealm) interrupted(t *testing.T, f storage.Value, args ...storage.Value) bool {
 	t.Helper()
 	defer r.cx.ClearInterrupt()
 	_, err := r.cx.HostCall(f, storage.Undefined, args)
-	if _, ok := errors.AsType[*engine.Error](err); err != nil && !ok && !errors.Is(err, errKernelInterrupt) {
+	if _, ok := errors.AsType[*storage.Error](err); err != nil && !ok && !errors.Is(err, errKernelInterrupt) {
 		t.Fatal(err)
 	}
 	return errors.Is(err, errKernelInterrupt)
@@ -193,7 +193,7 @@ func TestUnregisteredShortcutInterruption(t *testing.T) {
 	for _, generic := range []bool{false, true} {
 		r := newProbeRealm(t, generic)
 		var raising bool
-		raise := r.cx.NewFunction("raise", func(cx *engine.ExecutionContext, _ engine.Value, _ []engine.Value) engine.Value {
+		raise := r.cx.NewFunction("raise", func(cx *engine.ExecutionContext, _ storage.Value, _ []storage.Value) storage.Value {
 			cx.Interrupt(errKernelInterrupt)
 			return storage.Undefined
 		})
@@ -206,7 +206,7 @@ func TestUnregisteredShortcutInterruption(t *testing.T) {
 				t.Errorf("generic=%t: %s started a function after an interruption", generic, key)
 			}
 		}
-		observed := map[*engine.Object]bool{}
+		observed := map[*storage.Object]bool{}
 		for _, key := range r.keys(t, "long") {
 			op := "long[" + strconv.Quote(key) + "]"
 			if f := r.eval(t, "("+op+".start || (() => undefined))()"); f.IsObject() {

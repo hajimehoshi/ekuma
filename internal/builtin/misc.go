@@ -17,11 +17,11 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
-func isIntegralNumber(v engine.Value) bool {
+func isIntegralNumber(v storage.Value) bool {
 	return v.IsNumber() && v.Number() == math.Trunc(v.Number()) && !math.IsInf(v.Number(), 0)
 }
 
-func thisNumber(cx *engine.ExecutionContext, this engine.Value, what string) float64 {
+func thisNumber(cx *engine.ExecutionContext, this storage.Value, what string) float64 {
 	if this.IsNumber() {
 		return this.Number()
 	}
@@ -29,7 +29,7 @@ func thisNumber(cx *engine.ExecutionContext, this engine.Value, what string) flo
 }
 
 // thisNumberObject is thisNumber for a receiver that is not a number.
-func thisNumberObject(cx *engine.ExecutionContext, this engine.Value, what string) float64 {
+func thisNumberObject(cx *engine.ExecutionContext, this storage.Value, what string) float64 {
 	n, ok := storage.ThisNumberValue(this)
 	if !ok {
 		cx.ThrowTypeError("Number.prototype." + what + " requires that 'this' be a Number")
@@ -62,9 +62,9 @@ var (
 
 // initNumber defines Number and Boolean.
 // parseFloat and parseInt are the functions to define as properties of Number.
-func initNumber(cx *engine.ExecutionContext, parseFloat, parseInt *engine.Object) {
-	proto := cx.Intrinsic(engine.IntrinsicNumberPrototype)
-	ctor := constructor(cx, "Number", 1, engine.IntrinsicNumberPrototype, nativeNumberConstructor)
+func initNumber(cx *engine.ExecutionContext, parseFloat, parseInt *storage.Object) {
+	proto := cx.Intrinsic(storage.IntrinsicNumberPrototype)
+	ctor := constructor(cx, "Number", 1, storage.IntrinsicNumberPrototype, nativeNumberConstructor)
 	constant(cx, ctor, "MAX_SAFE_INTEGER", storage.Number(numconv.MaxSafeInteger))
 	constant(cx, ctor, "MIN_SAFE_INTEGER", storage.Number(-numconv.MaxSafeInteger))
 	constant(cx, ctor, "MAX_VALUE", storage.Number(math.MaxFloat64))
@@ -77,8 +77,8 @@ func initNumber(cx *engine.ExecutionContext, parseFloat, parseInt *engine.Object
 	method(cx, ctor, "isSafeInteger", 1, nativeNumberIsSafeInteger)
 	method(cx, ctor, "isFinite", 1, nativeNumberIsFinite)
 	method(cx, ctor, "isNaN", 1, nativeNumberIsNaN)
-	cx.Define(ctor, cx.Intern("parseFloat"), storage.ObjectValue(parseFloat), engine.FlagsHidden)
-	cx.Define(ctor, cx.Intern("parseInt"), storage.ObjectValue(parseInt), engine.FlagsHidden)
+	cx.Define(ctor, cx.Intern("parseFloat"), storage.ObjectValue(parseFloat), storage.FlagsHidden)
+	cx.Define(ctor, cx.Intern("parseInt"), storage.ObjectValue(parseInt), storage.FlagsHidden)
 
 	method(cx, proto, "valueOf", 0, nativeNumberValueOf)
 	method(cx, proto, "toString", 1, nativeNumberToString)
@@ -87,13 +87,13 @@ func initNumber(cx *engine.ExecutionContext, parseFloat, parseInt *engine.Object
 	method(cx, proto, "toPrecision", 1, nativeNumberToPrecision)
 	method(cx, proto, "toExponential", 1, nativeNumberToExponential)
 
-	bproto := cx.Intrinsic(engine.IntrinsicBooleanPrototype)
-	constructor(cx, "Boolean", 1, engine.IntrinsicBooleanPrototype, nativeBooleanConstructor)
+	bproto := cx.Intrinsic(storage.IntrinsicBooleanPrototype)
+	constructor(cx, "Boolean", 1, storage.IntrinsicBooleanPrototype, nativeBooleanConstructor)
 	method(cx, bproto, "valueOf", 0, nativeBooleanValueOf)
 	method(cx, bproto, "toString", 0, nativeBooleanToString)
 }
 
-func numberConstructor(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func numberConstructor(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	n := 0.0
 	if len(args) > 0 {
 		v := cx.ToNumeric(args[0])
@@ -106,35 +106,35 @@ func numberConstructor(cx *engine.ExecutionContext, this engine.Value, args []en
 		}
 	}
 	if nt := cx.GetNewTarget(); nt != nil {
-		return storage.ObjectValue(cx.NewNumberObject(n, cx.GetPrototypeFromConstructor(nt, engine.IntrinsicNumberPrototype)))
+		return storage.ObjectValue(cx.NewNumberObject(n, cx.GetPrototypeFromConstructor(nt, storage.IntrinsicNumberPrototype)))
 	}
 	return storage.Number(n)
 }
 
-func numberIsInteger(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func numberIsInteger(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	return storage.Bool(isIntegralNumber(arg(args, 0)))
 }
 
-func numberIsSafeInteger(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func numberIsSafeInteger(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	v := arg(args, 0)
 	return storage.Bool(isIntegralNumber(v) && math.Abs(v.Number()) <= numconv.MaxSafeInteger)
 }
 
-func numberIsFinite(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func numberIsFinite(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	v := arg(args, 0)
 	return storage.Bool(v.IsNumber() && v.Number() == v.Number() && !math.IsInf(v.Number(), 0))
 }
 
-func numberIsNaN(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func numberIsNaN(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	v := arg(args, 0)
 	return storage.Bool(v.IsNumber() && v.Number() != v.Number())
 }
 
-func numberValueOf(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func numberValueOf(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	return storage.Number(thisNumber(cx, this, "valueOf"))
 }
 
-func numberToString(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func numberToString(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	n := thisNumber(cx, this, "toString")
 	radix := 10.0
 	if r := arg(args, 0); !r.IsUndefined() {
@@ -149,11 +149,11 @@ func numberToString(cx *engine.ExecutionContext, this engine.Value, args []engin
 	return cx.NewString(numconv.NumberToRadixString(n, int(radix)))
 }
 
-func numberToLocaleString(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func numberToLocaleString(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	return cx.ToStringValue(storage.Number(thisNumber(cx, this, "toLocaleString")))
 }
 
-func numberToFixed(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func numberToFixed(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	n := thisNumber(cx, this, "toFixed")
 	d := cx.ToIntegerOrInfinity(arg(args, 0))
 	if d < 0 || d > 100 {
@@ -171,7 +171,7 @@ func numberToFixed(cx *engine.ExecutionContext, this engine.Value, args []engine
 	return cx.NewStringBytes(s)
 }
 
-func numberToPrecision(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func numberToPrecision(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	n := thisNumber(cx, this, "toPrecision")
 	if arg(args, 0).IsUndefined() {
 		return cx.ToStringValue(storage.Number(n))
@@ -202,7 +202,7 @@ func numberToPrecision(cx *engine.ExecutionContext, this engine.Value, args []en
 	return cx.NewStringBytes(appendHalfUp(buf[:0], n, 'f', int(p)-1))
 }
 
-func numberToExponential(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func numberToExponential(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	n := thisNumber(cx, this, "toExponential")
 	d := cx.ToIntegerOrInfinity(arg(args, 0))
 	if n != n || math.IsInf(n, 0) {
@@ -225,21 +225,21 @@ func numberToExponential(cx *engine.ExecutionContext, this engine.Value, args []
 	return cx.NewStringBytes(fixExponent(appendHalfUp(buf[:0], n, 'e', int(d))))
 }
 
-func booleanConstructor(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func booleanConstructor(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	b := storage.ToBoolean(arg(args, 0))
 	if nt := cx.GetNewTarget(); nt != nil {
-		return storage.ObjectValue(cx.NewBooleanObject(b, cx.GetPrototypeFromConstructor(nt, engine.IntrinsicBooleanPrototype)))
+		return storage.ObjectValue(cx.NewBooleanObject(b, cx.GetPrototypeFromConstructor(nt, storage.IntrinsicBooleanPrototype)))
 	}
 	return storage.Bool(b)
 }
 
-func booleanValueOf(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func booleanValueOf(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	b, ok := storage.ThisBooleanValue(this)
 	requireThisBoolean(cx, ok, "valueOf")
 	return storage.Bool(b)
 }
 
-func booleanToString(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func booleanToString(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	b, ok := storage.ThisBooleanValue(this)
 	requireThisBoolean(cx, ok, "toString")
 	if b {
@@ -682,30 +682,30 @@ var (
 )
 
 func initSymbol(cx *engine.ExecutionContext) {
-	proto := cx.Intrinsic(engine.IntrinsicSymbolPrototype)
-	ctor := constructor(cx, "Symbol", 0, engine.IntrinsicSymbolPrototype, nativeSymbolConstructor)
+	proto := cx.Intrinsic(storage.IntrinsicSymbolPrototype)
+	ctor := constructor(cx, "Symbol", 0, storage.IntrinsicSymbolPrototype, nativeSymbolConstructor)
 	for sym, name := range [...]string{
-		engine.SymbolIterator: "iterator", engine.SymbolAsyncIterator: "asyncIterator", engine.SymbolHasInstance: "hasInstance",
-		engine.SymbolToPrimitive: "toPrimitive", engine.SymbolToStringTag: "toStringTag", engine.SymbolSpecies: "species",
-		engine.SymbolIsConcatSpreadable: "isConcatSpreadable", engine.SymbolUnscopables: "unscopables",
-		engine.SymbolMatch: "match", engine.SymbolMatchAll: "matchAll", engine.SymbolReplace: "replace",
-		engine.SymbolSearch: "search", engine.SymbolSplit: "split",
-		engine.SymbolDispose: "dispose", engine.SymbolAsyncDispose: "asyncDispose",
-		engine.SymbolMetadata: "metadata",
+		storage.SymbolIterator: "iterator", storage.SymbolAsyncIterator: "asyncIterator", storage.SymbolHasInstance: "hasInstance",
+		storage.SymbolToPrimitive: "toPrimitive", storage.SymbolToStringTag: "toStringTag", storage.SymbolSpecies: "species",
+		storage.SymbolIsConcatSpreadable: "isConcatSpreadable", storage.SymbolUnscopables: "unscopables",
+		storage.SymbolMatch: "match", storage.SymbolMatchAll: "matchAll", storage.SymbolReplace: "replace",
+		storage.SymbolSearch: "search", storage.SymbolSplit: "split",
+		storage.SymbolDispose: "dispose", storage.SymbolAsyncDispose: "asyncDispose",
+		storage.SymbolMetadata: "metadata",
 	} {
-		constant(cx, ctor, wtf8.String(name), storage.ObjectValue(cx.WellKnownSymbol(engine.WellKnownSymbol(sym))))
+		constant(cx, ctor, wtf8.String(name), storage.ObjectValue(cx.WellKnownSymbol(storage.WellKnownSymbol(sym))))
 	}
 	method(cx, ctor, "for", 1, nativeSymbolFor)
 	method(cx, ctor, "keyFor", 1, nativeSymbolKeyFor)
 	method(cx, proto, "toString", 0, nativeSymbolToString)
 	method(cx, proto, "valueOf", 0, nativeSymbolValueOf)
 	getter(cx, proto, cx.Intern("description"), "description", nativeSymbolDescription)
-	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Symbol"), engine.FlagConfigurable)
+	cx.Define(proto, cx.WellKnownSymbol(storage.SymbolToStringTag), cx.SharedString("Symbol"), storage.FlagConfigurable)
 	fn := cx.NewNative("[Symbol.toPrimitive]", 1, nativeSymbolToPrimitive)
-	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToPrimitive), storage.ObjectValue(fn), engine.FlagConfigurable)
+	cx.Define(proto, cx.WellKnownSymbol(storage.SymbolToPrimitive), storage.ObjectValue(fn), storage.FlagConfigurable)
 }
 
-func symbolConstructor(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func symbolConstructor(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	if cx.GetNewTarget() != nil {
 		cx.ThrowTypeError("Symbol is not a constructor")
 	}
@@ -716,11 +716,11 @@ func symbolConstructor(cx *engine.ExecutionContext, this engine.Value, args []en
 	return storage.ObjectValue(cx.NewSymbol(cx.ToString(d), true))
 }
 
-func symbolFor(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func symbolFor(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	return storage.ObjectValue(cx.RegisteredSymbol(cx.ToString(arg(args, 0))))
 }
 
-func symbolKeyFor(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func symbolKeyFor(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s := arg(args, 0)
 	if !s.IsSymbol() {
 		cx.ThrowTypeError(cx.DisplayString(s) + " is not a symbol")
@@ -732,7 +732,7 @@ func symbolKeyFor(cx *engine.ExecutionContext, this engine.Value, args []engine.
 	return cx.NewString(key)
 }
 
-func symbolToString(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func symbolToString(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s, ok := storage.ThisSymbolValue(this)
 	requireThisSymbol(cx, ok, "toString")
 	desc, _ := storage.SymbolDescription(s)
@@ -740,13 +740,13 @@ func symbolToString(cx *engine.ExecutionContext, this engine.Value, args []engin
 	return cx.NewString("Symbol(" + desc + ")")
 }
 
-func symbolValueOf(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func symbolValueOf(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s, ok := storage.ThisSymbolValue(this)
 	requireThisSymbol(cx, ok, "valueOf")
 	return storage.ObjectValue(s)
 }
 
-func symbolDescription(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func symbolDescription(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s, ok := storage.ThisSymbolValue(this)
 	requireThisSymbol(cx, ok, "description")
 	desc, ok := storage.SymbolDescription(s)
@@ -756,7 +756,7 @@ func symbolDescription(cx *engine.ExecutionContext, this engine.Value, args []en
 	return cx.NewString(desc)
 }
 
-func symbolToPrimitive(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func symbolToPrimitive(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s, ok := storage.ThisSymbolValue(this)
 	requireThisSymbol(cx, ok, "[Symbol.toPrimitive]")
 	return storage.ObjectValue(s)
@@ -778,8 +778,8 @@ var (
 
 func initMath(cx *engine.ExecutionContext) {
 	m := cx.NewOrdinaryObject()
-	cx.Define(cx.GlobalObject().Object(), cx.Intern("Math"), storage.ObjectValue(m), engine.FlagsHidden)
-	cx.Define(m, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Math"), engine.FlagConfigurable)
+	cx.Define(cx.GlobalObject().Object(), cx.Intern("Math"), storage.ObjectValue(m), storage.FlagsHidden)
+	cx.Define(m, cx.WellKnownSymbol(storage.SymbolToStringTag), cx.SharedString("Math"), storage.FlagConfigurable)
 	for _, c := range []struct {
 		name  string
 		value float64
@@ -874,7 +874,7 @@ var (
 )
 
 // registerMathUnary registers the function of Math that f is the kernel of.
-func registerMathUnary(f func(x float64) float64) engine.Native {
+func registerMathUnary(f func(x float64) float64) storage.Native {
 	return engine.RegisterNativeWithKernels(mathUnaryNative(f), engine.Kernels{
 		Number1:  f,
 		Contract: shortContract,
@@ -885,7 +885,7 @@ func registerMathUnary(f func(x float64) float64) engine.Native {
 //
 //go:noinline
 func mathUnaryNative(f func(x float64) float64) engine.NativeFunc {
-	return func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return func(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 		if len(args) > 0 && args[0].IsNumber() {
 			return storage.Number(f(args[0].Number()))
 		}
@@ -894,7 +894,7 @@ func mathUnaryNative(f func(x float64) float64) engine.NativeFunc {
 }
 
 // registerMathBinary registers the function of Math that f is the kernel of.
-func registerMathBinary(f func(x, y float64) float64) engine.Native {
+func registerMathBinary(f func(x, y float64) float64) storage.Native {
 	return engine.RegisterNativeWithKernels(mathBinaryNative(f), engine.Kernels{
 		Number2:  f,
 		Contract: shortContract,
@@ -905,7 +905,7 @@ func registerMathBinary(f func(x, y float64) float64) engine.Native {
 //
 //go:noinline
 func mathBinaryNative(f func(x, y float64) float64) engine.NativeFunc {
-	return func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return func(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 		x := cx.ToNumber(arg(args, 0))
 		return storage.Number(f(x, cx.ToNumber(arg(args, 1))))
 	}
@@ -947,11 +947,11 @@ func mathImulKernel(x, y float64) float64 {
 	return float64(numconv.ToInt32(x) * numconv.ToInt32(y))
 }
 
-func mathRandom(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func mathRandom(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	return storage.Number(cx.RandomNumber())
 }
 
-func mathMax(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func mathMax(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	r := math.Inf(-1)
 	for _, a := range args {
 		r = max(r, cx.ToNumber(a))
@@ -963,7 +963,7 @@ func mathMaxKernel(x, y float64) float64 {
 	return max(x, y)
 }
 
-func mathMin(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func mathMin(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	r := math.Inf(1)
 	for _, a := range args {
 		r = min(r, cx.ToNumber(a))
@@ -975,11 +975,11 @@ func mathMinKernel(x, y float64) float64 {
 	return min(x, y)
 }
 
-func mathSumPrecise(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func mathSumPrecise(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	return storage.Number(sumPrecise(cx, arg(args, 0)))
 }
 
-func mathHypot(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func mathHypot(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	var scale, sum, correction float64
 	var inf, nan bool
 	for _, a := range args {
@@ -1019,27 +1019,27 @@ var nativeStringIteratorNext = engine.RegisterPlainIteratorNext(engine.IteratorC
 var nativeGeneratorFunctionConstructor = engine.RegisterNative(generatorFunctionConstructor)
 
 func initIterators(cx *engine.ExecutionContext) {
-	symMethod(cx, cx.Intrinsic(engine.IntrinsicIteratorPrototype), cx.WellKnownSymbol(engine.SymbolIterator), "[Symbol.iterator]", 0, nativeReturnThis)
-	symMethod(cx, cx.Intrinsic(engine.IntrinsicAsyncIteratorPrototype), cx.WellKnownSymbol(engine.SymbolAsyncIterator), "[Symbol.asyncIterator]", 0, nativeReturnThis)
+	symMethod(cx, cx.Intrinsic(storage.IntrinsicIteratorPrototype), cx.WellKnownSymbol(storage.SymbolIterator), "[Symbol.iterator]", 0, nativeReturnThis)
+	symMethod(cx, cx.Intrinsic(storage.IntrinsicAsyncIteratorPrototype), cx.WellKnownSymbol(storage.SymbolAsyncIterator), "[Symbol.asyncIterator]", 0, nativeReturnThis)
 
 	arrayIterNext := cx.NewArrayIteratorNext()
-	cx.Define(cx.Intrinsic(engine.IntrinsicArrayIteratorPrototype), cx.Intern("next"), storage.ObjectValue(arrayIterNext), engine.FlagsHidden)
-	cx.SetIntrinsic(engine.IntrinsicArrayIteratorPrototypeNext, arrayIterNext)
-	cx.Define(cx.Intrinsic(engine.IntrinsicArrayIteratorPrototype), cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Array Iterator"), engine.FlagConfigurable)
+	cx.Define(cx.Intrinsic(storage.IntrinsicArrayIteratorPrototype), cx.Intern("next"), storage.ObjectValue(arrayIterNext), storage.FlagsHidden)
+	cx.SetIntrinsic(storage.IntrinsicArrayIteratorPrototypeNext, arrayIterNext)
+	cx.Define(cx.Intrinsic(storage.IntrinsicArrayIteratorPrototype), cx.WellKnownSymbol(storage.SymbolToStringTag), cx.SharedString("Array Iterator"), storage.FlagConfigurable)
 
-	method(cx, cx.Intrinsic(engine.IntrinsicStringIteratorPrototype), "next", 0, nativeStringIteratorNext)
-	cx.Define(cx.Intrinsic(engine.IntrinsicStringIteratorPrototype), cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("String Iterator"), engine.FlagConfigurable)
+	method(cx, cx.Intrinsic(storage.IntrinsicStringIteratorPrototype), "next", 0, nativeStringIteratorNext)
+	cx.Define(cx.Intrinsic(storage.IntrinsicStringIteratorPrototype), cx.WellKnownSymbol(storage.SymbolToStringTag), cx.SharedString("String Iterator"), storage.FlagConfigurable)
 
-	gp := cx.Intrinsic(engine.IntrinsicGeneratorPrototype)
-	cx.SetIntrinsic(engine.IntrinsicGeneratorPrototypeNext, method(cx, gp, "next", 1, nativeGeneratorNext))
+	gp := cx.Intrinsic(storage.IntrinsicGeneratorPrototype)
+	cx.SetIntrinsic(storage.IntrinsicGeneratorPrototypeNext, method(cx, gp, "next", 1, nativeGeneratorNext))
 	method(cx, gp, "return", 1, nativeGeneratorReturn)
 	method(cx, gp, "throw", 1, nativeGeneratorThrow)
-	cx.Define(gp, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Generator"), engine.FlagConfigurable)
+	cx.Define(gp, cx.WellKnownSymbol(storage.SymbolToStringTag), cx.SharedString("Generator"), storage.FlagConfigurable)
 
 	// The prototype chain of generator functions.
-	gf := cx.Intrinsic(engine.IntrinsicGeneratorFunctionPrototype)
-	cx.Define(gf, cx.Key(engine.KeyPrototype), storage.ObjectValue(gp), engine.FlagConfigurable)
-	cx.Define(gp, cx.Key(engine.KeyConstructor), storage.ObjectValue(gf), engine.FlagConfigurable)
+	gf := cx.Intrinsic(storage.IntrinsicGeneratorFunctionPrototype)
+	cx.Define(gf, cx.Key(storage.KeyPrototype), storage.ObjectValue(gp), storage.FlagConfigurable)
+	cx.Define(gp, cx.Key(storage.KeyConstructor), storage.ObjectValue(gf), storage.FlagConfigurable)
 	functionKindConstructor(cx, "GeneratorFunction", nativeGeneratorFunctionConstructor, gf)
 }
 
@@ -1053,7 +1053,7 @@ var (
 //
 //go:noinline
 func generatorNative(name string, mode engine.ResumeMode) engine.NativeFunc {
-	return func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return func(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 		r, ok := cx.ResumeGenerator(this, mode, arg(args, 0))
 		if !ok {
 			cx.ThrowTypeError(name + " method called on an object that is not a generator")
@@ -1062,7 +1062,7 @@ func generatorNative(name string, mode engine.ResumeMode) engine.NativeFunc {
 	}
 }
 
-func generatorFunctionConstructor(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func generatorFunctionConstructor(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	return cx.CreateDynamicFunction(engine.GeneratorFunction, args)
 }
 
@@ -1170,7 +1170,7 @@ func log2(x float64) float64 {
 const sumPreciseBits = 1074 + 1024 + 53 + 1
 
 // sumPrecise implements Math.sumPrecise.
-func sumPrecise(cx *engine.ExecutionContext, items engine.Value) float64 {
+func sumPrecise(cx *engine.ExecutionContext, items storage.Value) float64 {
 	cx.RequireObjectCoercible(items, "Math.sumPrecise")
 	it, next := cx.GetIterator(items)
 	const (
@@ -1184,7 +1184,7 @@ func sumPrecise(cx *engine.ExecutionContext, items engine.Value) float64 {
 	sum := new(big.Float).SetPrec(sumPreciseBits)
 	var x big.Float
 	count := 0.0
-	cx.IterateRecord(it, next, func(v engine.Value) bool {
+	cx.IterateRecord(it, next, func(v storage.Value) bool {
 		count++
 		if count >= 1<<53 {
 			cx.ThrowRangeError("Math.sumPrecise: too many values")

@@ -11,11 +11,11 @@ import (
 )
 
 // createPlainDate implements CreateTemporalDate.
-func createPlainDate(cx *engine.ExecutionContext, d temporal.ISODate, cal string, nt *engine.Object) engine.Value {
+func createPlainDate(cx *engine.ExecutionContext, d temporal.ISODate, cal string, nt *storage.Object) storage.Value {
 	if !temporal.ISODateWithinLimits(d) {
 		cx.ThrowRangeError("date is out of range")
 	}
-	proto := cx.GetPrototypeFromConstructor(nt, engine.IntrinsicTemporalPlainDatePrototype)
+	proto := cx.GetPrototypeFromConstructor(nt, storage.IntrinsicTemporalPlainDatePrototype)
 	return storage.ObjectValue(cx.NewTemporalObject(proto, &plainDateSlots{
 		date: d,
 		cal:  cal,
@@ -23,11 +23,11 @@ func createPlainDate(cx *engine.ExecutionContext, d temporal.ISODate, cal string
 }
 
 // createPlainDateTime implements CreateTemporalDateTime.
-func createPlainDateTime(cx *engine.ExecutionContext, dt temporal.ISODateTime, cal string, nt *engine.Object) engine.Value {
+func createPlainDateTime(cx *engine.ExecutionContext, dt temporal.ISODateTime, cal string, nt *storage.Object) storage.Value {
 	if !temporal.ISODateTimeWithinLimits(dt) {
 		cx.ThrowRangeError("date-time is out of range")
 	}
-	proto := cx.GetPrototypeFromConstructor(nt, engine.IntrinsicTemporalPlainDateTimePrototype)
+	proto := cx.GetPrototypeFromConstructor(nt, storage.IntrinsicTemporalPlainDateTimePrototype)
 	return storage.ObjectValue(cx.NewTemporalObject(proto, &plainDateTimeSlots{
 		dt:  dt,
 		cal: cal,
@@ -35,14 +35,14 @@ func createPlainDateTime(cx *engine.ExecutionContext, dt temporal.ISODateTime, c
 }
 
 // newPlainTime implements CreateTemporalTime.
-func newPlainTime(cx *engine.ExecutionContext, t temporal.Time, nt *engine.Object) engine.Value {
-	proto := cx.GetPrototypeFromConstructor(nt, engine.IntrinsicTemporalPlainTimePrototype)
+func newPlainTime(cx *engine.ExecutionContext, t temporal.Time, nt *storage.Object) storage.Value {
+	proto := cx.GetPrototypeFromConstructor(nt, storage.IntrinsicTemporalPlainTimePrototype)
 	return storage.ObjectValue(cx.NewTemporalObject(proto, &plainTimeSlots{
 		t: t,
 	}))
 }
 
-func thisPlainDate(cx *engine.ExecutionContext, this engine.Value, name string) *plainDateSlots {
+func thisPlainDate(cx *engine.ExecutionContext, this storage.Value, name string) *plainDateSlots {
 	s, ok := storage.TemporalData(this).(*plainDateSlots)
 	if !ok {
 		incompatible(cx, "Temporal.PlainDate.prototype."+name, this)
@@ -50,7 +50,7 @@ func thisPlainDate(cx *engine.ExecutionContext, this engine.Value, name string) 
 	return s
 }
 
-func thisPlainTime(cx *engine.ExecutionContext, this engine.Value, name string) *plainTimeSlots {
+func thisPlainTime(cx *engine.ExecutionContext, this storage.Value, name string) *plainTimeSlots {
 	s, ok := storage.TemporalData(this).(*plainTimeSlots)
 	if !ok {
 		incompatible(cx, "Temporal.PlainTime.prototype."+name, this)
@@ -58,7 +58,7 @@ func thisPlainTime(cx *engine.ExecutionContext, this engine.Value, name string) 
 	return s
 }
 
-func thisPlainDateTime(cx *engine.ExecutionContext, this engine.Value, name string) *plainDateTimeSlots {
+func thisPlainDateTime(cx *engine.ExecutionContext, this storage.Value, name string) *plainDateTimeSlots {
 	s, ok := storage.TemporalData(this).(*plainDateTimeSlots)
 	if !ok {
 		incompatible(cx, "Temporal.PlainDateTime.prototype."+name, this)
@@ -67,7 +67,7 @@ func thisPlainDateTime(cx *engine.ExecutionContext, this engine.Value, name stri
 }
 
 // toTemporalDate implements ToTemporalDate.
-func toTemporalDate(cx *engine.ExecutionContext, item, options engine.Value) plainDateSlots {
+func toTemporalDate(cx *engine.ExecutionContext, item, options storage.Value) plainDateSlots {
 	if item.IsObject() {
 		switch s := storage.TemporalData(item).(type) {
 		case *plainDateSlots:
@@ -112,7 +112,7 @@ func toTemporalDate(cx *engine.ExecutionContext, item, options engine.Value) pla
 }
 
 // toTemporalDateTime implements ToTemporalDateTime.
-func toTemporalDateTime(cx *engine.ExecutionContext, item, options engine.Value) plainDateTimeSlots {
+func toTemporalDateTime(cx *engine.ExecutionContext, item, options storage.Value) plainDateTimeSlots {
 	if item.IsObject() {
 		switch s := storage.TemporalData(item).(type) {
 		case *plainDateTimeSlots:
@@ -165,7 +165,7 @@ func toTemporalDateTime(cx *engine.ExecutionContext, item, options engine.Value)
 }
 
 // toTemporalTime implements ToTemporalTime.
-func toTemporalTime(cx *engine.ExecutionContext, item, options engine.Value) temporal.Time {
+func toTemporalTime(cx *engine.ExecutionContext, item, options storage.Value) temporal.Time {
 	if item.IsObject() {
 		switch s := storage.TemporalData(item).(type) {
 		case *plainTimeSlots:
@@ -191,7 +191,7 @@ func toTemporalTime(cx *engine.ExecutionContext, item, options engine.Value) tem
 }
 
 // toTimeRecordOrMidnight implements ToTimeRecordOrMidnight.
-func toTimeRecordOrMidnight(cx *engine.ExecutionContext, item engine.Value) temporal.Time {
+func toTimeRecordOrMidnight(cx *engine.ExecutionContext, item storage.Value) temporal.Time {
 	if item.IsUndefined() {
 		return temporal.MidnightTime
 	}
@@ -202,8 +202,8 @@ func toTimeRecordOrMidnight(cx *engine.ExecutionContext, item engine.Value) temp
 // and the calendar of a receiver, or throws a TypeError.
 //
 //go:noinline
-func calendarFieldNative(name string, dateOf func(cx *engine.ExecutionContext, this engine.Value, name string) (temporal.ISODate, string)) engine.NativeFunc {
-	return temporalNative(func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func calendarFieldNative(name string, dateOf func(cx *engine.ExecutionContext, this storage.Value, name string) (temporal.ISODate, string)) engine.NativeFunc {
+	return temporalNative(func(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 		d, cal := dateOf(cx, this, name)
 		if name == "calendarId" {
 			return cx.NewString(wtf8.String(cal))
@@ -290,7 +290,7 @@ func checkSameCalendar(cx *engine.ExecutionContext, a, b string) {
 }
 
 // toZonedDateTimeArgs reads the argument of PlainDate.prototype.toZonedDateTime.
-func toZonedDateTimeArgs(cx *engine.ExecutionContext, item engine.Value) (temporal.TimeZone, engine.Value) {
+func toZonedDateTimeArgs(cx *engine.ExecutionContext, item storage.Value) (temporal.TimeZone, storage.Value) {
 	if item.IsObject() {
 		o := item.Object()
 		tzLike := get(cx, o, "timeZone")
@@ -303,8 +303,8 @@ func toZonedDateTimeArgs(cx *engine.ExecutionContext, item engine.Value) (tempor
 	return toTimeZone(cx, item), storage.Undefined
 }
 
-func initTemporalPlainDate(cx *engine.ExecutionContext, ns *engine.Object) {
-	ctor, proto := temporalConstructor(cx, ns, "PlainDate", 3, engine.IntrinsicTemporalPlainDatePrototype, nativePlainDateConstructor)
+func initTemporalPlainDate(cx *engine.ExecutionContext, ns *storage.Object) {
+	ctor, proto := temporalConstructor(cx, ns, "PlainDate", 3, storage.IntrinsicTemporalPlainDatePrototype, nativePlainDateConstructor)
 	method(cx, ctor, "from", 1, nativePlainDateFrom)
 	method(cx, ctor, "compare", 2, nativePlainDateCompare)
 
@@ -380,7 +380,7 @@ var (
 )
 
 // plainDateCalendarDate returns the ISO date and the calendar of this for the getter name.
-func plainDateCalendarDate(cx *engine.ExecutionContext, this engine.Value, name string) (temporal.ISODate, string) {
+func plainDateCalendarDate(cx *engine.ExecutionContext, this storage.Value, name string) (temporal.ISODate, string) {
 	s := thisPlainDate(cx, this, name)
 	return s.date, s.cal
 }
@@ -390,7 +390,7 @@ func plainDateCalendarDate(cx *engine.ExecutionContext, this engine.Value, name 
 //
 //go:noinline
 func plainDateAddNative(name string) engine.NativeFunc {
-	return temporalNative(func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return temporalNative(func(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 		s := thisPlainDate(cx, this, name)
 		d := toTemporalDuration(cx, arg(args, 0))
 		if name == "subtract" {
@@ -407,7 +407,7 @@ func plainDateAddNative(name string) engine.NativeFunc {
 //
 //go:noinline
 func plainDateUntilNative(name string) engine.NativeFunc {
-	return temporalNative(func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return temporalNative(func(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 		s := thisPlainDate(cx, this, name)
 		other := toTemporalDate(cx, arg(args, 0), storage.Undefined)
 		checkSameCalendar(cx, s.cal, other.cal)
@@ -443,13 +443,13 @@ func plainDateUntilNative(name string) engine.NativeFunc {
 //
 //go:noinline
 func plainDateToJSONNative(name string) engine.NativeFunc {
-	return temporalNative(func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return temporalNative(func(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 		s := thisPlainDate(cx, this, name)
 		return cx.NewString(wtf8.String(temporal.TemporalDateToString(s.date, s.cal, temporal.ShowCalendarAuto)))
 	})
 }
 
-func plainDateConstructor(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func plainDateConstructor(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	nt := newTarget(cx, "Temporal.PlainDate")
 	y := toIntegerWithTruncation(cx, arg(args, 0), "year")
 	m := toIntegerWithTruncation(cx, arg(args, 1), "month")
@@ -462,30 +462,30 @@ func plainDateConstructor(cx *engine.ExecutionContext, this engine.Value, args [
 	return createPlainDate(cx, date, cal, nt)
 }
 
-func plainDateFrom(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func plainDateFrom(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s := toTemporalDate(cx, arg(args, 0), arg(args, 1))
 	return createPlainDate(cx, s.date, s.cal, nil)
 }
 
-func plainDateCompare(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func plainDateCompare(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	one := toTemporalDate(cx, arg(args, 0), storage.Undefined)
 	two := toTemporalDate(cx, arg(args, 1), storage.Undefined)
 	return compareResult(temporal.CompareISODate(one.date, two.date))
 }
 
-func plainDateToPlainYearMonth(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func plainDateToPlainYearMonth(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s := thisPlainDate(cx, this, "toPlainYearMonth")
 	f := temporal.ISODateToFields(s.cal, s.date, temporal.FieldsDate)
 	return createPlainYearMonth(cx, must(temporal.CalendarYearMonthFromFields(s.cal, f, temporal.OverflowConstrain)), s.cal, nil)
 }
 
-func plainDateToPlainMonthDay(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func plainDateToPlainMonthDay(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s := thisPlainDate(cx, this, "toPlainMonthDay")
 	f := temporal.ISODateToFields(s.cal, s.date, temporal.FieldsDate)
 	return createPlainMonthDay(cx, must(temporal.CalendarMonthDayFromFields(s.cal, f, temporal.OverflowConstrain)), s.cal, nil)
 }
 
-func plainDateToPlainDateTime(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func plainDateToPlainDateTime(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s := thisPlainDate(cx, this, "toPlainDateTime")
 	t := toTimeRecordOrMidnight(cx, arg(args, 0))
 	return createPlainDateTime(cx, temporal.ISODateTime{
@@ -494,7 +494,7 @@ func plainDateToPlainDateTime(cx *engine.ExecutionContext, this engine.Value, ar
 	}, s.cal, nil)
 }
 
-func plainDateToZonedDateTime(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func plainDateToZonedDateTime(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s := thisPlainDate(cx, this, "toZonedDateTime")
 	tz, plainTime := toZonedDateTimeArgs(cx, arg(args, 0))
 	var epochNs temporal.Int128
@@ -510,7 +510,7 @@ func plainDateToZonedDateTime(cx *engine.ExecutionContext, this engine.Value, ar
 	return newZonedDateTime(cx, epochNs, tz, s.cal, nil)
 }
 
-func plainDateWith(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func plainDateWith(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s := thisPlainDate(cx, this, "with")
 	bag := rejectTemporalLikeObject(cx, arg(args, 0))
 	f := temporal.ISODateToFields(s.cal, s.date, temporal.FieldsDate)
@@ -520,19 +520,19 @@ func plainDateWith(cx *engine.ExecutionContext, this engine.Value, args []engine
 	return createPlainDate(cx, must(temporal.CalendarDateFromFields(s.cal, f, overflow)), s.cal, nil)
 }
 
-func plainDateWithCalendar(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func plainDateWithCalendar(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s := thisPlainDate(cx, this, "withCalendar")
 	cal := toCalendar(cx, arg(args, 0))
 	return createPlainDate(cx, s.date, cal, nil)
 }
 
-func plainDateEquals(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func plainDateEquals(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s := thisPlainDate(cx, this, "equals")
 	other := toTemporalDate(cx, arg(args, 0), storage.Undefined)
 	return storage.Bool(temporal.CompareISODate(s.date, other.date) == 0 && calendarEquals(s.cal, other.cal))
 }
 
-func plainDateToString(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func plainDateToString(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s := thisPlainDate(cx, this, "toString")
 	show := getShowCalendarOption(cx, getOptionsObject(cx, arg(args, 0)))
 	return cx.NewString(wtf8.String(temporal.TemporalDateToString(s.date, s.cal, show)))
@@ -551,7 +551,7 @@ var maximumTimeIncrements = map[temporal.Unit]int64{
 
 // toStringRounding reads the options of the toString methods of PlainTime, PlainDateTime and
 // ZonedDateTime that are common to them, after the options that come before them.
-func toStringRounding(cx *engine.ExecutionContext, opts *engine.Object) (temporal.Precision, temporal.RoundingMode, temporal.Unit) {
+func toStringRounding(cx *engine.ExecutionContext, opts *storage.Object) (temporal.Precision, temporal.RoundingMode, temporal.Unit) {
 	digits := getFractionalSecondDigitsOption(cx, opts)
 	mode := getRoundingModeOption(cx, opts, temporal.RoundTrunc)
 	unit := getUnitOption(cx, opts, "smallestUnit", false)
@@ -568,7 +568,7 @@ func checkToStringUnit(cx *engine.ExecutionContext, unit temporal.Unit) {
 
 // roundOptions reads the options of the round methods of PlainTime, PlainDateTime and
 // ZonedDateTime. withDay allows the day unit.
-func roundOptions(cx *engine.ExecutionContext, roundTo engine.Value, withDay bool) (int64, temporal.RoundingMode, temporal.Unit) {
+func roundOptions(cx *engine.ExecutionContext, roundTo storage.Value, withDay bool) (int64, temporal.RoundingMode, temporal.Unit) {
 	opts := roundToOptions(cx, roundTo, "smallestUnit")
 	increment := getRoundingIncrementOption(cx, opts)
 	mode := getRoundingModeOption(cx, opts, temporal.RoundHalfExpand)
@@ -583,8 +583,8 @@ func roundOptions(cx *engine.ExecutionContext, roundTo engine.Value, withDay boo
 	return increment, mode, unit
 }
 
-func initTemporalPlainTime(cx *engine.ExecutionContext, ns *engine.Object) {
-	ctor, proto := temporalConstructor(cx, ns, "PlainTime", 0, engine.IntrinsicTemporalPlainTimePrototype, nativePlainTimeConstructor)
+func initTemporalPlainTime(cx *engine.ExecutionContext, ns *storage.Object) {
+	ctor, proto := temporalConstructor(cx, ns, "PlainTime", 0, storage.IntrinsicTemporalPlainTimePrototype, nativePlainTimeConstructor)
 	method(cx, ctor, "from", 1, nativePlainTimeFrom)
 	method(cx, ctor, "compare", 2, nativePlainTimeCompare)
 	getter(cx, proto, cx.Intern("hour"), "hour", nativePlainTimeHour)
@@ -634,7 +634,7 @@ var (
 //
 //go:noinline
 func plainTimeTimeNative(name string) engine.NativeFunc {
-	return temporalNative(func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return temporalNative(func(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 		return storage.Number(float64(timeField(thisPlainTime(cx, this, name).t, name)))
 	})
 }
@@ -644,7 +644,7 @@ func plainTimeTimeNative(name string) engine.NativeFunc {
 //
 //go:noinline
 func plainTimeAddNative(name string) engine.NativeFunc {
-	return temporalNative(func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return temporalNative(func(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 		s := thisPlainTime(cx, this, name)
 		d := toTemporalDuration(cx, arg(args, 0))
 		if name == "subtract" {
@@ -661,7 +661,7 @@ func plainTimeAddNative(name string) engine.NativeFunc {
 //
 //go:noinline
 func plainTimeUntilNative(name string) engine.NativeFunc {
-	return temporalNative(func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return temporalNative(func(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 		s := thisPlainTime(cx, this, name)
 		other := toTemporalTime(cx, arg(args, 0), storage.Undefined)
 		opts := getOptionsObject(cx, arg(args, 1))
@@ -680,12 +680,12 @@ func plainTimeUntilNative(name string) engine.NativeFunc {
 //
 //go:noinline
 func plainTimeToJSONNative(name string) engine.NativeFunc {
-	return temporalNative(func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return temporalNative(func(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 		return cx.NewString(wtf8.String(temporal.TimeRecordToString(thisPlainTime(cx, this, name).t, temporal.PrecisionAuto)))
 	})
 }
 
-func plainTimeConstructor(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func plainTimeConstructor(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	nt := newTarget(cx, "Temporal.PlainTime")
 	var v [6]float64
 	for i := range v {
@@ -697,17 +697,17 @@ func plainTimeConstructor(cx *engine.ExecutionContext, this engine.Value, args [
 	return newPlainTime(cx, t, nt)
 }
 
-func plainTimeFrom(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func plainTimeFrom(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	return newPlainTime(cx, toTemporalTime(cx, arg(args, 0), arg(args, 1)), nil)
 }
 
-func plainTimeCompare(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func plainTimeCompare(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	one := toTemporalTime(cx, arg(args, 0), storage.Undefined)
 	two := toTemporalTime(cx, arg(args, 1), storage.Undefined)
 	return compareResult(temporal.CompareTimeRecord(one, two))
 }
 
-func plainTimeWith(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func plainTimeWith(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s := thisPlainTime(cx, this, "with")
 	bag := rejectTemporalLikeObject(cx, arg(args, 0))
 	partial := toTemporalTimeRecord(cx, bag, true)
@@ -722,19 +722,19 @@ func plainTimeWith(cx *engine.ExecutionContext, this engine.Value, args []engine
 	return newPlainTime(cx, must(temporal.RegulateTime(v[0], v[1], v[2], v[3], v[4], v[5], overflow)), nil)
 }
 
-func plainTimeRound(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func plainTimeRound(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s := thisPlainTime(cx, this, "round")
 	increment, mode, unit := roundOptions(cx, arg(args, 0), false)
 	t, _ := temporal.RoundTime(s.t, increment, unit, mode)
 	return newPlainTime(cx, t, nil)
 }
 
-func plainTimeEquals(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func plainTimeEquals(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s := thisPlainTime(cx, this, "equals")
 	return storage.Bool(temporal.CompareTimeRecord(s.t, toTemporalTime(cx, arg(args, 0), storage.Undefined)) == 0)
 }
 
-func plainTimeToString(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func plainTimeToString(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s := thisPlainTime(cx, this, "toString")
 	digits, mode, unit := toStringRounding(cx, getOptionsObject(cx, arg(args, 0)))
 	checkToStringUnit(cx, unit)
@@ -743,8 +743,8 @@ func plainTimeToString(cx *engine.ExecutionContext, this engine.Value, args []en
 	return cx.NewString(wtf8.String(temporal.TimeRecordToString(t, p.Precision)))
 }
 
-func initTemporalPlainDateTime(cx *engine.ExecutionContext, ns *engine.Object) {
-	ctor, proto := temporalConstructor(cx, ns, "PlainDateTime", 3, engine.IntrinsicTemporalPlainDateTimePrototype, nativePlainDateTimeConstructor)
+func initTemporalPlainDateTime(cx *engine.ExecutionContext, ns *storage.Object) {
+	ctor, proto := temporalConstructor(cx, ns, "PlainDateTime", 3, storage.IntrinsicTemporalPlainDateTimePrototype, nativePlainDateTimeConstructor)
 	method(cx, ctor, "from", 1, nativePlainDateTimeFrom)
 	method(cx, ctor, "compare", 2, nativePlainDateTimeCompare)
 
@@ -834,7 +834,7 @@ var (
 )
 
 // plainDateTimeCalendarDate returns the ISO date and the calendar of this for the getter name.
-func plainDateTimeCalendarDate(cx *engine.ExecutionContext, this engine.Value, name string) (temporal.ISODate, string) {
+func plainDateTimeCalendarDate(cx *engine.ExecutionContext, this storage.Value, name string) (temporal.ISODate, string) {
 	s := thisPlainDateTime(cx, this, name)
 	return s.dt.Date, s.cal
 }
@@ -844,7 +844,7 @@ func plainDateTimeCalendarDate(cx *engine.ExecutionContext, this engine.Value, n
 //
 //go:noinline
 func plainDateTimeTimeNative(name string) engine.NativeFunc {
-	return temporalNative(func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return temporalNative(func(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 		return storage.Number(float64(timeField(thisPlainDateTime(cx, this, name).dt.Time, name)))
 	})
 }
@@ -854,7 +854,7 @@ func plainDateTimeTimeNative(name string) engine.NativeFunc {
 //
 //go:noinline
 func plainDateTimeAddNative(name string) engine.NativeFunc {
-	return temporalNative(func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return temporalNative(func(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 		s := thisPlainDateTime(cx, this, name)
 		d := toTemporalDuration(cx, arg(args, 0))
 		if name == "subtract" {
@@ -877,7 +877,7 @@ func plainDateTimeAddNative(name string) engine.NativeFunc {
 //
 //go:noinline
 func plainDateTimeUntilNative(name string) engine.NativeFunc {
-	return temporalNative(func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return temporalNative(func(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 		s := thisPlainDateTime(cx, this, name)
 		other := toTemporalDateTime(cx, arg(args, 0), storage.Undefined)
 		checkSameCalendar(cx, s.cal, other.cal)
@@ -900,13 +900,13 @@ func plainDateTimeUntilNative(name string) engine.NativeFunc {
 //
 //go:noinline
 func plainDateTimeToJSONNative(name string) engine.NativeFunc {
-	return temporalNative(func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return temporalNative(func(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 		s := thisPlainDateTime(cx, this, name)
 		return cx.NewString(wtf8.String(temporal.ISODateTimeToString(s.dt, s.cal, temporal.PrecisionAuto, temporal.ShowCalendarAuto)))
 	})
 }
 
-func plainDateTimeConstructor(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func plainDateTimeConstructor(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	nt := newTarget(cx, "Temporal.PlainDateTime")
 	y := toIntegerWithTruncation(cx, arg(args, 0), "year")
 	m := toIntegerWithTruncation(cx, arg(args, 1), "month")
@@ -929,18 +929,18 @@ func plainDateTimeConstructor(cx *engine.ExecutionContext, this engine.Value, ar
 	}, cal, nt)
 }
 
-func plainDateTimeFrom(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func plainDateTimeFrom(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s := toTemporalDateTime(cx, arg(args, 0), arg(args, 1))
 	return createPlainDateTime(cx, s.dt, s.cal, nil)
 }
 
-func plainDateTimeCompare(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func plainDateTimeCompare(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	one := toTemporalDateTime(cx, arg(args, 0), storage.Undefined)
 	two := toTemporalDateTime(cx, arg(args, 1), storage.Undefined)
 	return compareResult(temporal.CompareISODateTime(one.dt, two.dt))
 }
 
-func plainDateTimeWith(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func plainDateTimeWith(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s := thisPlainDateTime(cx, this, "with")
 	bag := rejectTemporalLikeObject(cx, arg(args, 0))
 	f := temporal.ISODateToFields(s.cal, s.dt.Date, temporal.FieldsDate)
@@ -951,7 +951,7 @@ func plainDateTimeWith(cx *engine.ExecutionContext, this engine.Value, args []en
 	return createPlainDateTime(cx, interpretDateTimeFields(cx, s.cal, f, overflow), s.cal, nil)
 }
 
-func plainDateTimeWithPlainTime(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func plainDateTimeWithPlainTime(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s := thisPlainDateTime(cx, this, "withPlainTime")
 	t := toTimeRecordOrMidnight(cx, arg(args, 0))
 	return createPlainDateTime(cx, temporal.ISODateTime{
@@ -960,13 +960,13 @@ func plainDateTimeWithPlainTime(cx *engine.ExecutionContext, this engine.Value, 
 	}, s.cal, nil)
 }
 
-func plainDateTimeWithCalendar(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func plainDateTimeWithCalendar(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s := thisPlainDateTime(cx, this, "withCalendar")
 	cal := toCalendar(cx, arg(args, 0))
 	return createPlainDateTime(cx, s.dt, cal, nil)
 }
 
-func plainDateTimeRound(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func plainDateTimeRound(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s := thisPlainDateTime(cx, this, "round")
 	increment, mode, unit := roundOptions(cx, arg(args, 0), true)
 	if unit == temporal.UnitNanosecond && increment == 1 {
@@ -975,13 +975,13 @@ func plainDateTimeRound(cx *engine.ExecutionContext, this engine.Value, args []e
 	return createPlainDateTime(cx, temporal.RoundISODateTime(s.dt, increment, unit, mode), s.cal, nil)
 }
 
-func plainDateTimeEquals(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func plainDateTimeEquals(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s := thisPlainDateTime(cx, this, "equals")
 	other := toTemporalDateTime(cx, arg(args, 0), storage.Undefined)
 	return storage.Bool(temporal.CompareISODateTime(s.dt, other.dt) == 0 && calendarEquals(s.cal, other.cal))
 }
 
-func plainDateTimeToString(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func plainDateTimeToString(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s := thisPlainDateTime(cx, this, "toString")
 	opts := getOptionsObject(cx, arg(args, 0))
 	show := getShowCalendarOption(cx, opts)
@@ -995,7 +995,7 @@ func plainDateTimeToString(cx *engine.ExecutionContext, this engine.Value, args 
 	return cx.NewString(wtf8.String(temporal.ISODateTimeToString(dt, s.cal, p.Precision, show)))
 }
 
-func plainDateTimeToZonedDateTime(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func plainDateTimeToZonedDateTime(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s := thisPlainDateTime(cx, this, "toZonedDateTime")
 	tz := toTimeZone(cx, arg(args, 0))
 	d := getDisambiguationOption(cx, getOptionsObject(cx, arg(args, 1)))
@@ -1003,12 +1003,12 @@ func plainDateTimeToZonedDateTime(cx *engine.ExecutionContext, this engine.Value
 	return newZonedDateTime(cx, epochNs, tz, s.cal, nil)
 }
 
-func plainDateTimeToPlainDate(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func plainDateTimeToPlainDate(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s := thisPlainDateTime(cx, this, "toPlainDate")
 	return createPlainDate(cx, s.dt.Date, s.cal, nil)
 }
 
-func plainDateTimeToPlainTime(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func plainDateTimeToPlainTime(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s := thisPlainDateTime(cx, this, "toPlainTime")
 	return newPlainTime(cx, s.dt.Time, nil)
 }

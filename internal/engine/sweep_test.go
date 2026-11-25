@@ -14,7 +14,7 @@ import (
 )
 
 // runScript parses src as a script of cx and evaluates it.
-func runScript(cx *engine.ExecutionContext, file, src string) (engine.Value, error) {
+func runScript(cx *engine.ExecutionContext, file, src string) (storage.Value, error) {
 	s, err := cx.ParseScript(file, wtf8.FromValidUTF8(src))
 	if err != nil {
 		return storage.Undefined, err

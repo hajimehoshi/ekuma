@@ -25,12 +25,12 @@ type displayNamesData struct {
 }
 
 // newDisplayNames implements the Intl.DisplayNames constructor.
-func newDisplayNames(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func newDisplayNames(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	nt := cx.GetNewTarget()
 	if nt == nil {
 		cx.ThrowTypeError("constructor Intl.DisplayNames requires 'new'")
 	}
-	proto := cx.GetPrototypeFromConstructor(nt, engine.IntrinsicIntlDisplayNamesPrototype)
+	proto := cx.GetPrototypeFromConstructor(nt, storage.IntrinsicIntlDisplayNamesPrototype)
 	requested := canonicalizeLocaleList(cx, arg(args, 0))
 	// GetOptionsObject, with the options required.
 	o := arg(args, 1)
@@ -59,7 +59,7 @@ func newDisplayNames(cx *engine.ExecutionContext, this engine.Value, args []engi
 }
 
 // thisDisplayNames implements RequireInternalSlot for an Intl.DisplayNames.
-func thisDisplayNames(cx *engine.ExecutionContext, this engine.Value, name string) *displayNamesData {
+func thisDisplayNames(cx *engine.ExecutionContext, this storage.Value, name string) *displayNamesData {
 	dn, ok := storage.IntlData(this).(*displayNamesData)
 	if !ok {
 		cx.ThrowTypeError("Intl.DisplayNames.prototype." + name + " called on an object that is not an Intl.DisplayNames")
@@ -68,7 +68,7 @@ func thisDisplayNames(cx *engine.ExecutionContext, this engine.Value, name strin
 }
 
 // of implements Intl.DisplayNames.prototype.of after the conversion of code to a String.
-func (dn *displayNamesData) of(cx *engine.ExecutionContext, code string) engine.Value {
+func (dn *displayNamesData) of(cx *engine.ExecutionContext, code string) storage.Value {
 	invalid := func() {
 		cx.ThrowRangeError(cx.DisplayString(cx.NewString(wtf8.String(code))) + " is not a valid code for the type " + dn.typ)
 	}
@@ -141,21 +141,21 @@ var (
 )
 
 // initDisplayNames defines Intl.DisplayNames.
-func initDisplayNames(cx *engine.ExecutionContext, ns *engine.Object) {
-	ctor, proto := constructor(cx, ns, "DisplayNames", 2, engine.IntrinsicIntlDisplayNamesPrototype, nativeNewDisplayNames)
+func initDisplayNames(cx *engine.ExecutionContext, ns *storage.Object) {
+	ctor, proto := constructor(cx, ns, "DisplayNames", 2, storage.IntrinsicIntlDisplayNamesPrototype, nativeNewDisplayNames)
 
 	method(cx, ctor, "supportedLocalesOf", 1, nativeSupportedLocalesOf)
 	method(cx, proto, "of", 1, nativeDisplayNamesOf)
 	method(cx, proto, "resolvedOptions", 0, nativeDisplayNamesResolvedOptions)
-	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Intl.DisplayNames"), engine.FlagConfigurable)
+	cx.Define(proto, cx.WellKnownSymbol(storage.SymbolToStringTag), cx.SharedString("Intl.DisplayNames"), storage.FlagConfigurable)
 }
 
-func displayNamesOf(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func displayNamesOf(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	dn := thisDisplayNames(cx, this, "of")
 	return dn.of(cx, wtf8.ToValidUTF8(cx.ToString(arg(args, 0))))
 }
 
-func displayNamesResolvedOptions(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func displayNamesResolvedOptions(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	dn := thisDisplayNames(cx, this, "resolvedOptions")
 	return resolvedOptions(cx, "locale", dn.locale, "style", dn.style, "type", dn.typ, "fallback", dn.fallback, "languageDisplay", dn.languageDisplay)
 }

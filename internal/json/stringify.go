@@ -19,12 +19,12 @@ type writer struct {
 	cx  *engine.ExecutionContext
 	buf []byte
 
-	keyToJSON engine.PropKey
+	keyToJSON storage.PropKey
 
-	replacer *engine.Object
+	replacer *storage.Object
 
 	// props is the property list of a replacer array, and hasProps says whether there is one.
-	props    []engine.PropKey
+	props    []storage.PropKey
 	hasProps bool
 
 	gap wtf8.String
@@ -33,13 +33,13 @@ type writer struct {
 	gapJoins bool
 
 	// stack holds the objects being serialized, to detect cycles.
-	stack []*engine.Object
+	stack []*storage.Object
 
 	// entered is the number of objects entered, which paces the checks for an interruption.
 	entered int
 
 	// keys is scratch storage for the keys of the objects being serialized.
-	keys []engine.PropKey
+	keys []storage.PropKey
 
 	// getCaches are the caches for reading the properties whose keys are in keys, by index in keys.
 	// Objects of the same layout that are serialized one after another take the same indices.
@@ -64,16 +64,16 @@ type Stringifier struct {
 	busy bool
 
 	// The scratch storage of the writer, kept without references between calls.
-	stack                   []*engine.Object
-	keys                    []engine.PropKey
+	stack                   []*storage.Object
+	keys                    []storage.PropKey
 	getCaches, toJSONCaches []engine.PropertyCache
 }
 
 // Stringify implements JSON.stringify.
-func (s *Stringifier) Stringify(cx *engine.ExecutionContext, value, replacer, space engine.Value) engine.Value {
+func (s *Stringifier) Stringify(cx *engine.ExecutionContext, value, replacer, space storage.Value) storage.Value {
 	w := &writer{
 		cx:        cx,
-		keyToJSON: storage.NamedKey(cx.Key(engine.KeyToJSON)),
+		keyToJSON: storage.NamedKey(cx.Key(storage.KeyToJSON)),
 	}
 	// A call from a toJSON method or a replacer during another call uses storage of its own.
 	if !s.busy {
@@ -103,16 +103,16 @@ func (s *Stringifier) Stringify(cx *engine.ExecutionContext, value, replacer, sp
 		w.hasProps = true
 		r := replacer.Object()
 		n := cx.LengthOfArrayLike(r)
-		seen := map[engine.PropKey]bool{}
+		seen := map[storage.PropKey]bool{}
 		for i := range n {
-			var v engine.Value
+			var v storage.Value
 			if e, ok := storage.Element(r, i); ok {
 				cx.PollAt(i)
 				v = e
 			} else {
 				v = cx.Get(r, indexKey(cx, i))
 			}
-			var item engine.PropKey
+			var item storage.PropKey
 			switch {
 			case v.IsString():
 				item = cx.ToPropertyKey(v)
@@ -154,7 +154,7 @@ func (s *Stringifier) Stringify(cx *engine.ExecutionContext, value, replacer, sp
 		w.gapJoins = wtf8.JoinsPair(w.gap, w.gap)
 	}
 
-	var holder *engine.Object
+	var holder *storage.Object
 	emptyKey := storage.NamedKey(cx.Intern(""))
 	if w.replacer != nil {
 		holder = cx.NewOrdinaryObject()
@@ -168,7 +168,7 @@ func (s *Stringifier) Stringify(cx *engine.ExecutionContext, value, replacer, sp
 }
 
 func (w *writer) checkLength() {
-	if len(w.buf) > engine.MaxStringLength {
+	if len(w.buf) > storage.MaxStringLength {
 		w.cx.ThrowRangeError("invalid string length")
 	}
 }
@@ -200,7 +200,7 @@ func (w *writer) appendQuote(s wtf8.String) {
 
 // serialize implements SerializeJSONProperty for the value of the property key of holder,
 // which is value. It reports false, having written nothing, when the result is undefined.
-func (w *writer) serialize(holder *engine.Object, key engine.PropKey, value engine.Value) bool {
+func (w *writer) serialize(holder *storage.Object, key storage.PropKey, value storage.Value) bool {
 	cx := w.cx
 	if value.IsObject() || value.IsBigInt() {
 		if f := cx.GetVCached(value, w.keyToJSON, cacheAt(&w.toJSONCaches, len(w.stack))); f.IsCallable() {
@@ -272,7 +272,7 @@ func isClass[T any](_ T, ok bool) bool {
 }
 
 // enter pushes o on the stack of objects being serialized, and throws for a cycle or too deep a nesting.
-func (w *writer) enter(o *engine.Object) {
+func (w *writer) enter(o *storage.Object) {
 	cx := w.cx
 	w.entered++
 	if w.entered&0x3ff == 0 {
@@ -307,7 +307,7 @@ func (w *writer) newline(n int) {
 }
 
 // serializeObject implements SerializeJSONObject. o is on the stack.
-func (w *writer) serializeObject(o *engine.Object) {
+func (w *writer) serializeObject(o *storage.Object) {
 	cx := w.cx
 	depth := len(w.stack)
 	base := len(w.keys)
@@ -353,7 +353,7 @@ func (w *writer) serializeObject(o *engine.Object) {
 }
 
 // serializeArray implements SerializeJSONArray. o is on the stack.
-func (w *writer) serializeArray(o *engine.Object) {
+func (w *writer) serializeArray(o *storage.Object) {
 	cx := w.cx
 	depth := len(w.stack)
 	n := cx.LengthOfArrayLike(o)
@@ -369,7 +369,7 @@ func (w *writer) serializeArray(o *engine.Object) {
 		if w.gap != "" {
 			w.newline(depth)
 		}
-		var v engine.Value
+		var v storage.Value
 		if e, ok := storage.Element(o, i); ok {
 			v = e
 		} else {

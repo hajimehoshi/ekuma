@@ -258,7 +258,7 @@ func TestInternedStringValue(t *testing.T) {
 	v := cx.NewString(text)
 	for _, tc := range []struct {
 		name  string
-		value engine.Value
+		value storage.Value
 	}{
 		{
 			name:  "interned",
@@ -337,7 +337,7 @@ func TestShortStringToNumber(t *testing.T) {
 		},
 	} {
 		t.Run(string(tc.text), func(t *testing.T) {
-			for _, value := range []engine.Value{cx.NewString(tc.text), storage.ObjectValue(cx.Intern(tc.text))} {
+			for _, value := range []storage.Value{cx.NewString(tc.text), storage.ObjectValue(cx.Intern(tc.text))} {
 				got := cx.ToNumber(value)
 				if math.IsNaN(tc.want) {
 					if !math.IsNaN(got) {

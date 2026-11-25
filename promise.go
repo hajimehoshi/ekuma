@@ -52,7 +52,7 @@ func (r *PromiseResolver) Reject(ctx context.Context, v any) error {
 // settle implements [PromiseResolver.Resolve] and [PromiseResolver.Reject].
 func (r *PromiseResolver) settle(ctx context.Context, x any, reject bool) error {
 	vm := r.realm.vm
-	_, err := vm.run(ctx, func() (engine.Value, error) {
+	_, err := vm.run(ctx, func() (storage.Value, error) {
 		cx := r.realm.context()
 		v := vm.valueOf(cx, x)
 		if reject {

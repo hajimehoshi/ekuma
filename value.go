@@ -64,14 +64,14 @@ func (t Type) String() string {
 // host callback results and exceptions. Other primitives may pass between VMs.
 // To share SharedArrayBuffer memory, pass its [SharedDataBlock] to [VM.ValueOf].
 type Value struct {
-	value engine.Value
+	value storage.Value
 }
 
 // canonicalNaN is the NaN that [Value.Float] returns.
 var canonicalNaN = math.Float64frombits(0x7ff8000000000000)
 
 // fromEngine converts a value of the engine to a [Value].
-func fromEngine(v engine.Value) Value {
+func fromEngine(v storage.Value) Value {
 	return Value{
 		value: v,
 	}
@@ -290,8 +290,8 @@ func (v Value) DeleteWithValueKey(key Value) error {
 	return publicError(vm.hostContext().HostDelete(v.value, vm.acceptValue(key)))
 }
 
-func (vm *VM) indexKey(i int) engine.Value {
-	if uint64(i) <= engine.MaxArrayIndex {
+func (vm *VM) indexKey(i int) storage.Value {
+	if uint64(i) <= storage.MaxArrayIndex {
 		return storage.Number(float64(i))
 	}
 	return vm.hostContext().StringFromGo(strconv.Itoa(i))
@@ -328,8 +328,8 @@ func (v Value) Call(ctx context.Context, name string, args ...any) (Value, error
 	if err != nil {
 		return Undefined, err
 	}
-	return vm.run(ctx, func() (engine.Value, error) {
-		return vm.withArgs(args, func(a []engine.Value) (engine.Value, error) {
+	return vm.run(ctx, func() (storage.Value, error) {
+		return vm.withArgs(args, func(a []storage.Value) (storage.Value, error) {
 			return vm.hostContext().HostCallMethod(v.value, vm.hostContext().StringFromGo(name), a)
 		})
 	})
@@ -342,8 +342,8 @@ func (v Value) CallWithValueKey(ctx context.Context, key Value, args ...any) (Va
 		return Undefined, err
 	}
 	k := vm.acceptValue(key)
-	return vm.run(ctx, func() (engine.Value, error) {
-		return vm.withArgs(args, func(a []engine.Value) (engine.Value, error) {
+	return vm.run(ctx, func() (storage.Value, error) {
+		return vm.withArgs(args, func(a []storage.Value) (storage.Value, error) {
 			return vm.hostContext().HostCallMethod(v.value, k, a)
 		})
 	})
@@ -374,8 +374,8 @@ func (v Value) invoke(ctx context.Context, method string, construct bool, args [
 	if err != nil {
 		return Undefined, err
 	}
-	return vm.run(ctx, func() (engine.Value, error) {
-		return vm.withArgs(args, func(a []engine.Value) (engine.Value, error) {
+	return vm.run(ctx, func() (storage.Value, error) {
+		return vm.withArgs(args, func(a []storage.Value) (storage.Value, error) {
 			if construct {
 				return vm.hostContext().HostConstruct(v.value, a)
 			}

@@ -31,7 +31,7 @@ func low64(i *big.Int) uint64 {
 	return u
 }
 
-func thisBigInt(cx *engine.ExecutionContext, this engine.Value, what string) engine.Value {
+func thisBigInt(cx *engine.ExecutionContext, this storage.Value, what string) storage.Value {
 	if this.IsBigInt() {
 		return this
 	}
@@ -39,7 +39,7 @@ func thisBigInt(cx *engine.ExecutionContext, this engine.Value, what string) eng
 }
 
 // thisBigIntObject is thisBigInt for a receiver that is not a BigInt.
-func thisBigIntObject(cx *engine.ExecutionContext, this engine.Value, what string) engine.Value {
+func thisBigIntObject(cx *engine.ExecutionContext, this storage.Value, what string) storage.Value {
 	v, ok := storage.ThisBigIntValue(this)
 	if !ok {
 		cx.ThrowTypeError("BigInt.prototype." + what + " requires that 'this' be a BigInt")
@@ -62,18 +62,18 @@ var (
 
 // initBigInt defines BigInt.
 func initBigInt(cx *engine.ExecutionContext) {
-	proto := cx.Intrinsic(engine.IntrinsicBigIntPrototype)
-	ctor := constructor(cx, "BigInt", 1, engine.IntrinsicBigIntPrototype, nativeBigIntConstructor)
+	proto := cx.Intrinsic(storage.IntrinsicBigIntPrototype)
+	ctor := constructor(cx, "BigInt", 1, storage.IntrinsicBigIntPrototype, nativeBigIntConstructor)
 	method(cx, ctor, "asIntN", 2, nativeBigIntAsIntN)
 	method(cx, ctor, "asUintN", 2, nativeBigIntAsUintN)
 
 	method(cx, proto, "toString", 0, nativeBigIntToString)
 	method(cx, proto, "toLocaleString", 0, nativeBigIntToLocaleString)
 	method(cx, proto, "valueOf", 0, nativeBigIntValueOf)
-	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("BigInt"), engine.FlagConfigurable)
+	cx.Define(proto, cx.WellKnownSymbol(storage.SymbolToStringTag), cx.SharedString("BigInt"), storage.FlagConfigurable)
 }
 
-func bigIntConstructor(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func bigIntConstructor(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	if cx.GetNewTarget() != nil {
 		cx.ThrowTypeError("BigInt is not a constructor")
 	}
@@ -84,7 +84,7 @@ func bigIntConstructor(cx *engine.ExecutionContext, this engine.Value, args []en
 	return cx.ToBigInt(p)
 }
 
-func bigIntAsIntN(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func bigIntAsIntN(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	bits := toIndex(cx, arg(args, 0))
 	x := cx.ToBigInt(arg(args, 1))
 	if bits == 0 {
@@ -116,7 +116,7 @@ func bigIntAsIntN(cx *engine.ExecutionContext, this engine.Value, args []engine.
 	return storage.NewBigInt(r)
 }
 
-func bigIntAsUintN(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func bigIntAsUintN(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	bits := toIndex(cx, arg(args, 0))
 	x := cx.ToBigInt(arg(args, 1))
 	if n, ok := x.BigInt64(); ok && bits <= 64 {
@@ -151,7 +151,7 @@ func bigIntAsUintN(cx *engine.ExecutionContext, this engine.Value, args []engine
 	return storage.NewBigInt(new(big.Int).And(i, m.Sub(m, big.NewInt(1))))
 }
 
-func bigIntToString(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func bigIntToString(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	x := thisBigInt(cx, this, "toString")
 	radix := 10.0
 	if r := arg(args, 0); !r.IsUndefined() {
@@ -163,17 +163,17 @@ func bigIntToString(cx *engine.ExecutionContext, this engine.Value, args []engin
 	return cx.NewString(cx.BigIntToString(x, int(radix)))
 }
 
-func bigIntToLocaleString(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func bigIntToLocaleString(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	x := thisBigInt(cx, this, "toLocaleString")
 	return cx.NewString(cx.ToString(x))
 }
 
-func bigIntValueOf(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func bigIntValueOf(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	return thisBigInt(cx, this, "valueOf")
 }
 
 // numberToBigInt implements NumberToBigInt.
-func numberToBigInt(cx *engine.ExecutionContext, n float64) engine.Value {
+func numberToBigInt(cx *engine.ExecutionContext, n float64) storage.Value {
 	if n != math.Trunc(n) || math.IsInf(n, 0) {
 		cx.ThrowRangeError("the number " + wtf8.ToValidUTF8(numconv.NumberToString(n)) + " cannot be converted to a BigInt because it is not an integer")
 	}
@@ -185,7 +185,7 @@ func numberToBigInt(cx *engine.ExecutionContext, n float64) engine.Value {
 }
 
 // toIndex implements ToIndex.
-func toIndex(cx *engine.ExecutionContext, v engine.Value) int64 {
+func toIndex(cx *engine.ExecutionContext, v storage.Value) int64 {
 	i := cx.ToIntegerOrInfinity(v)
 	if i < 0 || i > numconv.MaxSafeInteger {
 		cx.ThrowRangeError("invalid index " + cx.DisplayString(v))

@@ -36,7 +36,7 @@ func (l *localeData) String() string {
 
 // thisLocale returns the internal slots of the Intl.Locale object this, or throws a TypeError
 // naming the method.
-func thisLocale(cx *engine.ExecutionContext, this engine.Value, name string) *localeData {
+func thisLocale(cx *engine.ExecutionContext, this storage.Value, name string) *localeData {
 	l, ok := storage.IntlData(this).(*localeData)
 	if !ok {
 		cx.ThrowTypeError("Intl.Locale.prototype." + name + " called on an object that is not an Intl.Locale")
@@ -55,7 +55,7 @@ func asciiLower(s string) (string, bool) {
 // subtagOption returns the option name of options in lower case if it is a subtag that valid
 // accepts, or the fallback when the option is undefined. It throws a RangeError for any other
 // value.
-func subtagOption(cx *engine.ExecutionContext, options *engine.Object, name string, valid func(string) bool, fallback string) string {
+func subtagOption(cx *engine.ExecutionContext, options *storage.Object, name string, valid func(string) bool, fallback string) string {
 	s, ok := getOption(cx, options, name)
 	if !ok {
 		return fallback
@@ -102,12 +102,12 @@ func weekdayToString(s string) string {
 }
 
 // newLocale implements the Intl.Locale constructor.
-func newLocale(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func newLocale(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	nt := cx.GetNewTarget()
 	if nt == nil {
 		cx.ThrowTypeError("constructor Intl.Locale requires 'new'")
 	}
-	proto := cx.GetPrototypeFromConstructor(nt, engine.IntrinsicIntlLocalePrototype)
+	proto := cx.GetPrototypeFromConstructor(nt, storage.IntrinsicIntlLocalePrototype)
 	tagV := arg(args, 0)
 	if !tagV.IsString() && !tagV.IsObject() {
 		cx.ThrowTypeError("the tag of Intl.Locale must be a string or an object, not " + cx.DisplayString(tagV))
@@ -118,7 +118,7 @@ func newLocale(cx *engine.ExecutionContext, this engine.Value, args []engine.Val
 	} else {
 		tag = wtf8.ToValidUTF8(cx.ToString(tagV))
 	}
-	var options *engine.Object
+	var options *storage.Object
 	if o := arg(args, 1); o.IsUndefined() {
 		options = cx.NewObject(nil)
 	} else {
@@ -200,8 +200,8 @@ func newLocale(cx *engine.ExecutionContext, this engine.Value, args []engine.Val
 }
 
 // localeFromTag returns a new Intl.Locale for t.
-func localeFromTag(cx *engine.ExecutionContext, t locale.Tag) engine.Value {
-	return storage.ObjectValue(cx.NewIntlObject(cx.Intrinsic(engine.IntrinsicIntlLocalePrototype), newLocaleData(t)))
+func localeFromTag(cx *engine.ExecutionContext, t locale.Tag) storage.Value {
+	return storage.ObjectValue(cx.NewIntlObject(cx.Intrinsic(storage.IntrinsicIntlLocalePrototype), newLocaleData(t)))
 }
 
 var (
@@ -221,9 +221,9 @@ var (
 )
 
 // initLocale defines Intl.Locale.
-func initLocale(cx *engine.ExecutionContext, ns *engine.Object) {
-	_, proto := constructor(cx, ns, "Locale", 1, engine.IntrinsicIntlLocalePrototype, nativeNewLocale)
-	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Intl.Locale"), engine.FlagConfigurable)
+func initLocale(cx *engine.ExecutionContext, ns *storage.Object) {
+	_, proto := constructor(cx, ns, "Locale", 1, storage.IntrinsicIntlLocalePrototype, nativeNewLocale)
+	cx.Define(proto, cx.WellKnownSymbol(storage.SymbolToStringTag), cx.SharedString("Intl.Locale"), storage.FlagConfigurable)
 
 	method(cx, proto, "maximize", 0, nativeLocaleMaximize)
 	method(cx, proto, "minimize", 0, nativeLocaleMinimize)
@@ -249,7 +249,7 @@ func initLocale(cx *engine.ExecutionContext, ns *engine.Object) {
 	method(cx, proto, "getWeekInfo", 0, nativeLocaleGetWeekInfo)
 }
 
-func localeMaximize(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func localeMaximize(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	t := thisLocale(cx, this, "maximize").tag
 	if max, ok := locale.AddLikelySubtags(t.LanguageID); ok {
 		t.LanguageID = max
@@ -257,7 +257,7 @@ func localeMaximize(cx *engine.ExecutionContext, this engine.Value, args []engin
 	return localeFromTag(cx, t)
 }
 
-func localeMinimize(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func localeMinimize(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	t := thisLocale(cx, this, "minimize").tag
 	if min, ok := locale.RemoveLikelySubtags(t.LanguageID); ok {
 		t.LanguageID = min
@@ -265,11 +265,11 @@ func localeMinimize(cx *engine.ExecutionContext, this engine.Value, args []engin
 	return localeFromTag(cx, t)
 }
 
-func localeToString(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func localeToString(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	return cx.NewString(wtf8.String(thisLocale(cx, this, "toString").String()))
 }
 
-func localeBaseName(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func localeBaseName(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	return cx.NewString(wtf8.String(thisLocale(cx, this, "baseName").tag.BaseName()))
 }
 
@@ -287,32 +287,32 @@ var (
 //
 //go:noinline
 func localeKeywordNative(name, key string) engine.NativeFunc {
-	return func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return func(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 		v, ok := thisLocale(cx, this, name).tag.Keyword(key)
 		return stringOrUndefined(cx, v, ok)
 	}
 }
 
-func localeNumeric(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func localeNumeric(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	v, ok := thisLocale(cx, this, "numeric").tag.Keyword("kn")
 	return storage.Bool(ok && (v == "" || v == "true"))
 }
 
-func localeLanguage(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func localeLanguage(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	return cx.NewString(wtf8.String(thisLocale(cx, this, "language").tag.Language))
 }
 
-func localeScript(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func localeScript(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s := thisLocale(cx, this, "script").tag.Script
 	return stringOrUndefined(cx, s, s != "")
 }
 
-func localeRegion(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func localeRegion(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s := thisLocale(cx, this, "region").tag.Region
 	return stringOrUndefined(cx, s, s != "")
 }
 
-func localeVariants(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func localeVariants(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	vs := thisLocale(cx, this, "variants").tag.Variants
 	return stringOrUndefined(cx, strings.Join(vs, "-"), len(vs) > 0)
 }
@@ -329,12 +329,12 @@ var (
 //
 //go:noinline
 func localeListNative(name string, f func(locale.Tag) []string) engine.NativeFunc {
-	return func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return func(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 		return stringArray(cx, f(thisLocale(cx, this, name).tag))
 	}
 }
 
-func localeGetTimeZones(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func localeGetTimeZones(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	zones, ok := locale.TimeZonesOf(thisLocale(cx, this, "getTimeZones").tag)
 	if !ok {
 		return storage.Undefined
@@ -342,20 +342,20 @@ func localeGetTimeZones(cx *engine.ExecutionContext, this engine.Value, args []e
 	return stringArray(cx, zones)
 }
 
-func localeGetTextInfo(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func localeGetTextInfo(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	d := locale.TextDirectionOf(thisLocale(cx, this, "getTextInfo").tag)
-	info := cx.NewObject(cx.Intrinsic(engine.IntrinsicObjectPrototype))
+	info := cx.NewObject(cx.Intrinsic(storage.IntrinsicObjectPrototype))
 	cx.CreateDataPropertyOrThrow(info, storage.NamedKey(cx.Intern("direction")), stringOrUndefined(cx, d, d != ""))
 	return storage.ObjectValue(info)
 }
 
-func localeGetWeekInfo(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func localeGetWeekInfo(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	firstDay, weekend := locale.WeekInfoOf(thisLocale(cx, this, "getWeekInfo").tag)
-	days := make([]engine.Value, len(weekend))
+	days := make([]storage.Value, len(weekend))
 	for i, d := range weekend {
 		days[i] = storage.Number(float64(d))
 	}
-	info := cx.NewObject(cx.Intrinsic(engine.IntrinsicObjectPrototype))
+	info := cx.NewObject(cx.Intrinsic(storage.IntrinsicObjectPrototype))
 	cx.CreateDataPropertyOrThrow(info, storage.NamedKey(cx.Intern("firstDay")), storage.Number(float64(firstDay)))
 	cx.CreateDataPropertyOrThrow(info, storage.NamedKey(cx.Intern("weekend")), cx.NewArrayOf(days))
 	return storage.ObjectValue(info)

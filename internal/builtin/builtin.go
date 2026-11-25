@@ -15,7 +15,7 @@ import (
 )
 
 // arg returns the argument i, or undefined when it was not passed.
-func arg(args []engine.Value, i int) engine.Value {
+func arg(args []storage.Value, i int) storage.Value {
 	if i < len(args) {
 		return args[i]
 	}
@@ -35,51 +35,51 @@ var polledContract = engine.ShortcutContract{
 }
 
 // method defines the non-enumerable function name on o.
-func method(cx *engine.ExecutionContext, o *engine.Object, name wtf8.String, length int, f engine.Native) *engine.Object {
+func method(cx *engine.ExecutionContext, o *storage.Object, name wtf8.String, length int, f storage.Native) *storage.Object {
 	fn := cx.NewNative(name, length, f)
-	cx.Define(o, cx.Intern(name), storage.ObjectValue(fn), engine.FlagsHidden)
+	cx.Define(o, cx.Intern(name), storage.ObjectValue(fn), storage.FlagsHidden)
 	return fn
 }
 
 // methodWithState is [method] for a function whose internal slots are state.
-func methodWithState(cx *engine.ExecutionContext, o *engine.Object, name wtf8.String, length int, f engine.Native, state any) *engine.Object {
+func methodWithState(cx *engine.ExecutionContext, o *storage.Object, name wtf8.String, length int, f storage.Native, state any) *storage.Object {
 	fn := cx.NewNativeWithState(name, length, f, state)
-	cx.Define(o, cx.Intern(name), storage.ObjectValue(fn), engine.FlagsHidden)
+	cx.Define(o, cx.Intern(name), storage.ObjectValue(fn), storage.FlagsHidden)
 	return fn
 }
 
 // symMethod defines the non-enumerable function under the symbol key on o.
-func symMethod(cx *engine.ExecutionContext, o *engine.Object, key *engine.Object, name wtf8.String, length int, f engine.Native) *engine.Object {
+func symMethod(cx *engine.ExecutionContext, o *storage.Object, key *storage.Object, name wtf8.String, length int, f storage.Native) *storage.Object {
 	fn := cx.NewNative(name, length, f)
-	cx.Define(o, key, storage.ObjectValue(fn), engine.FlagsHidden)
+	cx.Define(o, key, storage.ObjectValue(fn), storage.FlagsHidden)
 	return fn
 }
 
 // getter defines the accessor property key on o with the getter f, named "get " + name, and
 // returns the getter.
-func getter(cx *engine.ExecutionContext, o *engine.Object, key *engine.Object, name wtf8.String, f engine.Native) *engine.Object {
+func getter(cx *engine.ExecutionContext, o *storage.Object, key *storage.Object, name wtf8.String, f storage.Native) *storage.Object {
 	g := cx.NewNative("get "+name, 0, f)
-	cx.DefineAccessor(o, key, g, nil, engine.FlagConfigurable)
+	cx.DefineAccessor(o, key, g, nil, storage.FlagConfigurable)
 	return g
 }
 
 // constant defines the property name of o that cannot be changed.
-func constant(cx *engine.ExecutionContext, o *engine.Object, name wtf8.String, v engine.Value) {
+func constant(cx *engine.ExecutionContext, o *storage.Object, name wtf8.String, v storage.Value) {
 	cx.Define(o, cx.Intern(name), v, 0)
 }
 
 // constructor creates the constructor function name with the intrinsic prototype protoID,
 // and defines it as a global.
-func constructor(cx *engine.ExecutionContext, name wtf8.String, length int, protoID engine.Intrinsic, f engine.Native) *engine.Object {
+func constructor(cx *engine.ExecutionContext, name wtf8.String, length int, protoID storage.Intrinsic, f storage.Native) *storage.Object {
 	c := cx.NewNativeConstructor(name, length, f)
 	cx.DefineConstructorPrototype(c, protoID)
-	cx.Define(cx.Intrinsic(protoID), cx.Key(engine.KeyConstructor), storage.ObjectValue(c), engine.FlagsHidden)
-	cx.Define(cx.GlobalObject().Object(), cx.Intern(name), storage.ObjectValue(c), engine.FlagsHidden)
+	cx.Define(cx.Intrinsic(protoID), cx.Key(storage.KeyConstructor), storage.ObjectValue(c), storage.FlagsHidden)
+	cx.Define(cx.GlobalObject().Object(), cx.Intern(name), storage.ObjectValue(c), storage.FlagsHidden)
 	return c
 }
 
 // thisObject returns this as an object, or throws a TypeError naming the method.
-func thisObject(cx *engine.ExecutionContext, this engine.Value, what string) *engine.Object {
+func thisObject(cx *engine.ExecutionContext, this storage.Value, what string) *storage.Object {
 	if !this.IsObject() {
 		cx.ThrowTypeError(what + " called on non-object")
 	}
@@ -88,7 +88,7 @@ func thisObject(cx *engine.ExecutionContext, this engine.Value, what string) *en
 
 // setterThatIgnoresPrototypeProperties implements SetterThatIgnoresPrototypeProperties:
 // it sets the property key of this to v unless this is home. what names the setter in errors.
-func setterThatIgnoresPrototypeProperties(cx *engine.ExecutionContext, this engine.Value, home *engine.Object, key engine.PropKey, v engine.Value, what string) {
+func setterThatIgnoresPrototypeProperties(cx *engine.ExecutionContext, this storage.Value, home *storage.Object, key storage.PropKey, v storage.Value, what string) {
 	if !this.IsObject() {
 		cx.ThrowTypeError(what + " called on non-object")
 	}
@@ -118,40 +118,40 @@ var nativeThrowRestrictedProperty = engine.RegisterNative(throwRestrictedPropert
 // Install creates the standard built-in objects of the realm of cx, and those of the registered extensions.
 func Install(cx *engine.ExecutionContext) {
 	cx.StartBuiltins()
-	objectProto := cx.Intrinsic(engine.IntrinsicObjectPrototype)
-	cx.SetIntrinsic(engine.IntrinsicNumberPrototype, cx.NewNumberObject(0, objectProto))
-	cx.SetIntrinsic(engine.IntrinsicBooleanPrototype, cx.NewBooleanObject(false, objectProto))
-	for _, id := range []engine.Intrinsic{
-		engine.IntrinsicSymbolPrototype, engine.IntrinsicBigIntPrototype, engine.IntrinsicErrorPrototype,
-		engine.IntrinsicIteratorPrototype, engine.IntrinsicAsyncIteratorPrototype, engine.IntrinsicRegExpPrototype,
-		engine.IntrinsicPromisePrototype, engine.IntrinsicMapPrototype, engine.IntrinsicSetPrototype,
-		engine.IntrinsicDatePrototype,
+	objectProto := cx.Intrinsic(storage.IntrinsicObjectPrototype)
+	cx.SetIntrinsic(storage.IntrinsicNumberPrototype, cx.NewNumberObject(0, objectProto))
+	cx.SetIntrinsic(storage.IntrinsicBooleanPrototype, cx.NewBooleanObject(false, objectProto))
+	for _, id := range []storage.Intrinsic{
+		storage.IntrinsicSymbolPrototype, storage.IntrinsicBigIntPrototype, storage.IntrinsicErrorPrototype,
+		storage.IntrinsicIteratorPrototype, storage.IntrinsicAsyncIteratorPrototype, storage.IntrinsicRegExpPrototype,
+		storage.IntrinsicPromisePrototype, storage.IntrinsicMapPrototype, storage.IntrinsicSetPrototype,
+		storage.IntrinsicDatePrototype,
 	} {
 		cx.SetIntrinsic(id, cx.NewObject(objectProto))
 	}
-	iteratorProto := cx.Intrinsic(engine.IntrinsicIteratorPrototype)
-	for _, id := range []engine.Intrinsic{
-		engine.IntrinsicArrayIteratorPrototype, engine.IntrinsicStringIteratorPrototype, engine.IntrinsicGeneratorPrototype,
+	iteratorProto := cx.Intrinsic(storage.IntrinsicIteratorPrototype)
+	for _, id := range []storage.Intrinsic{
+		storage.IntrinsicArrayIteratorPrototype, storage.IntrinsicStringIteratorPrototype, storage.IntrinsicGeneratorPrototype,
 	} {
 		cx.SetIntrinsic(id, cx.NewObject(iteratorProto))
 	}
-	cx.SetIntrinsic(engine.IntrinsicAsyncGeneratorPrototype, cx.NewObject(cx.Intrinsic(engine.IntrinsicAsyncIteratorPrototype)))
-	functionProto := cx.Intrinsic(engine.IntrinsicFunctionPrototype)
-	for _, id := range []engine.Intrinsic{
-		engine.IntrinsicGeneratorFunctionPrototype, engine.IntrinsicAsyncFunctionPrototype, engine.IntrinsicAsyncGeneratorFunctionPrototype,
+	cx.SetIntrinsic(storage.IntrinsicAsyncGeneratorPrototype, cx.NewObject(cx.Intrinsic(storage.IntrinsicAsyncIteratorPrototype)))
+	functionProto := cx.Intrinsic(storage.IntrinsicFunctionPrototype)
+	for _, id := range []storage.Intrinsic{
+		storage.IntrinsicGeneratorFunctionPrototype, storage.IntrinsicAsyncFunctionPrototype, storage.IntrinsicAsyncGeneratorFunctionPrototype,
 	} {
 		cx.SetIntrinsic(id, cx.NewObject(functionProto))
 	}
 
 	g := cx.GlobalObject().Object()
-	cx.Define(g, cx.Intern("globalThis"), storage.ObjectValue(g), engine.FlagsHidden)
+	cx.Define(g, cx.Intern("globalThis"), storage.ObjectValue(g), storage.FlagsHidden)
 	constant(cx, g, "undefined", storage.Undefined)
 	constant(cx, g, "NaN", storage.Number(math.NaN()))
 	constant(cx, g, "Infinity", storage.Number(math.Inf(1)))
 
 	throwTypeError := cx.NewNative("", 0, nativeThrowRestrictedProperty)
 	setIntegrity(cx, throwTypeError, true)
-	cx.SetIntrinsic(engine.IntrinsicThrowTypeError, throwTypeError)
+	cx.SetIntrinsic(storage.IntrinsicThrowTypeError, throwTypeError)
 
 	initObject(cx)
 	initFunction(cx)
@@ -186,17 +186,17 @@ func Install(cx *engine.ExecutionContext) {
 	cx.FinishBuiltins()
 }
 
-func throwRestrictedProperty(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func throwRestrictedProperty(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	cx.ThrowTypeError("'caller', 'callee', and 'arguments' properties may not be accessed on strict mode functions or the arguments objects for calls to them")
 	return storage.Undefined
 }
 
 // objectPrototypeToString implements Object.prototype.toString for the value v, which is neither undefined nor null.
-func objectPrototypeToString(cx *engine.ExecutionContext, v engine.Value) engine.Value {
+func objectPrototypeToString(cx *engine.ExecutionContext, v storage.Value) storage.Value {
 	if !v.IsObject() {
 		// A wrapper object from ToObject is observable only by code that the lookup of
 		// @@toStringTag runs.
-		if t, ok := cx.Quiet().GetVWithoutCall(v, cx.WellKnownSymbol(engine.SymbolToStringTag)); ok {
+		if t, ok := cx.Quiet().GetVWithoutCall(v, cx.WellKnownSymbol(storage.SymbolToStringTag)); ok {
 			if t.IsString() {
 				return cx.ObjectTagString(t.Str())
 			}
@@ -208,7 +208,7 @@ func objectPrototypeToString(cx *engine.ExecutionContext, v engine.Value) engine
 
 // primitiveTag returns the builtinTag of Object.prototype.toString for the object that
 // ToObject makes of the primitive v.
-func primitiveTag(v engine.Value) wtf8.String {
+func primitiveTag(v storage.Value) wtf8.String {
 	switch {
 	case v.IsString():
 		return "String"
@@ -221,23 +221,23 @@ func primitiveTag(v engine.Value) wtf8.String {
 }
 
 // objectToString implements Object.prototype.toString for the object o.
-func objectToString(cx *engine.ExecutionContext, o *engine.Object) engine.Value {
+func objectToString(cx *engine.ExecutionContext, o *storage.Object) storage.Value {
 	tag := cx.BuiltinTag(o)
-	if t := cx.GetV(storage.ObjectValue(o), cx.WellKnownSymbol(engine.SymbolToStringTag)); t.IsString() {
+	if t := cx.GetV(storage.ObjectValue(o), cx.WellKnownSymbol(storage.SymbolToStringTag)); t.IsString() {
 		tag = t.Str()
 	}
 	return cx.ObjectTagString(tag)
 }
 
 // setIntegrity implements SetIntegrityLevel. frozen selects frozen over sealed.
-func setIntegrity(cx *engine.ExecutionContext, o *engine.Object, frozen bool) {
+func setIntegrity(cx *engine.ExecutionContext, o *storage.Object, frozen bool) {
 	if !cx.PreventExtensions(o) {
 		cx.ThrowTypeError("cannot prevent extensions")
 	}
 	var pacer engine.Pacer
 	for _, k := range cx.OwnKeys(o) {
 		pacer.Step(cx)
-		var d engine.PropDesc
+		var d storage.PropDesc
 		d.SetConfigurable(false)
 		if frozen {
 			cur, ok := cx.GetOwnProperty(o, k)
@@ -253,7 +253,7 @@ func setIntegrity(cx *engine.ExecutionContext, o *engine.Object, frozen bool) {
 }
 
 // testIntegrity implements TestIntegrityLevel.
-func testIntegrity(cx *engine.ExecutionContext, o *engine.Object, frozen bool) bool {
+func testIntegrity(cx *engine.ExecutionContext, o *storage.Object, frozen bool) bool {
 	if cx.IsExtensible(o) {
 		return false
 	}
@@ -276,9 +276,9 @@ func testIntegrity(cx *engine.ExecutionContext, o *engine.Object, frozen bool) b
 
 // enumerableOwn returns the values of the enumerable own string-keyed properties of o, or their
 // key-value pairs when entries is set.
-func enumerableOwn(cx *engine.ExecutionContext, o *engine.Object, entries bool) []engine.Value {
+func enumerableOwn(cx *engine.ExecutionContext, o *storage.Object, entries bool) []storage.Value {
 	ks := cx.OwnKeys(o)
-	out := make([]engine.Value, 0, len(ks))
+	out := make([]storage.Value, 0, len(ks))
 	var pacer engine.Pacer
 	for _, k := range ks {
 		pacer.Step(cx)
@@ -298,11 +298,11 @@ func enumerableOwn(cx *engine.ExecutionContext, o *engine.Object, entries bool) 
 	return out
 }
 
-func objectDefineProperties(cx *engine.ExecutionContext, o *engine.Object, props engine.Value) {
+func objectDefineProperties(cx *engine.ExecutionContext, o *storage.Object, props storage.Value) {
 	src := cx.ToObject(props)
 	type entry struct {
-		k engine.PropKey
-		d engine.PropDesc
+		k storage.PropKey
+		d storage.PropDesc
 	}
 	var list []entry
 	var pacer engine.Pacer
@@ -365,9 +365,9 @@ var (
 )
 
 func initObject(cx *engine.ExecutionContext) {
-	proto := cx.Intrinsic(engine.IntrinsicObjectPrototype)
-	ctor := constructor(cx, "Object", 1, engine.IntrinsicObjectPrototype, nativeObjectConstructor)
-	cx.SetIntrinsic(engine.IntrinsicObject, ctor)
+	proto := cx.Intrinsic(storage.IntrinsicObjectPrototype)
+	ctor := constructor(cx, "Object", 1, storage.IntrinsicObjectPrototype, nativeObjectConstructor)
+	cx.SetIntrinsic(storage.IntrinsicObject, ctor)
 
 	method(cx, proto, "hasOwnProperty", 1, nativeObjectHasOwnProperty)
 	method(cx, proto, "isPrototypeOf", 1, nativeObjectIsPrototypeOf)
@@ -379,7 +379,7 @@ func initObject(cx *engine.ExecutionContext) {
 	cx.DefineAccessor(proto, protoKey,
 		cx.NewNative("get __proto__", 0, nativeObjectProtoGetter),
 		cx.NewNative("set __proto__", 1, nativeObjectProtoSetter),
-		engine.FlagConfigurable)
+		storage.FlagConfigurable)
 
 	method(cx, proto, "__defineGetter__", 2, nativeObjectDefineGetter)
 	method(cx, proto, "__defineSetter__", 2, nativeObjectDefineSetter)
@@ -410,9 +410,9 @@ func initObject(cx *engine.ExecutionContext) {
 	method(cx, ctor, "hasOwn", 2, nativeObjectHasOwn)
 }
 
-func objectConstructor(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-	if nt := cx.GetNewTarget(); nt != nil && nt != cx.Intrinsic(engine.IntrinsicObject) {
-		return storage.ObjectValue(cx.NewInstance(cx.GetPrototypeFromConstructor(nt, engine.IntrinsicObjectPrototype)))
+func objectConstructor(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
+	if nt := cx.GetNewTarget(); nt != nil && nt != cx.Intrinsic(storage.IntrinsicObject) {
+		return storage.ObjectValue(cx.NewInstance(cx.GetPrototypeFromConstructor(nt, storage.IntrinsicObjectPrototype)))
 	}
 	v := arg(args, 0)
 	if v.IsNullish() {
@@ -421,12 +421,12 @@ func objectConstructor(cx *engine.ExecutionContext, this engine.Value, args []en
 	return storage.ObjectValue(cx.ToObject(v))
 }
 
-func objectHasOwnProperty(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func objectHasOwnProperty(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	k := cx.QueryKey(arg(args, 0))
 	return storage.Bool(cx.QueryOwnProperty(cx.ToObject(this), k))
 }
 
-func objectIsPrototypeOf(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func objectIsPrototypeOf(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	v := arg(args, 0)
 	if !v.IsObject() {
 		return storage.False
@@ -440,13 +440,13 @@ func objectIsPrototypeOf(cx *engine.ExecutionContext, this engine.Value, args []
 	return storage.False
 }
 
-func objectPropertyIsEnumerable(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func objectPropertyIsEnumerable(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	k := cx.ToPropertyKey(arg(args, 0))
 	d, ok := cx.GetOwnProperty(cx.ToObject(this), k)
 	return storage.Bool(ok && d.Enumerable())
 }
 
-func objectToStringMethod(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func objectToStringMethod(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	switch {
 	case this.IsUndefined():
 		return cx.ObjectTagString("Undefined")
@@ -456,28 +456,28 @@ func objectToStringMethod(cx *engine.ExecutionContext, this engine.Value, args [
 	return objectPrototypeToString(cx, this)
 }
 
-func objectToLocaleString(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-	return cx.CallValue(cx.GetV(this, cx.Key(engine.KeyToString)), this)
+func objectToLocaleString(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
+	return cx.CallValue(cx.GetV(this, cx.Key(storage.KeyToString)), this)
 }
 
-func objectValueOf(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func objectValueOf(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	return storage.ObjectValue(cx.ToObject(this))
 }
 
-func objectProtoGetter(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func objectProtoGetter(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	if p := cx.ProtoOf(cx.ToObject(this)); p != nil {
 		return storage.ObjectValue(p)
 	}
 	return storage.Null
 }
 
-func objectProtoSetter(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func objectProtoSetter(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	cx.RequireObjectCoercible(this, "Object.prototype.__proto__")
 	p := arg(args, 0)
 	if !this.IsObject() || !(p.IsObject() || p.IsNull()) {
 		return storage.Undefined
 	}
-	var po *engine.Object
+	var po *storage.Object
 	if p.IsObject() {
 		po = p.Object()
 	}
@@ -487,23 +487,23 @@ func objectProtoSetter(cx *engine.ExecutionContext, this engine.Value, args []en
 	return storage.Undefined
 }
 
-func objectDefineGetter(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func objectDefineGetter(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	return objectDefineAccessor(cx, this, args, "__defineGetter__", false)
 }
 
-func objectDefineSetter(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func objectDefineSetter(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	return objectDefineAccessor(cx, this, args, "__defineSetter__", true)
 }
 
 // objectDefineAccessor implements the method name of Object.prototype, which defines a setter
 // with setter and a getter otherwise.
-func objectDefineAccessor(cx *engine.ExecutionContext, this engine.Value, args []engine.Value, name string, setter bool) engine.Value {
+func objectDefineAccessor(cx *engine.ExecutionContext, this storage.Value, args []storage.Value, name string, setter bool) storage.Value {
 	o := cx.ToObject(this)
 	f := arg(args, 1)
 	if !f.IsCallable() {
 		cx.ThrowTypeError("Object.prototype." + name + ": expecting function")
 	}
-	var d engine.PropDesc
+	var d storage.PropDesc
 	d.SetEnumerable(true)
 	d.SetConfigurable(true)
 	if setter {
@@ -515,17 +515,17 @@ func objectDefineAccessor(cx *engine.ExecutionContext, this engine.Value, args [
 	return storage.Undefined
 }
 
-func objectLookupGetter(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func objectLookupGetter(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	return objectLookupAccessor(cx, this, args, false)
 }
 
-func objectLookupSetter(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func objectLookupSetter(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	return objectLookupAccessor(cx, this, args, true)
 }
 
 // objectLookupAccessor implements the methods of Object.prototype that return the setter of a
 // property with setter and its getter otherwise.
-func objectLookupAccessor(cx *engine.ExecutionContext, this engine.Value, args []engine.Value, setter bool) engine.Value {
+func objectLookupAccessor(cx *engine.ExecutionContext, this storage.Value, args []storage.Value, setter bool) storage.Value {
 	o := cx.ToObject(this)
 	k := cx.ToPropertyKey(arg(args, 0))
 	for ; o != nil; o = cx.ProtoOf(o) {
@@ -545,14 +545,14 @@ func objectLookupAccessor(cx *engine.ExecutionContext, this engine.Value, args [
 	return storage.Undefined
 }
 
-func objectGetPrototypeOf(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func objectGetPrototypeOf(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	if p := cx.ProtoOf(cx.ToObject(arg(args, 0))); p != nil {
 		return storage.ObjectValue(p)
 	}
 	return storage.Null
 }
 
-func objectSetPrototypeOf(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func objectSetPrototypeOf(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	o, p := arg(args, 0), arg(args, 1)
 	cx.RequireObjectCoercible(o, "Object.setPrototypeOf")
 	if !p.IsObject() && !p.IsNull() {
@@ -561,7 +561,7 @@ func objectSetPrototypeOf(cx *engine.ExecutionContext, this engine.Value, args [
 	if !o.IsObject() {
 		return o
 	}
-	var po *engine.Object
+	var po *storage.Object
 	if p.IsObject() {
 		po = p.Object()
 	}
@@ -571,12 +571,12 @@ func objectSetPrototypeOf(cx *engine.ExecutionContext, this engine.Value, args [
 	return o
 }
 
-func objectCreate(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func objectCreate(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	p := arg(args, 0)
 	if !p.IsObject() && !p.IsNull() {
 		cx.ThrowTypeError("object prototype may only be an Object or null: " + cx.DisplayString(p))
 	}
-	var po *engine.Object
+	var po *storage.Object
 	if p.IsObject() {
 		po = p.Object()
 	}
@@ -587,7 +587,7 @@ func objectCreate(cx *engine.ExecutionContext, this engine.Value, args []engine.
 	return storage.ObjectValue(o)
 }
 
-func objectDefineProperty(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func objectDefineProperty(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	o := arg(args, 0)
 	if !o.IsObject() {
 		cx.ThrowTypeError("Object.defineProperty called on non-object")
@@ -597,7 +597,7 @@ func objectDefineProperty(cx *engine.ExecutionContext, this engine.Value, args [
 	return o
 }
 
-func objectDefinePropertiesMethod(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func objectDefinePropertiesMethod(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	o := arg(args, 0)
 	if !o.IsObject() {
 		cx.ThrowTypeError("Object.defineProperties called on non-object")
@@ -606,7 +606,7 @@ func objectDefinePropertiesMethod(cx *engine.ExecutionContext, this engine.Value
 	return o
 }
 
-func objectGetOwnPropertyDescriptor(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func objectGetOwnPropertyDescriptor(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	o := cx.ToObject(arg(args, 0))
 	d, ok := cx.GetOwnProperty(o, cx.ToPropertyKey(arg(args, 1)))
 	if !ok {
@@ -615,7 +615,7 @@ func objectGetOwnPropertyDescriptor(cx *engine.ExecutionContext, this engine.Val
 	return cx.FromPropertyDescriptor(d)
 }
 
-func objectGetOwnPropertyDescriptors(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func objectGetOwnPropertyDescriptors(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	o := cx.ToObject(arg(args, 0))
 	out := cx.NewOrdinaryObject()
 	var pacer engine.Pacer
@@ -628,8 +628,8 @@ func objectGetOwnPropertyDescriptors(cx *engine.ExecutionContext, this engine.Va
 	return storage.ObjectValue(out)
 }
 
-func objectGetOwnPropertyNames(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-	var out []engine.Value
+func objectGetOwnPropertyNames(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
+	var out []storage.Value
 	var pacer engine.Pacer
 	for _, k := range cx.OwnKeys(cx.ToObject(arg(args, 0))) {
 		pacer.Step(cx)
@@ -640,8 +640,8 @@ func objectGetOwnPropertyNames(cx *engine.ExecutionContext, this engine.Value, a
 	return storage.ObjectValue(cx.NewArray(out))
 }
 
-func objectGetOwnPropertySymbols(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-	var out []engine.Value
+func objectGetOwnPropertySymbols(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
+	var out []storage.Value
 	var pacer engine.Pacer
 	for _, k := range cx.OwnKeys(cx.ToObject(arg(args, 0))) {
 		pacer.Step(cx)
@@ -652,9 +652,9 @@ func objectGetOwnPropertySymbols(cx *engine.ExecutionContext, this engine.Value,
 	return storage.ObjectValue(cx.NewArray(out))
 }
 
-func objectKeys(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func objectKeys(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	ks := cx.EnumerableOwnKeys(cx.ToObject(arg(args, 0)), nil)
-	out := make([]engine.Value, len(ks))
+	out := make([]storage.Value, len(ks))
 	var pacer engine.Pacer
 	for i, k := range ks {
 		pacer.Step(cx)
@@ -663,15 +663,15 @@ func objectKeys(cx *engine.ExecutionContext, this engine.Value, args []engine.Va
 	return storage.ObjectValue(cx.NewArray(out))
 }
 
-func objectValues(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func objectValues(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	return storage.ObjectValue(cx.NewArray(enumerableOwn(cx, cx.ToObject(arg(args, 0)), false)))
 }
 
-func objectEntries(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func objectEntries(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	return storage.ObjectValue(cx.NewArray(enumerableOwn(cx, cx.ToObject(arg(args, 0)), true)))
 }
 
-func objectAssign(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func objectAssign(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	to := cx.ToObject(arg(args, 0))
 	for _, src := range args[min(1, len(args)):] {
 		if src.IsNullish() {
@@ -697,21 +697,21 @@ func objectAssign(cx *engine.ExecutionContext, this engine.Value, args []engine.
 	return storage.ObjectValue(to)
 }
 
-func objectFreeze(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func objectFreeze(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	if o := arg(args, 0); o.IsObject() {
 		setIntegrity(cx, o.Object(), true)
 	}
 	return arg(args, 0)
 }
 
-func objectSeal(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func objectSeal(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	if o := arg(args, 0); o.IsObject() {
 		setIntegrity(cx, o.Object(), false)
 	}
 	return arg(args, 0)
 }
 
-func objectPreventExtensions(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func objectPreventExtensions(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	if o := arg(args, 0); o.IsObject() {
 		if !cx.PreventExtensions(o.Object()) {
 			cx.ThrowTypeError("cannot prevent extensions")
@@ -720,28 +720,28 @@ func objectPreventExtensions(cx *engine.ExecutionContext, this engine.Value, arg
 	return arg(args, 0)
 }
 
-func objectIsFrozen(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func objectIsFrozen(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	o := arg(args, 0)
 	return storage.Bool(!o.IsObject() || testIntegrity(cx, o.Object(), true))
 }
 
-func objectIsSealed(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func objectIsSealed(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	o := arg(args, 0)
 	return storage.Bool(!o.IsObject() || testIntegrity(cx, o.Object(), false))
 }
 
-func objectIsExtensible(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func objectIsExtensible(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	o := arg(args, 0)
 	return storage.Bool(o.IsObject() && cx.IsExtensible(o.Object()))
 }
 
-func objectIs(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func objectIs(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	return storage.Bool(storage.SameValue(arg(args, 0), arg(args, 1)))
 }
 
-func objectFromEntries(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func objectFromEntries(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	o := cx.NewOrdinaryObject()
-	cx.Iterate(arg(args, 0), func(e engine.Value) bool {
+	cx.Iterate(arg(args, 0), func(e storage.Value) bool {
 		if !e.IsObject() {
 			cx.ThrowTypeError("iterator value " + cx.DisplayString(e) + " is not an entry object")
 		}
@@ -753,13 +753,13 @@ func objectFromEntries(cx *engine.ExecutionContext, this engine.Value, args []en
 	return storage.ObjectValue(o)
 }
 
-func objectHasOwn(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func objectHasOwn(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	o := cx.ToObject(arg(args, 0))
 	return storage.Bool(cx.QueryOwnProperty(o, cx.QueryKey(arg(args, 1))))
 }
 
 // listFromArrayLike implements CreateListFromArrayLike.
-func listFromArrayLike(cx *engine.ExecutionContext, v engine.Value) []engine.Value {
+func listFromArrayLike(cx *engine.ExecutionContext, v storage.Value) []storage.Value {
 	if v.IsNullish() {
 		return nil
 	}
@@ -769,22 +769,22 @@ func listFromArrayLike(cx *engine.ExecutionContext, v engine.Value) []engine.Val
 	if list, ok := v.Object().ElementList(); ok {
 		return list
 	}
-	n := numconv.ToLength(cx.ToNumber(cx.GetV(v, cx.Key(engine.KeyLength))))
+	n := numconv.ToLength(cx.ToNumber(cx.GetV(v, cx.Key(storage.KeyLength))))
 	if n > 1<<24 {
 		cx.ThrowRangeError("too many arguments")
 	}
-	list := make([]engine.Value, n)
-	for i := 0; i < len(list); i += engine.PollInterval {
+	list := make([]storage.Value, n)
+	for i := 0; i < len(list); i += storage.PollInterval {
 		if i > 0 {
 			cx.Poll()
 		}
-		indexValues(cx, list[i:min(i+engine.PollInterval, len(list))], v, i)
+		indexValues(cx, list[i:min(i+storage.PollInterval, len(list))], v, i)
 	}
 	return list
 }
 
 // indexValues sets the elements of out to the properties of v from the index start on.
-func indexValues(cx *engine.ExecutionContext, out []engine.Value, v engine.Value, start int) {
+func indexValues(cx *engine.ExecutionContext, out []storage.Value, v storage.Value, start int) {
 	for i := range out {
 		out[i] = cx.Index(v, uint32(start+i))
 	}
@@ -802,55 +802,55 @@ var (
 )
 
 func initFunction(cx *engine.ExecutionContext) {
-	proto := cx.Intrinsic(engine.IntrinsicFunctionPrototype)
-	ctor := constructor(cx, "Function", 1, engine.IntrinsicFunctionPrototype, nativeFunctionConstructor)
-	cx.SetIntrinsic(engine.IntrinsicFunction, ctor)
+	proto := cx.Intrinsic(storage.IntrinsicFunctionPrototype)
+	ctor := constructor(cx, "Function", 1, storage.IntrinsicFunctionPrototype, nativeFunctionConstructor)
+	cx.SetIntrinsic(storage.IntrinsicFunction, ctor)
 
 	call := method(cx, proto, "call", 1, nativeFunctionCall)
-	cx.SetIntrinsic(engine.IntrinsicFunctionPrototypeCall, call)
+	cx.SetIntrinsic(storage.IntrinsicFunctionPrototypeCall, call)
 	// The interpreter calls the targets of call and apply directly where it can, so every call
 	// of them is invisible to stack traces and to the caller of the functions they call.
 	cx.SetFrameless(call)
 	apply := method(cx, proto, "apply", 2, nativeFunctionApply)
-	cx.SetIntrinsic(engine.IntrinsicFunctionPrototypeApply, apply)
+	cx.SetIntrinsic(storage.IntrinsicFunctionPrototypeApply, apply)
 	cx.SetFrameless(apply)
 	method(cx, proto, "bind", 1, nativeFunctionBind)
 	method(cx, proto, "toString", 0, nativeFunctionToString)
 	hasInstance := cx.NewNative("[Symbol.hasInstance]", 1, nativeFunctionHasInstance)
-	cx.SetIntrinsic(engine.IntrinsicFunctionPrototypeHasInstance, hasInstance)
-	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolHasInstance), storage.ObjectValue(hasInstance), 0)
+	cx.SetIntrinsic(storage.IntrinsicFunctionPrototypeHasInstance, hasInstance)
+	cx.Define(proto, cx.WellKnownSymbol(storage.SymbolHasInstance), storage.ObjectValue(hasInstance), 0)
 	// Function.prototype[Symbol.metadata] of the decorator metadata proposal.
-	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolMetadata), storage.Null, 0)
+	cx.Define(proto, cx.WellKnownSymbol(storage.SymbolMetadata), storage.Null, 0)
 
 	// AddRestrictedFunctionProperties
-	throwTypeError := cx.Intrinsic(engine.IntrinsicThrowTypeError)
-	cx.DefineAccessor(proto, cx.Intern("caller"), throwTypeError, throwTypeError, engine.FlagConfigurable)
-	cx.DefineAccessor(proto, cx.Intern("arguments"), throwTypeError, throwTypeError, engine.FlagConfigurable)
+	throwTypeError := cx.Intrinsic(storage.IntrinsicThrowTypeError)
+	cx.DefineAccessor(proto, cx.Intern("caller"), throwTypeError, throwTypeError, storage.FlagConfigurable)
+	cx.DefineAccessor(proto, cx.Intern("arguments"), throwTypeError, throwTypeError, storage.FlagConfigurable)
 
 	// The getters of the own caller and arguments properties of non-strict functions.
-	cx.SetIntrinsic(engine.IntrinsicFunctionCallerGetter, cx.NewNative("get caller", 0, nativeFunctionCallerGetter))
-	cx.SetIntrinsic(engine.IntrinsicFunctionArgumentsGetter, cx.NewNative("get arguments", 0, nativeFunctionArgumentsGetter))
+	cx.SetIntrinsic(storage.IntrinsicFunctionCallerGetter, cx.NewNative("get caller", 0, nativeFunctionCallerGetter))
+	cx.SetIntrinsic(storage.IntrinsicFunctionArgumentsGetter, cx.NewNative("get arguments", 0, nativeFunctionArgumentsGetter))
 }
 
-func functionConstructor(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func functionConstructor(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	return cx.CreateDynamicFunction(engine.NormalFunction, args)
 }
 
-func functionCall(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func functionCall(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	if !this.IsCallable() {
 		cx.ThrowTypeError("Function.prototype.call called on a value that is not a function")
 	}
 	return cx.Call(this.Object(), arg(args, 0), args[min(1, len(args)):]...)
 }
 
-func functionApply(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func functionApply(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	if !this.IsCallable() {
 		cx.ThrowTypeError("Function.prototype.apply called on a value that is not a function")
 	}
 	return cx.Call(this.Object(), arg(args, 0), listFromArrayLike(cx, arg(args, 1))...)
 }
 
-func functionBind(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func functionBind(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	if !this.IsCallable() {
 		cx.ThrowTypeError("bind must be called on a function")
 	}
@@ -860,7 +860,7 @@ func functionBind(cx *engine.ExecutionContext, this engine.Value, args []engine.
 	return storage.ObjectValue(b)
 }
 
-func functionToString(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func functionToString(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	if !this.IsCallable() {
 		cx.ThrowTypeError("Function.prototype.toString requires that 'this' be a Function")
 	}
@@ -869,33 +869,33 @@ func functionToString(cx *engine.ExecutionContext, this engine.Value, args []eng
 	return cx.NewString(src)
 }
 
-func functionHasInstance(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func functionHasInstance(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	return storage.Bool(cx.OrdinaryHasInstance(this, arg(args, 0)))
 }
 
-func functionCallerGetter(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func functionCallerGetter(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	return cx.FunctionCaller(this)
 }
 
-func functionArgumentsGetter(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func functionArgumentsGetter(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	return cx.FunctionArguments(this)
 }
 
 // copyNameAndLength implements CopyNameAndLength.
-func copyNameAndLength(cx *engine.ExecutionContext, f, target *engine.Object, prefix wtf8.String, argCount int) {
+func copyNameAndLength(cx *engine.ExecutionContext, f, target *storage.Object, prefix wtf8.String, argCount int) {
 	length := 0.0
-	if cx.HasOwnProperty(target, storage.NamedKey(cx.Key(engine.KeyLength))) {
-		if l := cx.GetV(storage.ObjectValue(target), cx.Key(engine.KeyLength)); l.IsNumber() {
+	if cx.HasOwnProperty(target, storage.NamedKey(cx.Key(storage.KeyLength))) {
+		if l := cx.GetV(storage.ObjectValue(target), cx.Key(storage.KeyLength)); l.IsNumber() {
 			length = math.Max(0, numconv.ToIntegerOrInfinity(l.Number())-float64(argCount))
 		}
 	}
 	name := cx.NewString(prefix)
-	if n := cx.GetV(storage.ObjectValue(target), cx.Key(engine.KeyName)); n.IsString() {
+	if n := cx.GetV(storage.ObjectValue(target), cx.Key(storage.KeyName)); n.IsString() {
 		// Concatenating the values keeps a chain of bound functions linear in its length.
 		name = cx.Concat(name, n)
 	}
-	cx.Define(f, cx.Key(engine.KeyLength), storage.Number(length), engine.FlagConfigurable)
-	cx.Define(f, cx.Key(engine.KeyName), name, engine.FlagConfigurable)
+	cx.Define(f, cx.Key(storage.KeyLength), storage.Number(length), storage.FlagConfigurable)
+	cx.Define(f, cx.Key(storage.KeyName), name, storage.FlagConfigurable)
 }
 
 var (
@@ -917,11 +917,11 @@ func initError(cx *engine.ExecutionContext) {
 		engine.ErrorKindAggregate:  "AggregateError",
 		engine.ErrorKindSuppressed: "SuppressedError",
 	}
-	var base *engine.Object
+	var base *storage.Object
 	for kind, name := range names {
 		kind := engine.ErrorKind(kind)
 		protoID := engine.ErrorPrototypeIntrinsic(kind)
-		proto := cx.Intrinsic(engine.IntrinsicErrorPrototype)
+		proto := cx.Intrinsic(storage.IntrinsicErrorPrototype)
 		if kind != engine.ErrorKindError {
 			proto = cx.NewObject(proto)
 			cx.SetIntrinsic(protoID, proto)
@@ -934,8 +934,8 @@ func initError(cx *engine.ExecutionContext) {
 			length = 3
 		}
 		ctor := constructor(cx, wtf8.String(name), length, protoID, errorConstructors[kind])
-		cx.Define(proto, cx.Key(engine.KeyName), cx.SharedString(wtf8.String(name)), engine.FlagsHidden)
-		cx.Define(proto, cx.Key(engine.KeyMessage), cx.NewString(""), engine.FlagsHidden)
+		cx.Define(proto, cx.Key(storage.KeyName), cx.SharedString(wtf8.String(name)), storage.FlagsHidden)
+		cx.Define(proto, cx.Key(storage.KeyMessage), cx.NewString(""), storage.FlagsHidden)
 		if kind == engine.ErrorKindError {
 			base = ctor
 		} else {
@@ -943,14 +943,14 @@ func initError(cx *engine.ExecutionContext) {
 		}
 	}
 	method(cx, base, "isError", 1, nativeErrorIsError)
-	cx.DefineAccessor(cx.Intrinsic(engine.IntrinsicErrorPrototype), cx.Key(engine.KeyStack),
+	cx.DefineAccessor(cx.Intrinsic(storage.IntrinsicErrorPrototype), cx.Key(storage.KeyStack),
 		cx.NewNative("get stack", 0, nativeErrorStackGetter),
 		cx.NewNative("set stack", 1, nativeErrorStackSetter),
-		engine.FlagConfigurable)
-	method(cx, cx.Intrinsic(engine.IntrinsicErrorPrototype), "toString", 0, nativeErrorToString)
+		storage.FlagConfigurable)
+	method(cx, cx.Intrinsic(storage.IntrinsicErrorPrototype), "toString", 0, nativeErrorToString)
 }
 
-var errorConstructors = [engine.ErrorKindCount]engine.Native{
+var errorConstructors = [engine.ErrorKindCount]storage.Native{
 	engine.ErrorKindError:      engine.RegisterNative(errorConstructorNative(engine.ErrorKindError)),
 	engine.ErrorKindType:       engine.RegisterNative(errorConstructorNative(engine.ErrorKindType)),
 	engine.ErrorKindRange:      engine.RegisterNative(errorConstructorNative(engine.ErrorKindRange)),
@@ -966,7 +966,7 @@ var errorConstructors = [engine.ErrorKindCount]engine.Native{
 //
 //go:noinline
 func errorConstructorNative(kind engine.ErrorKind) engine.NativeFunc {
-	return func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return func(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 		nt := cx.GetNewTarget()
 		e := cx.NewErrorObject(cx.GetPrototypeFromConstructor(nt, engine.ErrorPrototypeIntrinsic(kind)))
 		msgArg, optArg := arg(args, 0), arg(args, 1)
@@ -979,33 +979,33 @@ func errorConstructorNative(kind engine.ErrorKind) engine.NativeFunc {
 		var msg wtf8.String
 		if !msgArg.IsUndefined() {
 			msg = cx.ToString(msgArg)
-			cx.Define(e, cx.Key(engine.KeyMessage), cx.NewString(msg), engine.FlagsHidden)
+			cx.Define(e, cx.Key(storage.KeyMessage), cx.NewString(msg), storage.FlagsHidden)
 		}
-		if optArg.IsObject() && cx.HasProperty(optArg.Object(), storage.NamedKey(cx.Key(engine.KeyCause))) {
-			cx.Define(e, cx.Key(engine.KeyCause), cx.GetV(optArg, cx.Key(engine.KeyCause)), engine.FlagsHidden)
+		if optArg.IsObject() && cx.HasProperty(optArg.Object(), storage.NamedKey(cx.Key(storage.KeyCause))) {
+			cx.Define(e, cx.Key(storage.KeyCause), cx.GetV(optArg, cx.Key(storage.KeyCause)), storage.FlagsHidden)
 		}
 		if kind == engine.ErrorKindAggregate {
-			var errs []engine.Value
-			cx.Iterate(arg(args, 0), func(v engine.Value) bool {
+			var errs []storage.Value
+			cx.Iterate(arg(args, 0), func(v storage.Value) bool {
 				errs = append(errs, v)
 				return true
 			})
-			cx.Define(e, cx.Key(engine.KeyErrors), storage.ObjectValue(cx.NewArray(errs)), engine.FlagsHidden)
+			cx.Define(e, cx.Key(storage.KeyErrors), storage.ObjectValue(cx.NewArray(errs)), storage.FlagsHidden)
 		}
 		if kind == engine.ErrorKindSuppressed {
-			cx.Define(e, cx.Key(engine.KeyError), arg(args, 0), engine.FlagsHidden)
-			cx.Define(e, cx.Key(engine.KeySuppressed), arg(args, 1), engine.FlagsHidden)
+			cx.Define(e, cx.Key(storage.KeyError), arg(args, 0), storage.FlagsHidden)
+			cx.Define(e, cx.Key(storage.KeySuppressed), arg(args, 1), storage.FlagsHidden)
 		}
 		cx.RecordStack(e, wtf8.ToValidUTF8(msg), nt)
 		return storage.ObjectValue(e)
 	}
 }
 
-func errorIsError(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func errorIsError(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	return storage.Bool(storage.IsError(arg(args, 0)))
 }
 
-func errorStackGetter(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func errorStackGetter(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	if !this.IsObject() {
 		cx.ThrowTypeError("Error.prototype.stack getter called on non-object")
 	}
@@ -1015,7 +1015,7 @@ func errorStackGetter(cx *engine.ExecutionContext, this engine.Value, args []eng
 	return storage.Undefined
 }
 
-func errorStackSetter(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func errorStackSetter(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	if !this.IsObject() {
 		cx.ThrowTypeError("Error.prototype.stack setter called on non-object")
 	}
@@ -1023,18 +1023,18 @@ func errorStackSetter(cx *engine.ExecutionContext, this engine.Value, args []eng
 	if !v.IsString() {
 		cx.ThrowTypeError("Error.prototype.stack setter requires a string")
 	}
-	setterThatIgnoresPrototypeProperties(cx, this, cx.Intrinsic(engine.IntrinsicErrorPrototype), storage.NamedKey(cx.Key(engine.KeyStack)), v, "Error.prototype.stack setter")
+	setterThatIgnoresPrototypeProperties(cx, this, cx.Intrinsic(storage.IntrinsicErrorPrototype), storage.NamedKey(cx.Key(storage.KeyStack)), v, "Error.prototype.stack setter")
 	return storage.Undefined
 }
 
-func errorToString(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func errorToString(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	o := thisObject(cx, this, "Error.prototype.toString")
 	name := wtf8.String("Error")
-	if n := cx.GetV(storage.ObjectValue(o), cx.Key(engine.KeyName)); !n.IsUndefined() {
+	if n := cx.GetV(storage.ObjectValue(o), cx.Key(storage.KeyName)); !n.IsUndefined() {
 		name = cx.ToString(n)
 	}
 	var msg wtf8.String
-	if m := cx.GetV(storage.ObjectValue(o), cx.Key(engine.KeyMessage)); !m.IsUndefined() {
+	if m := cx.GetV(storage.ObjectValue(o), cx.Key(storage.KeyMessage)); !m.IsUndefined() {
 		msg = cx.ToString(m)
 	}
 	switch {
@@ -1053,17 +1053,17 @@ var (
 )
 
 // newParseFunctions creates the functions parseFloat and parseInt.
-func newParseFunctions(cx *engine.ExecutionContext) (parseFloat, parseInt *engine.Object) {
+func newParseFunctions(cx *engine.ExecutionContext) (parseFloat, parseInt *storage.Object) {
 	parseFloat = cx.NewNative("parseFloat", 1, nativeGlobalParseFloat)
 	parseInt = cx.NewNative("parseInt", 2, nativeGlobalParseInt)
 	return parseFloat, parseInt
 }
 
-func globalParseFloat(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func globalParseFloat(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	return storage.Number(numconv.ParseFloat(cx.ToString(arg(args, 0)), cx.Poll))
 }
 
-func globalParseInt(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func globalParseInt(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s := cx.ToString(arg(args, 0))
 	return storage.Number(numconv.ParseInt(s, int(cx.ToInt32(arg(args, 1))), cx.Poll))
 }
@@ -1076,27 +1076,27 @@ var (
 
 // initGlobalFunctions defines the function properties of the global object.
 // parseFloat and parseInt are the functions to define under those names.
-func initGlobalFunctions(cx *engine.ExecutionContext, parseFloat, parseInt *engine.Object) {
+func initGlobalFunctions(cx *engine.ExecutionContext, parseFloat, parseInt *storage.Object) {
 	g := cx.GlobalObject().Object()
 	eval := method(cx, g, "eval", 1, nativeGlobalEval)
-	cx.SetIntrinsic(engine.IntrinsicEval, eval)
+	cx.SetIntrinsic(storage.IntrinsicEval, eval)
 	method(cx, g, "isNaN", 1, nativeGlobalIsNaN)
 	method(cx, g, "isFinite", 1, nativeGlobalIsFinite)
-	cx.Define(g, cx.Intern("parseFloat"), storage.ObjectValue(parseFloat), engine.FlagsHidden)
-	cx.Define(g, cx.Intern("parseInt"), storage.ObjectValue(parseInt), engine.FlagsHidden)
+	cx.Define(g, cx.Intern("parseFloat"), storage.ObjectValue(parseFloat), storage.FlagsHidden)
+	cx.Define(g, cx.Intern("parseInt"), storage.ObjectValue(parseInt), storage.FlagsHidden)
 	initURIFunctions(cx)
 }
 
-func globalEval(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func globalEval(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	return cx.PerformEval(arg(args, 0))
 }
 
-func globalIsNaN(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func globalIsNaN(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	n := cx.ToNumber(arg(args, 0))
 	return storage.Bool(n != n)
 }
 
-func globalIsFinite(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func globalIsFinite(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	n := cx.ToNumber(arg(args, 0))
 	return storage.Bool(n == n && !math.IsInf(n, 0))
 }

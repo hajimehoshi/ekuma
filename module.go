@@ -9,6 +9,7 @@ import (
 	"slices"
 
 	"github.com/hajimehoshi/ekuma/internal/engine"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
@@ -102,7 +103,7 @@ func (vm *VM) engineError(err error) error {
 		}
 	}
 	if ex, ok := errors.AsType[*ScriptError](err); ok {
-		return &engine.Error{Value: vm.acceptValue(ex.Value)}
+		return &storage.Error{Value: vm.acceptValue(ex.Value)}
 	}
 	return err
 }
@@ -198,7 +199,7 @@ func (m *Module) Link() error {
 func (m *Module) Evaluate(ctx context.Context) (Value, error) {
 	vm := m.vm
 	vm.initIfNeeded()
-	return vm.run(ctx, func() (engine.Value, error) {
+	return vm.run(ctx, func() (storage.Value, error) {
 		return m.m.Evaluate()
 	})
 }

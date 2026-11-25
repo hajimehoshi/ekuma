@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/hajimehoshi/ekuma/internal/engine"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 )
 
 // TestInterruptBuiltinFromGoroutine checks that a call of a built-in function that checks for an
@@ -17,7 +18,7 @@ import (
 func TestInterruptBuiltinFromGoroutine(t *testing.T) {
 	cx := newTestContext(t)
 	// Object.assign checks for an interruption every PollInterval properties.
-	n := strconv.Itoa(4 * engine.PollInterval)
+	n := strconv.Itoa(4 * storage.PollInterval)
 	if _, err := runScript(cx, "setup", `var o = {}; for (let i = 0; i < `+n+`; i++) o["k" + i] = i;`); err != nil {
 		t.Fatalf("runScript: %v", err)
 	}

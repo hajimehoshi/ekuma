@@ -73,7 +73,7 @@ type kernelTest struct {
 	// subject is the shortcut under test, and events what its calls from site did during the
 	// last run.
 	subject *engine.Shortcut
-	site    engine.Value
+	site    storage.Value
 	events  []string
 
 	// raise makes the first start of the subject request an interruption.
@@ -85,7 +85,7 @@ var errKernelInterrupt = errors.New("interrupted in a shortcut")
 func newKernelTest(t *testing.T) *kernelTest {
 	t.Helper()
 	k := &kernelTest{}
-	var holders []*engine.Object
+	var holders []*storage.Object
 	recordBuiltins = func(cx *engine.ExecutionContext) {
 		holders = engine.BuiltinHolders(cx)
 	}
@@ -116,7 +116,7 @@ func newKernelTest(t *testing.T) *kernelTest {
 }
 
 // eval returns the value of the script src.
-func (k *kernelTest) eval(t *testing.T, src string) engine.Value {
+func (k *kernelTest) eval(t *testing.T, src string) storage.Value {
 	t.Helper()
 	v, err := runScript(k.cx, "eval.js", src)
 	if err != nil {
@@ -132,9 +132,9 @@ func (k *kernelTest) keys(t *testing.T, name string) []string {
 }
 
 // sites returns the functions of the lines of src, each of which is a script of the same name.
-func (k *kernelTest) sites(t *testing.T, src string) []engine.Value {
+func (k *kernelTest) sites(t *testing.T, src string) []storage.Value {
 	t.Helper()
-	var sites []engine.Value
+	var sites []storage.Value
 	for line := range strings.Lines(strings.TrimSpace(src)) {
 		v, err := runScript(k.cx, "site.js", "("+line+")")
 		if err != nil {
@@ -145,8 +145,8 @@ func (k *kernelTest) sites(t *testing.T, src string) []engine.Value {
 	return sites
 }
 
-func (k *kernelTest) array(strs []string) engine.Value {
-	var vals []engine.Value
+func (k *kernelTest) array(strs []string) storage.Value {
+	var vals []storage.Value
 	for _, s := range strs {
 		vals = append(vals, k.cx.StringFromGo(s))
 	}
@@ -155,17 +155,17 @@ func (k *kernelTest) array(strs []string) engine.Value {
 
 // run calls f with site, the function of s and args. It records what the calls of the function
 // from site do.
-func (k *kernelTest) run(s *engine.Shortcut, f, site engine.Value, args ...engine.Value) (engine.Value, error) {
+func (k *kernelTest) run(s *engine.Shortcut, f, site storage.Value, args ...storage.Value) (storage.Value, error) {
 	k.subject, k.site, k.events = s, site, nil
 	defer func() {
 		k.subject, k.raise = nil, false
 		k.cx.ClearInterrupt()
 	}()
-	return k.cx.HostCall(f, storage.Undefined, append([]engine.Value{site, s.Func}, args...))
+	return k.cx.HostCall(f, storage.Undefined, append([]storage.Value{site, s.Func}, args...))
 }
 
 // probe is run for a function f that returns a description.
-func (k *kernelTest) probe(t *testing.T, s *engine.Shortcut, f, site engine.Value, args ...engine.Value) string {
+func (k *kernelTest) probe(t *testing.T, s *engine.Shortcut, f, site storage.Value, args ...storage.Value) string {
 	t.Helper()
 	v, err := k.run(s, f, site, args...)
 	if err != nil {
@@ -176,11 +176,11 @@ func (k *kernelTest) probe(t *testing.T, s *engine.Shortcut, f, site engine.Valu
 
 // interrupted reports whether an interruption that is requested as the function of s or its form
 // starts stops the run.
-func (k *kernelTest) interrupted(t *testing.T, s *engine.Shortcut, f, site engine.Value, args ...engine.Value) bool {
+func (k *kernelTest) interrupted(t *testing.T, s *engine.Shortcut, f, site storage.Value, args ...storage.Value) bool {
 	t.Helper()
 	k.raise = true
 	_, err := k.run(s, f, site, args...)
-	if _, ok := errors.AsType[*engine.Error](err); err != nil && !ok && !errors.Is(err, errKernelInterrupt) {
+	if _, ok := errors.AsType[*storage.Error](err); err != nil && !ok && !errors.Is(err, errKernelInterrupt) {
 		t.Fatal(err)
 	}
 	return errors.Is(err, errKernelInterrupt)
@@ -401,7 +401,7 @@ func (k *kernelTest) withHostHooks(t *testing.T, f func()) {
 // that was requested before it.
 func (k *kernelTest) testPending(t *testing.T, s *engine.Shortcut, form string, keys []string) {
 	site := k.sites(t, pendingSites)[len(keys)-1]
-	raise := k.cx.NewFunction("raise", func(cx *engine.ExecutionContext, _ engine.Value, _ []engine.Value) engine.Value {
+	raise := k.cx.NewFunction("raise", func(cx *engine.ExecutionContext, _ storage.Value, _ []storage.Value) storage.Value {
 		cx.Interrupt(errKernelInterrupt)
 		return storage.Undefined
 	})
@@ -416,7 +416,7 @@ func (k *kernelTest) testPending(t *testing.T, s *engine.Shortcut, form string, 
 
 // testPace tests that the calls of s that take form honor an interruption that is requested while
 // they run wherever the generic calls do.
-func (k *kernelTest) testPace(t *testing.T, s *engine.Shortcut, form string, shortcut, generic engine.Value) {
+func (k *kernelTest) testPace(t *testing.T, s *engine.Shortcut, form string, shortcut, generic storage.Value) {
 	if form == "extremum" {
 		// It has no operands that take long, and nothing can interrupt it.
 		return
@@ -440,7 +440,7 @@ func (k *kernelTest) testPace(t *testing.T, s *engine.Shortcut, form string, sho
 // testSteps compares the steps of the iterators by the next method s through form with the calls
 // of s.
 func (k *kernelTest) testSteps(t *testing.T, s *engine.Shortcut, form string) {
-	var site engine.Value
+	var site storage.Value
 	switch form {
 	case "arrayIndex":
 		site = k.eval(t, "indexedArraySite")

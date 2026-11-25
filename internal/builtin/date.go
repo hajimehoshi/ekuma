@@ -26,7 +26,7 @@ const (
 )
 
 // thisDate returns the [[DateValue]] of this, or throws a TypeError naming the method.
-func thisDate(cx *engine.ExecutionContext, this engine.Value, name string) float64 {
+func thisDate(cx *engine.ExecutionContext, this storage.Value, name string) float64 {
 	tv, ok := storage.ThisTimeValue(this)
 	if !ok {
 		cx.ThrowTypeError("Date.prototype." + name + " called on incompatible receiver " + cx.DisplayString(this))
@@ -120,9 +120,9 @@ var (
 )
 
 func initDate(cx *engine.ExecutionContext) {
-	proto := cx.Intrinsic(engine.IntrinsicDatePrototype)
+	proto := cx.Intrinsic(storage.IntrinsicDatePrototype)
 
-	ctor := constructor(cx, "Date", 7, engine.IntrinsicDatePrototype, nativeDateConstructor)
+	ctor := constructor(cx, "Date", 7, storage.IntrinsicDatePrototype, nativeDateConstructor)
 
 	method(cx, ctor, "now", 0, nativeDateNow)
 	method(cx, ctor, "parse", 1, nativeDateParse)
@@ -170,7 +170,7 @@ func initDate(cx *engine.ExecutionContext) {
 	method(cx, proto, "toDateString", 0, nativeDateToDateString)
 	method(cx, proto, "toTimeString", 0, nativeDateToTimeString)
 	toUTCString := method(cx, proto, "toUTCString", 0, nativeDateToUTCString)
-	cx.Define(proto, cx.Intern("toGMTString"), storage.ObjectValue(toUTCString), engine.FlagsHidden)
+	cx.Define(proto, cx.Intern("toGMTString"), storage.ObjectValue(toUTCString), storage.FlagsHidden)
 	method(cx, proto, "toLocaleString", 0, nativeDateToLocaleString)
 	method(cx, proto, "toLocaleDateString", 0, nativeDateToLocaleDateString)
 	method(cx, proto, "toLocaleTimeString", 0, nativeDateToLocaleTimeString)
@@ -178,10 +178,10 @@ func initDate(cx *engine.ExecutionContext) {
 	method(cx, proto, "toJSON", 1, nativeDateToJSON)
 
 	toPrimitive := cx.NewNative("[Symbol.toPrimitive]", 1, nativeDateToPrimitive)
-	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToPrimitive), storage.ObjectValue(toPrimitive), engine.FlagConfigurable)
+	cx.Define(proto, cx.WellKnownSymbol(storage.SymbolToPrimitive), storage.ObjectValue(toPrimitive), storage.FlagConfigurable)
 }
 
-func dateConstructor(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func dateConstructor(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	nt := cx.GetNewTarget()
 	if nt == nil {
 		return cx.StringFromGo(formatDate(cx, "toString", cx.SystemUTCEpochMilliseconds()))
@@ -209,18 +209,18 @@ func dateConstructor(cx *engine.ExecutionContext, this engine.Value, args []engi
 		c[dateYear] = datetime.MakeFullYear(c[dateYear])
 		tv = datetime.TimeClip(datetime.UTC(makeDate(&c), cx.DefaultTimeZone()))
 	}
-	return storage.ObjectValue(cx.NewDateObject(cx.GetPrototypeFromConstructor(nt, engine.IntrinsicDatePrototype), tv))
+	return storage.ObjectValue(cx.NewDateObject(cx.GetPrototypeFromConstructor(nt, storage.IntrinsicDatePrototype), tv))
 }
 
-func dateNow(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func dateNow(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	return storage.Number(cx.SystemUTCEpochMilliseconds())
 }
 
-func dateParse(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func dateParse(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	return storage.Number(datetime.ParsePolled(string(cx.ToString(arg(args, 0))), cx.DefaultTimeZone(), cx.Poll))
 }
 
-func dateUTC(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func dateUTC(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	c := [dateComponentCount]float64{dateDay: 1}
 	c[dateYear] = cx.ToNumber(arg(args, 0))
 	for i := 1; i < min(len(args), dateComponentCount); i++ {
@@ -252,7 +252,7 @@ var (
 //
 //go:noinline
 func dateGetNative(name string, local bool, component func(float64) float64) engine.NativeFunc {
-	return func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return func(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 		t := thisDate(cx, this, name)
 		if math.IsNaN(t) {
 			return storage.Number(t)
@@ -264,7 +264,7 @@ func dateGetNative(name string, local bool, component func(float64) float64) eng
 	}
 }
 
-func dateGetDay(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func dateGetDay(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	t := thisDate(cx, this, "getDay")
 	if math.IsNaN(t) {
 		return storage.Number(t)
@@ -272,7 +272,7 @@ func dateGetDay(cx *engine.ExecutionContext, this engine.Value, args []engine.Va
 	return storage.Number(datetime.WeekDay(datetime.LocalTime(t, cx.DefaultTimeZone())))
 }
 
-func dateGetUTCDay(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func dateGetUTCDay(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	t := thisDate(cx, this, "getUTCDay")
 	if math.IsNaN(t) {
 		return storage.Number(t)
@@ -280,11 +280,11 @@ func dateGetUTCDay(cx *engine.ExecutionContext, this engine.Value, args []engine
 	return storage.Number(datetime.WeekDay(t))
 }
 
-func dateGetTime(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func dateGetTime(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	return storage.Number(thisDate(cx, this, "getTime"))
 }
 
-func dateGetTimezoneOffset(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func dateGetTimezoneOffset(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	t := thisDate(cx, this, "getTimezoneOffset")
 	if math.IsNaN(t) {
 		return storage.Number(t)
@@ -292,11 +292,11 @@ func dateGetTimezoneOffset(cx *engine.ExecutionContext, this engine.Value, args 
 	return storage.Number((t - datetime.LocalTime(t, cx.DefaultTimeZone())) / 60000)
 }
 
-func dateValueOf(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func dateValueOf(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	return storage.Number(thisDate(cx, this, "valueOf"))
 }
 
-func dateGetYear(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func dateGetYear(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	t := thisDate(cx, this, "getYear")
 	if math.IsNaN(t) {
 		return storage.Number(t)
@@ -326,7 +326,7 @@ var (
 //
 //go:noinline
 func dateSetNative(name string, local bool, first, count int) engine.NativeFunc {
-	return func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return func(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 		t := thisDate(cx, this, name)
 		var vals [dateComponentCount]float64
 		n := max(1, min(len(args), count))
@@ -354,14 +354,14 @@ func dateSetNative(name string, local bool, first, count int) engine.NativeFunc 
 	}
 }
 
-func dateSetTime(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func dateSetTime(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	thisDate(cx, this, "setTime")
 	t := datetime.TimeClip(cx.ToNumber(arg(args, 0)))
 	storage.SetDateValue(this, t)
 	return storage.Number(t)
 }
 
-func dateSetYear(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func dateSetYear(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	t := thisDate(cx, this, "setYear")
 	y := cx.ToNumber(arg(args, 0))
 	tz := cx.DefaultTimeZone()
@@ -391,7 +391,7 @@ var (
 //
 //go:noinline
 func dateStringNative(name string) engine.NativeFunc {
-	return func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return func(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 		tv := thisDate(cx, this, name)
 		if math.IsNaN(tv) {
 			return cx.NewString("Invalid Date")
@@ -400,7 +400,7 @@ func dateStringNative(name string) engine.NativeFunc {
 	}
 }
 
-func dateToISOString(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func dateToISOString(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	tv := thisDate(cx, this, "toISOString")
 	if math.IsNaN(tv) {
 		cx.ThrowRangeError("invalid time value")
@@ -408,7 +408,7 @@ func dateToISOString(cx *engine.ExecutionContext, this engine.Value, args []engi
 	return cx.NewString(wtf8.String(datetime.ISOString(tv)))
 }
 
-func dateToJSON(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func dateToJSON(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	o := storage.ObjectValue(cx.ToObject(this))
 	tv := cx.ToPrimitive(o, engine.HintNumber)
 	if tv.IsNumber() {
@@ -416,10 +416,10 @@ func dateToJSON(cx *engine.ExecutionContext, this engine.Value, args []engine.Va
 			return storage.Null
 		}
 	}
-	return cx.CallValue(cx.GetV(o, cx.Key(engine.KeyToISOString)), o)
+	return cx.CallValue(cx.GetV(o, cx.Key(storage.KeyToISOString)), o)
 }
 
-func dateToPrimitive(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func dateToPrimitive(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	o := thisObject(cx, this, "Date.prototype[Symbol.toPrimitive]")
 	h := arg(args, 0)
 	if h.IsString() {

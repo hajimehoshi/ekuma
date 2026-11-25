@@ -20,7 +20,7 @@ type listFormatData struct {
 }
 
 // getOptionsObject implements GetOptionsObject.
-func getOptionsObject(cx *engine.ExecutionContext, v engine.Value, name string) *engine.Object {
+func getOptionsObject(cx *engine.ExecutionContext, v storage.Value, name string) *storage.Object {
 	switch {
 	case v.IsUndefined():
 		return cx.NewObject(nil)
@@ -32,12 +32,12 @@ func getOptionsObject(cx *engine.ExecutionContext, v engine.Value, name string) 
 }
 
 // newListFormat implements the Intl.ListFormat constructor.
-func newListFormat(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func newListFormat(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	nt := cx.GetNewTarget()
 	if nt == nil {
 		cx.ThrowTypeError("constructor Intl.ListFormat requires 'new'")
 	}
-	proto := cx.GetPrototypeFromConstructor(nt, engine.IntrinsicIntlListFormatPrototype)
+	proto := cx.GetPrototypeFromConstructor(nt, storage.IntrinsicIntlListFormatPrototype)
 	requested := canonicalizeLocaleList(cx, arg(args, 0))
 	options := getOptionsObject(cx, arg(args, 1), "Intl.ListFormat")
 	bestFit := localeMatcher(cx, options)
@@ -52,7 +52,7 @@ func newListFormat(cx *engine.ExecutionContext, this engine.Value, args []engine
 }
 
 // thisListFormat implements RequireInternalSlot for an Intl.ListFormat.
-func thisListFormat(cx *engine.ExecutionContext, this engine.Value, name string) *listFormatData {
+func thisListFormat(cx *engine.ExecutionContext, this storage.Value, name string) *listFormatData {
 	lf, ok := storage.IntlData(this).(*listFormatData)
 	if !ok {
 		cx.ThrowTypeError("Intl.ListFormat.prototype." + name + " called on an object that is not an Intl.ListFormat")
@@ -61,7 +61,7 @@ func thisListFormat(cx *engine.ExecutionContext, this engine.Value, name string)
 }
 
 // stringListFromIterable implements StringListFromIterable.
-func stringListFromIterable(cx *engine.ExecutionContext, v engine.Value) []string {
+func stringListFromIterable(cx *engine.ExecutionContext, v storage.Value) []string {
 	if v.IsUndefined() {
 		return nil
 	}
@@ -90,17 +90,17 @@ var (
 )
 
 // initListFormat defines Intl.ListFormat.
-func initListFormat(cx *engine.ExecutionContext, ns *engine.Object) {
-	ctor, proto := constructor(cx, ns, "ListFormat", 0, engine.IntrinsicIntlListFormatPrototype, nativeNewListFormat)
+func initListFormat(cx *engine.ExecutionContext, ns *storage.Object) {
+	ctor, proto := constructor(cx, ns, "ListFormat", 0, storage.IntrinsicIntlListFormatPrototype, nativeNewListFormat)
 
 	method(cx, ctor, "supportedLocalesOf", 1, nativeSupportedLocalesOf)
 	method(cx, proto, "format", 1, nativeListFormatFormat)
 	method(cx, proto, "formatToParts", 1, nativeListFormatFormatToParts)
 	method(cx, proto, "resolvedOptions", 0, nativeListFormatResolvedOptions)
-	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Intl.ListFormat"), engine.FlagConfigurable)
+	cx.Define(proto, cx.WellKnownSymbol(storage.SymbolToStringTag), cx.SharedString("Intl.ListFormat"), storage.FlagConfigurable)
 }
 
-func listFormatFormat(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func listFormatFormat(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	lf := thisListFormat(cx, this, "format")
 	parts := lf.f.Format(stringListFromIterable(cx, arg(args, 0)))
 	var n int
@@ -126,7 +126,7 @@ func listFormatFormat(cx *engine.ExecutionContext, this engine.Value, args []eng
 	return cx.NewString(b.String())
 }
 
-func listFormatFormatToParts(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func listFormatFormatToParts(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	lf := thisListFormat(cx, this, "formatToParts")
 	parts := lf.f.Format(stringListFromIterable(cx, arg(args, 0)))
 	return partsArray(cx, len(parts), func(i int) (string, string, string) {
@@ -134,16 +134,16 @@ func listFormatFormatToParts(cx *engine.ExecutionContext, this engine.Value, arg
 	})
 }
 
-func listFormatResolvedOptions(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func listFormatResolvedOptions(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	lf := thisListFormat(cx, this, "resolvedOptions")
 	return resolvedOptions(cx, "locale", lf.locale, "type", lf.typ, "style", lf.style)
 }
 
 // resolvedOptions returns a new object with the string properties of the pairs of names and
 // values kv, in order, leaving out the empty values.
-func resolvedOptions(cx *engine.ExecutionContext, kv ...string) engine.Value {
-	var keyStorage [32]engine.PropKey
-	var valueStorage [32]engine.Value
+func resolvedOptions(cx *engine.ExecutionContext, kv ...string) storage.Value {
+	var keyStorage [32]storage.PropKey
+	var valueStorage [32]storage.Value
 	keys := keyStorage[:0]
 	vals := valueStorage[:0]
 	for i := 0; i < len(kv); i += 2 {

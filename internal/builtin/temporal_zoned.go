@@ -11,8 +11,8 @@ import (
 )
 
 // newZonedDateTime implements CreateTemporalZonedDateTime for valid epoch nanoseconds.
-func newZonedDateTime(cx *engine.ExecutionContext, ns temporal.Int128, tz temporal.TimeZone, cal string, nt *engine.Object) engine.Value {
-	proto := cx.GetPrototypeFromConstructor(nt, engine.IntrinsicTemporalZonedDateTimePrototype)
+func newZonedDateTime(cx *engine.ExecutionContext, ns temporal.Int128, tz temporal.TimeZone, cal string, nt *storage.Object) storage.Value {
+	proto := cx.GetPrototypeFromConstructor(nt, storage.IntrinsicTemporalZonedDateTimePrototype)
 	return storage.ObjectValue(cx.NewTemporalObject(proto, &zonedDateTimeSlots{
 		ns:  ns,
 		tz:  tz,
@@ -20,7 +20,7 @@ func newZonedDateTime(cx *engine.ExecutionContext, ns temporal.Int128, tz tempor
 	}))
 }
 
-func thisZonedDateTime(cx *engine.ExecutionContext, this engine.Value, name string) *zonedDateTimeSlots {
+func thisZonedDateTime(cx *engine.ExecutionContext, this storage.Value, name string) *zonedDateTimeSlots {
 	s, ok := storage.TemporalData(this).(*zonedDateTimeSlots)
 	if !ok {
 		incompatible(cx, "Temporal.ZonedDateTime.prototype."+name, this)
@@ -29,7 +29,7 @@ func thisZonedDateTime(cx *engine.ExecutionContext, this engine.Value, name stri
 }
 
 // toTemporalZonedDateTime implements ToTemporalZonedDateTime.
-func toTemporalZonedDateTime(cx *engine.ExecutionContext, item, options engine.Value) zonedDateTimeSlots {
+func toTemporalZonedDateTime(cx *engine.ExecutionContext, item, options storage.Value) zonedDateTimeSlots {
 	var date temporal.ISODate
 	var t temporal.Time
 	startOfDay := false
@@ -103,8 +103,8 @@ func (s *zonedDateTimeSlots) localDateTime() temporal.ISODateTime {
 	return s.tz.ISODateTimeFor(s.ns)
 }
 
-func initTemporalZonedDateTime(cx *engine.ExecutionContext, ns *engine.Object) {
-	ctor, proto := temporalConstructor(cx, ns, "ZonedDateTime", 2, engine.IntrinsicTemporalZonedDateTimePrototype, nativeZonedDateTimeConstructor)
+func initTemporalZonedDateTime(cx *engine.ExecutionContext, ns *storage.Object) {
+	ctor, proto := temporalConstructor(cx, ns, "ZonedDateTime", 2, storage.IntrinsicTemporalZonedDateTimePrototype, nativeZonedDateTimeConstructor)
 	method(cx, ctor, "from", 1, nativeZonedDateTimeFrom)
 	method(cx, ctor, "compare", 2, nativeZonedDateTimeCompare)
 
@@ -214,7 +214,7 @@ var (
 )
 
 // zonedDateTimeCalendarDate returns the ISO date and the calendar of this for the getter name.
-func zonedDateTimeCalendarDate(cx *engine.ExecutionContext, this engine.Value, name string) (temporal.ISODate, string) {
+func zonedDateTimeCalendarDate(cx *engine.ExecutionContext, this storage.Value, name string) (temporal.ISODate, string) {
 	s := thisZonedDateTime(cx, this, name)
 	dt := s.localDateTime()
 	return dt.Date, s.cal
@@ -225,7 +225,7 @@ func zonedDateTimeCalendarDate(cx *engine.ExecutionContext, this engine.Value, n
 //
 //go:noinline
 func zonedDateTimeTimeNative(name string) engine.NativeFunc {
-	return temporalNative(func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return temporalNative(func(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 		dt := thisZonedDateTime(cx, this, name).localDateTime()
 		return storage.Number(float64(timeField(dt.Time, name)))
 	})
@@ -236,7 +236,7 @@ func zonedDateTimeTimeNative(name string) engine.NativeFunc {
 //
 //go:noinline
 func zonedDateTimeAddNative(name string) engine.NativeFunc {
-	return temporalNative(func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return temporalNative(func(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 		s := thisZonedDateTime(cx, this, name)
 		d := toTemporalDuration(cx, arg(args, 0))
 		if name == "subtract" {
@@ -254,7 +254,7 @@ func zonedDateTimeAddNative(name string) engine.NativeFunc {
 //
 //go:noinline
 func zonedDateTimeUntilNative(name string) engine.NativeFunc {
-	return temporalNative(func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return temporalNative(func(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 		s := thisZonedDateTime(cx, this, name)
 		other := toTemporalZonedDateTime(cx, arg(args, 0), storage.Undefined)
 		checkSameCalendar(cx, s.cal, other.cal)
@@ -286,13 +286,13 @@ func zonedDateTimeUntilNative(name string) engine.NativeFunc {
 //
 //go:noinline
 func zonedDateTimeToJSONNative(name string) engine.NativeFunc {
-	return temporalNative(func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return temporalNative(func(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 		s := thisZonedDateTime(cx, this, name)
 		return cx.NewString(wtf8.String(temporal.TemporalZonedDateTimeToString(s.ns, s.tz, s.cal, temporal.PrecisionAuto, temporal.ShowCalendarAuto, temporal.ShowTimeZoneAuto, true)))
 	})
 }
 
-func zonedDateTimeConstructor(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func zonedDateTimeConstructor(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	nt := newTarget(cx, "Temporal.ZonedDateTime")
 	epochNs := bigIntToEpochNs(cx, arg(args, 0))
 	id := requireString(cx, arg(args, 1), "time zone")
@@ -310,30 +310,30 @@ func zonedDateTimeConstructor(cx *engine.ExecutionContext, this engine.Value, ar
 	return newZonedDateTime(cx, epochNs, tz, cal, nt)
 }
 
-func zonedDateTimeFrom(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func zonedDateTimeFrom(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s := toTemporalZonedDateTime(cx, arg(args, 0), arg(args, 1))
 	return newZonedDateTime(cx, s.ns, s.tz, s.cal, nil)
 }
 
-func zonedDateTimeCompare(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func zonedDateTimeCompare(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	one := toTemporalZonedDateTime(cx, arg(args, 0), storage.Undefined)
 	two := toTemporalZonedDateTime(cx, arg(args, 1), storage.Undefined)
 	return compareResult(one.ns.Cmp(two.ns))
 }
 
-func zonedDateTimeTimeZoneId(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func zonedDateTimeTimeZoneId(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	return cx.NewString(wtf8.String(thisZonedDateTime(cx, this, "timeZoneId").tz.ID()))
 }
 
-func zonedDateTimeEpochMilliseconds(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func zonedDateTimeEpochMilliseconds(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	return epochMilliseconds(thisZonedDateTime(cx, this, "epochMilliseconds").ns)
 }
 
-func zonedDateTimeEpochNanoseconds(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func zonedDateTimeEpochNanoseconds(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	return epochNsValue(cx, thisZonedDateTime(cx, this, "epochNanoseconds").ns)
 }
 
-func zonedDateTimeHoursInDay(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func zonedDateTimeHoursInDay(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s := thisZonedDateTime(cx, this, "hoursInDay")
 	dt := s.localDateTime()
 	today := dt.Date
@@ -343,17 +343,17 @@ func zonedDateTimeHoursInDay(cx *engine.ExecutionContext, this engine.Value, arg
 	return storage.Number(temporal.TotalTimeDuration(end.Sub(start), temporal.UnitHour))
 }
 
-func zonedDateTimeOffsetNanoseconds(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func zonedDateTimeOffsetNanoseconds(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s := thisZonedDateTime(cx, this, "offsetNanoseconds")
 	return storage.Number(float64(s.tz.OffsetNanosecondsFor(s.ns)))
 }
 
-func zonedDateTimeOffset(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func zonedDateTimeOffset(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s := thisZonedDateTime(cx, this, "offset")
 	return cx.NewString(wtf8.String(temporal.FormatUTCOffsetNanoseconds(s.tz.OffsetNanosecondsFor(s.ns))))
 }
 
-func zonedDateTimeWith(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func zonedDateTimeWith(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s := thisZonedDateTime(cx, this, "with")
 	dt := s.localDateTime()
 	bag := rejectTemporalLikeObject(cx, arg(args, 0))
@@ -374,7 +374,7 @@ func zonedDateTimeWith(cx *engine.ExecutionContext, this engine.Value, args []en
 	return newZonedDateTime(cx, epochNs, s.tz, s.cal, nil)
 }
 
-func zonedDateTimeWithPlainTime(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func zonedDateTimeWithPlainTime(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s := thisZonedDateTime(cx, this, "withPlainTime")
 	dt := s.localDateTime()
 	var epochNs temporal.Int128
@@ -390,19 +390,19 @@ func zonedDateTimeWithPlainTime(cx *engine.ExecutionContext, this engine.Value, 
 	return newZonedDateTime(cx, epochNs, s.tz, s.cal, nil)
 }
 
-func zonedDateTimeWithTimeZone(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func zonedDateTimeWithTimeZone(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s := thisZonedDateTime(cx, this, "withTimeZone")
 	tz := toTimeZone(cx, arg(args, 0))
 	return newZonedDateTime(cx, s.ns, tz, s.cal, nil)
 }
 
-func zonedDateTimeWithCalendar(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func zonedDateTimeWithCalendar(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s := thisZonedDateTime(cx, this, "withCalendar")
 	cal := toCalendar(cx, arg(args, 0))
 	return newZonedDateTime(cx, s.ns, s.tz, cal, nil)
 }
 
-func zonedDateTimeRound(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func zonedDateTimeRound(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s := thisZonedDateTime(cx, this, "round")
 	dt := s.localDateTime()
 	increment, mode, unit := roundOptions(cx, arg(args, 0), true)
@@ -428,13 +428,13 @@ func zonedDateTimeRound(cx *engine.ExecutionContext, this engine.Value, args []e
 	return newZonedDateTime(cx, epochNs, s.tz, s.cal, nil)
 }
 
-func zonedDateTimeEquals(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func zonedDateTimeEquals(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s := thisZonedDateTime(cx, this, "equals")
 	other := toTemporalZonedDateTime(cx, arg(args, 0), storage.Undefined)
 	return storage.Bool(s.ns.Cmp(other.ns) == 0 && temporal.TimeZoneEquals(s.tz, other.tz) && calendarEquals(s.cal, other.cal))
 }
 
-func zonedDateTimeToString(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func zonedDateTimeToString(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s := thisZonedDateTime(cx, this, "toString")
 	opts := getOptionsObject(cx, arg(args, 0))
 	showCalendar := getShowCalendarOption(cx, opts)
@@ -449,13 +449,13 @@ func zonedDateTimeToString(cx *engine.ExecutionContext, this engine.Value, args 
 	return cx.NewString(wtf8.String(temporal.TemporalZonedDateTimeToString(epochNs, s.tz, s.cal, p.Precision, showCalendar, showTimeZone, showOffset)))
 }
 
-func zonedDateTimeStartOfDay(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func zonedDateTimeStartOfDay(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s := thisZonedDateTime(cx, this, "startOfDay")
 	dt := s.localDateTime()
 	return newZonedDateTime(cx, must(s.tz.StartOfDay(dt.Date)), s.tz, s.cal, nil)
 }
 
-func zonedDateTimeGetTimeZoneTransition(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func zonedDateTimeGetTimeZoneTransition(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s := thisZonedDateTime(cx, this, "getTimeZoneTransition")
 	opts := roundToOptions(cx, arg(args, 0), "direction")
 	next := temporalOption(cx, opts, "direction", []string{"next", "previous"}, -1) == 0
@@ -466,22 +466,22 @@ func zonedDateTimeGetTimeZoneTransition(cx *engine.ExecutionContext, this engine
 	return newZonedDateTime(cx, t, s.tz, s.cal, nil)
 }
 
-func zonedDateTimeToInstant(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func zonedDateTimeToInstant(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	return newInstant(cx, thisZonedDateTime(cx, this, "toInstant").ns, nil)
 }
 
-func zonedDateTimeToPlainDate(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func zonedDateTimeToPlainDate(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s := thisZonedDateTime(cx, this, "toPlainDate")
 	dt := s.localDateTime()
 	return createPlainDate(cx, dt.Date, s.cal, nil)
 }
 
-func zonedDateTimeToPlainTime(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func zonedDateTimeToPlainTime(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	dt := thisZonedDateTime(cx, this, "toPlainTime").localDateTime()
 	return newPlainTime(cx, dt.Time, nil)
 }
 
-func zonedDateTimeToPlainDateTime(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func zonedDateTimeToPlainDateTime(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s := thisZonedDateTime(cx, this, "toPlainDateTime")
 	dt := s.localDateTime()
 	return createPlainDateTime(cx, dt, s.cal, nil)
@@ -494,17 +494,17 @@ func systemUTCEpochNanoseconds(cx *engine.ExecutionContext) temporal.Int128 {
 }
 
 // temporalNowTimeZone returns the time zone argument of the methods of Temporal.Now.
-func temporalNowTimeZone(cx *engine.ExecutionContext, v engine.Value) temporal.TimeZone {
+func temporalNowTimeZone(cx *engine.ExecutionContext, v storage.Value) temporal.TimeZone {
 	if v.IsUndefined() {
 		return SystemTimeZone(cx)
 	}
 	return toTimeZone(cx, v)
 }
 
-func initTemporalNow(cx *engine.ExecutionContext, ns *engine.Object) {
+func initTemporalNow(cx *engine.ExecutionContext, ns *storage.Object) {
 	now := cx.NewOrdinaryObject()
-	cx.Define(ns, cx.Intern("Now"), storage.ObjectValue(now), engine.FlagsHidden)
-	cx.Define(now, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Temporal.Now"), engine.FlagConfigurable)
+	cx.Define(ns, cx.Intern("Now"), storage.ObjectValue(now), storage.FlagsHidden)
+	cx.Define(now, cx.WellKnownSymbol(storage.SymbolToStringTag), cx.SharedString("Temporal.Now"), storage.FlagConfigurable)
 	method(cx, now, "timeZoneId", 0, nativeTemporalNowTimeZoneId)
 	method(cx, now, "instant", 0, nativeTemporalNowInstant)
 	method(cx, now, "plainDateTimeISO", 0, nativeTemporalNowPlainDateTimeISO)
@@ -523,30 +523,30 @@ var (
 	nativeTemporalNowPlainTimeISO     = engine.RegisterNative(temporalNative(temporalNowPlainTimeISO))
 )
 
-func temporalNowTimeZoneId(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func temporalNowTimeZoneId(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	return cx.NewString(wtf8.String(SystemTimeZone(cx).ID()))
 }
 
-func temporalNowInstant(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func temporalNowInstant(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	return newInstant(cx, systemUTCEpochNanoseconds(cx), nil)
 }
 
-func temporalNowPlainDateTimeISO(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func temporalNowPlainDateTimeISO(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	tz := temporalNowTimeZone(cx, arg(args, 0))
 	return createPlainDateTime(cx, tz.ISODateTimeFor(systemUTCEpochNanoseconds(cx)), temporal.ISO8601, nil)
 }
 
-func temporalNowZonedDateTimeISO(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func temporalNowZonedDateTimeISO(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	tz := temporalNowTimeZone(cx, arg(args, 0))
 	return newZonedDateTime(cx, systemUTCEpochNanoseconds(cx), tz, temporal.ISO8601, nil)
 }
 
-func temporalNowPlainDateISO(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func temporalNowPlainDateISO(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	tz := temporalNowTimeZone(cx, arg(args, 0))
 	return createPlainDate(cx, tz.ISODateTimeFor(systemUTCEpochNanoseconds(cx)).Date, temporal.ISO8601, nil)
 }
 
-func temporalNowPlainTimeISO(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func temporalNowPlainTimeISO(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	tz := temporalNowTimeZone(cx, arg(args, 0))
 	return newPlainTime(cx, tz.ISODateTimeFor(systemUTCEpochNanoseconds(cx)).Time, nil)
 }

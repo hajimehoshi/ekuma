@@ -27,11 +27,11 @@ func InvokeInRealm(ctx context.Context, r *Realm, f Value) error {
 func SetExceptionReporter(r *Realm, report Value) {
 	cx := r.cx
 	r.in(func() {
-		key := storage.NamedKey(cx.Key(engine.KeyToString))
-		objectToString := cx.Get(r.cx.Intrinsic(engine.IntrinsicObjectPrototype), key)
-		errorToString := cx.Get(r.cx.Intrinsic(engine.IntrinsicErrorPrototype), key)
-		cx.SetExceptionReporter(func(thrown engine.Value, loc engine.ExceptionLocation) {
-			var source engine.Value
+		key := storage.NamedKey(cx.Key(storage.KeyToString))
+		objectToString := cx.Get(r.cx.Intrinsic(storage.IntrinsicObjectPrototype), key)
+		errorToString := cx.Get(r.cx.Intrinsic(storage.IntrinsicErrorPrototype), key)
+		cx.SetExceptionReporter(func(thrown storage.Value, loc engine.ExceptionLocation) {
+			var source storage.Value
 			if loc.File != "" {
 				source = cx.StringFromGo(loc.File)
 			}
@@ -132,7 +132,7 @@ func InstallGlobalProxy(r *Realm, foreignView Value, previous *Realm, shareAcces
 	if previous != nil {
 		prev = previous.cx
 	}
-	var proxy engine.Value
+	var proxy storage.Value
 	r.in(func() {
 		cx := r.cx
 		proxy = cx.InstallGlobalProxy(foreignView.value.Object(), prev, shareAccess)
@@ -143,9 +143,9 @@ func InstallGlobalProxy(r *Realm, foreignView Value, previous *Realm, shareAcces
 
 var nativeV8GlobalConstructor = engine.RegisterNative(v8GlobalConstructor)
 
-func v8GlobalConstructor(cx *engine.ExecutionContext, this engine.Value, _ []engine.Value) engine.Value {
+func v8GlobalConstructor(cx *engine.ExecutionContext, this storage.Value, _ []storage.Value) storage.Value {
 	if target := cx.GetNewTarget(); target != nil {
-		return storage.ObjectValue(cx.NewObject(cx.GetPrototypeFromConstructor(target, engine.IntrinsicObjectPrototype)))
+		return storage.ObjectValue(cx.NewObject(cx.GetPrototypeFromConstructor(target, storage.IntrinsicObjectPrototype)))
 	}
 	if this.IsNullish() {
 		return cx.GetV(cx.GlobalObject(), cx.Intern("globalThis"))
@@ -153,11 +153,11 @@ func v8GlobalConstructor(cx *engine.ExecutionContext, this engine.Value, _ []eng
 	return storage.ObjectValue(cx.ToObject(this))
 }
 
-func newV8GlobalPrototype(cx *engine.ExecutionContext) *engine.Object {
-	proto := cx.NewObject(cx.Intrinsic(engine.IntrinsicObjectPrototype))
+func newV8GlobalPrototype(cx *engine.ExecutionContext) *storage.Object {
+	proto := cx.NewObject(cx.Intrinsic(storage.IntrinsicObjectPrototype))
 	ctor := cx.NewNativeConstructor("", 0, nativeV8GlobalConstructor)
-	cx.Define(ctor, cx.Key(engine.KeyPrototype), storage.ObjectValue(proto), engine.FlagWritable)
-	cx.Define(proto, cx.Key(engine.KeyConstructor), storage.ObjectValue(ctor), engine.FlagsHidden)
+	cx.Define(ctor, cx.Key(storage.KeyPrototype), storage.ObjectValue(proto), storage.FlagWritable)
+	cx.Define(proto, cx.Key(storage.KeyConstructor), storage.ObjectValue(ctor), storage.FlagsHidden)
 	return proto
 }
 
@@ -166,12 +166,12 @@ func NewRealmShared(vm *VM) Value {
 	vm.initIfNeeded()
 	key := vm.hostContext().Intern("shared")
 	propKey := vm.hostContext().KeyOfString("shared")
-	var shared engine.Value
-	targets := map[*engine.Object]uint8{}
+	var shared storage.Value
+	targets := map[*storage.Object]uint8{}
 	install := func(_ Value, args []Value) (any, error) {
 		target := args[0].value.Object()
-		vm.hostContext().Define(target, key, shared, engine.FlagsData)
-		targets[target] = engine.FlagsData
+		vm.hostContext().Define(target, key, shared, storage.FlagsData)
+		targets[target] = storage.FlagsData
 		return Undefined, nil
 	}
 	changed := func(_ Value, args []Value) (any, error) {
@@ -186,13 +186,13 @@ func NewRealmShared(vm *VM) Value {
 		}
 		var flags uint8
 		if d.Writable() {
-			flags |= engine.FlagWritable
+			flags |= storage.FlagWritable
 		}
 		if d.Enumerable() {
-			flags |= engine.FlagEnumerable
+			flags |= storage.FlagEnumerable
 		}
 		if d.Configurable() {
-			flags |= engine.FlagConfigurable
+			flags |= storage.FlagConfigurable
 		}
 		targets[target] = flags
 		if !storage.SameValue(shared, d.Value()) {
@@ -226,9 +226,9 @@ func CanAccessReceiver(r *Realm, receiver Value) bool {
 
 // NewHTMLDDA returns an object of r with the [[IsHTMLDDA]] internal slot, which returns null when called.
 func NewHTMLDDA(r *Realm) Value {
-	var v engine.Value
+	var v storage.Value
 	r.in(func() {
-		v = r.cx.NewHTMLDDA(func(*engine.ExecutionContext, engine.Value, []engine.Value) engine.Value {
+		v = r.cx.NewHTMLDDA(func(*engine.ExecutionContext, storage.Value, []storage.Value) storage.Value {
 			return storage.Null
 		})
 	})
@@ -237,7 +237,7 @@ func NewHTMLDDA(r *Realm) Value {
 
 // AbstractModuleSource returns %AbstractModuleSource% of r.
 func AbstractModuleSource(r *Realm) Value {
-	return fromEngine(storage.ObjectValue(r.cx.Intrinsic(engine.IntrinsicAbstractModuleSource)))
+	return fromEngine(storage.ObjectValue(r.cx.Intrinsic(storage.IntrinsicAbstractModuleSource)))
 }
 
 // NewSourceModule returns a module of r whose only export is a default of undefined and
@@ -246,7 +246,7 @@ func NewSourceModule(r *Realm, name, className string) *Module {
 	m := r.NewSyntheticModule(name, Undefined)
 	r.in(func() {
 		cx := r.cx
-		proto := cx.NewObject(r.cx.Intrinsic(engine.IntrinsicAbstractModuleSourcePrototype))
+		proto := cx.NewObject(r.cx.Intrinsic(storage.IntrinsicAbstractModuleSourcePrototype))
 		m.m.SetModuleSource(cx.NewModuleSourceObject(proto, className))
 	})
 	return m
@@ -267,12 +267,12 @@ func ArgumentStorage(vm *VM) (argsLen, callArgsLen int, cleared bool) {
 }
 
 // MaxStringLength is the largest length a string may have, in bytes.
-const MaxStringLength = engine.MaxStringLength
+const MaxStringLength = storage.MaxStringLength
 
 // InternalFailureFunc returns a native function that fails with cause.
 func InternalFailureFunc(vm *VM, cause error) Value {
 	vm.initIfNeeded()
-	return fromEngine(vm.hostContext().NewFunction("fail", func(*engine.ExecutionContext, engine.Value, []engine.Value) engine.Value {
+	return fromEngine(vm.hostContext().NewFunction("fail", func(*engine.ExecutionContext, storage.Value, []storage.Value) storage.Value {
 		panic(&xerrors.InternalError{
 			Op:  "test operation",
 			Err: cause,

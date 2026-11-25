@@ -7,6 +7,7 @@ import (
 	"context"
 
 	"github.com/hajimehoshi/ekuma/internal/engine"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 )
 
 // Script is a script of a realm, from [Realm.ParseScript] or [Realm.BindScript].
@@ -66,7 +67,7 @@ func (s *Script) evaluate(ctx context.Context) (Value, bool, error) {
 	vm := s.vm
 	vm.initIfNeeded()
 	var completed bool
-	v, err := vm.run(ctx, func() (engine.Value, error) {
+	v, err := vm.run(ctx, func() (storage.Value, error) {
 		value, done, err := s.s.ScriptEvaluation()
 		completed = done
 		return value, err

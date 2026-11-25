@@ -14,8 +14,8 @@ import (
 func TestNativeCallLimit(t *testing.T) {
 	cx := newTestContext(t)
 	var depth, deepest int
-	var nest engine.Value
-	nest = cx.NewFunction("nest", func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	var nest storage.Value
+	nest = cx.NewFunction("nest", func(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 		depth++
 		deepest = max(deepest, depth)
 		defer func() {
@@ -41,7 +41,7 @@ func TestNativeCallLimit(t *testing.T) {
 
 func TestDerivedReturnErrorLocation(t *testing.T) {
 	cx := newTestContext(t)
-	var ctor engine.Value
+	var ctor storage.Value
 	cx.CreateRealm(func(cx *engine.ExecutionContext) {
 		builtin.Install(cx)
 		var err error
@@ -58,12 +58,12 @@ func TestDerivedReturnErrorLocation(t *testing.T) {
 		t.Fatal(err)
 	}
 	var loc engine.ExceptionLocation
-	cx.SetExceptionReporter(func(thrown engine.Value, site engine.ExceptionLocation) {
+	cx.SetExceptionReporter(func(thrown storage.Value, site engine.ExceptionLocation) {
 		loc = site
 		if engine.CreationContext(thrown.Object()) != cx {
 			t.Error("derived constructor return error was created outside the caller's realm")
 		}
-		if got := cx.ProtoOf(thrown.Object()); got != cx.Intrinsic(engine.IntrinsicTypeErrorPrototype) {
+		if got := cx.ProtoOf(thrown.Object()); got != cx.Intrinsic(storage.IntrinsicTypeErrorPrototype) {
 			t.Error("derived constructor return error has the wrong prototype")
 		}
 	})

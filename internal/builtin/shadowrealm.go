@@ -11,7 +11,7 @@ import (
 
 var (
 	// nativeShadowRealmConstructor leads to the code that makes its function object.
-	nativeShadowRealmConstructor engine.Native
+	nativeShadowRealmConstructor storage.Native
 
 	nativeShadowRealmEvaluate          = engine.RegisterNative(shadowRealmEvaluate)
 	nativeShadowRealmImportValueMethod = engine.RegisterNative(shadowRealmImportValueMethod)
@@ -22,27 +22,27 @@ func init() {
 }
 
 func initShadowRealm(cx *engine.ExecutionContext) {
-	proto := cx.NewObject(cx.Intrinsic(engine.IntrinsicObjectPrototype))
-	cx.SetIntrinsic(engine.IntrinsicShadowRealmPrototype, proto)
-	constructor(cx, "ShadowRealm", 0, engine.IntrinsicShadowRealmPrototype, nativeShadowRealmConstructor)
+	proto := cx.NewObject(cx.Intrinsic(storage.IntrinsicObjectPrototype))
+	cx.SetIntrinsic(storage.IntrinsicShadowRealmPrototype, proto)
+	constructor(cx, "ShadowRealm", 0, storage.IntrinsicShadowRealmPrototype, nativeShadowRealmConstructor)
 	method(cx, proto, "evaluate", 1, nativeShadowRealmEvaluate)
 	method(cx, proto, "importValue", 2, nativeShadowRealmImportValueMethod)
-	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("ShadowRealm"), engine.FlagConfigurable)
+	cx.Define(proto, cx.WellKnownSymbol(storage.SymbolToStringTag), cx.SharedString("ShadowRealm"), storage.FlagConfigurable)
 }
 
-func shadowRealmConstructor(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func shadowRealmConstructor(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	nt := cx.GetNewTarget()
 	if nt == nil {
 		cx.ThrowTypeError("constructor ShadowRealm requires 'new'")
 	}
-	p := cx.GetPrototypeFromConstructor(nt, engine.IntrinsicShadowRealmPrototype)
+	p := cx.GetPrototypeFromConstructor(nt, storage.IntrinsicShadowRealmPrototype)
 	r := cx.CreateRealm(func(cx *engine.ExecutionContext) {
 		Install(cx)
 	})
 	return storage.ObjectValue(cx.NewShadowRealmObject(p, r))
 }
 
-func shadowRealmEvaluate(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func shadowRealmEvaluate(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	r := cx.ValidateShadowRealmObject(this)
 	src := arg(args, 0)
 	if !src.IsString() {
@@ -51,7 +51,7 @@ func shadowRealmEvaluate(cx *engine.ExecutionContext, this engine.Value, args []
 	return performShadowRealmEval(cx, src.Str(), r)
 }
 
-func shadowRealmImportValueMethod(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func shadowRealmImportValueMethod(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	r := cx.ValidateShadowRealmObject(this)
 	specifier := cx.ToString(arg(args, 0))
 	exportName := arg(args, 1)
@@ -63,7 +63,7 @@ func shadowRealmImportValueMethod(cx *engine.ExecutionContext, this engine.Value
 
 // performShadowRealmEval implements PerformShadowRealmEval with the current realm as the
 // caller realm.
-func performShadowRealmEval(cx *engine.ExecutionContext, src wtf8.String, target *engine.ExecutionContext) engine.Value {
+func performShadowRealmEval(cx *engine.ExecutionContext, src wtf8.String, target *engine.ExecutionContext) storage.Value {
 	v, ok := cx.EvalInRealm(target, src)
 	if !ok {
 		cx.ThrowTypeError("the evaluation in the ShadowRealm threw")
@@ -78,7 +78,7 @@ var (
 
 // shadowRealmImportValue implements ShadowRealmImportValue with the current realm as the
 // caller realm.
-func shadowRealmImportValue(cx *engine.ExecutionContext, specifier wtf8.String, exportName engine.Value, target *engine.ExecutionContext) engine.Value {
+func shadowRealmImportValue(cx *engine.ExecutionContext, specifier wtf8.String, exportName storage.Value, target *engine.ExecutionContext) storage.Value {
 	inner := target.ImportInRealm(specifier)
 	st := &shadowRealmImport{
 		specifier:  specifier,
@@ -86,7 +86,7 @@ func shadowRealmImportValue(cx *engine.ExecutionContext, specifier wtf8.String, 
 	}
 	onFulfilled := cx.NewNativeWithState("", 1, nativeShadowRealmExportGetter, st)
 	onRejected := cx.NewNativeWithState("", 1, nativeShadowRealmImportRejected, st)
-	c := cx.NewPromiseCapability(storage.ObjectValue(cx.Intrinsic(engine.IntrinsicPromise)))
+	c := cx.NewPromiseCapability(storage.ObjectValue(cx.Intrinsic(storage.IntrinsicPromise)))
 	return cx.PerformPromiseThen(storage.ObjectValue(inner), storage.ObjectValue(onFulfilled), storage.ObjectValue(onRejected), c)
 }
 
@@ -94,12 +94,12 @@ func shadowRealmImportValue(cx *engine.ExecutionContext, specifier wtf8.String, 
 // ShadowRealm.
 type shadowRealmImport struct {
 	specifier  wtf8.String
-	exportName engine.Value
+	exportName storage.Value
 }
 
 // shadowRealmExportGetter is the code of the ExportGetter functions. Their state is a
 // *shadowRealmImport.
-func shadowRealmExportGetter(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func shadowRealmExportGetter(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	st := cx.ActiveNativeState().(*shadowRealmImport)
 	exports := arg(args, 0).Object()
 	k := cx.ToPropertyKey(st.exportName)
@@ -111,14 +111,14 @@ func shadowRealmExportGetter(cx *engine.ExecutionContext, this engine.Value, arg
 
 // shadowRealmImportRejected is the code of the functions that throw for a failed import. Their
 // state is a *shadowRealmImport.
-func shadowRealmImportRejected(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func shadowRealmImportRejected(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	st := cx.ActiveNativeState().(*shadowRealmImport)
 	cx.ThrowTypeError("cannot import '" + wtf8.ToValidUTF8(st.specifier) + "' in the ShadowRealm")
 	return storage.Undefined
 }
 
 // getWrappedValue implements GetWrappedValue with the current realm as the caller realm.
-func getWrappedValue(cx *engine.ExecutionContext, v engine.Value) engine.Value {
+func getWrappedValue(cx *engine.ExecutionContext, v storage.Value) storage.Value {
 	if !v.IsObject() {
 		return v
 	}
@@ -129,7 +129,7 @@ func getWrappedValue(cx *engine.ExecutionContext, v engine.Value) engine.Value {
 }
 
 // nativeWrappedFunction leads to the code that makes its function objects.
-var nativeWrappedFunction engine.Native
+var nativeWrappedFunction storage.Native
 
 func init() {
 	nativeWrappedFunction = engine.RegisterNative(wrappedFunction)
@@ -137,7 +137,7 @@ func init() {
 
 // wrappedFunctionCreate implements WrappedFunctionCreate with the current realm as the caller
 // realm. A wrapped function is a native function of that realm.
-func wrappedFunctionCreate(cx *engine.ExecutionContext, target *engine.Object) *engine.Object {
+func wrappedFunctionCreate(cx *engine.ExecutionContext, target *storage.Object) *storage.Object {
 	f := cx.NewNativeWithState("", 0, nativeWrappedFunction, target)
 	if _, ok := cx.Completion(func() {
 		copyNameAndLength(cx, f, target, "", 0)
@@ -148,10 +148,10 @@ func wrappedFunctionCreate(cx *engine.ExecutionContext, target *engine.Object) *
 }
 
 // wrappedFunction is the code of the wrapped functions. Their state is the target, an
-// *engine.Object.
-func wrappedFunction(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-	target := cx.ActiveNativeState().(*engine.Object)
-	var result engine.Value
+// *storage.Object.
+func wrappedFunction(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
+	target := cx.ActiveNativeState().(*storage.Object)
+	var result storage.Value
 	if _, ok := cx.Completion(func() {
 		result = ordinaryWrappedFunctionCall(cx, target, this, args)
 	}); !ok {
@@ -162,10 +162,10 @@ func wrappedFunction(cx *engine.ExecutionContext, this engine.Value, args []engi
 
 // ordinaryWrappedFunctionCall implements OrdinaryWrappedFunctionCall for the wrapped function
 // of target, whose realm is the current one.
-func ordinaryWrappedFunctionCall(cx *engine.ExecutionContext, target *engine.Object, this engine.Value, args []engine.Value) engine.Value {
+func ordinaryWrappedFunctionCall(cx *engine.ExecutionContext, target *storage.Object, this storage.Value, args []storage.Value) storage.Value {
 	targetContext := cx.FunctionContext(target)
-	wrappedArgs := make([]engine.Value, len(args))
-	var wrappedThis engine.Value
+	wrappedArgs := make([]storage.Value, len(args))
+	var wrappedThis storage.Value
 	targetContext.Run(func() {
 		for i, a := range args {
 			wrappedArgs[i] = getWrappedValue(targetContext, a)

@@ -123,7 +123,7 @@ func publicError(err error) error {
 			Message: se.Message,
 		}
 	}
-	if ex, ok := errors.AsType[*engine.Error](err); ok {
+	if ex, ok := errors.AsType[*storage.Error](err); ok {
 		return &ScriptError{Value: fromEngine(ex.Value)}
 	}
 	return publicInternalError(err)
@@ -139,7 +139,7 @@ func publicInternalError(err error) error {
 }
 
 // thrownValue returns the JavaScript value that the error of a [Func] throws.
-func (vm *VM) thrownValue(cx *engine.ExecutionContext, err error) engine.Value {
+func (vm *VM) thrownValue(cx *engine.ExecutionContext, err error) storage.Value {
 	if ex, ok := errors.AsType[*ScriptError](err); ok {
 		return vm.acceptValue(ex.Value)
 	}

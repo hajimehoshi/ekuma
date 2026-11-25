@@ -266,7 +266,7 @@ func fromHexRun(s wtf8.String, stop, maxLength int, r *decodeResult) {
 }
 
 // optionsObject implements GetOptionsObject.
-func optionsObject(cx *engine.ExecutionContext, options engine.Value) engine.Value {
+func optionsObject(cx *engine.ExecutionContext, options storage.Value) storage.Value {
 	if options.IsUndefined() {
 		return storage.ObjectValue(cx.NewObject(nil))
 	}
@@ -277,7 +277,7 @@ func optionsObject(cx *engine.ExecutionContext, options engine.Value) engine.Val
 }
 
 // stringOption returns the option name of opts, which must be one of choices; undefined stands for choices[0].
-func stringOption(cx *engine.ExecutionContext, opts engine.Value, name string, choices ...wtf8.String) wtf8.String {
+func stringOption(cx *engine.ExecutionContext, opts storage.Value, name string, choices ...wtf8.String) wtf8.String {
 	v := cx.GetV(opts, cx.Intern(wtf8.String(name)))
 	if v.IsUndefined() {
 		return choices[0]
@@ -293,7 +293,7 @@ func stringOption(cx *engine.ExecutionContext, opts engine.Value, name string, c
 }
 
 // thisUint8Array implements ValidateUint8Array with the access mode write when write is set.
-func thisUint8Array(cx *engine.ExecutionContext, this engine.Value, write bool, what string) *storage.TypedArray {
+func thisUint8Array(cx *engine.ExecutionContext, this storage.Value, write bool, what string) *storage.TypedArray {
 	t := storage.TypedArrayData(this)
 	if t == nil || t.ElementType() != element.Uint8 {
 		cx.ThrowTypeError("Uint8Array.prototype." + what + ": this is not a Uint8Array")
@@ -317,7 +317,7 @@ func uint8ArrayBytes(cx *engine.ExecutionContext, t *storage.TypedArray, what st
 	return elementsOf(t)
 }
 
-func encodedStringArg(cx *engine.ExecutionContext, args []engine.Value) wtf8.String {
+func encodedStringArg(cx *engine.ExecutionContext, args []storage.Value) wtf8.String {
 	s := arg(args, 0)
 	if !s.IsString() {
 		cx.ThrowTypeError("the argument must be a string")
@@ -325,7 +325,7 @@ func encodedStringArg(cx *engine.ExecutionContext, args []engine.Value) wtf8.Str
 	return s.Str()
 }
 
-func base64DecodeOptions(cx *engine.ExecutionContext, options engine.Value) (bool, wtf8.String) {
+func base64DecodeOptions(cx *engine.ExecutionContext, options storage.Value) (bool, wtf8.String) {
 	opts := optionsObject(cx, options)
 	alphabet := stringOption(cx, opts, "alphabet", "base64", "base64url")
 	last := stringOption(cx, opts, "lastChunkHandling", "loose", "strict", "stop-before-partial")
@@ -333,21 +333,21 @@ func base64DecodeOptions(cx *engine.ExecutionContext, options engine.Value) (boo
 }
 
 // storeDecodeResult implements the end of setFromBase64 and setFromHex.
-func storeDecodeResult(cx *engine.ExecutionContext, t *storage.TypedArray, r decodeResult) engine.Value {
+func storeDecodeResult(cx *engine.ExecutionContext, t *storage.TypedArray, r decodeResult) storage.Value {
 	writeElements(t, 0, r.bytes)
 	if r.err != "" {
 		cx.ThrowSyntaxError(r.err)
 	}
 	o := cx.NewObjectFromProperties(
-		[]engine.PropKey{storage.NamedKey(cx.Intern("read")), storage.NamedKey(cx.Intern("written"))},
-		[]engine.Value{storage.Number(float64(r.read)), storage.Number(float64(len(r.bytes)))},
+		[]storage.PropKey{storage.NamedKey(cx.Intern("read")), storage.NamedKey(cx.Intern("written"))},
+		[]storage.Value{storage.Number(float64(r.read)), storage.Number(float64(len(r.bytes)))},
 	)
 	return storage.ObjectValue(o)
 }
 
 // newUint8Array returns a new Uint8Array of the elements b.
-func newUint8Array(cx *engine.ExecutionContext, b []byte) engine.Value {
-	o := newTypedArray(cx, cx.Intrinsic(engine.IntrinsicUint8ArrayPrototype), element.Uint8, int64(len(b)))
+func newUint8Array(cx *engine.ExecutionContext, b []byte) storage.Value {
+	o := newTypedArray(cx, cx.Intrinsic(storage.IntrinsicUint8ArrayPrototype), element.Uint8, int64(len(b)))
 	writeElements(storage.TypedArrayData(storage.ObjectValue(o)), 0, b)
 	return storage.ObjectValue(o)
 }
@@ -362,8 +362,8 @@ var (
 )
 
 func initUint8ArrayBase64(cx *engine.ExecutionContext) {
-	ctor := cx.Intrinsic(engine.IntrinsicUint8Array)
-	proto := cx.Intrinsic(engine.IntrinsicUint8ArrayPrototype)
+	ctor := cx.Intrinsic(storage.IntrinsicUint8Array)
+	proto := cx.Intrinsic(storage.IntrinsicUint8ArrayPrototype)
 
 	method(cx, ctor, "fromBase64", 1, nativeUint8ArrayFromBase64)
 	method(cx, ctor, "fromHex", 1, nativeUint8ArrayFromHex)
@@ -373,7 +373,7 @@ func initUint8ArrayBase64(cx *engine.ExecutionContext) {
 	method(cx, proto, "toHex", 0, nativeUint8ArrayToHex)
 }
 
-func uint8ArrayFromBase64(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func uint8ArrayFromBase64(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s := encodedStringArg(cx, args)
 	url, last := base64DecodeOptions(cx, arg(args, 1))
 	r := fromBase64(cx, s, url, last, math.MaxInt)
@@ -383,7 +383,7 @@ func uint8ArrayFromBase64(cx *engine.ExecutionContext, this engine.Value, args [
 	return newUint8Array(cx, r.bytes)
 }
 
-func uint8ArrayFromHex(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func uint8ArrayFromHex(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	r := fromHex(cx, encodedStringArg(cx, args), math.MaxInt)
 	if r.err != "" {
 		cx.ThrowSyntaxError(r.err)
@@ -391,7 +391,7 @@ func uint8ArrayFromHex(cx *engine.ExecutionContext, this engine.Value, args []en
 	return newUint8Array(cx, r.bytes)
 }
 
-func uint8ArraySetFromBase64(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func uint8ArraySetFromBase64(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	t := thisUint8Array(cx, this, true, "setFromBase64")
 	s := encodedStringArg(cx, args)
 	url, last := base64DecodeOptions(cx, arg(args, 1))
@@ -400,7 +400,7 @@ func uint8ArraySetFromBase64(cx *engine.ExecutionContext, this engine.Value, arg
 	return storeDecodeResult(cx, t, fromBase64(cx, s, url, last, n))
 }
 
-func uint8ArraySetFromHex(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func uint8ArraySetFromHex(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	t := thisUint8Array(cx, this, true, "setFromHex")
 	s := encodedStringArg(cx, args)
 	n, ok := t.Length()
@@ -408,7 +408,7 @@ func uint8ArraySetFromHex(cx *engine.ExecutionContext, this engine.Value, args [
 	return storeDecodeResult(cx, t, fromHex(cx, s, n))
 }
 
-func uint8ArrayToBase64(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func uint8ArrayToBase64(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	t := thisUint8Array(cx, this, false, "toBase64")
 	opts := optionsObject(cx, arg(args, 0))
 	alphabet := stringOption(cx, opts, "alphabet", "base64", "base64url")
@@ -426,7 +426,7 @@ func uint8ArrayToBase64(cx *engine.ExecutionContext, this engine.Value, args []e
 	return cx.NewString(wtf8.String(encodeInChunks(cx, b, 3, enc.EncodedLen, enc.AppendEncode)))
 }
 
-func uint8ArrayToHex(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func uint8ArrayToHex(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	t := thisUint8Array(cx, this, false, "toHex")
 	return cx.NewString(wtf8.String(encodeInChunks(cx, uint8ArrayBytes(cx, t, "toHex"), 1, hex.EncodedLen, hex.AppendEncode)))
 }

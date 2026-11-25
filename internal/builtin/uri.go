@@ -8,6 +8,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/hajimehoshi/ekuma/internal/engine"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
@@ -56,27 +57,27 @@ func initURIFunctions(cx *engine.ExecutionContext) {
 	method(cx, g, "unescape", 1, nativeGlobalUnescape)
 }
 
-func globalDecodeURI(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func globalDecodeURI(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	return cx.NewString(uriDecode(cx, cx.ToString(arg(args, 0)), uriReserved+"#"))
 }
 
-func globalDecodeURIComponent(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func globalDecodeURIComponent(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	return cx.NewString(uriDecode(cx, cx.ToString(arg(args, 0)), ""))
 }
 
-func globalEncodeURI(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func globalEncodeURI(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	return cx.NewString(uriEncode(cx, cx.ToString(arg(args, 0)), &uriEncodeSet))
 }
 
-func globalEncodeURIComponent(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func globalEncodeURIComponent(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	return cx.NewString(uriEncode(cx, cx.ToString(arg(args, 0)), &uriComponentSet))
 }
 
-func globalEscape(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func globalEscape(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	return cx.NewString(escape(cx, cx.ToString(arg(args, 0))))
 }
 
-func globalUnescape(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func globalUnescape(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	return cx.NewString(unescape(cx, cx.ToString(arg(args, 0))))
 }
 

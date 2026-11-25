@@ -86,10 +86,10 @@ func TestPrimitiveElements(t *testing.T) {
 func TestCachedReadThroughLazyPrototype(t *testing.T) {
 	cx, _ := engine.NewExecutionContext(nil)
 	key := cx.Intern("value")
-	var receiver *engine.Object
-	proto := cx.NewLazyObject(nil, func(cx *engine.ExecutionContext, proto *engine.Object) {
-		cx.Define(receiver, key, storage.Number(2), engine.FlagsData)
-		cx.Define(proto, key, storage.Number(1), engine.FlagsData)
+	var receiver *storage.Object
+	proto := cx.NewLazyObject(nil, func(cx *engine.ExecutionContext, proto *storage.Object) {
+		cx.Define(receiver, key, storage.Number(2), storage.FlagsData)
+		cx.Define(proto, key, storage.Number(1), storage.FlagsData)
 	})
 	receiver = cx.NewObject(proto)
 
@@ -173,26 +173,26 @@ func runLazyPropertyOperation(t *testing.T, script string, lazy bool) string {
 	t.Helper()
 	cx := newTestContext(t)
 	proto := cx.NewObject(nil)
-	init := func(cx *engine.ExecutionContext, o *engine.Object) {
-		var data engine.PropDesc
+	init := func(cx *engine.ExecutionContext, o *storage.Object) {
+		var data storage.PropDesc
 		data.SetValue(storage.True)
 		data.SetConfigurable(true)
 		cx.DefinePropertyOrThrow(o, storage.IndexKey(0), data)
-		var accessor engine.PropDesc
-		accessor.SetGetter(cx.NewFunction("get 1", func(_ *engine.ExecutionContext, this engine.Value, _ []engine.Value) engine.Value {
+		var accessor storage.PropDesc
+		accessor.SetGetter(cx.NewFunction("get 1", func(_ *engine.ExecutionContext, this storage.Value, _ []storage.Value) storage.Value {
 			return this
 		}).Object())
 		cx.DefinePropertyOrThrow(o, storage.IndexKey(1), accessor)
-		cx.Define(proto, cx.Intern("installedByInit"), storage.True, engine.FlagsData)
+		cx.Define(proto, cx.Intern("installedByInit"), storage.True, storage.FlagsData)
 	}
-	var subject *engine.Object
+	var subject *storage.Object
 	if lazy {
 		subject = cx.NewLazyObject(proto, init)
 	} else {
 		subject = cx.NewObject(proto)
 		init(cx, subject)
 	}
-	cx.Define(cx.GlobalObject().Object(), cx.Intern("subject"), storage.ObjectValue(subject), engine.FlagsData)
+	cx.Define(cx.GlobalObject().Object(), cx.Intern("subject"), storage.ObjectValue(subject), storage.FlagsData)
 	v, err := runScript(cx, "lookup", script)
 	if err != nil {
 		t.Fatalf("lazy=%t: %v", lazy, err)
@@ -207,8 +207,8 @@ func TestGlobalReadThroughLazyPrototype(t *testing.T) {
 		t.Fatal(err)
 	}
 	global := cx.GlobalObject().Object()
-	proto := cx.NewLazyObject(cx.ProtoOf(global), func(cx *engine.ExecutionContext, o *engine.Object) {
-		cx.Define(o, cx.Intern("fromLazy"), storage.Number(1), engine.FlagsData)
+	proto := cx.NewLazyObject(cx.ProtoOf(global), func(cx *engine.ExecutionContext, o *storage.Object) {
+		cx.Define(o, cx.Intern("fromLazy"), storage.Number(1), storage.FlagsData)
 		declare.CallScript()
 	})
 	cx.SetPrototypeOf(global, proto)
@@ -223,7 +223,7 @@ func TestGlobalReadThroughLazyPrototype(t *testing.T) {
 
 func TestPlainOwnPropertyQueryDefersLazyInitialization(t *testing.T) {
 	cx, _ := engine.NewExecutionContext(nil)
-	o := cx.NewLazyObject(nil, func(*engine.ExecutionContext, *engine.Object) {
+	o := cx.NewLazyObject(nil, func(*engine.ExecutionContext, *storage.Object) {
 		t.Error("side-effect-free query ran the initializer")
 	})
 	if _, ok := cx.Quiet().HasOwnPropertyPlain(o, storage.Number(0)); ok {
@@ -234,9 +234,9 @@ func TestPlainOwnPropertyQueryDefersLazyInitialization(t *testing.T) {
 func TestCachedStringReadAcrossRealms(t *testing.T) {
 	a, _ := engine.NewExecutionContext(nil)
 	key := a.Intern("value")
-	a.Define(a.Intrinsic(engine.IntrinsicStringPrototype), key, storage.Number(1), engine.FlagsData)
+	a.Define(a.Intrinsic(storage.IntrinsicStringPrototype), key, storage.Number(1), storage.FlagsData)
 	b := a.CreateRealm(func(cx *engine.ExecutionContext) {
-		cx.Define(cx.Intrinsic(engine.IntrinsicStringPrototype), key, storage.Number(2), engine.FlagsData)
+		cx.Define(cx.Intrinsic(storage.IntrinsicStringPrototype), key, storage.Number(2), storage.FlagsData)
 	})
 
 	str := a.NewString("text")
@@ -251,7 +251,7 @@ func TestCachedStringReadAcrossRealms(t *testing.T) {
 
 func TestGetPrototypeFromConstructorMissingIntrinsic(t *testing.T) {
 	cx := newTestContext(t)
-	var target engine.Value
+	var target storage.Value
 	cx.CreateRealm(func(cx *engine.ExecutionContext) {
 		var err error
 		target, err = runScript(cx, "target", `function Target() {} Target.prototype = null; Target;`)
@@ -266,5 +266,5 @@ func TestGetPrototypeFromConstructorMissingIntrinsic(t *testing.T) {
 			t.Error("expected a panic for the missing Date prototype in the target's realm")
 		}
 	}()
-	cx.GetPrototypeFromConstructor(target.Object(), engine.IntrinsicDatePrototype)
+	cx.GetPrototypeFromConstructor(target.Object(), storage.IntrinsicDatePrototype)
 }
