@@ -71,7 +71,7 @@ func (p *peeked) String() string {
 }
 
 // peek looks the named property key of v up without running JavaScript.
-func (cx *ExecutionContext) peek(v Value, key *Object) peeked {
+func (r *realmPart) peek(v Value, key *Object) peeked {
 	start := v.o
 	switch {
 	case v.IsNullish():
@@ -80,29 +80,29 @@ func (cx *ExecutionContext) peek(v Value, key *Object) peeked {
 			why:  "a value without properties",
 		}
 	case v.o == numberObject:
-		start = cx.Intrinsic(IntrinsicNumberPrototype)
+		start = r.Intrinsic(IntrinsicNumberPrototype)
 	case v.IsString():
-		if key == cx.Key(KeyLength) {
+		if key == r.Key(KeyLength) {
 			return peeked{
 				kind:   peekLength,
 				length: float64(v.StringLength()),
 			}
 		}
-		start = cx.Intrinsic(IntrinsicStringPrototype)
+		start = r.Intrinsic(IntrinsicStringPrototype)
 	case v.IsBool():
-		start = cx.Intrinsic(IntrinsicBooleanPrototype)
+		start = r.Intrinsic(IntrinsicBooleanPrototype)
 	case v.IsSymbol():
-		start = cx.Intrinsic(IntrinsicSymbolPrototype)
+		start = r.Intrinsic(IntrinsicSymbolPrototype)
 	case v.IsBigInt():
-		start = cx.Intrinsic(IntrinsicBigIntPrototype)
+		start = r.Intrinsic(IntrinsicBigIntPrototype)
 	}
-	return cx.peekFrom(start, key)
+	return r.peekFrom(start, key)
 }
 
 // peekFrom is peek from the object start on.
-func (cx *ExecutionContext) peekFrom(start, key *Object) peeked {
+func (r *realmPart) peekFrom(start, key *Object) peeked {
 	for h := start; h != nil; h = h.shape.proto {
-		p, why := cx.peekOwn(h, key)
+		p, why := r.peekOwn(h, key)
 		if why != "" {
 			return peeked{
 				kind:   peekOpaque,
@@ -119,7 +119,7 @@ func (cx *ExecutionContext) peekFrom(start, key *Object) peeked {
 
 // peekOwn looks the own named property key of h up. why describes h when h has to perform the
 // operation itself.
-func (cx *ExecutionContext) peekOwn(h, key *Object) (p peeked, why string) {
+func (sp *space) peekOwn(h, key *Object) (p peeked, why string) {
 	switch {
 	case h.class == classProxy:
 		return peeked{}, "a proxy"
@@ -127,9 +127,9 @@ func (cx *ExecutionContext) peekOwn(h, key *Object) (p peeked, why string) {
 		return peeked{}, "a module namespace"
 	case h.class == classLazy:
 		return peeked{}, "an object whose properties are not defined yet"
-	case h.fn != nil && !h.fn.materialized && cx.isLazyKey(key):
+	case h.fn != nil && !h.fn.materialized && sp.isLazyKey(key):
 		return peeked{}, "a function whose initial properties are not stored yet"
-	case h.kind == kindArray && key == cx.Key(KeyLength):
+	case h.kind == kindArray && key == sp.Key(KeyLength):
 		return peeked{
 			kind:   peekLength,
 			holder: h,
@@ -154,6 +154,14 @@ func (cx *ExecutionContext) peekOwn(h, key *Object) (p peeked, why string) {
 		p.kind = peekAccessor
 	}
 	return p, ""
+}
+
+// originalFailure is [agent.cacheFailure] for a check that does not know the running instruction.
+func originalFailure(cache string, key *Object, got, want string) string {
+	if key != nil {
+		cache += " of " + displayString(Value{o: key})
+	}
+	return "ekumavalidate: " + cacheMismatch(cache, got, want)
 }
 
 // cacheFailure describes a cache that answered with got where the lookup of key, which is nil when
@@ -382,55 +390,54 @@ func (cx *ExecutionContext) checkInstanceShape(fp *funcProto, pc int, proto *Obj
 
 // checkArrayIteration checks what c, which arrayIterationUnmodified has brought up to date, says
 // about the iteration of the arrays of r.
-func (ag *agent) checkArrayIteration(r *realmPart) {
+func (r *realmPart) checkArrayIteration() {
 	c := &r.arrayIter
-	cx := r.executionContext()
 	values := r.intrinsics[IntrinsicArrayPrototypeValues]
 	next := r.intrinsics[IntrinsicArrayIteratorPrototypeNext]
 	if c.found && c.iter.value().o == values && c.next.value().o == next {
-		ag.checkOriginal(cx, r.intrinsics[IntrinsicArrayPrototype], ag.WellKnownSymbol(SymbolIterator), values)
-		ag.checkOriginal(cx, r.intrinsics[IntrinsicArrayIteratorPrototype], ag.Key(KeyNext), next)
+		r.checkOriginal(r.intrinsics[IntrinsicArrayPrototype], r.WellKnownSymbol(SymbolIterator), values)
+		r.checkOriginal(r.intrinsics[IntrinsicArrayIteratorPrototype], r.Key(KeyNext), next)
 	}
 	if c.noReturn {
-		ag.checkNoIteratorReturn(r)
+		r.checkNoIteratorReturn()
 	}
 }
 
 // checkNoIteratorReturn checks that the array iterators of r have no return method.
-func (ag *agent) checkNoIteratorReturn(r *realmPart) {
-	key := ag.Key(KeyReturn)
-	if p := r.executionContext().peekFrom(r.intrinsics[IntrinsicArrayIteratorPrototype], key); p.kind != peekMiss {
-		panic(ag.cacheFailure(nil, 0, "the array iteration cache", key, "no property", p.String()))
+func (r *realmPart) checkNoIteratorReturn() {
+	key := r.Key(KeyReturn)
+	if p := r.peekFrom(r.intrinsics[IntrinsicArrayIteratorPrototype], key); p.kind != peekMiss {
+		panic(originalFailure("the array iteration cache", key, "no property", p.String()))
 	}
 }
 
 // checkPlainArray checks that iterating o starts with the original values method, if
 // arrayIterationPlain says so.
-func (cx *ExecutionContext) checkPlainArray(o *Object) {
-	if o.shape != cx.realm.shapes.array || !cx.arrayIterationUnmodified(cx.realmPart) {
+func (r *realmPart) checkPlainArray(o *Object) {
+	if o.shape != r.shapes.array || !r.arrayIterationUnmodified(r) {
 		return
 	}
-	cx.checkOriginal(cx, o, cx.WellKnownSymbol(SymbolIterator), cx.Intrinsic(IntrinsicArrayPrototypeValues))
+	r.checkOriginal(o, r.WellKnownSymbol(SymbolIterator), r.Intrinsic(IntrinsicArrayPrototypeValues))
 }
 
 // checkOriginal checks that the property key of o is a data property whose value is want.
-func (ag *agent) checkOriginal(cx *ExecutionContext, o, key, want *Object) {
-	if p := cx.peekFrom(o, key); p.kind != peekData || p.slot().o != want {
-		panic(ag.cacheFailure(nil, 0, "the cache of original properties", key, fmt.Sprintf("the function %p", want), p.String()))
+func (r *realmPart) checkOriginal(o, key, want *Object) {
+	if p := r.peekFrom(o, key); p.kind != peekData || p.slot().o != want {
+		panic(originalFailure("the cache of original properties", key, fmt.Sprintf("the function %p", want), p.String()))
 	}
 }
 
 // checkUnmodifiedRegExp checks that o finds the properties recorded by
 // [ExecutionContext.RecordRegExpOriginals].
-func (cx *ExecutionContext) checkUnmodifiedRegExp(o *Object) {
-	proto := cx.Intrinsic(IntrinsicRegExpPrototype)
-	for i := range cx.realm.regExpOriginals.props {
-		q := &cx.realm.regExpOriginals.props[i]
+func (r *realmPart) checkUnmodifiedRegExp(o *Object) {
+	proto := r.Intrinsic(IntrinsicRegExpPrototype)
+	for i := range r.regExpOriginals.props {
+		q := &r.regExpOriginals.props[i]
 		start := q.holder
 		if start == proto {
 			start = o
 		}
-		p := cx.peekFrom(start, q.key)
+		p := r.peekFrom(start, q.key)
 		ok := p.holder == q.holder
 		switch p.kind {
 		case peekData:
@@ -441,21 +448,21 @@ func (cx *ExecutionContext) checkUnmodifiedRegExp(o *Object) {
 			ok = false
 		}
 		if !ok {
-			panic(cx.cacheFailure(nil, 0, "the cache of RegExp properties", q.key, fmt.Sprintf("the function %p", q.value), p.String()))
+			panic(originalFailure("the cache of RegExp properties", q.key, fmt.Sprintf("the function %p", q.value), p.String()))
 		}
 	}
 }
 
 // checkRegExpShape checks that the own lastIndex property of o is a writable data property in slot
 // 0, if o has the shape that says so.
-func (cx *ExecutionContext) checkRegExpShape(o *Object) {
-	s := cx.realm.shapes.regExp
+func (r *realmPart) checkRegExpShape(o *Object) {
+	s := r.shapes.regExp
 	if s == nil || o.shape != s {
 		return
 	}
-	p, _ := cx.peekOwn(o, cx.Key(KeyLastIndex))
-	if p.kind != peekData || p.prop.slot != 0 || p.prop.flags != FlagWritable || s.proto != cx.Intrinsic(IntrinsicRegExpPrototype) {
-		panic(cx.cacheFailure(nil, 0, "the RegExp shape", cx.Key(KeyLastIndex), "the slot 0", p.String()))
+	p, _ := r.peekOwn(o, r.Key(KeyLastIndex))
+	if p.kind != peekData || p.prop.slot != 0 || p.prop.flags != FlagWritable || s.proto != r.Intrinsic(IntrinsicRegExpPrototype) {
+		panic(originalFailure("the RegExp shape", r.Key(KeyLastIndex), "the slot 0", p.String()))
 	}
 }
 
@@ -490,10 +497,10 @@ func (c *sparseIndexCache) checkSparseIndices(s *shape) {
 }
 
 // checkReturnedProperty checks the answer of e, the entry of the property that c returns of this.
-func (c *funcProto) checkReturnedProperty(this Value, e *cacheEntry) {
+func (cx *ExecutionContext) checkReturnedProperty(c *funcProto, this Value, e *cacheEntry) {
 	get := c.code[1]
 	if get.Op != bytecode.OpGetProp {
 		panic(validationFailure(c, 1, "the property that the function returns is not read here"))
 	}
-	c.realm.executionContext().checkEntryRead(c, 1, this, this.o, c.keys[get.C], e)
+	cx.contextOf(c.realm).checkEntryRead(c, 1, this, this.o, c.keys[get.C], e)
 }

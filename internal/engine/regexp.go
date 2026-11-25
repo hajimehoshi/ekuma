@@ -504,11 +504,11 @@ func (q QuietContext) UnmodifiedRegExpMatcher(o *Object) *regexp.Regexp {
 
 // hasRegExpShape reports whether o has the shape of a new RegExp object whose prototype is
 // %RegExp.prototype%, so that its only own property is a writable lastIndex in slot 0.
-func (cx *ExecutionContext) hasRegExpShape(o *Object) bool {
+func (r *realmPart) hasRegExpShape(o *Object) bool {
 	if validateExec {
-		cx.checkRegExpShape(o)
+		r.checkRegExpShape(o)
 	}
-	s := cx.realm.shapes.regExp
+	s := r.shapes.regExp
 	return s != nil && o.shape == s
 }
 

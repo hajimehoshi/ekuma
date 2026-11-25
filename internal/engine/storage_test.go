@@ -63,7 +63,7 @@ var objectStorageExceptions = map[string]storageException{
 		count:  1,
 		reason: "creates the object; a helper adds a write barrier sequence",
 	},
-	"ExecutionContext.NewArrayPair": {
+	"realmPart.NewArrayPair": {
 		count:  1,
 		reason: "creates the object; a helper adds a write barrier sequence",
 	},

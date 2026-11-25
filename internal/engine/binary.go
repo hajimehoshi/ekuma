@@ -716,7 +716,7 @@ func typedArrayFlags(o *Object) uint8 {
 }
 
 // typedArrayHas implements IsValidIntegerIndex for an array index.
-func (ag *agent) typedArrayHas(o *Object, i uint32) bool {
+func typedArrayHas(o *Object, i uint32) bool {
 	t := o.extState().(*TypedArray)
 	if _, ok := t.element(i); ok {
 		return true
@@ -736,7 +736,7 @@ func (ag *agent) typedArrayLength(o *Object) int {
 
 // typedArrayDefine implements [[DefineOwnProperty]] of a typed array for an array index.
 func (cx *ExecutionContext) typedArrayDefine(o *Object, i uint32, d PropDesc) bool {
-	if !cx.typedArrayHas(o, i) {
+	if !typedArrayHas(o, i) {
 		return false
 	}
 	if typedArrayImmutable(o) {

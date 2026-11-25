@@ -32,7 +32,7 @@ const minShrinkElems = 64
 const shiftCopyElems = 32
 
 // ArrayCreate implements ArrayCreate.
-func (cx *ExecutionContext) ArrayCreate(length uint32, proto *Object) *Object {
+func (r *realmPart) ArrayCreate(length uint32, proto *Object) *Object {
 	var a *Object
 	if length > 0 && length <= maxPresizedElems {
 		// The array is usually filled up to its length afterwards.
@@ -40,12 +40,12 @@ func (cx *ExecutionContext) ArrayCreate(length uint32, proto *Object) *Object {
 		a, elems = newObjectWithStorage(int(length))
 		a.kind = kindArray
 		a.class = classArray
-		a.shape = cx.realm.shapes.array
+		a.shape = r.shapes.array
 		a.initElems(elems[:0])
 	} else {
-		a = cx.NewArray(nil)
+		a = r.NewArray(nil)
 	}
-	cx.setProto(a, proto)
+	r.setProto(a, proto)
 	a.length = length
 	return a
 }
@@ -135,7 +135,7 @@ func (o *Object) isDense() bool {
 // elemsMovable reports whether moving the elements of the array o by index, holes included,
 // does what moving them one by one with HasProperty, Set and DeletePropertyOrThrow does, and
 // whether o accepts changes to its elements and its length.
-func (ag *agent) elemsMovable(o *Object) bool {
+func (o *Object) elemsMovable() bool {
 	if o.kind != kindArray || int(o.length) != len(o.elems) || o.flags&(objSparse|objNotExtensible|objFrozenLength) != 0 {
 		return false
 	}
@@ -144,17 +144,17 @@ func (ag *agent) elemsMovable(o *Object) bool {
 
 // arrayCtorPlain reports whether creating the result of a method for the array o
 // makes a plain array, because o has the original constructor.
-func (cx *ExecutionContext) arrayCtorPlain(o *Object) bool {
-	if o.shape != cx.realm.shapes.array {
+func (r *realmPart) arrayCtorPlain(o *Object) bool {
+	if o.shape != r.shapes.array {
 		return false
 	}
-	ctor := cx.Intrinsic(IntrinsicArray)
-	c := cx.Quiet().lookupDataSlot(cx.Intrinsic(IntrinsicArrayPrototype), cx.Key(KeyConstructor))
+	ctor := r.Intrinsic(IntrinsicArray)
+	c := r.executionContext().Quiet().lookupDataSlot(r.Intrinsic(IntrinsicArrayPrototype), r.Key(KeyConstructor))
 	if c.holder == nil || c.value().o != ctor {
 		return false
 	}
-	p, found := ctor.getOwn(cx.WellKnownSymbol(SymbolSpecies))
-	return found && p.flags&FlagAccessor != 0 && ctor.slots[p.slot].accessor().getter == cx.Intrinsic(IntrinsicArraySpeciesGetter)
+	p, found := ctor.getOwn(r.WellKnownSymbol(SymbolSpecies))
+	return found && p.flags&FlagAccessor != 0 && ctor.slots[p.slot].accessor().getter == r.Intrinsic(IntrinsicArraySpeciesGetter)
 }
 
 // ArraySpeciesCreatePlain returns a new array of the length n with the prototype
@@ -170,8 +170,8 @@ func (q QuietContext) ArraySpeciesCreatePlain(o *Object, n int64) (*Object, bool
 
 // newElementsPlain reports whether storing a new element in the array o defines it as an own
 // data property without consulting a prototype.
-func (cx *ExecutionContext) newElementsPlain(o *Object) bool {
-	return o.shape.proto == cx.Intrinsic(IntrinsicArrayPrototype) && cx.arrayProtoPlain()
+func (r *realmPart) newElementsPlain(o *Object) bool {
+	return o.shape.proto == r.Intrinsic(IntrinsicArrayPrototype) && r.arrayProtoPlain()
 }
 
 // AppendElements adds vals at the end of the array o and returns the new length.
@@ -264,7 +264,7 @@ func (ag *agent) observePush(o *Object) {
 // PrependElements adds vals at the start of the array o and returns the new length.
 func (q QuietContext) PrependElements(o *Object, vals []Value) (uint32, bool) {
 	cx := q.cx
-	if !cx.elemsMovable(o) || !cx.newElementsPlain(o) {
+	if !o.elemsMovable() || !cx.newElementsPlain(o) {
 		return 0, false
 	}
 	n, k := len(o.elems), len(vals)
@@ -551,7 +551,7 @@ func (q QuietContext) SpliceElements(o *Object, length, start, del int64, items 
 	if length != int64(len(o.elems)) || start < 0 || start > length || del < 0 || del > length-start {
 		return nil, false
 	}
-	if !cx.elemsMovable(o) || !cx.arrayCtorPlain(o) || !cx.arrayProtoPlain() {
+	if !o.elemsMovable() || !cx.arrayCtorPlain(o) || !cx.arrayProtoPlain() {
 		return nil, false
 	}
 	removed := appendPolled(&cx.poller, nil, o.elems[start:start+del])

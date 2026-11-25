@@ -5,7 +5,6 @@
 
 # Store to raw storage, refer to it, or create objects.
 [stores]
-ExecutionContext.ArrayCreate Object.class:write Object.kind:write Object.length:write Object.shape:write
 ExecutionContext.BoundFunctionCreate Object.class:write Object.fn:write Object.kind:write Object.pinned:write Object.shape:write objectProperties.slots:write
 ExecutionContext.CreateIterResultObject Object.kind:lit Object.pinned:lit Object.shape:lit Value.o:lit objectProperties.slots:write
 ExecutionContext.DefineMatchResultProperties Object.shape:write objectProperties.slots:read objectProperties.slots:write*2
@@ -28,12 +27,10 @@ ExecutionContext.NewHTMLDDA Object.kind:write Value.o:lit
 ExecutionContext.NewIntlObject Object.class:write
 ExecutionContext.NewIteratorObject Object.class:write
 ExecutionContext.NewLazyObject Object.class:write Object.flags:write
-ExecutionContext.NewMapObject Object.class:write
 ExecutionContext.NewModuleSourceObject Object.class:write
 ExecutionContext.NewNativeWithState Object.class:lit Object.ext:lit Object.flags:lit Object.fn:write Object.kind:lit Object.shape:lit
 ExecutionContext.NewNumberObject Object.class:write
 ExecutionContext.NewRawJSONObject Object.class:write
-ExecutionContext.NewSetObject Object.class:write
 ExecutionContext.NewShadowRealmObject Object.class:write
 ExecutionContext.NewSharedArrayBufferObject Object.class:write Object.ext:write
 ExecutionContext.NewStringObject Object.class:write
@@ -73,7 +70,6 @@ ExecutionContext.initGlobalLex objectProperties.slots:write shape.lookup:read
 ExecutionContext.initRealmGlobals Object.class:write Object.pinned:write*2 shapeTable.arguments:write shapeTable.iterResult:write
 ExecutionContext.initRealmPrototypes Object.class:lit*2 Object.flags:lit Object.fn:lit Object.kind:lit*4 Object.shape:lit*4 Object.str:lit realmPart.intrinsics:write*4 shapeTable.array:write shapeTable.function:write shapeTable.materializedFunction:write shapeTable.nullProto:write shapeTable.object:write shapeTable.proxy:write shapeTable.shortStrings:write*2 shapeTable.string:write
 ExecutionContext.makeAutoAccessor Object.class:lit Object.kind:lit Object.str:lit Object.str:write
-ExecutionContext.materialize Object.flags:write Object.shape:write Value.o:lit*3
 ExecutionContext.multiplyBigInts Object.kind:write Value.o:lit
 ExecutionContext.newArguments Object.flags:write Value.o:lit objectProperties.elems:write
 ExecutionContext.newArgumentsObject Object.class:write Object.kind:write Object.pinned:write Object.shape:write Value.o:lit objectProperties.elems:write objectProperties.slots:write
@@ -87,7 +83,6 @@ ExecutionContext.ownFunctionPrototypeSlot cacheEntry.slot:write objectProperties
 ExecutionContext.pushEvalScope Object.class:write
 ExecutionContext.regExpLiteralMethod Value.o:lit*3 propCache.cacheEntry:ref propCache.second:ref
 ExecutionContext.regExpShape shapeTable.regExp:write
-ExecutionContext.replaceOwn Object.flags:write PropKey.key:write objectProperties.elems:read objectProperties.elems:write*2
 ExecutionContext.resetLentRegExp Object.shape:write objectProperties.slots:ref
 ExecutionContext.resolveGlobal PropKey.key:lit globalCache.holder:write globalCache.shape:write shape.lookup:read
 ExecutionContext.setArrayLength Object.length:write*3 objectProperties.elems:read objectProperties.elems:ref*3 objectProperties.elems:write*2 shape.lookup:read
@@ -131,15 +126,20 @@ agent.InitLazyObject Object.class:write Object.flags:write
 agent.exec *
 agent.newClassDecoration Object.ext:lit Object.kind:lit Value.o:lit
 agent.newRegExpObject Object.class:write Object.kind:write Object.shape:write objectProperties.slots:write
-agent.noArrayIteratorReturn Object.flags:write Object.getOwn:read
 agent.observePush objectMeta.shiftedCap:write objectMeta.shiftedElems:write objectProperties.elems:read
 agent.saveException Object.ext:lit Object.kind:lit Value.o:lit
 closeSignal Object.kind:lit
 evalArg objectProperties.elems:ref
 newPromiseObject Object.class:write Object.kind:write Object.shape:write
 propCache.rememberRead namedRead.count:lit namedRead.depth:lit namedRead.prop:lit namedReads.epoch:write namedReads.shapes:lit namedReads.shapes:write*2 namedReads.space:write propCache.reads:write shape.readID:write
+realmPart.ArrayCreate Object.class:write Object.kind:write Object.length:write Object.shape:write
+realmPart.NewMapObject Object.class:write
+realmPart.NewSetObject Object.class:write
+realmPart.materialize Object.flags:write Object.shape:write Value.o:lit*3
+realmPart.replaceOwn Object.flags:write PropKey.key:write objectProperties.elems:read objectProperties.elems:write*2
 setNumber *
 space.indexKey space.strings:ref*2
+space.noArrayIteratorReturn Object.flags:write Object.getOwn:read
 space.queryStringKey QueryKey.idx:lit*2 QueryKey.key:lit*4 space.strings:ref
 space.readNamedSlot Value.accessor:read cacheEntry.holder:write cacheEntry.kind:write*2 cacheEntry.ref:write cacheEntry.shape:write*2 cacheEntry.slot:write*2 objectProperties.slots:read objectProperties.slots:ref
 space.shortQueryKey QueryKey.idx:lit*2 QueryKey.key:lit*2 space.strings:ref
@@ -154,8 +154,6 @@ ElementCount objectProperties.elems:read
 ExecutionContext.CreateDataProperty objectProperties.elems:read
 ExecutionContext.HasOwnProperty objectProperties.elems:read shape.lookup:read
 ExecutionContext.QueryOwnProperty shape.lookup:read
-ExecutionContext.arrayCtorPlain Object.getOwn:read Value.accessor:read objectProperties.slots:read
-ExecutionContext.arrayProtoPlain objectProperties.elems:read
 ExecutionContext.checkGlobalDecl PropKey.key:lit*3 shape.lookup:read
 ExecutionContext.declareGlobalAnnexB PropKey.key:lit shape.lookup:read
 ExecutionContext.definePrivate shape.lookup:read
@@ -168,10 +166,10 @@ ExecutionContext.getProp shape.lookup:read
 ExecutionContext.getValue objectProperties.elems:read
 ExecutionContext.inheritsHasInstance shape.lookup:read
 ExecutionContext.iteratePlainArray objectProperties.elems:read
-ExecutionContext.lookup shape.lookup:read
 ExecutionContext.readInstancePrototype Value.accessor:read Value.o:lit*2
 ExecutionContext.setFuncName PropKey.key:lit*2 shape.lookup:read
 Object.Element objectProperties.elems:read
+Object.elemsMovable objectProperties.elems:read
 Object.isDense objectProperties.elems:read
 QuietContext.HasOwnMethod objectProperties.slots:read shape.lookup:read
 QuietContext.InheritsMethod shape.lookup:read
@@ -179,7 +177,6 @@ QuietContext.PushElements objectProperties.elems:read
 QuietContext.RegExpLastIndex objectProperties.slots:read
 QuietContext.SkipHoles objectProperties.elems:read
 QuietContext.SkipHolesBackward objectProperties.elems:read
-agent.elemsMovable objectProperties.elems:read
 arrayIterator.step objectProperties.elems:read
 arrayIterator.stepPlain objectProperties.elems:read
 dataSlot.value objectProperties.slots:read
@@ -187,6 +184,9 @@ decoratorAccessHas shape.lookup:read
 diagnosticDataProperty objectProperties.slots:read shape.lookup:read
 holesAreAbsent objectProperties.elems:read
 originalProp.find Value.accessor:read objectProperties.slots:read shape.lookup:read
+realmPart.arrayCtorPlain Object.getOwn:read Value.accessor:read objectProperties.slots:read
+realmPart.arrayProtoPlain objectProperties.elems:read
+realmPart.lookup shape.lookup:read
 takenShape objectProperties.elems:read
 
 # Create values, property keys or descriptors from their parts.

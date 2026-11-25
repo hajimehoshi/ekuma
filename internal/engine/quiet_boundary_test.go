@@ -43,17 +43,17 @@ func TestQuietContextBoundary(t *testing.T) {
 	// code: they tell that arrays and reads are plain, or read, store or take values in one step.
 	var quiet []string
 	for _, name := range []string{
-		"ExecutionContext.DefineAccessor",
-		"ExecutionContext.arrayIterationPlain",
-		"ExecutionContext.arrayProtoPlain",
-		"ExecutionContext.replaceOwn",
+		"realmPart.DefineAccessor",
+		"realmPart.arrayIterationPlain",
+		"realmPart.arrayProtoPlain",
+		"realmPart.replaceOwn",
 		"Object.Element",
 		"Object.ElementList",
 		"Object.RemoveFirstElement",
 		"Object.RemoveLastElement",
 		"Object.SetElement",
 		"Object.plainElems",
-		"agent.pairDestructuringPlain",
+		"space.pairDestructuringPlain",
 		"IsArrayPlain",
 		"takeDataProperties",
 	} {

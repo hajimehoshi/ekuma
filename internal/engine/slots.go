@@ -103,8 +103,8 @@ func (cx *ExecutionContext) NewIteratorObject(proto *Object, state any) *Object 
 }
 
 // NewMapObject returns a Map object with the prototype proto whose [[MapData]] is data.
-func (cx *ExecutionContext) NewMapObject(proto *Object, data any) *Object {
-	o := cx.NewObject(proto)
+func (r *realmPart) NewMapObject(proto *Object, data any) *Object {
+	o := r.NewObject(proto)
 	o.class = classMap
 	o.setExtState(data)
 	return o
@@ -119,8 +119,8 @@ func MapData(v Value) any {
 }
 
 // NewSetObject returns a Set object with the prototype proto whose [[SetData]] is data.
-func (cx *ExecutionContext) NewSetObject(proto *Object, data any) *Object {
-	o := cx.NewObject(proto)
+func (r *realmPart) NewSetObject(proto *Object, data any) *Object {
+	o := r.NewObject(proto)
 	o.class = classSet
 	o.setExtState(data)
 	return o

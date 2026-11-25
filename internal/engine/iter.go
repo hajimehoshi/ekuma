@@ -495,7 +495,7 @@ func (cx *ExecutionContext) iteratorCloseAll(its []Value, pending bool) {
 func (cx *ExecutionContext) closePlainArrayIterator(o *Object, nextIndex uint32, pending bool) {
 	if c := &cx.realm.arrayIter; c.epoch == cx.protoEpoch && c.noReturn {
 		if validateExec {
-			cx.checkNoIteratorReturn(cx.realmPart)
+			cx.checkNoIteratorReturn()
 		}
 		return
 	}

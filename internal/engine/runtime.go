@@ -1258,36 +1258,36 @@ func (p *funcProto) closurePrototype() *Object {
 
 // arrayProtoPlain reports whether no array index property exists on the prototypes of plain arrays,
 // so that storing a new element in such an array cannot run a setter.
-func (cx *ExecutionContext) arrayProtoPlain() bool {
-	a := cx.Intrinsic(IntrinsicArrayPrototype)
-	o := cx.Intrinsic(IntrinsicObjectPrototype)
+func (r *realmPart) arrayProtoPlain() bool {
+	a := r.Intrinsic(IntrinsicArrayPrototype)
+	o := r.Intrinsic(IntrinsicObjectPrototype)
 	return len(a.elems) == 0 && len(o.elems) == 0 && (a.flags|o.flags)&objSparse == 0 && a.shape.proto == o
 }
 
 // arrayIterationPlain reports whether o uses the original array values and next methods.
 // Reading an element can still invoke a getter.
-func (cx *ExecutionContext) arrayIterationPlain(o *Object) bool {
+func (r *realmPart) arrayIterationPlain(o *Object) bool {
 	if validateExec {
-		cx.checkPlainArray(o)
+		r.checkPlainArray(o)
 	}
-	return o.shape == cx.realm.shapes.array && cx.arrayIterationUnmodified(cx.realmPart)
+	return o.shape == r.shapes.array && r.arrayIterationUnmodified(r)
 }
 
 // arrayIterationUnmodified reports whether %Array.prototype%[@@iterator] and
 // %ArrayIteratorPrototype%.next are the original functions.
-func (ag *agent) arrayIterationUnmodified(r *realmPart) bool {
+func (sp *space) arrayIterationUnmodified(r *realmPart) bool {
 	c := &r.arrayIter
-	if c.epoch != ag.protoEpoch || !c.checked {
+	if c.epoch != sp.protoEpoch || !c.checked {
 		c.checked = true
-		c.epoch = ag.protoEpoch
+		c.epoch = sp.protoEpoch
 		q := r.executionContext().Quiet()
-		c.iter = q.lookupDataSlot(r.intrinsics[IntrinsicArrayPrototype], ag.WellKnownSymbol(SymbolIterator))
-		c.next = q.lookupDataSlot(r.intrinsics[IntrinsicArrayIteratorPrototype], ag.Key(KeyNext))
+		c.iter = q.lookupDataSlot(r.intrinsics[IntrinsicArrayPrototype], sp.WellKnownSymbol(SymbolIterator))
+		c.next = q.lookupDataSlot(r.intrinsics[IntrinsicArrayIteratorPrototype], sp.Key(KeyNext))
 		c.found = c.iter.holder != nil && c.next.holder != nil
-		c.noReturn = ag.noArrayIteratorReturn(r.intrinsics[IntrinsicArrayIteratorPrototype])
+		c.noReturn = sp.noArrayIteratorReturn(r.intrinsics[IntrinsicArrayIteratorPrototype])
 	}
 	if validateExec {
-		ag.checkArrayIteration(r)
+		r.checkArrayIteration()
 	}
 	// Assigning to an existing data property does not move protoEpoch, so the values are
 	// compared on every call.
@@ -1297,15 +1297,15 @@ func (ag *agent) arrayIterationUnmodified(r *realmPart) bool {
 
 // pairDestructuringPlain reports whether destructuring a new array of two elements into two
 // bindings runs nothing that JavaScript could observe.
-func (ag *agent) pairDestructuringPlain(r *realmPart) bool {
-	return ag.arrayIterationUnmodified(r) && r.arrayIter.noReturn
+func (sp *space) pairDestructuringPlain(r *realmPart) bool {
+	return sp.arrayIterationUnmodified(r) && r.arrayIter.noReturn
 }
 
 // noArrayIteratorReturn reports whether array iterators have no return method, which closing
 // one calls. The prototypes that it looks at count as prototypes from then on, so that adding a
 // property to one moves protoEpoch.
-func (ag *agent) noArrayIteratorReturn(proto *Object) bool {
-	key := ag.Key(KeyReturn)
+func (sp *space) noArrayIteratorReturn(proto *Object) bool {
+	key := sp.Key(KeyReturn)
 	for p := proto; p != nil; p = p.shape.proto {
 		p.flags |= objIsProto
 		if _, ok := p.getOwn(key); ok || p.flags&objExotic != 0 {

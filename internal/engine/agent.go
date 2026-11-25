@@ -944,8 +944,8 @@ func TypedArrayPrototypeIntrinsic(t element.Type) Intrinsic {
 }
 
 // Intrinsic returns the intrinsic object id of the execution realm, or nil before it is set.
-func (cx *ExecutionContext) Intrinsic(id Intrinsic) *Object {
-	return cx.realm.intrinsics[id]
+func (r *realmPart) Intrinsic(id Intrinsic) *Object {
+	return r.intrinsics[id]
 }
 
 // IntrinsicValue returns the intrinsic object id of the execution realm, which must be set, as a value.

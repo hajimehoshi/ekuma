@@ -42,8 +42,8 @@ func (cx *ExecutionContext) KeyOfString(s wtf8.String) PropKey {
 }
 
 // indexName returns the key under which the array index i is stored in a shape.
-func (cx *ExecutionContext) indexName(i uint32) *Object {
-	return cx.Intern(wtf8.String(strconv.FormatUint(uint64(i), 10)))
+func (r *realmPart) indexName(i uint32) *Object {
+	return r.Intern(wtf8.String(strconv.FormatUint(uint64(i), 10)))
 }
 
 // indexKey returns the interned key for the index i, or nil when the key is not interned,
@@ -334,7 +334,7 @@ func dataDesc(v Value, flags uint8) PropDesc {
 
 // materialize creates the properties that a function has from the start but that are only
 // stored once something looks at them.
-func (cx *ExecutionContext) materialize(o *Object) {
+func (r *realmPart) materialize(o *Object) {
 	if o.fn.materialized {
 		return
 	}
@@ -344,16 +344,16 @@ func (cx *ExecutionContext) materialize(o *Object) {
 	if r := o.shape.realm; o.shape == r.shapes.function {
 		o.shape = r.shapes.materializedFunction
 	} else {
-		cx.rebuildShape(o, o.shape.proto, ordinaryRoot)
+		r.rebuildShape(o, o.shape.proto, ordinaryRoot)
 	}
 	if c := f.code; c != nil {
-		cx.add(o, cx.Key(KeyLength), Number(float64(c.length)), FlagConfigurable)
-		cx.add(o, cx.Key(KeyName), cx.SharedString(c.name), FlagConfigurable)
+		r.add(o, r.Key(KeyLength), Number(float64(c.length)), FlagConfigurable)
+		r.add(o, r.Key(KeyName), r.SharedString(c.name), FlagConfigurable)
 		if c.legacyCallerArguments {
 			// Accessors, as the values change while the properties are neither writable nor
 			// configurable.
-			cx.add(o, cx.Key(keyArguments), newAccessor(c.realm.intrinsics[IntrinsicFunctionArgumentsGetter], nil), FlagAccessor)
-			cx.add(o, cx.Key(keyCaller), newAccessor(c.realm.intrinsics[IntrinsicFunctionCallerGetter], nil), FlagAccessor)
+			r.add(o, r.Key(keyArguments), newAccessor(c.realm.intrinsics[IntrinsicFunctionArgumentsGetter], nil), FlagAccessor)
+			r.add(o, r.Key(keyCaller), newAccessor(c.realm.intrinsics[IntrinsicFunctionCallerGetter], nil), FlagAccessor)
 		}
 		switch {
 		case c.isGenerator:
@@ -361,17 +361,17 @@ func (cx *ExecutionContext) materialize(o *Object) {
 			if c.isAsync {
 				proto = c.realm.intrinsics[IntrinsicAsyncGeneratorPrototype]
 			}
-			p := newObject(cx.shapeForRealm(proto, c.realm))
-			cx.add(o, cx.Key(KeyPrototype), Value{o: p}, FlagWritable)
+			p := newObject(r.shapeForRealm(proto, c.realm))
+			r.add(o, r.Key(KeyPrototype), Value{o: p}, FlagWritable)
 		case f.constructor:
 			proto := c.realm.intrinsics[IntrinsicObjectPrototype]
-			p := newObject(cx.shapeForRealm(proto, c.realm))
-			cx.add(p, cx.Key(KeyConstructor), Value{o: o}, FlagsHidden)
+			p := newObject(r.shapeForRealm(proto, c.realm))
+			r.add(p, r.Key(KeyConstructor), Value{o: o}, FlagsHidden)
 			flags := FlagWritable
 			if f.classConstructor {
 				flags = 0
 			}
-			cx.add(o, cx.Key(KeyPrototype), Value{o: p}, flags)
+			r.add(o, r.Key(KeyPrototype), Value{o: p}, flags)
 		}
 		return
 	}
@@ -379,8 +379,8 @@ func (cx *ExecutionContext) materialize(o *Object) {
 	if f.info != nil {
 		length = f.info.length
 	}
-	cx.add(o, cx.Key(KeyLength), Number(float64(length)), FlagConfigurable)
-	cx.add(o, cx.Key(KeyName), cx.SharedString(f.nativeName()), FlagConfigurable)
+	r.add(o, r.Key(KeyLength), Number(float64(length)), FlagConfigurable)
+	r.add(o, r.Key(KeyName), r.SharedString(f.nativeName()), FlagConfigurable)
 }
 
 // isLazyKey reports whether key names a property that materialize creates.
@@ -462,7 +462,7 @@ func (r namedLookup) length(receiver Value) Value {
 }
 
 // lookup finds the named property key on o and its prototype chain.
-func (cx *ExecutionContext) lookup(o *Object, key *Object) namedLookup {
+func (r *realmPart) lookup(o *Object, key *Object) namedLookup {
 	for h := o; h != nil; h = h.shape.proto {
 		switch h.shape.family {
 		case delegatedRoot:
@@ -471,7 +471,7 @@ func (cx *ExecutionContext) lookup(o *Object, key *Object) namedLookup {
 				holder: h,
 			}
 		case arrayRoot, primitiveStringRoot:
-			if key == cx.Key(KeyLength) {
+			if key == r.Key(KeyLength) {
 				return namedLookup{
 					kind:   lookupLength,
 					holder: h,
@@ -485,8 +485,8 @@ func (cx *ExecutionContext) lookup(o *Object, key *Object) namedLookup {
 				}
 			}
 		case lazyFunctionRoot:
-			if cx.isLazyKey(key) {
-				cx.materialize(h)
+			if r.isLazyKey(key) {
+				r.materialize(h)
 			}
 		}
 		if p, ok := h.shape.lookup(key); ok {
@@ -935,7 +935,7 @@ func (q QuietContext) HasOwnPropertyPlain(o *Object, k Value) (has, ok bool) {
 		}
 		switch o.class {
 		case classTypedArray:
-			return cx.typedArrayHas(o, key.idx), true
+			return typedArrayHas(o, key.idx), true
 		case classString:
 			s := o.extState().(*Object)
 			if uint(key.idx) < uint(s.StringLength()) {
@@ -984,7 +984,7 @@ func (cx *ExecutionContext) HasProperty(o *Object, k PropKey) bool {
 				}
 			case classTypedArray:
 				if isNumericKey(k) {
-					return k.key == nil && cx.typedArrayHas(h, k.idx)
+					return k.key == nil && typedArrayHas(h, k.idx)
 				}
 			}
 		}
@@ -1396,7 +1396,7 @@ func (cx *ExecutionContext) setProp(o *Object, k PropKey, val Value, receiver Va
 				cx.typedArraySetElement(h.extState().(*TypedArray), k.idx, val)
 				return true
 			}
-			if !cx.typedArrayHas(h, k.idx) {
+			if !typedArrayHas(h, k.idx) {
 				return true
 			}
 		}
@@ -1551,23 +1551,23 @@ func (d *PropDesc) attrMask() uint8 {
 }
 
 // replaceOwn stores the value and attributes of the existing own property k of o.
-func (cx *ExecutionContext) replaceOwn(o *Object, k PropKey, val Value, flags uint8) {
+func (r *realmPart) replaceOwn(o *Object, k PropKey, val Value, flags uint8) {
 	if k.key == nil {
 		if int64(k.idx) < int64(len(o.elems)) && !o.elems[k.idx].isHole() {
 			if flags == FlagsData {
 				o.elems[k.idx] = val
-				cx.touchProto(o)
+				r.touchProto(o)
 				return
 			}
 			// The property no longer fits in elems.
 			o.elems[k.idx] = hole
 			o.flags |= objSparse
-			cx.add(o, cx.indexName(k.idx), val, flags)
+			r.add(o, r.indexName(k.idx), val, flags)
 			return
 		}
-		k.key = cx.indexName(k.idx)
+		k.key = r.indexName(k.idx)
 	}
-	cx.Define(o, k.key, val, flags)
+	r.Define(o, k.key, val, flags)
 }
 
 // defineArrayLength implements ArraySetLength.
@@ -1629,7 +1629,7 @@ func (cx *ExecutionContext) DeleteProp(o *Object, k PropKey) bool {
 		}
 		switch o.class {
 		case classTypedArray:
-			return !cx.typedArrayHas(o, k.idx)
+			return !typedArrayHas(o, k.idx)
 		case classString:
 			if uint(k.idx) < uint(o.extState().(*Object).StringLength()) {
 				return false

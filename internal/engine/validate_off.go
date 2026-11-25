@@ -67,18 +67,18 @@ func (cx *ExecutionContext) checkInstanceofHit(*funcProto, int, Value, *Object, 
 
 func (cx *ExecutionContext) checkInstanceShape(*funcProto, int, *Object, *realmPart, *shape) {}
 
-func (ag *agent) checkArrayIteration(*realmPart) {}
+func (r *realmPart) checkArrayIteration() {}
 
-func (ag *agent) checkNoIteratorReturn(*realmPart) {}
+func (r *realmPart) checkNoIteratorReturn() {}
 
-func (cx *ExecutionContext) checkPlainArray(*Object) {}
+func (r *realmPart) checkPlainArray(*Object) {}
 
-func (cx *ExecutionContext) checkUnmodifiedRegExp(*Object) {}
+func (r *realmPart) checkUnmodifiedRegExp(*Object) {}
 
-func (cx *ExecutionContext) checkRegExpShape(*Object) {}
+func (r *realmPart) checkRegExpShape(*Object) {}
 
 func (s *shape) checkEnumerable() {}
 
 func (c *sparseIndexCache) checkSparseIndices(*shape) {}
 
-func (c *funcProto) checkReturnedProperty(Value, *cacheEntry) {}
+func (cx *ExecutionContext) checkReturnedProperty(*funcProto, Value, *cacheEntry) {}

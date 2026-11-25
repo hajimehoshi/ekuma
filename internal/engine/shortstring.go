@@ -16,11 +16,11 @@ func (v Value) isShortString() bool {
 	return v.IsString() && len(v.o.str) <= shortstrings.MaxBytes
 }
 
-func (cx *ExecutionContext) shortString(s wtf8.String) Value {
+func (r *realmPart) shortString(s wtf8.String) Value {
 	// The immutable sentinel carries the byte length and the originating realm.
 	return Value{
 		n: math.Float64frombits(shortstrings.Pack(s)),
-		o: &cx.realm.shapes.shortStrings[len(s)],
+		o: &r.shapes.shortStrings[len(s)],
 	}
 }
 
@@ -146,20 +146,20 @@ func (v Value) writeShortString(b *strings.Builder) {
 }
 
 // Substring returns the code units of s from start up to end, which must be in range and in order.
-func (cx *ExecutionContext) Substring(s Value, start, end int) Value {
+func (r *realmPart) Substring(s Value, start, end int) Value {
 	if !s.isShortString() {
-		return cx.NewString(s.o.Substring(start, end))
+		return r.NewString(s.o.Substring(start, end))
 	}
 	if start == end {
-		return cx.strings.empty
+		return r.strings.empty
 	}
 	data, n := shortstrings.Slice(math.Float64bits(s.n), start, end)
 	if n == 1 && byte(data) < 0x80 {
-		return cx.strings.character(byte(data))
+		return r.strings.character(byte(data))
 	}
 	return Value{
 		n: math.Float64frombits(data),
-		o: &cx.realm.shapes.shortStrings[n],
+		o: &r.shapes.shortStrings[n],
 	}
 }
 

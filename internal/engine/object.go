@@ -789,12 +789,12 @@ type shapeTable struct {
 }
 
 // newShape returns a new empty shared shape for objects whose prototype is proto.
-func (cx *ExecutionContext) newShape(proto *Object, r *realmPart, family shapeFamily) *shape {
+func (sp *space) newShape(proto *Object, r *realmPart, family shapeFamily) *shape {
 	if proto != nil {
 		proto.flags |= objIsProto
 	}
 	return &shape{
-		space:  cx.space,
+		space:  sp,
 		realm:  r,
 		proto:  proto,
 		family: family,
@@ -803,30 +803,30 @@ func (cx *ExecutionContext) newShape(proto *Object, r *realmPart, family shapeFa
 }
 
 // shapeFor returns the ordinary root shape in the current realm for prototype proto, which may be nil.
-func (cx *ExecutionContext) shapeFor(proto *Object) *shape {
-	return cx.shapeForRealm(proto, cx.realmPart)
+func (r *realmPart) shapeFor(proto *Object) *shape {
+	return r.shapeForRealm(proto, r)
 }
 
 // shapeForRealm returns the ordinary root shape in r for prototype proto, which may be nil.
-func (cx *ExecutionContext) shapeForRealm(proto *Object, r *realmPart) *shape {
+func (sp *space) shapeForRealm(proto *Object, r *realmPart) *shape {
 	if proto == nil {
 		return r.shapes.nullProto[ordinaryRoot]
 	}
-	return proto.ensureMeta().protoShapes.forRealm(cx, proto, r, ordinaryRoot)
+	return proto.ensureMeta().protoShapes.forRealm(sp, proto, r, ordinaryRoot)
 }
 
 // rootShape selects the tree of layouts shared by receivers of this family, prototype and realm.
-func (cx *ExecutionContext) rootShape(proto *Object, r *realmPart, family shapeFamily) *shape {
+func (sp *space) rootShape(proto *Object, r *realmPart, family shapeFamily) *shape {
 	if family == ordinaryRoot {
-		return cx.shapeForRealm(proto, r)
+		return sp.shapeForRealm(proto, r)
 	}
 	if family >= delegatedRoot {
-		return cx.newShape(proto, r, family)
+		return sp.newShape(proto, r, family)
 	}
 	if proto == nil {
 		s := &r.shapes.nullProto[family]
 		if *s == nil {
-			*s = cx.newShape(nil, r, family)
+			*s = sp.newShape(nil, r, family)
 		}
 		return *s
 	}
@@ -834,7 +834,7 @@ func (cx *ExecutionContext) rootShape(proto *Object, r *realmPart, family shapeF
 	if m.otherProtoShapes == nil {
 		m.otherProtoShapes = new([delegatedRoot - arrayRoot]prototypeShapeCache)
 	}
-	return m.otherProtoShapes[family-arrayRoot].forRealm(cx, proto, r, family)
+	return m.otherProtoShapes[family-arrayRoot].forRealm(sp, proto, r, family)
 }
 
 type prototypeShapeCache struct {
@@ -843,31 +843,31 @@ type prototypeShapeCache struct {
 	foreign weak.Pointer[shape]
 }
 
-func (c *prototypeShapeCache) forRealm(cx *ExecutionContext, proto *Object, r *realmPart, family shapeFamily) *shape {
+func (c *prototypeShapeCache) forRealm(sp *space, proto *Object, r *realmPart, family shapeFamily) *shape {
 	if proto.shape.realm != r {
 		if s := c.foreign.Value(); s != nil && s.realm == r {
 			return s
 		}
-		s := cx.newShape(proto, r, family)
+		s := sp.newShape(proto, r, family)
 		c.foreign = weak.Make(s)
 		return s
 	}
 	// The shape is stored on proto, so that it and the shapes derived from it are collected
 	// together with proto.
 	if c.local == nil {
-		c.local = cx.newShape(proto, r, family)
+		c.local = sp.newShape(proto, r, family)
 	}
 	return c.local
 }
 
 // functionShapeFor returns the root for functions whose initial named properties are still implicit.
-func (cx *ExecutionContext) functionShapeFor(proto *Object) *shape {
-	return cx.rootShape(proto, cx.realmPart, lazyFunctionRoot)
+func (r *realmPart) functionShapeFor(proto *Object) *shape {
+	return r.rootShape(proto, r, lazyFunctionRoot)
 }
 
 // NewObject returns a new empty object with the prototype proto, which may be nil.
-func (cx *ExecutionContext) NewObject(proto *Object) *Object {
-	return newObject(cx.shapeFor(proto))
+func (r *realmPart) NewObject(proto *Object) *Object {
+	return newObject(r.shapeFor(proto))
 }
 
 func newObject(s *shape) *Object {
@@ -925,11 +925,7 @@ func (cx *ExecutionContext) NewOrdinaryObject() *Object {
 }
 
 // NewArray returns a new array with the given elements, which it keeps.
-func (cx *ExecutionContext) NewArray(elems []Value) *Object {
-	return cx.realm.newArray(elems)
-}
-
-func (r *realmPart) newArray(elems []Value) *Object {
+func (r *realmPart) NewArray(elems []Value) *Object {
 	return (&propertyObject{
 		kind:   kindArray,
 		class:  classArray,
@@ -1133,12 +1129,12 @@ type objectWith[S any] struct {
 }
 
 // NewArrayPair returns a new array with the elements a and b.
-func (cx *ExecutionContext) NewArrayPair(a, b Value) *Object {
+func (r *realmPart) NewArrayPair(a, b Value) *Object {
 	p := &pairArray{
 		kind:   kindArray,
 		class:  classArray,
 		pinned: pinnedElems,
-		shape:  cx.realm.shapes.array,
+		shape:  r.shapes.array,
 		length: 2,
 		pair:   [2]Value{a, b},
 	}
@@ -1318,22 +1314,22 @@ const internedMinSweep = 1 << 10
 const internedInitialSize = 896
 
 // NewString returns the string s as a value.
-func (cx *ExecutionContext) NewString(s wtf8.String) Value {
+func (r *realmPart) NewString(s wtf8.String) Value {
 	switch len(s) {
 	case 0:
-		return cx.strings.empty
+		return r.strings.empty
 	case 1:
 		if s[0] < 0x80 {
-			return cx.strings.character(s[0])
+			return r.strings.character(s[0])
 		}
 	}
 	if len(s) <= shortstrings.MaxBytes {
-		return cx.shortString(s)
+		return r.shortString(s)
 	}
 	return Value{
 		o: &Object{
 			kind:  kindString,
-			shape: cx.realm.shapes.string,
+			shape: r.shapes.string,
 			str:   s,
 		},
 	}
@@ -1341,19 +1337,19 @@ func (cx *ExecutionContext) NewString(s wtf8.String) Value {
 
 // SharedString returns the string s as a value that may be the same object as a property key
 // with the same contents.
-func (cx *ExecutionContext) SharedString(s wtf8.String) Value {
-	if o := cx.strings.lookup(s); o != nil {
+func (r *realmPart) SharedString(s wtf8.String) Value {
+	if o := r.strings.lookup(s); o != nil {
 		return ObjectValue(o)
 	}
-	return cx.NewString(s)
+	return r.NewString(s)
 }
 
 // Intern returns the string s as a property key.
-func (cx *ExecutionContext) Intern(s wtf8.String) *Object {
-	if o := cx.strings.lookup(s); o != nil {
+func (r *realmPart) Intern(s wtf8.String) *Object {
+	if o := r.strings.lookup(s); o != nil {
 		return o
 	}
-	return cx.strings.add(s, cx.realm.shapes.string)
+	return r.strings.add(s, r.shapes.string)
 }
 
 // isKept reports whether the interned string o is kept alive with its agent.
@@ -1558,12 +1554,12 @@ func (o *Object) Substring(start, end int) wtf8.String {
 }
 
 // UnitString returns the string that consists of the code unit u.
-func (cx *ExecutionContext) UnitString(u uint16) Value {
+func (r *realmPart) UnitString(u uint16) Value {
 	if u < 0x80 {
-		return cx.strings.character(byte(u))
+		return r.strings.character(byte(u))
 	}
 	var buf [utf8.UTFMax]byte
-	return cx.shortString(wtf8.String(wtf8.AppendRune(buf[:0], rune(u))))
+	return r.shortString(wtf8.String(wtf8.AppendRune(buf[:0], rune(u))))
 }
 
 // getOwn returns the own named property key of o.
@@ -1663,23 +1659,23 @@ func (o *Object) shareShape() {
 // Define creates or replaces the own named property key of o with the given attributes,
 // without any of the checks of the JavaScript operations. An object of
 // [ExecutionContext.NewLazyObject] must be initialized already.
-func (cx *ExecutionContext) Define(o *Object, key *Object, val Value, flags uint8) {
+func (r *realmPart) Define(o *Object, key *Object, val Value, flags uint8) {
 	if validateExec && o.class == classLazy {
 		panic("engine: property definition on an uninitialized lazy object")
 	}
 	if o.flags&objExotic != 0 && o.fn != nil {
-		cx.materialize(o)
+		r.materialize(o)
 	}
 	p, ok := o.shape.lookup(key)
 	if !ok {
-		cx.add(o, key, val, flags)
+		r.add(o, key, val, flags)
 		return
 	}
 	if p.flags != flags {
-		cx.setFlags(o, key, p, flags)
+		r.setFlags(o, key, p, flags)
 	}
 	o.slots[p.slot] = val
-	cx.touchProto(o)
+	r.touchProto(o)
 }
 
 // setFlags changes the attributes of the existing own property key of o.
@@ -1800,15 +1796,15 @@ func (o *Object) compact() {
 // setProto changes the prototype of o. It stays out of line to keep ArrayCreate small.
 //
 //go:noinline
-func (cx *ExecutionContext) setProto(o *Object, proto *Object) {
+func (sp *space) setProto(o *Object, proto *Object) {
 	if o.shape.proto != proto {
-		cx.rebuildShape(o, proto, o.shape.family)
-		cx.protoEpoch++
+		sp.rebuildShape(o, proto, o.shape.family)
+		sp.protoEpoch++
 	}
 }
 
 // rebuildShape preserves the slots of o when its prototype or named property behavior changes.
-func (cx *ExecutionContext) rebuildShape(o *Object, proto *Object, family shapeFamily) {
+func (sp *space) rebuildShape(o *Object, proto *Object, family shapeFamily) {
 	old := o.shape
 	if old.private {
 		s := old.privateCopy()
@@ -1820,7 +1816,7 @@ func (cx *ExecutionContext) rebuildShape(o *Object, proto *Object, family shapeF
 		o.shape = s
 		return
 	}
-	s := cx.rootShape(proto, old.realm, family)
+	s := sp.rootShape(proto, old.realm, family)
 	for _, k := range old.keys() {
 		p, _ := old.lookup(k)
 		s = s.with(k, p.flags)
@@ -2109,6 +2105,6 @@ func (o *Object) findUnits(sub wtf8.String, from int, backward bool, poll func()
 
 // DefineAccessor creates or replaces the own accessor property key of o with the given
 // attributes. getter and setter may be nil.
-func (cx *ExecutionContext) DefineAccessor(o *Object, key *Object, getter, setter *Object, flags uint8) {
-	cx.Define(o, key, newAccessor(getter, setter), flags|FlagAccessor)
+func (r *realmPart) DefineAccessor(o *Object, key *Object, getter, setter *Object, flags uint8) {
+	r.Define(o, key, newAccessor(getter, setter), flags|FlagAccessor)
 }

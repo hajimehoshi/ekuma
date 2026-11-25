@@ -1483,7 +1483,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 						if site := c.returnedProperty; site != nil && this.IsObject() {
 							if e := site.entry(this.o.shape); e != nil && e.kind == cacheOwn {
 								if validateExec {
-									c.checkReturnedProperty(this, e)
+									ag.active.checkReturnedProperty(c, this, e)
 								}
 								regs[i.A] = this.o.slots[e.slot]
 								continue
@@ -3054,7 +3054,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			case PairYielded:
 				if !ag.pairDestructuringPlain(pairRealm) {
 					// The outer iterator has stepped. Supply its pair to the ordinary binding.
-					regs[fp.code[pc].A] = Value{o: pairRealm.executionContext().NewArrayPair(x, y)}
+					regs[fp.code[pc].A] = Value{o: pairRealm.NewArrayPair(x, y)}
 					pc++
 					continue
 				}
@@ -3371,7 +3371,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				if site := c.returnedProperty; site != nil && !isNew && newTarget == nil && c.realm == fp.realm && callThis.IsObject() {
 					if e := site.entry(callThis.o.shape); e != nil && e.kind == cacheOwn {
 						if validateExec {
-							c.checkReturnedProperty(callThis, e)
+							ag.active.checkReturnedProperty(c, callThis, e)
 						}
 						regs[ret] = callThis.o.slots[e.slot]
 						continue
