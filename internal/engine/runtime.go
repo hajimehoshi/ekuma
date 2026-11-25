@@ -1371,7 +1371,7 @@ func (cx *ExecutionContext) CallValue(f, this Value, args ...Value) Value {
 func (cx *ExecutionContext) callOnStack(f *Object, this Value, args []Value) Value {
 	base := cx.sp
 	n := len(args)
-	if fn := f.fn; fn != nil && fn.bound == nil && fn.native == nil && !fn.classConstructor &&
+	if fn := f.fn; fn != nil && fn.bound == nil && fn.info == nil && !fn.classConstructor &&
 		!fn.code.isGenerator && !fn.code.isAsync && !cx.interrupt.Load() && len(cx.frames) < maxFrames {
 		// A plain closure gets its arguments written once, where its frame starts.
 		cx.ensureStack(base + n + fn.code.nregs + 1)
@@ -1385,7 +1385,7 @@ func (cx *ExecutionContext) callOnStack(f *Object, this Value, args []Value) Val
 	copy(cx.stack[base:], args)
 	cx.sp = base + n
 	var r Value
-	if fn := f.fn; fn != nil && fn.native != nil && !cx.interrupt.Load() {
+	if fn := f.fn; fn != nil && fn.info != nil && !cx.interrupt.Load() {
 		// A native function needs none of the other checks of callSlow.
 		r = cx.callNative(f, this, cx.stack[base:base+n:base+n], nil)
 	} else {
@@ -1410,7 +1410,7 @@ func (cx *ExecutionContext) callSlow(f *Object, this Value, args []Value, isNew 
 	if fn.bound != nil {
 		return cx.callBound(f, args)
 	}
-	if fn.native != nil {
+	if fn.info != nil {
 		return cx.callNative(f, this, args, nil)
 	}
 	c := fn.code
@@ -1478,7 +1478,7 @@ func (cx *ExecutionContext) Construct(f *Object, args []Value, newTarget *Object
 		f = b.target
 		fn = f.fn
 	}
-	if fn.native != nil {
+	if fn.info != nil {
 		r := cx.callNative(f, Undefined, args, newTarget)
 		if !r.IsObject() {
 			cx.ThrowTypeError("constructor did not return an object")
@@ -1603,7 +1603,7 @@ type (
 // are numbers call k1 or k2 instead, which must return what f returns for those arguments.
 // Either may be nil. c is the contract of the kernels.
 func (ag *agent) SetNumberKernels(f *Object, c ShortcutContract, k1 NumberKernel1, k2 NumberKernel2) {
-	info := f.fn.info
+	info := f.fn.changeableInfo()
 	if info.fast == nil {
 		info.fast = &nativeFast{}
 	}
@@ -1624,13 +1624,13 @@ const (
 // SetExtremum says that the native function f is Math.min or Math.max, as e names. The contract of
 // its number kernels holds for what the interpreter computes.
 func (ag *agent) SetExtremum(f *Object, e Extremum) {
-	f.fn.info.extremum = e
+	f.fn.changeableInfo().extremum = e
 }
 
 // SetFrameless makes calls of the native function f show no frame: stack traces leave them out,
 // and the caller of a function that f calls is the one that called f.
 func (ag *agent) SetFrameless(f *Object) {
-	f.fn.info.frameless = true
+	f.fn.changeableInfo().frameless = true
 }
 
 // MethodKernel0, MethodKernel1 and MethodKernel2 compute a function for its this value and no,
@@ -1646,7 +1646,7 @@ type (
 // try k0, k1 or k2 first. When the kernel reports true, its result must be what f returns for the
 // call. Any of them may be nil. c is the contract of the kernels.
 func (ag *agent) SetMethodKernels(f *Object, c ShortcutContract, k0 MethodKernel0, k1 MethodKernel1, k2 MethodKernel2) {
-	info := f.fn.info
+	info := f.fn.changeableInfo()
 	if info.fast == nil {
 		info.fast = &nativeFast{}
 	}
@@ -1677,7 +1677,8 @@ func (cx *ExecutionContext) NewNativeConstructor(name wtf8.String, length int, f
 // then holds for good.
 func (cx *ExecutionContext) DefineConstructorPrototype(c *Object, id Intrinsic) {
 	cx.Define(c, cx.Key(KeyPrototype), Value{o: cx.Intrinsic(id)}, 0)
-	c.fn.info.prototype, c.fn.info.fixedPrototype = id, true
+	info := c.fn.changeableInfo()
+	info.prototype, info.fixedPrototype = id, true
 }
 
 // GetNewTarget implements GetNewTarget for the running native function: it returns the

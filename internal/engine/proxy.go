@@ -57,6 +57,7 @@ func (cx *ExecutionContext) ProxyCreate(target, handler Value) *Object {
 		// of calling a function reaches them.
 		p.fn = &function{
 			native:       proxyFunction,
+			info:         &proxyInfo,
 			materialized: true,
 			constructor:  cx.IsConstructor(target.o),
 		}

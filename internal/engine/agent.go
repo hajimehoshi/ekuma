@@ -37,7 +37,7 @@ type function struct {
 
 	native NativeFunc
 
-	// info describes native functions with their own realm.
+	// info describes a native function. It is nil for any other function.
 	info *nativeInfo
 
 	bound *boundFunc
@@ -91,9 +91,12 @@ type nativeInfo struct {
 	// nil.
 	fast *nativeFast
 
-	// realm is the [[Realm]] of the function.
+	// realm is the [[Realm]] of the function, or nil for a proxy.
 	realm *realm
 }
+
+// proxyInfo describes every callable proxy. It must not be modified.
+var proxyInfo nativeInfo
 
 // nativeFast holds the forms of a native function that its callers use instead of calling it.
 type nativeFast struct {
@@ -136,6 +139,15 @@ func (k *nativeFast) callMethod(cx *ExecutionContext, this Value, args []Value) 
 		return k.method2(cx.Quiet(), this, args[0], args[1])
 	}
 	return Value{}, false
+}
+
+// changeableInfo returns the description of the native function f, which must not be a proxy, for
+// changing it.
+func (f *function) changeableInfo() *nativeInfo {
+	if f.info == &proxyInfo {
+		panic("engine: change of the description of a proxy")
+	}
+	return f.info
 }
 
 // nativeName returns the initial value of the property name of the native function f.
@@ -474,8 +486,8 @@ func (cx *ExecutionContext) growNatives() {
 
 // callNative dispatches a native call or construction. A proxy inherits its caller's context.
 func (cx *ExecutionContext) callNative(f *Object, this Value, args []Value, newTarget *Object) Value {
-	if info := f.fn.info; info != nil {
-		cx = &info.realm.context
+	if r := f.fn.info.realm; r != nil {
+		cx = &r.context
 	}
 	if previous := cx.activate(); previous != cx {
 		defer previous.activate()

@@ -3376,10 +3376,9 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				}
 				continue
 			}
-			if fn.native != nil {
-				info := fn.info
+			if info := fn.info; info != nil {
 				var k *nativeFast
-				if info != nil && !isNew && newTarget == nil {
+				if !isNew && newTarget == nil {
 					k = info.fast
 				}
 				if k != nil {
@@ -3404,8 +3403,8 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 						continue
 					}
 				}
-				// A native function of the current realm is called directly.
-				if info == nil || info.realm == fp.context.realm {
+				// A native function of the current realm and a proxy are called directly.
+				if info.realm == fp.context.realm || info.realm == nil {
 					ag.ensureStack(argBase + argc)
 					saved := ag.sp
 					ag.sp = argBase + argc
