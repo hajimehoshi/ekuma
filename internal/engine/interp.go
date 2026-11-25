@@ -2624,13 +2624,13 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 					proto = Value{o: f.fn.code.context.realm.intrinsics[IntrinsicObjectPrototype]}
 				}
 				var shape *shape
-				if proto.o == c.holder && c.next != nil && c.next.realm == f.fn.code.context.realm {
+				if proto.o == c.holder && c.next != nil && c.next.realm == f.fn.code.context.realmPart {
 					if validateExec {
-						ag.active.checkInstanceShape(fp, pc-2, proto.o, f.fn.code.context.realm, c.next)
+						ag.active.checkInstanceShape(fp, pc-2, proto.o, f.fn.code.context.realmPart, c.next)
 					}
 					shape = c.next
 				} else {
-					shape = ag.active.shapeForRealm(proto.o, f.fn.code.context.realm)
+					shape = ag.active.shapeForRealm(proto.o, f.fn.code.context.realmPart)
 					if c.kind == cacheOwn {
 						c.holder, c.next = proto.o, shape
 					}
@@ -3005,7 +3005,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 					continue
 				}
 				e := o.elems[j].o
-				if e == nil || e.shape != ag.active.realm.shapes.array || e.length < 2 || len(e.elems) < 2 || e.elems[0].isHole() || e.elems[1].isHole() || !ag.pairDestructuringPlain(ag.active.realm) {
+				if e == nil || e.shape != ag.active.realm.shapes.array || e.length < 2 || len(e.elems) < 2 || e.elems[0].isHole() || e.elems[1].isHole() || !ag.pairDestructuringPlain(ag.active.realmPart) {
 					continue
 				}
 				regs[i.B].n = it.n + 1
@@ -3019,7 +3019,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			}
 			var x, y Value
 			var st PairStep
-			pairRealm := ag.active.realm
+			pairRealm := ag.active.realmPart
 			if step := next.o.fn.iteratorPairStep(ag.active.realm); step != nil {
 				x, y, st = step(IteratorState(it))
 				if st == PairYielded {
@@ -3039,7 +3039,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			case PairYielded:
 				if !ag.pairDestructuringPlain(pairRealm) {
 					// The outer iterator has stepped. Supply its pair to the ordinary binding.
-					regs[fp.code[pc].A] = Value{o: pairRealm.context.NewArrayPair(x, y)}
+					regs[fp.code[pc].A] = Value{o: pairRealm.executionContext().NewArrayPair(x, y)}
 					pc++
 					continue
 				}
@@ -3309,7 +3309,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 
 	forward:
 		// A call with the arguments of the running function.
-		if (i.Op == bytecode.OpCallFwd || i.Op == bytecode.OpTailCallFwd) && (!regs[i.C].IsUndefined() || !ag.arrayIterationUnmodified(ag.active.realm)) {
+		if (i.Op == bytecode.OpCallFwd || i.Op == bytecode.OpTailCallFwd) && (!regs[i.C].IsUndefined() || !ag.arrayIterationUnmodified(ag.active.realmPart)) {
 			ag.frames[len(ag.frames)-1].pc = pc
 			args := ag.active.spreadArgs(ag.active.forwardedArguments(i.C)).elems
 			argc, ret, isNew, newTarget = len(args), i.A, false, nil

@@ -453,5 +453,5 @@ func NewGoConstructor(cx *ExecutionContext, name string, f NativeFunc) *Object {
 func ArraysPlain(cx *ExecutionContext) bool {
 	a := cx.NewArray(nil)
 	return cx.arrayProtoPlain() && holesAreAbsent(a) && cx.arrayCtorPlain(a) &&
-		cx.arrayIterationPlain(a) && cx.pairDestructuringPlain(cx.realm)
+		cx.arrayIterationPlain(a) && cx.pairDestructuringPlain(cx.realmPart)
 }

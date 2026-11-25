@@ -106,7 +106,7 @@ func (g *generator) asyncFunctionResume(mode ResumeMode, v Value) {
 			// for a promise that resolves to itself.
 			g.f, g.fp, g.this = f, fp, this
 			g.underFrame(func() {
-				cx.resolvePromise(cx.realm, promise, r)
+				cx.resolvePromise(cx.realmPart, promise, r)
 			})
 			g.complete()
 			return

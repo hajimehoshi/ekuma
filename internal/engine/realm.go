@@ -8,22 +8,57 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
-// realm is a Realm Record.
-type realm struct {
-	// context is shared by jobs bound to this realm.
-	context ExecutionContext
-
+// realmPart is the storage state of a realm, which the realm embeds.
+type realmPart struct {
 	intrinsics [intrinsicCount]*Object
 
-	exceptionReporter func(Value, ExceptionLocation)
+	shapes shapeTable
 
-	// asyncFromSyncProto is %AsyncFromSyncIteratorPrototype%, or nil until it is needed.
-	asyncFromSyncProto *Object
+	arrayIter arrayIterCache
+
+	regExpOriginals regExpOriginals
 
 	global *Object
 
 	// globalThis is the global this value, which a host can set to a global proxy.
 	globalThis *Object
+
+	// globalLex holds the top-level let, const and class declarations.
+	globalLex *Object
+
+	// objectTagStrings are results of Object.prototype.toString, by tag.
+	objectTagStrings map[wtf8.String]Value
+
+	// strictCallee is the callee property of unmapped arguments objects, or the zero value
+	// until it is needed.
+	strictCallee Value
+
+	// regExpFlagStrings holds the value of the flags getter for each set of the 8 flags, once
+	// computed. It is nil until it is needed.
+	regExpFlagStrings *[1 << 8]Value
+
+	// asyncFromSyncProto is %AsyncFromSyncIteratorPrototype%, or nil until it is needed.
+	asyncFromSyncProto *Object
+
+	// owner is the execution context of the realm. Only executionContext reads it.
+	owner any
+}
+
+// executionContext returns the execution context of the realm that embeds r.
+func (r *realmPart) executionContext() *ExecutionContext {
+	// The two-value form compiles to no call, which the frame changes of the interpreter loop rely on.
+	cx, _ := r.owner.(*ExecutionContext)
+	return cx
+}
+
+// realm is a Realm Record.
+type realm struct {
+	realmPart
+
+	// context is shared by jobs bound to this realm.
+	context ExecutionContext
+
+	exceptionReporter func(Value, ExceptionLocation)
 
 	// globalProxyHandler is the private empty handler shared by realms that
 	// can access each other's global objects.
@@ -34,18 +69,6 @@ type realm struct {
 
 	// foreignGlobalView handles this realm's property access on foreign global proxies.
 	foreignGlobalView *Object
-
-	// globalLex holds the top-level let, const and class declarations.
-	globalLex *Object
-
-	shapes shapeTable
-
-	arrayIter arrayIterCache
-
-	regExpOriginals regExpOriginals
-
-	// objectTagStrings are results of Object.prototype.toString, by tag.
-	objectTagStrings map[wtf8.String]Value
 
 	// joins are the objects that Array.prototype.join is joining, and localeJoins those that
 	// Array.prototype.toLocaleString is.
@@ -67,24 +90,18 @@ type realm struct {
 	// intlFallbackSymbol is the [[FallbackSymbol]] of %Intl%, or nil until it is needed.
 	intlFallbackSymbol *Object
 
-	// strictCallee is the callee property of unmapped arguments objects, or the zero value
-	// until it is needed.
-	strictCallee Value
-
 	legacyRegExp legacyRegExpStatics
-
-	// regExpFlagStrings holds the value of the flags getter for each set of the 8 flags, once
-	// computed. It is nil until it is needed.
-	regExpFlagStrings *[1 << 8]Value
 }
 
 func (ag *agent) newRealm() *realm {
 	r := &realm{}
 	r.context = ExecutionContext{
-		agent: ag,
-		realm: r,
-		space: &ag.space,
+		agent:     ag,
+		realm:     r,
+		realmPart: &r.realmPart,
+		space:     &ag.space,
 	}
+	r.owner = &r.context
 	r.referrer = &scriptOrModule{
 		realm: r,
 	}
@@ -95,8 +112,8 @@ func (ag *agent) newRealm() *realm {
 // and the other objects of the agent depend on.
 func (cx *ExecutionContext) initRealmPrototypes() {
 	r := cx.realm
-	r.shapes.nullProto[ordinaryRoot] = cx.newShape(nil, r, ordinaryRoot)
-	r.shapes.proxy = cx.rootShape(nil, r, delegatedRoot)
+	r.shapes.nullProto[ordinaryRoot] = cx.newShape(nil, cx.realmPart, ordinaryRoot)
+	r.shapes.proxy = cx.rootShape(nil, cx.realmPart, delegatedRoot)
 	objectProto := (&propertyObject{
 		kind:  kindObject,
 		shape: r.shapes.nullProto[ordinaryRoot],
@@ -121,15 +138,15 @@ func (cx *ExecutionContext) initRealmPrototypes() {
 	arrayProto := (&propertyObject{
 		kind:  kindArray,
 		class: classArray,
-		shape: cx.rootShape(objectProto, r, arrayRoot),
+		shape: cx.rootShape(objectProto, cx.realmPart, arrayRoot),
 	}).init()
 	r.intrinsics[IntrinsicArrayPrototype] = arrayProto
-	r.shapes.array = cx.rootShape(arrayProto, r, arrayRoot)
+	r.shapes.array = cx.rootShape(arrayProto, cx.realmPart, arrayRoot)
 	stringProto := cx.NewObject(objectProto)
 	r.intrinsics[IntrinsicStringPrototype] = stringProto
 	// A primitive string has its own length even when an ordinary object with the same
 	// prototype inherits its length.
-	r.shapes.string = cx.rootShape(stringProto, r, primitiveStringRoot)
+	r.shapes.string = cx.rootShape(stringProto, cx.realmPart, primitiveStringRoot)
 	r.shapes.shortStrings = new([shortstrings.MaxBytes + 1]Object)
 	for i := range r.shapes.shortStrings {
 		r.shapes.shortStrings[i] = Object{
@@ -183,12 +200,12 @@ func (cx *ExecutionContext) IsIntrinsicOfOtherRealm(f *Object, id Intrinsic) boo
 // or nil for a detached global proxy.
 func (o *Object) CreationContext() *ExecutionContext {
 	if r := o.creationRealm(); r != nil {
-		return &r.context
+		return r.executionContext()
 	}
 	return nil
 }
 
-func (o *Object) creationRealm() *realm {
+func (o *Object) creationRealm() *realmPart {
 	if o.class == classProxy {
 		st := o.extState().(*proxyState)
 		if st.isGlobal() {

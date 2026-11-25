@@ -41,7 +41,7 @@ type errorData struct {
 
 // NewErrorObject returns an Error object with prototype proto and no own properties.
 func (cx *ExecutionContext) NewErrorObject(proto *Object) *Object {
-	e := newObject(cx.shapeForRealm(proto, cx.realm))
+	e := newObject(cx.shapeForRealm(proto, cx.realmPart))
 	e.class = classError
 	return e
 }
@@ -204,15 +204,17 @@ func SetDateValue(v Value, tv float64) {
 // IteratorState returns the state of the built-in iterator object v,
 // or nil when v is not such an object.
 func IteratorState(v Value) any {
-	state, _ := IteratorStateAndContext(v)
-	return state
+	if v.IsObject() && v.o.class == classIterator {
+		return v.o.extState()
+	}
+	return nil
 }
 
 // IteratorStateAndContext returns the state and creation context of a built-in iterator.
 // For other values it returns two nil values.
 func IteratorStateAndContext(v Value) (any, *ExecutionContext) {
 	if v.IsObject() && v.o.class == classIterator {
-		return v.o.extState(), &v.o.shape.realm.context
+		return v.o.extState(), v.o.shape.realm.executionContext()
 	}
 	return nil, nil
 }

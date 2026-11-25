@@ -374,7 +374,7 @@ func (cx *ExecutionContext) checkInstanceofHit(fp *funcProto, pc int, v Value, c
 
 // checkInstanceShape checks that s is the shape of a new instance in the realm r whose prototype
 // is proto.
-func (cx *ExecutionContext) checkInstanceShape(fp *funcProto, pc int, proto *Object, r *realm, s *shape) {
+func (cx *ExecutionContext) checkInstanceShape(fp *funcProto, pc int, proto *Object, r *realmPart, s *shape) {
 	if s.proto != proto || s.realm != r || s.space != cx.space || s.family != ordinaryRoot || s.parent != nil || s.count != 0 || s.private {
 		panic(cx.cacheFailure(fp, pc, "the cache of the instance shape", nil, fmt.Sprintf("a shape for the prototype %p", s.proto), fmt.Sprintf("the prototype %p", proto)))
 	}
@@ -382,9 +382,9 @@ func (cx *ExecutionContext) checkInstanceShape(fp *funcProto, pc int, proto *Obj
 
 // checkArrayIteration checks what c, which arrayIterationUnmodified has brought up to date, says
 // about the iteration of the arrays of r.
-func (ag *agent) checkArrayIteration(r *realm) {
+func (ag *agent) checkArrayIteration(r *realmPart) {
 	c := &r.arrayIter
-	cx := &r.context
+	cx := r.executionContext()
 	values := r.intrinsics[IntrinsicArrayPrototypeValues]
 	next := r.intrinsics[IntrinsicArrayIteratorPrototypeNext]
 	if c.found && c.iter.value().o == values && c.next.value().o == next {
@@ -397,9 +397,9 @@ func (ag *agent) checkArrayIteration(r *realm) {
 }
 
 // checkNoIteratorReturn checks that the array iterators of r have no return method.
-func (ag *agent) checkNoIteratorReturn(r *realm) {
+func (ag *agent) checkNoIteratorReturn(r *realmPart) {
 	key := ag.Key(KeyReturn)
-	if p := r.context.peekFrom(r.intrinsics[IntrinsicArrayIteratorPrototype], key); p.kind != peekMiss {
+	if p := r.executionContext().peekFrom(r.intrinsics[IntrinsicArrayIteratorPrototype], key); p.kind != peekMiss {
 		panic(ag.cacheFailure(nil, 0, "the array iteration cache", key, "no property", p.String()))
 	}
 }
@@ -407,7 +407,7 @@ func (ag *agent) checkNoIteratorReturn(r *realm) {
 // checkPlainArray checks that iterating o starts with the original values method, if
 // arrayIterationPlain says so.
 func (cx *ExecutionContext) checkPlainArray(o *Object) {
-	if o.shape != cx.realm.shapes.array || !cx.arrayIterationUnmodified(cx.realm) {
+	if o.shape != cx.realm.shapes.array || !cx.arrayIterationUnmodified(cx.realmPart) {
 		return
 	}
 	cx.checkOriginal(cx, o, cx.WellKnownSymbol(SymbolIterator), cx.Intrinsic(IntrinsicArrayPrototypeValues))

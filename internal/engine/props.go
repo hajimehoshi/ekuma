@@ -361,11 +361,11 @@ func (cx *ExecutionContext) materialize(o *Object) {
 			if c.isAsync {
 				proto = c.context.realm.intrinsics[IntrinsicAsyncGeneratorPrototype]
 			}
-			p := newObject(cx.shapeForRealm(proto, c.context.realm))
+			p := newObject(cx.shapeForRealm(proto, c.context.realmPart))
 			cx.add(o, cx.Key(KeyPrototype), Value{o: p}, FlagWritable)
 		case f.constructor:
 			proto := c.context.realm.intrinsics[IntrinsicObjectPrototype]
-			p := newObject(cx.shapeForRealm(proto, c.context.realm))
+			p := newObject(cx.shapeForRealm(proto, c.context.realmPart))
 			cx.add(p, cx.Key(KeyConstructor), Value{o: o}, FlagsHidden)
 			flags := FlagWritable
 			if f.classConstructor {
@@ -414,7 +414,7 @@ func (cx *ExecutionContext) resolveForKey(o *Object, key *Object) {
 // needs its own properties, or a call to [agent.InitLazyObject], runs init once.
 func (cx *ExecutionContext) NewLazyObject(proto *Object, init func(*ExecutionContext, *Object)) *Object {
 	// A cached miss on an ordinary object must still run this object's initializer.
-	o := newObject(cx.rootShape(proto, cx.realm, delegatedRoot))
+	o := newObject(cx.rootShape(proto, cx.realmPart, delegatedRoot))
 	o.class = classLazy
 	o.flags |= objExotic
 	o.setExtState(init)

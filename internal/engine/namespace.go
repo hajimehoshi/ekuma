@@ -68,7 +68,7 @@ func (cx *ExecutionContext) newModuleNamespace(m *Module, deferred bool) *Object
 		kind:  kindObject,
 		class: classModuleNamespace,
 		flags: objExotic | objNotExtensible,
-		shape: cx.rootShape(nil, cx.realm, delegatedRoot),
+		shape: cx.rootShape(nil, cx.realmPart, delegatedRoot),
 		ext:   ns,
 	}).init()
 	tag := wtf8.String("Module")

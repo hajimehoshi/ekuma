@@ -65,11 +65,11 @@ func (cx *ExecutionContext) checkGlobalHit(*funcProto, int, *Object, *globalCach
 
 func (cx *ExecutionContext) checkInstanceofHit(*funcProto, int, Value, *Object, *Value, bool) {}
 
-func (cx *ExecutionContext) checkInstanceShape(*funcProto, int, *Object, *realm, *shape) {}
+func (cx *ExecutionContext) checkInstanceShape(*funcProto, int, *Object, *realmPart, *shape) {}
 
-func (ag *agent) checkArrayIteration(*realm) {}
+func (ag *agent) checkArrayIteration(*realmPart) {}
 
-func (ag *agent) checkNoIteratorReturn(*realm) {}
+func (ag *agent) checkNoIteratorReturn(*realmPart) {}
 
 func (cx *ExecutionContext) checkPlainArray(*Object) {}
 

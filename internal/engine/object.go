@@ -343,7 +343,7 @@ func (o *Object) indicesInElements() bool {
 type shape struct {
 	// space and realm identify where the objects with this shape were created.
 	space *space
-	realm *realm
+	realm *realmPart
 
 	proto  *Object
 	parent *shape
@@ -789,7 +789,7 @@ type shapeTable struct {
 }
 
 // newShape returns a new empty shared shape for objects whose prototype is proto.
-func (cx *ExecutionContext) newShape(proto *Object, r *realm, family shapeFamily) *shape {
+func (cx *ExecutionContext) newShape(proto *Object, r *realmPart, family shapeFamily) *shape {
 	if proto != nil {
 		proto.flags |= objIsProto
 	}
@@ -804,11 +804,11 @@ func (cx *ExecutionContext) newShape(proto *Object, r *realm, family shapeFamily
 
 // shapeFor returns the ordinary root shape in the current realm for prototype proto, which may be nil.
 func (cx *ExecutionContext) shapeFor(proto *Object) *shape {
-	return cx.shapeForRealm(proto, cx.realm)
+	return cx.shapeForRealm(proto, cx.realmPart)
 }
 
 // shapeForRealm returns the ordinary root shape in r for prototype proto, which may be nil.
-func (cx *ExecutionContext) shapeForRealm(proto *Object, r *realm) *shape {
+func (cx *ExecutionContext) shapeForRealm(proto *Object, r *realmPart) *shape {
 	if proto == nil {
 		return r.shapes.nullProto[ordinaryRoot]
 	}
@@ -816,7 +816,7 @@ func (cx *ExecutionContext) shapeForRealm(proto *Object, r *realm) *shape {
 }
 
 // rootShape selects the tree of layouts shared by receivers of this family, prototype and realm.
-func (cx *ExecutionContext) rootShape(proto *Object, r *realm, family shapeFamily) *shape {
+func (cx *ExecutionContext) rootShape(proto *Object, r *realmPart, family shapeFamily) *shape {
 	if family == ordinaryRoot {
 		return cx.shapeForRealm(proto, r)
 	}
@@ -843,7 +843,7 @@ type prototypeShapeCache struct {
 	foreign weak.Pointer[shape]
 }
 
-func (c *prototypeShapeCache) forRealm(cx *ExecutionContext, proto *Object, r *realm, family shapeFamily) *shape {
+func (c *prototypeShapeCache) forRealm(cx *ExecutionContext, proto *Object, r *realmPart, family shapeFamily) *shape {
 	if proto.shape.realm != r {
 		if s := c.foreign.Value(); s != nil && s.realm == r {
 			return s
@@ -862,7 +862,7 @@ func (c *prototypeShapeCache) forRealm(cx *ExecutionContext, proto *Object, r *r
 
 // functionShapeFor returns the root for functions whose initial named properties are still implicit.
 func (cx *ExecutionContext) functionShapeFor(proto *Object) *shape {
-	return cx.rootShape(proto, cx.realm, lazyFunctionRoot)
+	return cx.rootShape(proto, cx.realmPart, lazyFunctionRoot)
 }
 
 // NewObject returns a new empty object with the prototype proto, which may be nil.
@@ -929,7 +929,7 @@ func (cx *ExecutionContext) NewArray(elems []Value) *Object {
 	return cx.realm.newArray(elems)
 }
 
-func (r *realm) newArray(elems []Value) *Object {
+func (r *realmPart) newArray(elems []Value) *Object {
 	return (&propertyObject{
 		kind:   kindArray,
 		class:  classArray,

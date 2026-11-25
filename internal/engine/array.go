@@ -300,7 +300,7 @@ func (o *Object) RemoveLastElement() (Value, bool) {
 	o.removeLastElem()
 	o.length = uint32(n)
 	if o.elemsOversized() {
-		o.shape.realm.context.reallocElems(o)
+		o.shape.realm.executionContext().reallocElems(o)
 	}
 	return v, true
 }
@@ -336,7 +336,7 @@ func (o *Object) RemoveFirstElement() (Value, bool) {
 	}
 	o.length = uint32(n)
 	if o.elemsOversized() {
-		o.shape.realm.context.reallocElems(o)
+		o.shape.realm.executionContext().reallocElems(o)
 	}
 	return v, true
 }

@@ -1270,17 +1270,17 @@ func (cx *ExecutionContext) arrayIterationPlain(o *Object) bool {
 	if validateExec {
 		cx.checkPlainArray(o)
 	}
-	return o.shape == cx.realm.shapes.array && cx.arrayIterationUnmodified(cx.realm)
+	return o.shape == cx.realm.shapes.array && cx.arrayIterationUnmodified(cx.realmPart)
 }
 
 // arrayIterationUnmodified reports whether %Array.prototype%[@@iterator] and
 // %ArrayIteratorPrototype%.next are the original functions.
-func (ag *agent) arrayIterationUnmodified(r *realm) bool {
+func (ag *agent) arrayIterationUnmodified(r *realmPart) bool {
 	c := &r.arrayIter
 	if c.epoch != ag.protoEpoch || !c.checked {
 		c.checked = true
 		c.epoch = ag.protoEpoch
-		q := r.context.Quiet()
+		q := r.executionContext().Quiet()
 		c.iter = q.lookupDataSlot(r.intrinsics[IntrinsicArrayPrototype], ag.WellKnownSymbol(SymbolIterator))
 		c.next = q.lookupDataSlot(r.intrinsics[IntrinsicArrayIteratorPrototype], ag.Key(KeyNext))
 		c.found = c.iter.holder != nil && c.next.holder != nil
@@ -1297,7 +1297,7 @@ func (ag *agent) arrayIterationUnmodified(r *realm) bool {
 
 // pairDestructuringPlain reports whether destructuring a new array of two elements into two
 // bindings runs nothing that JavaScript could observe.
-func (ag *agent) pairDestructuringPlain(r *realm) bool {
+func (ag *agent) pairDestructuringPlain(r *realmPart) bool {
 	return ag.arrayIterationUnmodified(r) && r.arrayIter.noReturn
 }
 
@@ -1488,7 +1488,7 @@ func (cx *ExecutionContext) Construct(f *Object, args []Value, newTarget *Object
 	this := tdz
 	if !fn.derived {
 		proto := cx.GetPrototypeFromConstructor(newTarget, IntrinsicObjectPrototype)
-		this = Value{o: newInstance(cx.shapeForRealm(proto, fn.code.context.realm))}
+		this = Value{o: newInstance(cx.shapeForRealm(proto, fn.code.context.realmPart))}
 	}
 	r := cx.callSlow(f, this, args, !fn.derived, newTarget)
 	if !r.IsObject() {

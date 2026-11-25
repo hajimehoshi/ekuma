@@ -172,7 +172,7 @@ type promiseObject struct {
 func (cx *ExecutionContext) newIntrinsicCapability() *PromiseCapability {
 	proto := cx.Intrinsic(IntrinsicPromisePrototype)
 	return &PromiseCapability{
-		promise:   newPromiseObject(cx.shapeForRealm(proto, cx.realm)),
+		promise:   newPromiseObject(cx.shapeForRealm(proto, cx.realmPart)),
 		intrinsic: true,
 	}
 }
@@ -289,17 +289,17 @@ func (ag *agent) CapabilityReject(c *PromiseCapability) Value {
 }
 
 // resolvingRealm returns the realm of an intrinsic capability's resolving functions.
-func (c *PromiseCapability) resolvingRealm() *realm {
+func (c *PromiseCapability) resolvingRealm() *realmPart {
 	if c.resolve != nil {
 		// A thenable job creates its own resolving functions in the job's realm.
-		return c.resolve.fn.info.realm
+		return &c.resolve.fn.info.realm.realmPart
 	}
 	return c.promise.creationRealm()
 }
 
 // canSettleDirectly reports whether the intrinsic resolving functions run in the current realm.
 func (c *PromiseCapability) canSettleDirectly(cx *ExecutionContext) bool {
-	return c.intrinsic && (!cx.trackJobRealms || c.resolvingRealm() == cx.realm)
+	return c.intrinsic && (!cx.trackJobRealms || c.resolvingRealm() == cx.realmPart)
 }
 
 // ResolveCapability calls the [[Resolve]] function of c with v.
@@ -364,9 +364,9 @@ func (cx *ExecutionContext) IfAbruptRejectPromise(c *PromiseCapability, f func()
 
 // resolvePromise is what a promise resolve function does with resolution once it was not
 // already resolved: the promise resolution procedure.
-func (cx *ExecutionContext) resolvePromise(resolverRealm *realm, p *Object, resolution Value) {
+func (cx *ExecutionContext) resolvePromise(resolverRealm *realmPart, p *Object, resolution Value) {
 	if resolution.o == p {
-		cx.rejectPromise(p, resolverRealm.context.NewError(ErrorKindType, "chaining cycle detected for promise"))
+		cx.rejectPromise(p, resolverRealm.executionContext().NewError(ErrorKindType, "chaining cycle detected for promise"))
 		return
 	}
 	if !resolution.IsObject() {
@@ -629,7 +629,7 @@ func (cx *ExecutionContext) awaitValue(v Value, action reactionAction) {
 			p = v.o
 		} else {
 			p = cx.NewPromiseObject(cx.Intrinsic(IntrinsicPromisePrototype))
-			cx.resolvePromise(cx.realm, p, v)
+			cx.resolvePromise(cx.realmPart, p, v)
 		}
 	case v.IsObject():
 		var then Value
@@ -856,7 +856,7 @@ func (j *job) run() {
 		}
 		return
 	case jobResolve:
-		cx.resolvePromise(cx.realm, j.promise, j.argument)
+		cx.resolvePromise(cx.realmPart, j.promise, j.argument)
 		return
 	case jobThenable:
 		cx.protect(func() {
