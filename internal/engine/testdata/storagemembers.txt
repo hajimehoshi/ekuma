@@ -103,11 +103,15 @@ RealmPart.Intern
 RealmPart.Intrinsic
 RealmPart.KeyOfString
 RealmPart.NewArray
+RealmPart.NewArrayCopy
 RealmPart.NewArrayPair
+RealmPart.NewArrayWithRoom
 RealmPart.NewDataViewObject
+RealmPart.NewEmptyArrayWithRoom
 RealmPart.NewHostArrayBufferObject
 RealmPart.NewImmutableArrayBufferFromBytes
 RealmPart.NewObject
+RealmPart.NewObjectFromProperties
 RealmPart.NewSharedArrayBufferObject
 RealmPart.NewString
 RealmPart.NewTypedArrayObject

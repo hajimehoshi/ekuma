@@ -238,11 +238,11 @@ func (cx *ExecutionContext) HostInstanceOf(v, t storage.Value) (bool, error) {
 
 // ThrownMessage describes the thrown value v for a Go error, without running any JavaScript.
 func ThrownMessage(v storage.Value) string {
-	if v.O == nil || v.O.Shape == nil {
+	if v.O == nil || v.O.Shape() == nil {
 		// A primitive other than a string: its description needs no space.
 		return "uncaught " + storage.DisplayString(v)
 	}
-	return v.O.Shape.Space.ErrorOf(v).Error()
+	return v.O.Shape().Space.ErrorOf(v).Error()
 }
 
 // ContinuationData returns the continuation data, the value of the host that promise

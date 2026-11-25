@@ -9,7 +9,7 @@ func NewObjectWithState(s *Shape, c class, state any) *Object {
 	return (&PropertyObject{
 		Kind:  KindObject,
 		Class: c,
-		Shape: s,
+		shape: s,
 		Ext:   state,
 	}).Init()
 }
@@ -19,7 +19,7 @@ func NewObjectWithState(s *Shape, c class, state any) *Object {
 func (o *PropertyObject) initWithClass(s *Shape, c class) *Object {
 	o.Kind = KindObject
 	o.Class = c
-	o.Shape = s
+	o.shape = s
 	return o.Init()
 }
 
@@ -27,7 +27,7 @@ func (o *PropertyObject) initWithClass(s *Shape, c class) *Object {
 func (o *PropertyObject) InitWithState(s *Shape, c class, state any) *Object {
 	o.Kind = KindObject
 	o.Class = c
-	o.Shape = s
+	o.shape = s
 	o.Ext = state
 	return o.Init()
 }
@@ -38,15 +38,15 @@ func NewExoticObject(s *Shape, c class, state any) *Object {
 	return (&PropertyObject{
 		Kind:  KindObject,
 		Class: c,
-		Flags: ObjExotic,
-		Shape: s,
+		flags: ObjExotic,
+		shape: s,
 		Ext:   state,
 	}).Init()
 }
 
 // InitExotic makes o, which must be zero, what [NewExoticObject] returns.
 func (o *PropertyObject) InitExotic(s *Shape, c class, state any) *Object {
-	o.Flags = ObjExotic
+	o.flags = ObjExotic
 	return o.InitWithState(s, c, state)
 }
 
@@ -55,8 +55,8 @@ func NewNamespaceObject(s *Shape, state any) *Object {
 	return (&PropertyObject{
 		Kind:  KindObject,
 		Class: ClassModuleNamespace,
-		Flags: ObjExotic | ObjNotExtensible,
-		Shape: s,
+		flags: ObjExotic | ObjNotExtensible,
+		shape: s,
 		Ext:   state,
 	}).Init()
 }
@@ -82,10 +82,10 @@ func (r *RealmPart) CreateIterResultObject(v Value, done bool) Value {
 	result := &iterResult{
 		Kind:   KindObject,
 		Pinned: PinnedSlots,
-		Shape:  r.Shapes.IterResult,
+		shape:  r.Shapes.IterResult,
 		props:  [2]Value{v, Bool(done)},
 	}
-	result.Slots = result.props[:]
+	result.slots = result.props[:]
 	return Value{O: result.Init()}
 }
 
@@ -115,9 +115,9 @@ func (r *RealmPart) NewArgumentsObject(args, extra []Value) *Object {
 	elems = append(elems, args...)
 	elems = append(elems, extra...)
 	o := a.initWithClass(r.Shapes.Arguments, ClassArguments)
-	a.Elems = elems
+	a.elems = elems
 	a.storage = [3]Value{Number(float64(argc)), {O: r.Intrinsic(IntrinsicArrayPrototypeValues)}}
-	a.Slots = a.storage[:2]
+	a.slots = a.storage[:2]
 	a.Pinned = PinnedSlots | PinnedElems
 	return o
 }

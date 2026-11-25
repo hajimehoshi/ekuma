@@ -29,7 +29,7 @@ func PushElements(q quiet.Context, o *storage.Object, vals []storage.Value) (uin
 	// Sample single-element pushes so earlier array lengths at this call site can
 	// guide how much space to reserve.
 	if ok && len(vals) == 1 && n > storage.MinElems && n <= storage.MaxPresizedElems {
-		if n == storage.MinElems+1 || int(n) == cap(o.Elems) || n%pushSampleInterval == 0 {
+		if n == storage.MinElems+1 || int(n) == o.ElemRoom() || n%pushSampleInterval == 0 {
 			observePush(q, o)
 		}
 	}
@@ -46,7 +46,7 @@ func (ag *agent) observePush(o *storage.Object) {
 	if len(ag.frames) == 0 {
 		return
 	}
-	n := len(o.Elems)
+	n := o.ElemCount()
 	fr := &ag.frames[len(ag.frames)-1]
 	state := fr.cl.ExtState()
 	h, _ := state.(*pushSizeHint)
@@ -71,9 +71,9 @@ func (ag *agent) observePush(o *storage.Object) {
 	if n >= 2*pushSampleInterval {
 		// The final length can fall between samples. Limit the allowance
 		// to space the array already acquired.
-		h.current = uint16(min(n+pushSampleInterval-1, cap(o.Elems), storage.MaxPresizedElems))
+		h.current = uint16(min(n+pushSampleInterval-1, o.ElemRoom(), storage.MaxPresizedElems))
 	}
-	if n == cap(o.Elems) {
+	if n == o.ElemRoom() {
 		// Bound the cost of a short result following larger ones.
 		if room := min(int(h.target), 8*n); room > n {
 			o.MoveElemsTo(room)

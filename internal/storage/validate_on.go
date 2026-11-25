@@ -41,7 +41,7 @@ func CheckValue(v Value) {
 // code.
 func (r *RealmPart) checkArrayProtoPlain() {
 	a := r.Intrinsic(IntrinsicArrayPrototype)
-	if a.Kind != KindArray || a.Flags&ObjExotic != 0 || len(a.Elems) != 0 || !a.InheritsNoIndex() {
+	if a.Kind != KindArray || a.flags&ObjExotic != 0 || len(a.elems) != 0 || !a.InheritsNoIndex() {
 		panic("ekumavalidate: the prototypes of plain arrays are not plain")
 	}
 }

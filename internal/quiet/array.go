@@ -52,7 +52,7 @@ func (q Context) SearchArray(v, target storage.Value, sameValueZero bool) (int64
 	if o == nil || o.Kind != storage.KindArray {
 		return -1, false
 	}
-	n := int64(o.Length)
+	n := int64(o.Length())
 	found, next := q.SearchElements(o, 0, n, target, sameValueZero)
 	if found < 0 && next < n {
 		return -1, false

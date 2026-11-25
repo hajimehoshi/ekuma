@@ -79,13 +79,22 @@ func (sp *Space) HostDefined() any {
 
 // HostDefined returns the host-defined value of the agent that owns o, or nil for shared values.
 func (o *Object) HostDefined() any {
-	if o.Shape == nil {
+	if o.shape == nil {
 		return nil
 	}
-	return o.Shape.Space.HostDefinedValue
+	return o.shape.Space.HostDefinedValue
 }
 
 // Owns reports whether o belongs to the agent of sp or is shared by all agents.
 func (sp *Space) Owns(o *Object) bool {
-	return o.Shape == nil || o.Shape.Space == sp
+	return o.shape == nil || o.shape.Space == sp
+}
+
+// InitMissHolder creates the object that MissHolder describes, with the shape s.
+func (sp *Space) InitMissHolder(s *Shape) {
+	sp.MissHolder = (&PropertyObject{
+		Kind:  KindObject,
+		shape: s,
+		slots: []Value{Undefined},
+	}).Init()
 }

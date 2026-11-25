@@ -486,6 +486,8 @@ type useRule struct {
 	objs []types.Object
 	// owners are the functions that may use objs.
 	owners []string
+	// skipValidate allows the files that check the others in the ekumavalidate build.
+	skipValidate bool
 }
 
 // checkUses tests that all the packages keep to rules.
@@ -502,6 +504,7 @@ func (prog *program) checkUses(t *testing.T, rules ...useRule) {
 	}
 	for _, p := range prog.pkgs {
 		for _, file := range p.files {
+			validates := strings.HasPrefix(filepath.Base(p.fset.Position(file.Pos()).Filename), "validate_") && p.isEngine()
 			for _, decl := range file.Decls {
 				var self types.Object
 				if fn, ok := decl.(*ast.FuncDecl); ok {
@@ -514,7 +517,7 @@ func (prog *program) checkUses(t *testing.T, rules ...useRule) {
 					}
 					obj := used(p.info.Uses[id])
 					rule, ok := ruleOf[obj]
-					if !ok || self != obj && slices.Contains(rule.objs, self) {
+					if !ok || validates && rule.skipValidate || self != obj && slices.Contains(rule.objs, self) {
 						return true
 					}
 					if owner := prog.owner(&p, decl, rule.owners); !slices.Contains(rule.owners, owner) {

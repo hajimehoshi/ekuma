@@ -11,7 +11,7 @@ import (
 func (sp *Space) NewSymbol(desc wtf8.String, hasDesc bool) *Object {
 	s := &Object{
 		Kind:  KindSymbol,
-		Shape: sp.SymbolShape,
+		shape: sp.SymbolShape,
 		Text:  desc,
 	}
 	if hasDesc {

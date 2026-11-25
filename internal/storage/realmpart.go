@@ -59,5 +59,5 @@ func (o *Object) CreationRealm() *RealmPart {
 			o = st.Target
 		}
 	}
-	return o.Shape.Realm
+	return o.shape.Realm
 }

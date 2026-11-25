@@ -47,7 +47,7 @@ func (cx *ExecutionContext) checkRememberedRead(storage.Value, *storage.Object, 
 func (cx *ExecutionContext) checkGetterHit(*storage.FuncProto, int, storage.Value, *storage.Object, *storage.Object) {
 }
 
-func (cx *ExecutionContext) checkOwnGetterHit(*storage.FuncProto, int, storage.Value, *storage.Object, *storage.Value) {
+func (cx *ExecutionContext) checkOwnGetterHit(*storage.FuncProto, int, storage.Value, *storage.Object, *storage.Object, int32) {
 }
 
 func (cx *ExecutionContext) checkLengthHit(*storage.FuncProto, int, storage.Value, float64) {}
@@ -55,7 +55,7 @@ func (cx *ExecutionContext) checkLengthHit(*storage.FuncProto, int, storage.Valu
 func (cx *ExecutionContext) checkTypedArrayLengthHit(*storage.FuncProto, int, storage.Value, float64) {
 }
 
-func (cx *ExecutionContext) checkStoreHit(*storage.FuncProto, int, storage.Value, *storage.Object, *storage.Value) {
+func (cx *ExecutionContext) checkStoreHit(*storage.FuncProto, int, storage.Value, *storage.Object, *storage.Object, int32) {
 }
 
 func (cx *ExecutionContext) checkAddHit(*storage.FuncProto, int, *storage.Object, *storage.Object, *storage.Shape) {
@@ -73,7 +73,7 @@ func (cx *ExecutionContext) checkGlobalExists(*storage.FuncProto, int, *storage.
 func (cx *ExecutionContext) checkGlobalHit(*storage.FuncProto, int, *storage.Object, *storage.GlobalCache, bool) {
 }
 
-func (cx *ExecutionContext) checkInstanceofHit(*storage.FuncProto, int, storage.Value, *storage.Object, *storage.Value, bool) {
+func (cx *ExecutionContext) checkInstanceofHit(*storage.FuncProto, int, storage.Value, *storage.Object, int32, bool) {
 }
 
 func (cx *ExecutionContext) checkInstanceShape(*storage.FuncProto, int, *storage.Object, *storage.RealmPart, *storage.Shape) {

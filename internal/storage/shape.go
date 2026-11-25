@@ -473,7 +473,7 @@ type shapeTable struct {
 // NewShape returns a new empty shared shape for objects whose prototype is proto.
 func (sp *Space) NewShape(proto *Object, r *RealmPart, family shapeFamily) *Shape {
 	if proto != nil {
-		proto.Flags |= ObjIsProto
+		proto.flags |= ObjIsProto
 	}
 	return &Shape{
 		Space:  sp,
@@ -526,7 +526,7 @@ type prototypeShapeCache struct {
 }
 
 func (c *prototypeShapeCache) forRealm(sp *Space, proto *Object, r *RealmPart, family shapeFamily) *Shape {
-	if proto.Shape.Realm != r {
+	if proto.shape.Realm != r {
 		if s := c.foreign.Value(); s != nil && s.Realm == r {
 			return s
 		}
@@ -550,16 +550,16 @@ func (r *RealmPart) FunctionShapeFor(proto *Object) *Shape {
 // RenewShape gives o a private shape with the properties of its shape, which no inline cache
 // has seen.
 func (o *Object) RenewShape() {
-	if o.Shape.Private {
-		o.Shape = o.Shape.handOver()
+	if o.shape.Private {
+		o.shape = o.shape.handOver()
 	} else {
-		o.Shape = o.Shape.privateCopy()
+		o.shape = o.shape.privateCopy()
 	}
 }
 
 // compact removes the deleted slots of the private shape of o.
 func (o *Object) compact() {
-	s := o.Shape
+	s := o.shape
 	if !s.Private || len(s.Order) == int(s.Count) {
 		return
 	}
@@ -572,7 +572,7 @@ func (o *Object) compact() {
 		p.Slot = int32(n)
 		s.Table[k] = p
 		s.Order[n] = k
-		o.Slots[n] = o.Slots[i]
+		o.slots[n] = o.slots[i]
 		n++
 	}
 	clear(s.Order[n:])
@@ -582,15 +582,15 @@ func (o *Object) compact() {
 
 // rebuildShape preserves the slots of o when its prototype or named property behavior changes.
 func (sp *Space) rebuildShape(o *Object, proto *Object, family shapeFamily) {
-	old := o.Shape
+	old := o.shape
 	if old.Private {
 		s := old.privateCopy()
 		s.Proto = proto
 		s.Family = family
 		if proto != nil {
-			proto.Flags |= ObjIsProto
+			proto.flags |= ObjIsProto
 		}
-		o.Shape = s
+		o.shape = s
 		return
 	}
 	s := sp.RootShape(proto, old.Realm, family)
@@ -598,13 +598,13 @@ func (sp *Space) rebuildShape(o *Object, proto *Object, family shapeFamily) {
 		p, _ := old.Lookup(k)
 		s = s.With(k, p.Flags)
 	}
-	o.Shape = s
+	o.shape = s
 }
 
 // MakePrivate gives o a shape of its own, so that no inline cache filled for another object applies to it.
 func (o *Object) MakePrivate() {
-	if !o.Shape.Private {
-		o.Shape = o.Shape.privateCopy()
+	if !o.shape.Private {
+		o.shape = o.shape.privateCopy()
 	}
 }
 
@@ -636,12 +636,12 @@ func (sp *Space) FinishBuiltins() {
 // shareShape turns the private shape of o into a shared shape without parent that holds all
 // the properties itself, so that inline caches apply to o. The shape must not change afterwards.
 func (o *Object) shareShape() {
-	s := o.Shape
-	if !s.Private || o.Flags&ObjNotExtensible != 0 {
+	s := o.shape
+	if !s.Private || o.flags&ObjNotExtensible != 0 {
 		return
 	}
 	o.compact()
-	s = o.Shape
+	s = o.shape
 	// The keys of a private shape are in the order of their slots.
 	s.Private = false
 	s.flatBased = true

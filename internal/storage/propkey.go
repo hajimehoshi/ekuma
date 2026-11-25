@@ -101,7 +101,7 @@ func (sp *Space) QueryStringKey(o *Object) QueryKey {
 			return QueryKey{Idx: i}
 		}
 	}
-	if o.Flags&ObjInterned != 0 {
+	if o.flags&ObjInterned != 0 {
 		return QueryKey{Key: o}
 	}
 	if k, ok := o.ExtObject(); ok {
@@ -167,12 +167,11 @@ func AppendIndexRun(keys []PropKey, i, j int) []PropKey {
 	return keys
 }
 
-// AppendElemRun appends the keys of the elements in elems, the first of which has the index
-// base, to keys.
-func AppendElemRun(keys []PropKey, elems []Value, base int) []PropKey {
-	for i, e := range elems {
+// AppendElemRun appends the keys of the elements of o from start to end to keys.
+func AppendElemRun(keys []PropKey, o *Object, start, end int) []PropKey {
+	for i, e := range o.elems[start:end] {
 		if !e.IsHole() {
-			keys = append(keys, IndexKey(uint32(base+i)))
+			keys = append(keys, IndexKey(uint32(start+i)))
 		}
 	}
 	return keys

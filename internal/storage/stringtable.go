@@ -58,12 +58,12 @@ func (t *stringTable) lookup(s wtf8.String) *Object {
 func (t *stringTable) add(s wtf8.String, stringShape *Shape) *Object {
 	o := &Object{
 		Kind:  KindString,
-		Flags: ObjInterned,
-		Shape: stringShape,
+		flags: ObjInterned,
+		shape: stringShape,
 		Text:  s,
 	}
 	if t.keepNew {
-		o.Flags |= objKept
+		o.flags |= objKept
 	}
 	t.Interned.put(s, o, internedMinSweep, isKept)
 	return o
@@ -87,5 +87,5 @@ func (r *RealmPart) Intern(s wtf8.String) *Object {
 
 // isKept reports whether the interned string o is kept alive with its agent.
 func isKept(o *Object) bool {
-	return o.Flags&objKept != 0
+	return o.flags&objKept != 0
 }

@@ -434,11 +434,7 @@ func NewExecutionContext(hostDefined any) (*ExecutionContext, *Host) {
 	for t, name := range typeofNames {
 		cx.Typeofs[t] = storage.ObjectValue(cx.Intern(name))
 	}
-	cx.MissHolder = (&storage.PropertyObject{
-		Kind:  storage.KindObject,
-		Shape: r.Shapes.NullProto[storage.OrdinaryRoot],
-		Slots: []storage.Value{storage.Undefined},
-	}).Init()
+	cx.InitMissHolder(r.Shapes.NullProto[storage.OrdinaryRoot])
 	cx.initRealmGlobals()
 	cx.Strings.EndKeeping()
 	return cx, host

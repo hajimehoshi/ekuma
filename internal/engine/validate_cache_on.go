@@ -45,12 +45,12 @@ func (cx *ExecutionContext) checkReadHit(fp *storage.FuncProto, pc int, v storag
 			return
 		}
 	case peekMiss, peekNumericMiss:
-		if ref == &cx.MissHolder.Slots[0] && sameBits(*ref, storage.Undefined) {
+		if ref == cx.MissHolder.Raw().SlotRef(0) && sameBits(*ref, storage.Undefined) {
 			return
 		}
 	}
 	got := "the data property at " + fmt.Sprintf("%p", ref)
-	if ref == &cx.MissHolder.Slots[0] {
+	if ref == cx.MissHolder.Raw().SlotRef(0) {
 		got = "a miss"
 	}
 	panic(cx.cacheFailure(fp, pc, "the read cache", key, got, p.String()))
@@ -60,7 +60,7 @@ func (cx *ExecutionContext) checkReadHit(fp *storage.FuncProto, pc int, v storag
 // storage.CacheProto for the shape of o, where reading key from v starts at o.
 func (cx *ExecutionContext) checkEntryRead(fp *storage.FuncProto, pc int, v storage.Value, o, key *storage.Object, e *storage.CacheEntry) {
 	if e.Kind == storage.CacheOwn {
-		cx.checkReadHit(fp, pc, v, key, &o.Slots[e.Slot])
+		cx.checkReadHit(fp, pc, v, key, o.Raw().SlotRef(int(e.Slot)))
 		return
 	}
 	cx.checkReadHit(fp, pc, v, key, e.Ref)
@@ -80,8 +80,9 @@ func (cx *ExecutionContext) checkGetterHit(fp *storage.FuncProto, pc int, v stor
 	}
 }
 
-// checkOwnGetterHit checks that the property key of v is the accessor property at ref.
-func (cx *ExecutionContext) checkOwnGetterHit(fp *storage.FuncProto, pc int, v storage.Value, key *storage.Object, ref *storage.Value) {
+// checkOwnGetterHit checks that the property key of v is the accessor property in the slot of o.
+func (cx *ExecutionContext) checkOwnGetterHit(fp *storage.FuncProto, pc int, v storage.Value, key *storage.Object, o *storage.Object, slot int32) {
+	ref := o.Raw().SlotRef(int(slot))
 	if p := cx.Peek(v, key); p.Kind != peekAccessor || p.Slot() != ref {
 		panic(cx.cacheFailure(fp, pc, "the own getter cache", key, fmt.Sprintf("the accessor property at %p", ref), p.String()))
 	}
@@ -104,8 +105,9 @@ func (cx *ExecutionContext) checkTypedArrayLengthHit(fp *storage.FuncProto, pc i
 }
 
 // checkStoreHit checks that a store to the property key of v goes to the own writable data
-// property at ref.
-func (cx *ExecutionContext) checkStoreHit(fp *storage.FuncProto, pc int, v storage.Value, key *storage.Object, ref *storage.Value) {
+// property in the slot of o.
+func (cx *ExecutionContext) checkStoreHit(fp *storage.FuncProto, pc int, v storage.Value, key *storage.Object, o *storage.Object, slot int32) {
+	ref := o.Raw().SlotRef(int(slot))
 	p := cx.Peek(v, key)
 	if !v.IsObject() || p.Kind != peekData || p.Holder != v.O || p.Prop.Flags&storage.FlagWritable == 0 || p.Slot() != ref {
 		panic(cx.cacheFailure(fp, pc, "the store cache", key, fmt.Sprintf("the own data property at %p", ref), p.String()))
@@ -136,17 +138,17 @@ func (cx *ExecutionContext) checkDefineHit(fp *storage.FuncProto, pc int, o, key
 // checkAddedShape checks that o can be given the new enumerable, writable and configurable data
 // property key by moving it to the shape next.
 func (cx *ExecutionContext) checkAddedShape(fp *storage.FuncProto, pc int, o, key *storage.Object, next *storage.Shape) {
-	s := o.Shape
+	s := o.Shape()
 	var want string
 	switch {
-	case o.Flags&storage.ObjNotExtensible != 0:
+	case o.Flags()&storage.ObjNotExtensible != 0:
 		want = "an object that is not extensible"
-	case o.Flags&storage.ObjIsProto != 0:
+	case o.Flags()&storage.ObjIsProto != 0:
 		want = "a prototype"
 	case s.Private:
 		want = "an object with a private shape"
-	case len(o.Slots) != int(s.Count):
-		want = fmt.Sprintf("%d slots for %d properties", len(o.Slots), s.Count)
+	case o.SlotCount() != int(s.Count):
+		want = fmt.Sprintf("%d slots for %d properties", o.SlotCount(), s.Count)
 	case next.Parent != s || next.Key != key || next.Flags != storage.FlagsData || next.Count != s.Count+1 ||
 		next.Private || next.Proto != s.Proto || next.Realm != s.Realm || next.Family != s.Family:
 		want = "another shape"
@@ -183,7 +185,7 @@ func (cx *ExecutionContext) checkGlobalHit(fp *storage.FuncProto, pc int, key *s
 // properties of the global object.
 func (cx *ExecutionContext) peekGlobal(key *storage.Object) peeked {
 	r := cx.realm
-	if q, ok := r.GlobalLex.Shape.Lookup(key); ok {
+	if q, ok := r.GlobalLex.Shape().Lookup(key); ok {
 		return peeked{
 			Kind:   peekData,
 			Holder: r.GlobalLex,
@@ -202,8 +204,9 @@ func (cx *ExecutionContext) peekGlobal(key *storage.Object) peeked {
 }
 
 // checkInstanceofHit checks that r is the result of v instanceof Value{o: c}, whose prototype
-// property is at ref.
-func (cx *ExecutionContext) checkInstanceofHit(fp *storage.FuncProto, pc int, v storage.Value, c *storage.Object, ref *storage.Value, r bool) {
+// property is in the slot.
+func (cx *ExecutionContext) checkInstanceofHit(fp *storage.FuncProto, pc int, v storage.Value, c *storage.Object, slot int32, r bool) {
+	ref := c.Raw().SlotRef(int(slot))
 	key := cx.WellKnownSymbol(storage.SymbolHasInstance)
 	hasInstance := cx.Intrinsic(storage.IntrinsicFunctionPrototypeHasInstance)
 	if p := cx.PeekFrom(c, key); p.Kind != peekData || p.Slot().O != hasInstance {
@@ -215,7 +218,7 @@ func (cx *ExecutionContext) checkInstanceofHit(fp *storage.FuncProto, pc int, v 
 	cx.checkReadHit(fp, pc, storage.Value{O: c}, cx.Key(storage.KeyPrototype), ref)
 	want := false
 	if v.IsObject() && v.O.Class != storage.ClassProxy {
-		for h := v.O.Shape.Proto; h != nil && !want; h = h.Shape.Proto {
+		for h := v.O.Shape().Proto; h != nil && !want; h = h.Shape().Proto {
 			want = h == ref.O
 			if h.Class == storage.ClassProxy && !want {
 				panic(cx.cacheFailure(fp, pc, "the instanceof cache", nil, fmt.Sprint(r), "a proxy on the prototype chain"))

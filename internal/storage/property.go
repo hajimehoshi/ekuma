@@ -20,15 +20,15 @@ const (
 
 // getOwn returns the own named property key of o.
 func (o *Object) getOwn(key *Object) (Prop, bool) {
-	return o.Shape.Lookup(key)
+	return o.shape.Lookup(key)
 }
 
 // Add gives o the new own property key. The caller has checked that o has no such property.
 func (sp *Space) Add(o *Object, key *Object, val Value, flags uint8) {
-	s := o.Shape
+	s := o.shape
 	if !s.Private && (s.Count >= PrivateShapeThreshold || sp.Builtins.building) {
 		s = s.privateCopy()
-		o.Shape = s
+		o.shape = s
 		if sp.Builtins.building {
 			sp.Builtins.Objects = append(sp.Builtins.Objects, o)
 		}
@@ -36,9 +36,9 @@ func (sp *Space) Add(o *Object, key *Object, val Value, flags uint8) {
 	if s.Private {
 		// Growing the slots moves the addresses held by global variable caches, which
 		// rely on the shape. No code runs while the built-ins are created.
-		if s.renewOnAdd || len(o.Slots) == cap(o.Slots) && !sp.Builtins.building {
+		if s.renewOnAdd || len(o.slots) == cap(o.slots) && !sp.Builtins.building {
 			s = s.handOver()
-			o.Shape = s
+			o.shape = s
 		}
 		s.Table[key] = Prop{
 			Slot:  int32(len(s.Order)),
@@ -47,7 +47,7 @@ func (sp *Space) Add(o *Object, key *Object, val Value, flags uint8) {
 		s.Order = append(s.Order, key)
 		s.Count++
 	} else {
-		o.Shape = s.With(key, flags)
+		o.shape = s.With(key, flags)
 	}
 	o.AppendSlot(val)
 	sp.TouchProto(o)
@@ -60,10 +60,10 @@ func (r *RealmPart) Define(o *Object, key *Object, val Value, flags uint8) {
 	if ValidateExec && o.Class == ClassLazy {
 		panic("engine: property definition on an uninitialized lazy object")
 	}
-	if o.Flags&ObjExotic != 0 && o.Fn != nil {
+	if o.flags&ObjExotic != 0 && o.Fn != nil {
 		r.Materialize(o)
 	}
-	p, ok := o.Shape.Lookup(key)
+	p, ok := o.shape.Lookup(key)
 	if !ok {
 		r.Add(o, key, val, flags)
 		return
@@ -71,7 +71,7 @@ func (r *RealmPart) Define(o *Object, key *Object, val Value, flags uint8) {
 	if p.Flags != flags {
 		r.setFlags(o, key, p, flags)
 	}
-	o.Slots[p.Slot] = val
+	o.slots[p.Slot] = val
 	r.TouchProto(o)
 }
 
@@ -85,7 +85,7 @@ func (r *RealmPart) DefineAccessor(o *Object, key *Object, getter, setter *Objec
 func (sp *Space) setFlags(o *Object, key *Object, p Prop, flags uint8) {
 	// An inline cache may remember the shape, so the changed layout needs another one.
 	o.RenewShape()
-	o.Shape.Table[key] = Prop{
+	o.shape.Table[key] = Prop{
 		Slot:  p.Slot,
 		Flags: flags,
 	}
@@ -96,14 +96,14 @@ func (sp *Space) setFlags(o *Object, key *Object, p Prop, flags uint8) {
 func (r *RealmPart) ReplaceOwn(o *Object, k PropKey, val Value, flags uint8) {
 	name := k.Key
 	if name == nil {
-		if int64(k.Idx) < int64(len(o.Elems)) && !o.Elems[k.Idx].IsHole() {
+		if int64(k.Idx) < int64(len(o.elems)) && !o.elems[k.Idx].IsHole() {
 			if flags == FlagsData {
-				o.Elems[k.Idx] = val
+				o.elems[k.Idx] = val
 				return
 			}
 			// The property no longer fits in elems.
-			o.Elems[k.Idx] = Hole
-			o.Flags |= ObjSparse
+			o.elems[k.Idx] = Hole
+			o.flags |= ObjSparse
 			r.Add(o, r.IndexName(k.Idx), val, flags)
 			return
 		}
@@ -112,17 +112,17 @@ func (r *RealmPart) ReplaceOwn(o *Object, k PropKey, val Value, flags uint8) {
 	r.Define(o, name, val, flags)
 }
 
-// RemoveFromPrivate deletes the own named property key of o, which must exist, from the private
+// removeFromPrivate deletes the own named property key of o, which must exist, from the private
 // shape of o. The new shape takes over the storage of the old one, which only o has.
-func (sp *Space) RemoveFromPrivate(o *Object, key *Object) {
-	old := o.Shape
+func (sp *Space) removeFromPrivate(o *Object, key *Object) {
+	old := o.shape
 	s := old.handOver()
-	o.Shape = s
+	o.shape = s
 	s.Count--
 	i := s.Table[key].Slot
 	delete(s.Table, key)
 	s.Order[i] = nil
-	o.Slots[i] = Value{}
+	o.slots[i] = Value{}
 	// Trailing deleted slots go at once, and the others once they outnumber the keys, which
 	// bounds the cost of compacting by that of the deletions.
 	n := len(s.Order)
@@ -158,13 +158,13 @@ func (r NamedLookup) Length(receiver Value) Value {
 	if r.Holder.Kind == KindString {
 		return Number(float64(receiver.StringLength()))
 	}
-	return Number(float64(r.Holder.Length))
+	return Number(float64(r.Holder.length))
 }
 
 // Lookup finds the named property key on o and its prototype chain.
 func (r *RealmPart) Lookup(o *Object, key *Object) NamedLookup {
-	for h := o; h != nil; h = h.Shape.Proto {
-		switch h.Shape.Family {
+	for h := o; h != nil; h = h.shape.Proto {
+		switch h.shape.Family {
 		case DelegatedRoot:
 			return NamedLookup{
 				Kind:   LookupDelegate,
@@ -189,7 +189,7 @@ func (r *RealmPart) Lookup(o *Object, key *Object) NamedLookup {
 				r.Materialize(h)
 			}
 		}
-		if p, ok := h.Shape.Lookup(key); ok {
+		if p, ok := h.shape.Lookup(key); ok {
 			return NamedLookup{
 				Kind:   LookupSlot,
 				Holder: h,
@@ -204,12 +204,12 @@ func (r *RealmPart) Lookup(o *Object, key *Object) NamedLookup {
 
 // ReadNamedSlot reads p and returns its getter separately for the caller to invoke.
 func (sp *Space) ReadNamedSlot(start, holder *Object, p Prop, c *PropCache) (val Value, getter *Object) {
-	val = holder.Slots[p.Slot]
+	val = holder.slots[p.Slot]
 	if p.Flags&FlagAccessor != 0 {
 		// Objects of one shape can hold different own accessors, and replacing an own accessor
 		// keeps the shape, so the cache of an own accessor remembers its slot, not its getter.
 		if c != nil && holder == start {
-			c.Shape = start.Shape
+			c.Shape = start.shape
 			c.Kind = CacheOwnGetter
 			c.Slot = p.Slot
 		}
@@ -218,19 +218,19 @@ func (sp *Space) ReadNamedSlot(start, holder *Object, p Prop, c *PropCache) (val
 			return Undefined, nil
 		}
 		if c != nil && holder != start {
-			c.SetInherited(start.Shape, CacheGetter, sp.ProtoEpoch)
+			c.SetInherited(start.shape, CacheGetter, sp.ProtoEpoch)
 			c.Holder = g
 		}
 		return Undefined, g
 	}
 	if c != nil {
 		if holder == start {
-			c.Shape = start.Shape
+			c.Shape = start.shape
 			c.Slot = p.Slot
 			c.Kind = CacheOwn
 		} else {
-			c.SetInherited(start.Shape, CacheProto, sp.ProtoEpoch)
-			c.Ref = &holder.Slots[p.Slot]
+			c.SetInherited(start.shape, CacheProto, sp.ProtoEpoch)
+			c.Ref = &holder.slots[p.Slot]
 		}
 	}
 	return val, nil
@@ -257,7 +257,7 @@ func (r *RealmPart) LookupDataSlot(o, key *Object) dataSlot {
 
 // Value returns the current Value of the slot.
 func (d *dataSlot) Value() Value {
-	return d.Holder.Slots[d.slot]
+	return d.Holder.slots[d.slot]
 }
 
 // TakeDataProperties gives the empty ordinary object dst the properties of from and reports
@@ -265,15 +265,15 @@ func (d *dataSlot) Value() Value {
 // Otherwise it does nothing and reports false.
 func (dst *Object) TakeDataProperties(from *Object) bool {
 	s := takenShape(dst, from)
-	if s == nil || ContainsHole(from.Elems) {
+	if s == nil || containsHole(from.elems) {
 		return false
 	}
-	dst.Shape = s
-	dst.fillSlots(from.Slots[:s.Count])
+	dst.shape = s
+	dst.fillSlots(from.slots[:s.Count])
 	// The keys of the elements come first, in index order, so the elements of dst are those of
 	// from.
-	if len(from.Elems) != 0 {
-		dst.InitElems(slices.Clone(from.Elems))
+	if len(from.elems) != 0 {
+		dst.InitElems(slices.Clone(from.elems))
 	}
 	return true
 }
@@ -281,12 +281,12 @@ func (dst *Object) TakeDataProperties(from *Object) bool {
 // AssignDataProperties is quiet.Context.AssignDataProperties.
 func (r *RealmPart) AssignDataProperties(to, from *Object) bool {
 	s := takenShape(to, from)
-	if s == nil || len(from.Elems) != 0 {
+	if s == nil || len(from.elems) != 0 {
 		return false
 	}
 	// Set creates an own data property when the prototype lookup finds a writable data property or no property.
 	for t := s; t.Parent != nil; t = t.Parent {
-		switch l := r.Lookup(to.Shape.Proto, t.Key); l.Kind {
+		switch l := r.Lookup(to.shape.Proto, t.Key); l.Kind {
 		case LookupAbsent:
 		case LookupSlot:
 			if l.Prop.Flags&(FlagAccessor|FlagWritable) != FlagWritable {
@@ -296,8 +296,8 @@ func (r *RealmPart) AssignDataProperties(to, from *Object) bool {
 			return false
 		}
 	}
-	to.Shape = s
-	to.fillSlots(from.Slots[:s.Count])
+	to.shape = s
+	to.fillSlots(from.slots[:s.Count])
 	return true
 }
 
@@ -306,15 +306,15 @@ func (r *RealmPart) AssignDataProperties(to, from *Object) bool {
 // of from and from has only enumerable, writable and configurable data properties with string
 // keys besides its elements. Otherwise it returns nil.
 func takenShape(dst, from *Object) *Shape {
-	if dst.Kind != KindObject || dst.Class != ClassObject || dst.Flags&(ObjNotExtensible|ObjIsProto|ObjExotic|ObjSparse) != 0 || dst.Shape.Count != 0 || len(dst.Elems) != 0 {
+	if dst.Kind != KindObject || dst.Class != ClassObject || dst.flags&(ObjNotExtensible|ObjIsProto|ObjExotic|ObjSparse) != 0 || dst.shape.Count != 0 || len(dst.elems) != 0 {
 		return nil
 	}
 	// An ordinary object that is not sparse has the properties with array index keys in its
 	// elements, and the others in insertion order, which is the order of its slots.
-	if from.Kind != KindObject || from.Class != ClassObject || from.Flags&(ObjExotic|ObjSparse) != 0 {
+	if from.Kind != KindObject || from.Class != ClassObject || from.flags&(ObjExotic|ObjSparse) != 0 {
 		return nil
 	}
-	s := from.Shape
+	s := from.shape
 	if s.Private || s.flatBased || s.Count == 0 {
 		return nil
 	}
@@ -326,7 +326,7 @@ func takenShape(dst, from *Object) *Shape {
 	}
 	// The root fixes the prototype, so the shape of dst would be reached through the same
 	// transitions.
-	if t != dst.Shape {
+	if t != dst.shape {
 		return nil
 	}
 	return s
@@ -340,12 +340,12 @@ func (r *RealmPart) InheritsHasInstance(c *Object) bool {
 	// objects before it on the chain can hide it.
 	fp := r.Intrinsic(IntrinsicFunctionPrototype)
 	key := r.WellKnownSymbol(SymbolHasInstance)
-	for h := c; h != fp; h = h.Shape.Proto {
+	for h := c; h != fp; h = h.shape.Proto {
 		// The properties that an unmaterialized function lacks have string keys.
-		if h == nil || h.Class != ClassFunction && (h.Class != ClassObject || h.Flags&ObjExotic != 0) {
+		if h == nil || h.Class != ClassFunction && (h.Class != ClassObject || h.flags&ObjExotic != 0) {
 			return false
 		}
-		if _, ok := h.Shape.Lookup(key); ok {
+		if _, ok := h.shape.Lookup(key); ok {
 			return false
 		}
 	}
@@ -376,9 +376,9 @@ func (r *RealmPart) GetVWithoutCall(v Value, key *Object, c *PropCache) (val Val
 	case LookupAbsent, LookupNumericMiss:
 		if c != nil {
 			// Both misses are stable for this shape and prototype epoch.
-			c.Keep(start.Shape)
-			c.SetInherited(start.Shape, CacheProto, r.ProtoEpoch)
-			c.Ref = &r.MissHolder.Slots[0]
+			c.Keep(start.shape)
+			c.SetInherited(start.shape, CacheProto, r.ProtoEpoch)
+			c.Ref = &r.MissHolder.slots[0]
 		}
 		return Undefined, true
 	case LookupLength:
@@ -386,7 +386,7 @@ func (r *RealmPart) GetVWithoutCall(v Value, key *Object, c *PropCache) (val Val
 	case LookupSlot:
 		if l.Prop.Flags&FlagAccessor == 0 {
 			if c != nil {
-				c.Keep(start.Shape)
+				c.Keep(start.shape)
 			}
 			val, _ = r.ReadNamedSlot(start, l.Holder, l.Prop, c)
 			return val, true
@@ -397,19 +397,19 @@ func (r *RealmPart) GetVWithoutCall(v Value, key *Object, c *PropCache) (val Val
 
 // HasOwnMethod is quiet.Context.HasOwnMethod.
 func (o *Object) HasOwnMethod(key, method *Object) bool {
-	if o.Flags&ObjExotic != 0 {
+	if o.flags&ObjExotic != 0 {
 		return false
 	}
-	p, ok := o.Shape.Lookup(key)
-	return ok && p.Flags&FlagAccessor == 0 && o.Slots[p.Slot].O == method
+	p, ok := o.shape.Lookup(key)
+	return ok && p.Flags&FlagAccessor == 0 && o.slots[p.Slot].O == method
 }
 
 // InheritsMethod is quiet.Context.InheritsMethod.
 func (o *Object) InheritsMethod(proto, key, method *Object) bool {
-	if o.Flags&ObjExotic != 0 || o.Shape.Proto != proto {
+	if o.flags&ObjExotic != 0 || o.shape.Proto != proto {
 		return false
 	}
-	if _, ok := o.Shape.Lookup(key); ok {
+	if _, ok := o.shape.Lookup(key); ok {
 		return false
 	}
 	return proto.HasOwnMethod(key, method)
@@ -418,12 +418,12 @@ func (o *Object) InheritsMethod(proto, key, method *Object) bool {
 // DiagnosticDataProperty reads stored properties for stack traces and exception descriptions.
 // It skips the property operations of exotic objects.
 func DiagnosticDataProperty(o, key *Object) (Value, bool) {
-	for h := o; h != nil; h = h.Shape.Proto {
-		if p, ok := h.Shape.Lookup(key); ok {
+	for h := o; h != nil; h = h.shape.Proto {
+		if p, ok := h.shape.Lookup(key); ok {
 			if p.Flags&FlagAccessor != 0 {
 				break
 			}
-			return h.Slots[p.Slot], true
+			return h.slots[p.Slot], true
 		}
 	}
 	return Undefined, false
@@ -441,7 +441,7 @@ func (r *RealmPart) HasOwnPropertyPlain(o *Object, k Value) (has, ok bool) {
 		}
 		key = QueryKey(IndexKey(i))
 	case k.IsString():
-		if k.IsShortString() && k.O.Flags&ObjInterned == 0 {
+		if k.IsShortString() && k.O.flags&ObjInterned == 0 {
 			key = r.ShortQueryKey(k)
 		} else {
 			key = r.QueryStringKey(k.O)
@@ -453,12 +453,12 @@ func (r *RealmPart) HasOwnPropertyPlain(o *Object, k Value) (has, ok bool) {
 	}
 	if key.Key == nil {
 		if o.IndicesInElements() {
-			return int64(key.Idx) < int64(len(o.Elems)) && !o.Elems[key.Idx].IsHole(), true
+			return int64(key.Idx) < int64(len(o.elems)) && !o.elems[key.Idx].IsHole(), true
 		}
 		if o.DelegatesPropertyAccess() {
 			return false, false
 		}
-		if o.ObjectProperties != nil && int64(key.Idx) < int64(len(o.Elems)) && !o.Elems[key.Idx].IsHole() {
+		if o.objectProperties != nil && int64(key.Idx) < int64(len(o.elems)) && !o.elems[key.Idx].IsHole() {
 			return true, true
 		}
 		switch o.Class {
@@ -470,17 +470,17 @@ func (r *RealmPart) HasOwnPropertyPlain(o *Object, k Value) (has, ok bool) {
 				return true, true
 			}
 		}
-		if o.Flags&ObjSparse == 0 {
+		if o.flags&ObjSparse == 0 {
 			return false, true
 		}
 		name := r.IndexKey(key.Idx)
 		if name == nil {
 			return false, true
 		}
-		_, has = o.Shape.Lookup(name)
+		_, has = o.shape.Lookup(name)
 		return has, true
 	}
-	switch o.Shape.Family {
+	switch o.shape.Family {
 	case OrdinaryRoot:
 	case ArrayRoot:
 		if key.Key == r.Key(KeyLength) {
@@ -496,6 +496,84 @@ func (r *RealmPart) HasOwnPropertyPlain(o *Object, k Value) (has, ok bool) {
 	if key.Missing() {
 		return false, true
 	}
-	_, has = o.Shape.Lookup(key.Key)
+	_, has = o.shape.Lookup(key.Key)
 	return has, true
+}
+
+// SlotValue returns the value or the accessors of p, an own property of o.
+func (o *Object) SlotValue(p Prop) Value {
+	return o.slots[p.Slot]
+}
+
+// SlotCount returns the number of slots of o.
+func (o *Object) SlotCount() int {
+	return len(o.slots)
+}
+
+// StoreData stores v in p, an own property of o, and reports whether p is a writable data property.
+func (o *Object) StoreData(p Prop, v Value) bool {
+	if p.Flags&(FlagAccessor|FlagWritable) != FlagWritable {
+		return false
+	}
+	o.slots[p.Slot] = v
+	return true
+}
+
+// InitBinding sets the value of the binding key of the global lexical bindings o.
+func (o *Object) InitBinding(key *Object, v Value) {
+	p, _ := o.shape.Lookup(key)
+	o.slots[p.Slot] = v
+}
+
+// StoreMapped stores v in p, an index property of the arguments object o that maps to a parameter.
+func (o *Object) StoreMapped(p Prop, v Value) {
+	if ValidateExec && o.Class != ClassArguments {
+		panic("engine: StoreMapped on an object of another class")
+	}
+	o.slots[p.Slot] = v
+}
+
+// Remove deletes the own named property key of o, which must exist.
+func (sp *Space) Remove(o, key *Object) {
+	old := o.shape
+	if old.Private {
+		sp.removeFromPrivate(o, key)
+		return
+	}
+	// The shared shape without key has the later properties in the slots after the one of key,
+	// so their values move down by one.
+	if s := old.Without(key); s != nil {
+		p, _ := old.Lookup(key)
+		o.removeSlot(int(p.Slot))
+		o.shape = s
+		sp.TouchProto(o)
+		return
+	}
+	// Otherwise removing a property moves the later ones, so the object gets a shape that no
+	// inline cache has seen.
+	s := &Shape{
+		Space:   old.Space,
+		Realm:   old.Realm,
+		Proto:   old.Proto,
+		Family:  old.Family,
+		Table:   make(map[*Object]Prop, old.Count),
+		Private: true,
+	}
+	slots := make([]Value, 0, len(o.slots))
+	for _, k := range old.Keys() {
+		if k == key {
+			continue
+		}
+		q, _ := old.Lookup(k)
+		s.Table[k] = Prop{
+			Slot:  s.Count,
+			Flags: q.Flags,
+		}
+		s.Order = append(s.Order, k)
+		s.Count++
+		slots = append(slots, o.slots[q.Slot])
+	}
+	o.replaceSlots(slots)
+	o.shape = s
+	sp.TouchProto(o)
 }

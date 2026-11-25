@@ -39,16 +39,6 @@ func (ag *agent) PollAt(i int64) {
 	}
 }
 
-// clearPolled is clear, checking for an interruption while it clears many elements.
-func clearPolled[T any](cx *ExecutionContext, s []T) {
-	for i := 0; i < len(s); i += storage.PollChunk {
-		if i > 0 {
-			cx.Poll()
-		}
-		clear(s[i:min(i+storage.PollChunk, len(s))])
-	}
-}
-
 // CopyPolled is copy for slices that do not overlap, checking for an interruption while it
 // copies many elements.
 func CopyPolled[T any](cx *ExecutionContext, dst, src []T) int {

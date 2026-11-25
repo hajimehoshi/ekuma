@@ -125,8 +125,8 @@ func NewFunctionObject(s *Shape, fn *Function) *Object {
 	return (&PropertyObject{
 		Kind:  KindFunction,
 		Class: ClassFunction,
-		Flags: ObjExotic,
-		Shape: s,
+		flags: ObjExotic,
+		shape: s,
 		Fn:    fn,
 	}).Init()
 }
@@ -136,8 +136,8 @@ func NewFunctionObject(s *Shape, fn *Function) *Object {
 func (o *PropertyObject) InitFunction(s *Shape, fn *Function, state any) *Object {
 	o.Kind = KindFunction
 	o.Class = ClassFunction
-	o.Flags = ObjExotic
-	o.Shape = s
+	o.flags = ObjExotic
+	o.shape = s
 	o.Fn = fn
 	o.Ext = state
 	return o.Init()
@@ -149,9 +149,9 @@ func (o *PropertyObject) InitFunction(s *Shape, fn *Function, state any) *Object
 func (o *PropertyObject) InitMaterializedFunction(s *Shape, fn *Function, room []Value) *Object {
 	o.Kind = KindFunction
 	o.Class = ClassFunction
-	o.Shape = s
+	o.shape = s
 	o.Fn = fn
-	o.Slots = room[:0]
+	o.slots = room[:0]
 	o.Pinned = PinnedSlots
 	return o.Init()
 }
@@ -169,11 +169,11 @@ func (r *RealmPart) Materialize(o *Object) {
 	}
 	f := o.OwnFunction()
 	f.Materialized = true
-	o.Flags &^= ObjExotic
-	if r := o.Shape.Realm; o.Shape == r.Shapes.Function {
-		o.Shape = r.Shapes.MaterializedFunction
+	o.flags &^= ObjExotic
+	if r := o.shape.Realm; o.shape == r.Shapes.Function {
+		o.shape = r.Shapes.MaterializedFunction
 	} else {
-		r.rebuildShape(o, o.Shape.Proto, OrdinaryRoot)
+		r.rebuildShape(o, o.shape.Proto, OrdinaryRoot)
 	}
 	if c := f.Code; c != nil {
 		r.Add(o, r.Key(KeyLength), Number(float64(c.Length)), FlagConfigurable)
@@ -222,17 +222,17 @@ func (r *RealmPart) OwnFunctionPrototypeSlot(ctor *Object, site *PropCache) *Val
 	if ctor.Class != ClassFunction {
 		return nil
 	}
-	if ctor.Flags&ObjExotic != 0 {
+	if ctor.flags&ObjExotic != 0 {
 		r.Materialize(ctor)
 	}
-	p, ok := ctor.Shape.Lookup(r.Key(KeyPrototype))
+	p, ok := ctor.shape.Lookup(r.Key(KeyPrototype))
 	if !ok {
 		return nil
 	}
-	slot := &ctor.Slots[p.Slot]
-	if site != nil && ctor.Flags&ObjExotic == 0 && slot.IsObject() {
+	slot := &ctor.slots[p.Slot]
+	if site != nil && ctor.flags&ObjExotic == 0 && slot.IsObject() {
 		// Caching the constructor's own prototype slot also relies on @@hasInstance staying inherited.
-		site.SetInherited(ctor.Shape, CacheOwn, r.ProtoEpoch)
+		site.SetInherited(ctor.shape, CacheOwn, r.ProtoEpoch)
 		site.Slot = p.Slot
 	}
 	return slot
@@ -243,7 +243,7 @@ func (r *RealmPart) OwnFunctionPrototypeSlot(ctor *Object, site *PropCache) *Val
 func (o *Object) StartMaterialized(s *Shape) *Function {
 	fn := o.OwnFunction()
 	fn.Materialized = true
-	o.Flags &^= ObjExotic
-	o.Shape = s
+	o.flags &^= ObjExotic
+	o.shape = s
 	return fn
 }

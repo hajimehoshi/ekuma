@@ -34,7 +34,7 @@ func (ag *agent) KeyString(k storage.PropKey) wtf8.String {
 
 // ToPropertyKey implements ToPropertyKey.
 func (cx *ExecutionContext) ToPropertyKey(v storage.Value) storage.PropKey {
-	if v.IsShortString() && v.O.Flags&storage.ObjInterned == 0 {
+	if v.IsShortString() && v.O.Flags()&storage.ObjInterned == 0 {
 		return cx.KeyOfString(v.ShortText())
 	}
 	o := v.O
@@ -68,7 +68,7 @@ func (cx *ExecutionContext) ToPropertyKey(v storage.Value) storage.PropKey {
 // key is made.
 func (cx *ExecutionContext) QueryKey(v storage.Value) storage.QueryKey {
 	if o := v.O; o != nil && o.Kind == storage.KindString {
-		if v.IsShortString() && o.Flags&storage.ObjInterned == 0 {
+		if v.IsShortString() && o.Flags()&storage.ObjInterned == 0 {
 			return cx.ShortQueryKey(v)
 		}
 		return cx.QueryStringKey(o)
@@ -98,8 +98,8 @@ func (cx *ExecutionContext) QueryOwnProperty(o *storage.Object, k storage.QueryK
 		if !o.DelegatesPropertyAccess() {
 			return false
 		}
-	} else if k.Key != nil && o.Shape.Family == storage.OrdinaryRoot {
-		_, ok := o.Shape.Lookup(k.Key)
+	} else if k.Key != nil && o.Shape().Family == storage.OrdinaryRoot {
+		_, ok := o.Shape().Lookup(k.Key)
 		return ok
 	}
 	return cx.HasOwnProperty(o, cx.propKey(k))
@@ -180,10 +180,10 @@ func (cx *ExecutionContext) protoStart(v storage.Value, key storage.PropKey) *st
 		if key.Key == cx.Key(storage.KeyLength) {
 			return o
 		}
-		if v.IsShortString() && o.Flags&storage.ObjInterned == 0 {
+		if v.IsShortString() && o.Flags()&storage.ObjInterned == 0 {
 			o = v.StringObject()
 		}
-		if p := cx.Intrinsic(storage.IntrinsicStringPrototype); o.Shape.Proto != p {
+		if p := cx.Intrinsic(storage.IntrinsicStringPrototype); o.Shape().Proto != p {
 			// The shape of a string made in another realm leads to the String.prototype of
 			// that realm.
 			return cx.NewStringObject(o, p)
@@ -196,16 +196,16 @@ func (cx *ExecutionContext) protoStart(v storage.Value, key storage.PropKey) *st
 // getNamedAtSite reads a named property through the additional shapes recorded at the site.
 func (cx *ExecutionContext) getNamedAtSite(v storage.Value, key *storage.Object, c *storage.PropCache) (storage.Value, *storage.Object) {
 	if r := c.Reads; r != nil && r.Space == cx.space && r.Epoch == cx.ProtoEpoch {
-		if o := v.O; o != nil && o.Kind == storage.KindObject && o.Class == storage.ClassObject && o.Flags&storage.ObjExotic == 0 && o.Shape.Space == cx.space {
-			if e, ok := r.Shapes[o.Shape.ReadID]; ok && e.Count == o.Shape.Count {
+		if o := v.O; o != nil && o.Kind == storage.KindObject && o.Class == storage.ClassObject && o.Flags()&storage.ObjExotic == 0 && o.Shape().Space == cx.space {
+			if e, ok := r.Shapes[o.Shape().ReadID]; ok && e.Count == o.Shape().Count {
 				h := o
 				for range e.Depth {
-					h = h.Shape.Proto
+					h = h.Shape().Proto
 				}
 				if validateExec {
 					cx.checkRememberedRead(v, key, h, e.Prop)
 				}
-				c.Keep(o.Shape)
+				c.Keep(o.Shape())
 				return cx.ReadNamedSlot(o, h, e.Prop, c)
 			}
 		}
@@ -224,17 +224,17 @@ func (cx *ExecutionContext) getNamed(v storage.Value, key *storage.Object, c *st
 	if start.Class == storage.ClassTypedArray && key == cx.Key(storage.KeyLength) && c != nil {
 		// The cache says that the length is the original getter, whose result needs no call.
 		e := &c.CacheEntry
-		if e.Shape != start.Shape {
+		if e.Shape != start.Shape() {
 			e = &c.Second
 		}
-		if e.Shape == start.Shape && e.Kind == storage.CacheGetter && e.Epoch == cx.ProtoEpoch && e.Holder == cx.Intrinsic(storage.IntrinsicTypedArrayPrototypeLengthGetter) {
+		if e.Shape == start.Shape() && e.Kind == storage.CacheGetter && e.Epoch == cx.ProtoEpoch && e.Holder == cx.Intrinsic(storage.IntrinsicTypedArrayPrototypeLengthGetter) {
 			if validateExec {
 				cx.checkTypedArrayLengthHit(nil, 0, v, float64(storage.TypedArrayLength(start)))
 			}
 			return storage.Number(float64(storage.TypedArrayLength(start))), nil
 		}
 	}
-	s, epoch := start.Shape, cx.ProtoEpoch
+	s, epoch := start.Shape(), cx.ProtoEpoch
 	r := cx.Lookup(start, key)
 	switch r.Kind {
 	case storage.LookupDelegate:
@@ -244,14 +244,12 @@ func (cx *ExecutionContext) getNamed(v storage.Value, key *storage.Object, c *st
 	case storage.LookupAbsent, storage.LookupNumericMiss:
 		if c != nil {
 			// Both misses are stable for this shape and prototype epoch.
-			c.Keep(start.Shape)
-			c.SetInherited(start.Shape, storage.CacheProto, cx.ProtoEpoch)
-			c.Ref = &cx.MissHolder.Slots[0]
+			c.RememberAbsent(cx.space, start.Shape())
 		}
 		return storage.Undefined, nil
 	case storage.LookupSlot:
-		if c != nil && c.Keep(start.Shape) && start == v.O && start.Kind == storage.KindObject && start.Class == storage.ClassObject && start.Flags&storage.ObjExotic == 0 &&
-			s == start.Shape && s.Space == cx.space && epoch == cx.ProtoEpoch {
+		if c != nil && c.Keep(start.Shape()) && start == v.O && start.Kind == storage.KindObject && start.Class == storage.ClassObject && start.Flags()&storage.ObjExotic == 0 &&
+			s == start.Shape() && s.Space == cx.space && epoch == cx.ProtoEpoch {
 			c.RememberRead(cx.space, start, r.Holder, r.Prop)
 		}
 		return cx.ReadNamedSlot(start, r.Holder, r.Prop, c)
@@ -261,7 +259,7 @@ func (cx *ExecutionContext) getNamed(v storage.Value, key *storage.Object, c *st
 
 // GetV returns the named property key of v, calling a getter.
 func (cx *ExecutionContext) GetV(v storage.Value, key *storage.Object) storage.Value {
-	if v.IsObject() && v.O.Shape.Family == storage.OrdinaryRoot {
+	if v.IsObject() && v.O.Shape().Family == storage.OrdinaryRoot {
 		return cx.getProp(v.O, storage.NamedKey(key), v)
 	}
 	val, getter := cx.getNamed(v, key, nil)
@@ -293,15 +291,15 @@ func (cx *ExecutionContext) GetVCached(v storage.Value, k storage.PropKey, c *Pr
 	}
 	if o := v.O; o != nil {
 		e := &c.c.CacheEntry
-		if o.Shape != e.Shape {
+		if o.Shape() != e.Shape {
 			e = &c.c.Second
 		}
-		if o.Shape == e.Shape {
+		if o.Shape() == e.Shape {
 			if e.Kind == storage.CacheOwn {
 				if validateExec {
 					cx.checkEntryRead(nil, 0, v, o, k.Key, e)
 				}
-				return o.Slots[e.Slot]
+				return e.OwnValue(o)
 			}
 			if e.Epoch == cx.ProtoEpoch {
 				switch e.Kind {
@@ -319,9 +317,9 @@ func (cx *ExecutionContext) GetVCached(v storage.Value, k storage.PropKey, c *Pr
 			}
 			if e.Kind == storage.CacheOwnGetter {
 				if validateExec {
-					cx.checkOwnGetterHit(nil, 0, v, k.Key, &o.Slots[e.Slot])
+					cx.checkOwnGetterHit(nil, 0, v, k.Key, o, e.Slot)
 				}
-				if g := o.Slots[e.Slot].Accessor().Getter; g != nil {
+				if g := e.OwnValue(o).Accessor().Getter; g != nil {
 					return cx.Call(g, v)
 				}
 				return storage.Undefined
@@ -357,11 +355,9 @@ func (cx *ExecutionContext) getIndex(v storage.Value, i uint32) (storage.Value, 
 		}
 		start = cx.protoStart(v, storage.IndexKey(i))
 	}
-	for h := start; h != nil; h = h.Shape.Proto {
-		if h.ObjectProperties != nil && int64(i) < int64(len(h.Elems)) {
-			if e := h.Elems[i]; !e.IsHole() {
-				return e, nil
-			}
+	for h := start; h != nil; h = h.Shape().Proto {
+		if e, ok := h.ElementAt(i); ok {
+			return e, nil
 		}
 		if h.IndicesInElements() {
 			continue
@@ -382,9 +378,9 @@ func (cx *ExecutionContext) getIndex(v storage.Value, i uint32) (storage.Value, 
 				return cx.UnitString(s.UnitAt(int(i))), nil
 			}
 		}
-		if h.Flags&storage.ObjSparse != 0 {
-			if p, ok := h.Shape.Lookup(cx.IndexKey(i)); ok {
-				val := h.Slots[p.Slot]
+		if h.Flags()&storage.ObjSparse != 0 {
+			if p, ok := h.Shape().Lookup(cx.IndexKey(i)); ok {
+				val := h.SlotValue(p)
 				if p.Flags&storage.FlagAccessor != 0 {
 					return storage.Undefined, val.Accessor().Getter
 				}
@@ -400,10 +396,10 @@ func (cx *ExecutionContext) getIndex(v storage.Value, i uint32) (storage.Value, 
 
 // GetOwnProperty implements [[GetOwnProperty]].
 func (cx *ExecutionContext) GetOwnProperty(o *storage.Object, k storage.PropKey) (storage.PropDesc, bool) {
-	if validateExec && k.Key != nil && k.Key.Kind == storage.KindString && k.Key.Flags&storage.ObjInterned == 0 {
+	if validateExec && k.Key != nil && k.Key.Kind == storage.KindString && k.Key.Flags()&storage.ObjInterned == 0 {
 		panic("engine: property key that is not interned")
 	}
-	if o.Flags&storage.ObjExotic != 0 {
+	if o.Flags()&storage.ObjExotic != 0 {
 		switch o.Class {
 		case storage.ClassProxy:
 			return cx.proxyGetOwnProperty(o, k)
@@ -421,10 +417,8 @@ func (cx *ExecutionContext) GetOwnProperty(o *storage.Object, k storage.PropKey)
 	}
 	name := k.Key
 	if name == nil {
-		if o.ObjectProperties != nil && int64(k.Idx) < int64(len(o.Elems)) {
-			if e := o.Elems[k.Idx]; !e.IsHole() {
-				return storage.DataDesc(e, storage.FlagsData), true
-			}
+		if e, ok := o.ElementAt(k.Idx); ok {
+			return storage.DataDesc(e, storage.FlagsData), true
 		}
 		switch o.Class {
 		case storage.ClassTypedArray:
@@ -438,11 +432,11 @@ func (cx *ExecutionContext) GetOwnProperty(o *storage.Object, k storage.PropKey)
 				return storage.DataDesc(cx.UnitString(s.UnitAt(int(k.Idx))), storage.FlagEnumerable), true
 			}
 		}
-		if o.Flags&storage.ObjSparse == 0 {
+		if o.Flags()&storage.ObjSparse == 0 {
 			return storage.PropDesc{}, false
 		}
 		if u := mappedParam(o, k.Idx); u != nil {
-			p, _ := o.Shape.Lookup(cx.IndexName(k.Idx))
+			p, _ := o.Shape().Lookup(cx.IndexName(k.Idx))
 			return storage.DataDesc(*u.P, p.Flags), true
 		}
 		name = cx.IndexKey(k.Idx)
@@ -452,17 +446,17 @@ func (cx *ExecutionContext) GetOwnProperty(o *storage.Object, k storage.PropKey)
 	} else {
 		if name == cx.Key(storage.KeyLength) && o.Kind == storage.KindArray {
 			flags := storage.FlagWritable
-			if o.Flags&storage.ObjFrozenLength != 0 {
+			if o.Flags()&storage.ObjFrozenLength != 0 {
 				flags = 0
 			}
-			return storage.DataDesc(storage.Number(float64(o.Length)), flags), true
+			return storage.DataDesc(storage.Number(float64(o.Length())), flags), true
 		}
 	}
-	p, ok := o.Shape.Lookup(name)
+	p, ok := o.Shape().Lookup(name)
 	if !ok {
 		return storage.PropDesc{}, false
 	}
-	val := o.Slots[p.Slot]
+	val := o.SlotValue(p)
 	if p.Flags&storage.FlagAccessor != 0 {
 		return storage.AccessorDesc(val.Accessor(), p.Flags), true
 	}
@@ -473,10 +467,10 @@ func (cx *ExecutionContext) GetOwnProperty(o *storage.Object, k storage.PropKey)
 func (cx *ExecutionContext) HasOwnProperty(o *storage.Object, k storage.PropKey) bool {
 	if k.Key == nil {
 		if o.IndicesInElements() {
-			return int64(k.Idx) < int64(len(o.Elems)) && !o.Elems[k.Idx].IsHole()
+			return o.HasElementAt(k.Idx)
 		}
-	} else if o.Shape.Family == storage.OrdinaryRoot {
-		_, ok := o.Shape.Lookup(k.Key)
+	} else if o.Shape().Family == storage.OrdinaryRoot {
+		_, ok := o.Shape().Lookup(k.Key)
 		return ok
 	}
 	_, ok := cx.GetOwnProperty(o, k)
@@ -485,8 +479,8 @@ func (cx *ExecutionContext) HasOwnProperty(o *storage.Object, k storage.PropKey)
 
 // HasProperty implements [[HasProperty]].
 func (cx *ExecutionContext) HasProperty(o *storage.Object, k storage.PropKey) bool {
-	for h := o; h != nil; h = h.Shape.Proto {
-		if h.Flags&storage.ObjExotic != 0 {
+	for h := o; h != nil; h = h.Shape().Proto {
+		if h.Flags()&storage.ObjExotic != 0 {
 			switch h.Class {
 			case storage.ClassProxy:
 				return cx.proxyHas(h, k)
@@ -512,14 +506,14 @@ func (cx *ExecutionContext) ProtoOf(o *storage.Object) *storage.Object {
 	if o.Class == storage.ClassProxy {
 		return cx.proxyGetPrototypeOf(o)
 	}
-	return o.Shape.Proto
+	return o.Shape().Proto
 }
 
 // getProp implements [[Get]] with a receiver.
 func (cx *ExecutionContext) getProp(o *storage.Object, k storage.PropKey, receiver storage.Value) storage.Value {
-	for h := o; h != nil; h = h.Shape.Proto {
-		if k.Key != nil && h.Shape.Family == storage.OrdinaryRoot {
-			if p, ok := h.Shape.Lookup(k.Key); ok {
+	for h := o; h != nil; h = h.Shape().Proto {
+		if k.Key != nil && h.Shape().Family == storage.OrdinaryRoot {
+			if p, ok := h.Shape().Lookup(k.Key); ok {
 				v, getter := cx.ReadNamedSlot(o, h, p, nil)
 				if getter != nil {
 					return cx.Call(getter, receiver)
@@ -558,21 +552,21 @@ func (cx *ExecutionContext) getProp(o *storage.Object, k storage.PropKey, receiv
 // setArrayLength implements ArraySetLength for a length that is already converted.
 // It reports false when an element could not be deleted or the length is not writable.
 func (cx *ExecutionContext) setArrayLength(o *storage.Object, n uint32) bool {
-	if n == o.Length {
+	if n == o.Length() {
 		return true
 	}
-	if o.Flags&storage.ObjFrozenLength != 0 {
+	if o.Flags()&storage.ObjFrozenLength != 0 {
 		return false
 	}
-	if n > o.Length {
-		o.Length = n
+	if n > o.Length() {
+		o.GrowLength(n)
 		return true
 	}
 	ok := true
-	if o.Flags&storage.ObjSparse != 0 {
+	if o.Flags()&storage.ObjSparse != 0 {
 		// Delete the stored index properties from the end, stopping at one that is not configurable.
 		var idxs []uint32
-		for _, k := range o.Shape.Keys() {
+		for _, k := range o.Shape().Keys() {
 			if k.Kind != storage.KindString {
 				continue
 			}
@@ -585,31 +579,15 @@ func (cx *ExecutionContext) setArrayLength(o *storage.Object, n uint32) bool {
 		for _, idx := range slices.Backward(idxs) {
 			p.Step(cx)
 			k := cx.IndexKey(idx)
-			if p, _ := o.Shape.Lookup(k); p.Flags&storage.FlagConfigurable == 0 {
+			if p, _ := o.Shape().Lookup(k); p.Flags&storage.FlagConfigurable == 0 {
 				n = idx + 1
 				ok = false
 				break
 			}
-			cx.remove(o, k)
+			cx.Remove(o, k)
 		}
 	}
-	if int64(n) < int64(len(o.Elems)) {
-		tail := o.Elems[n:]
-		o.Elems = o.Elems[:n]
-		oversized := o.ElemsOversized()
-		if len(tail) > storage.PollChunk {
-			// The tail, which may be left uncleared, stays out of reach of later growth.
-			o.ClipElems()
-		}
-		o.Length = n
-		if oversized {
-			// The tail goes away with the storage.
-			cx.ReallocElems(o)
-		} else {
-			clearPolled(cx, tail)
-		}
-	}
-	o.Length = n
+	cx.TruncateElements(o, n)
 	return ok
 }
 
@@ -625,7 +603,7 @@ func (cx *ExecutionContext) setNamed(v storage.Value, key *storage.Object, val s
 		}
 		start = cx.protoStart(v, storage.NamedKey(key))
 		c = nil
-	} else if o.Shape.Family == storage.LazyFunctionRoot {
+	} else if o.Shape().Family == storage.LazyFunctionRoot {
 		// The initial properties of a function precede every property that a store adds.
 		cx.Materialize(o)
 	}
@@ -643,7 +621,7 @@ func (cx *ExecutionContext) setNamed(v storage.Value, key *storage.Object, val s
 		return nil, cx.setProp(r.Holder, storage.NamedKey(key), val, v)
 	case storage.LookupSlot, storage.LookupAbsent:
 		if c != nil {
-			c.Keep(o.Shape)
+			c.Keep(o.Shape())
 		}
 	default:
 		panic("engine: unknown named lookup result")
@@ -651,9 +629,9 @@ func (cx *ExecutionContext) setNamed(v storage.Value, key *storage.Object, val s
 	if r.Kind == storage.LookupSlot {
 		p := r.Prop
 		if p.Flags&storage.FlagAccessor != 0 {
-			setter := r.Holder.Slots[p.Slot].Accessor().Setter
-			if setter != nil && c != nil && r.Holder != o && !o.Shape.Private {
-				c.SetInherited(o.Shape, storage.CacheSetter, cx.ProtoEpoch)
+			setter := r.Holder.SlotValue(p).Accessor().Setter
+			if setter != nil && c != nil && r.Holder != o && !o.Shape().Private {
+				c.SetInherited(o.Shape(), storage.CacheSetter, cx.ProtoEpoch)
 				c.Holder = setter
 			}
 			return setter, setter != nil
@@ -662,24 +640,24 @@ func (cx *ExecutionContext) setNamed(v storage.Value, key *storage.Object, val s
 			return nil, false
 		}
 		if r.Holder == o {
-			o.Slots[p.Slot] = val
+			o.StoreData(p, val)
 			if c != nil {
-				c.Shape = o.Shape
+				c.Shape = o.Shape()
 				c.Kind = storage.CacheOwn
 				c.Slot = p.Slot
 			}
 			return nil, true
 		}
 	}
-	if !v.IsObject() || o.Flags&storage.ObjNotExtensible != 0 {
+	if !v.IsObject() || o.Flags()&storage.ObjNotExtensible != 0 {
 		return nil, false
 	}
-	old := o.Shape
+	old := o.Shape()
 	cx.Add(o, key, val, storage.FlagsData)
-	if c != nil && !old.Private && !o.Shape.Private && o.Flags&storage.ObjIsProto == 0 {
+	if c != nil && !old.Private && !o.Shape().Private && o.Flags()&storage.ObjIsProto == 0 {
 		c.Shape = old
 		c.Kind = storage.CacheAdd
-		c.Next = o.Shape
+		c.Next = o.Shape()
 		c.Epoch = cx.ProtoEpoch
 	}
 	return nil, true
@@ -687,7 +665,7 @@ func (cx *ExecutionContext) setNamed(v storage.Value, key *storage.Object, val s
 
 // setArrayLengthValue implements the store of an arbitrary value to the length of an array.
 func (cx *ExecutionContext) setArrayLengthValue(o *storage.Object, val storage.Value) bool {
-	if o.Flags&storage.ObjFrozenLength != 0 {
+	if o.Flags()&storage.ObjFrozenLength != 0 {
 		return false
 	}
 	return cx.setArrayLength(o, cx.toArrayLength(val))
@@ -723,8 +701,8 @@ func (cx *ExecutionContext) setIndex(v storage.Value, i uint32, val storage.Valu
 		// Only an inherited setter or a proxy can observe the store.
 		return nil, cx.setProp(cx.protoStart(v, storage.IndexKey(i)), storage.IndexKey(i), val, v)
 	}
-	if int64(i) < int64(len(o.Elems)) && !o.Elems[i].IsHole() {
-		o.Elems[i] = val
+	if o.HasElementAt(i) {
+		o.StoreElement(i, val)
 		return nil, true
 	}
 	if o.Class == storage.ClassTypedArray {
@@ -741,7 +719,7 @@ func (cx *ExecutionContext) setIndex(v storage.Value, i uint32, val storage.Valu
 func (cx *ExecutionContext) setProp(o *storage.Object, k storage.PropKey, val storage.Value, receiver storage.Value) bool {
 	var d storage.PropDesc
 	found := false
-	for h := o; h != nil; h = h.Shape.Proto {
+	for h := o; h != nil; h = h.Shape().Proto {
 		if h.Class == storage.ClassProxy {
 			return cx.proxySet(h, k, val, receiver)
 		}
@@ -823,13 +801,13 @@ func (cx *ExecutionContext) defineOwnProperty(o *storage.Object, k storage.PropK
 	}
 	cur, exists := cx.GetOwnProperty(o, k)
 	if !exists {
-		if o.Flags&storage.ObjNotExtensible != 0 {
+		if o.Flags()&storage.ObjNotExtensible != 0 {
 			return false
 		}
-		if o.Kind == storage.KindArray && k.Key == nil && k.Idx >= o.Length && o.Flags&storage.ObjFrozenLength != 0 {
+		if o.Kind == storage.KindArray && k.Key == nil && k.Idx >= o.Length() && o.Flags()&storage.ObjFrozenLength != 0 {
 			return false
 		}
-		if o.Flags&storage.ObjExotic != 0 && o.Fn != nil {
+		if o.Flags()&storage.ObjExotic != 0 && o.Fn != nil {
 			// The initial properties of a function precede every property that is defined later.
 			cx.Materialize(o)
 		}
@@ -866,7 +844,7 @@ func (cx *ExecutionContext) defineOwnProperty(o *storage.Object, k storage.PropK
 
 // defineArrayLength implements ArraySetLength.
 func (cx *ExecutionContext) defineArrayLength(o *storage.Object, d storage.PropDesc) bool {
-	n := o.Length
+	n := o.Length()
 	if d.HasField(storage.HasValue) {
 		n = cx.toArrayLength(d.Value())
 	}
@@ -879,12 +857,12 @@ func (cx *ExecutionContext) defineArrayLength(o *storage.Object, d storage.PropD
 	if d.HasTrue(storage.HasEnumerable, storage.FlagEnumerable) {
 		return false
 	}
-	frozen := o.Flags&storage.ObjFrozenLength != 0
+	frozen := o.Flags()&storage.ObjFrozenLength != 0
 	if frozen && d.HasTrue(storage.HasWritable, storage.FlagWritable) {
 		return false
 	}
 	ok := true
-	if n != o.Length {
+	if n != o.Length() {
 		if frozen {
 			return false
 		}
@@ -898,7 +876,7 @@ func (cx *ExecutionContext) defineArrayLength(o *storage.Object, d storage.PropD
 
 // DeleteProp implements [[Delete]]. It reports false when the property is not configurable.
 func (cx *ExecutionContext) DeleteProp(o *storage.Object, k storage.PropKey) bool {
-	if o.Flags&storage.ObjExotic != 0 {
+	if o.Flags()&storage.ObjExotic != 0 {
 		switch o.Class {
 		case storage.ClassProxy:
 			return cx.proxyDelete(o, k)
@@ -915,8 +893,8 @@ func (cx *ExecutionContext) DeleteProp(o *storage.Object, k storage.PropKey) boo
 		}
 	}
 	if k.Key == nil {
-		if int64(k.Idx) < int64(len(o.Elems)) && !o.Elems[k.Idx].IsHole() {
-			o.Elems[k.Idx] = storage.Hole
+		if o.HasElementAt(k.Idx) {
+			o.StoreElement(k.Idx, storage.Hole)
 			return true
 		}
 		switch o.Class {
@@ -927,7 +905,7 @@ func (cx *ExecutionContext) DeleteProp(o *storage.Object, k storage.PropKey) boo
 				return false
 			}
 		}
-		if o.Flags&storage.ObjSparse == 0 {
+		if o.Flags()&storage.ObjSparse == 0 {
 			return true
 		}
 		if mappedParam(o, k.Idx) != nil {
@@ -937,13 +915,13 @@ func (cx *ExecutionContext) DeleteProp(o *storage.Object, k storage.PropKey) boo
 		if name == nil {
 			return true
 		}
-		p, ok := o.Shape.Lookup(name)
+		p, ok := o.Shape().Lookup(name)
 		return !ok || cx.deleteOwnSlot(o, name, p)
 	}
 	if k.Key == cx.Key(storage.KeyLength) && o.Kind == storage.KindArray {
 		return false
 	}
-	p, ok := o.Shape.Lookup(k.Key)
+	p, ok := o.Shape().Lookup(k.Key)
 	return !ok || cx.deleteOwnSlot(o, k.Key, p)
 }
 
@@ -951,7 +929,7 @@ func (cx *ExecutionContext) deleteOwnSlot(o *storage.Object, key *storage.Object
 	if p.Flags&storage.FlagConfigurable == 0 {
 		return false
 	}
-	cx.remove(o, key)
+	cx.Remove(o, key)
 	return true
 }
 
@@ -964,20 +942,20 @@ func (cx *ExecutionContext) OwnKeys(o *storage.Object) []storage.PropKey {
 	if o.Class == storage.ClassModuleNamespace {
 		return cx.namespaceOwnKeys(o)
 	}
-	if o.Flags&storage.ObjExotic != 0 {
+	if o.Flags()&storage.ObjExotic != 0 {
 		cx.resolve(o)
 	}
 	// Every element, every named property and length.
-	keys := make([]storage.PropKey, 0, len(o.Elems)+int(o.Shape.Count)+1)
+	keys := make([]storage.PropKey, 0, o.ElemCount()+int(o.Shape().Count)+1)
 	switch o.Class {
 	case storage.ClassString:
 		keys = cx.appendIndexKeys(keys, o.ExtState().(*storage.Object).StringLength())
 	case storage.ClassTypedArray:
 		keys = cx.appendIndexKeys(keys, storage.TypedArrayLength(o))
 	}
-	keys = cx.appendElemKeys(keys, o.Elems)
-	names := o.Shape.Keys()
-	if o.Flags&storage.ObjSparse != 0 {
+	keys = cx.appendElemKeys(keys, o)
+	names := o.Shape().Keys()
+	if o.Flags()&storage.ObjSparse != 0 {
 		sorted := true
 		for j, k := range names {
 			cx.pollAt(j)
@@ -1003,7 +981,7 @@ func (cx *ExecutionContext) OwnKeys(o *storage.Object) []storage.PropKey {
 		if k.Kind != storage.KindString {
 			continue
 		}
-		if o.Flags&storage.ObjSparse != 0 {
+		if o.Flags()&storage.ObjSparse != 0 {
 			if _, ok := k.KnownArrayIndex(); ok {
 				continue
 			}
@@ -1065,7 +1043,7 @@ func (cx *ExecutionContext) IsExtensible(o *storage.Object) bool {
 	if o.Class == storage.ClassProxy {
 		return cx.proxyIsExtensible(o)
 	}
-	return o.Flags&storage.ObjNotExtensible == 0
+	return o.Flags()&storage.ObjNotExtensible == 0
 }
 
 // PreventExtensions implements [[PreventExtensions]].
@@ -1076,8 +1054,8 @@ func (cx *ExecutionContext) PreventExtensions(o *storage.Object) bool {
 	if o.Class == storage.ClassTypedArray && !o.ExtState().(*storage.TypedArray).IsTypedArrayFixedLength() {
 		return false
 	}
-	if o.Flags&storage.ObjNotExtensible == 0 {
-		if o.Flags&storage.ObjExotic != 0 {
+	if o.Flags()&storage.ObjNotExtensible == 0 {
+		if o.Flags()&storage.ObjExotic != 0 {
 			cx.resolve(o)
 		}
 		o.MakeNonExtensible()
@@ -1090,13 +1068,13 @@ func (cx *ExecutionContext) SetPrototypeOf(o *storage.Object, proto *storage.Obj
 	if o.Class == storage.ClassProxy {
 		return cx.proxySetPrototypeOf(o, proto)
 	}
-	if o.Shape.Proto == proto {
+	if o.Shape().Proto == proto {
 		return true
 	}
-	if o.Flags&storage.ObjNotExtensible != 0 || o.Shape.Proto == nil && o == o.Shape.Realm.Intrinsics[storage.IntrinsicObjectPrototype] {
+	if o.Flags()&storage.ObjNotExtensible != 0 || o.Shape().Proto == nil && o == o.Shape().Realm.Intrinsics[storage.IntrinsicObjectPrototype] {
 		return false
 	}
-	for p := proto; p != nil; p = p.Shape.Proto {
+	for p := proto; p != nil; p = p.Shape().Proto {
 		if p.Class == storage.ClassProxy {
 			st := p.ExtState().(*storage.ProxyState)
 			if !st.IsGlobal() || st.Target == nil {
@@ -1125,7 +1103,7 @@ func (cx *ExecutionContext) CreateDataPropertyOrThrow(o *storage.Object, k stora
 func (cx *ExecutionContext) CreateDataProperty(o *storage.Object, k storage.PropKey, val storage.Value) bool {
 	// An array whose index properties are all in its elements has none at the index just
 	// past them.
-	if k.Key == nil && o.Kind == storage.KindArray && int(k.Idx) == len(o.Elems) && o.Flags&(storage.ObjSparse|storage.ObjExotic) == 0 {
+	if k.Key == nil && o.Kind == storage.KindArray && int(k.Idx) == o.ElemCount() && o.Flags()&(storage.ObjSparse|storage.ObjExotic) == 0 {
 		return cx.AddIndex(o, k.Idx, val, storage.FlagsData)
 	}
 	return cx.defineOwnProperty(o, k, storage.DataDesc(val, storage.FlagsData))
@@ -1170,14 +1148,14 @@ func (cx *ExecutionContext) appendIndexKeys(keys []storage.PropKey, n int) []sto
 	return keys
 }
 
-// appendElemKeys appends the keys of the elements in elems to keys, checking for an
+// appendElemKeys appends the keys of the elements of o to keys, checking for an
 // interruption while it appends many.
-func (cx *ExecutionContext) appendElemKeys(keys []storage.PropKey, elems []storage.Value) []storage.PropKey {
-	for i := 0; i < len(elems); i += storage.PollInterval {
+func (cx *ExecutionContext) appendElemKeys(keys []storage.PropKey, o *storage.Object) []storage.PropKey {
+	for i := 0; i < o.ElemCount(); i += storage.PollInterval {
 		if i > 0 {
 			cx.Poll()
 		}
-		keys = storage.AppendElemRun(keys, elems[i:min(i+storage.PollInterval, len(elems))], i)
+		keys = storage.AppendElemRun(keys, o, i, min(i+storage.PollInterval, o.ElemCount()))
 	}
 	return keys
 }
@@ -1185,13 +1163,13 @@ func (cx *ExecutionContext) appendElemKeys(keys []storage.PropKey, elems []stora
 // EnumerableOwnKeys implements EnumerableOwnProperties with the kind key.
 // It appends the keys to keys and returns the extended slice.
 func (cx *ExecutionContext) EnumerableOwnKeys(o *storage.Object, keys []storage.PropKey) []storage.PropKey {
-	if o.Flags&storage.ObjExotic != 0 && (o.Fn != nil || o.Class == storage.ClassLazy) {
+	if o.Flags()&storage.ObjExotic != 0 && (o.Fn != nil || o.Class == storage.ClassLazy) {
 		cx.resolve(o)
 	}
 	if cx.InterruptFlag.Load() {
 		cx.Poll()
 	}
-	if (o.Class != storage.ClassObject && o.Class != storage.ClassArray && o.Class != storage.ClassFunction) || o.Flags&(storage.ObjSparse|storage.ObjExotic) != 0 {
+	if (o.Class != storage.ClassObject && o.Class != storage.ClassArray && o.Class != storage.ClassFunction) || o.Flags()&(storage.ObjSparse|storage.ObjExotic) != 0 {
 		for i, k := range cx.OwnKeys(o) {
 			cx.pollAt(i)
 			if k.IsSymbol() {
@@ -1203,8 +1181,8 @@ func (cx *ExecutionContext) EnumerableOwnKeys(o *storage.Object, keys []storage.
 		}
 		return keys
 	}
-	keys = cx.appendElemKeys(keys, o.Elems)
-	s := o.Shape
+	keys = cx.appendElemKeys(keys, o)
+	s := o.Shape()
 	if s.Private {
 		for i := 0; i < len(s.Order); i += storage.PollInterval {
 			if i > 0 {

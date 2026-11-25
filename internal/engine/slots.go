@@ -74,7 +74,7 @@ func (cx *ExecutionContext) NewDateObject(proto *storage.Object, tv float64) *st
 // For other values it returns two nil values.
 func IteratorStateAndContext(v storage.Value) (any, *ExecutionContext) {
 	if v.IsObject() && v.O.Class == storage.ClassIterator {
-		return v.O.ExtState(), executionContextOf(v.O.Shape.Realm)
+		return v.O.ExtState(), executionContextOf(v.O.Shape().Realm)
 	}
 	return nil, nil
 }

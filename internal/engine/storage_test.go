@@ -23,10 +23,6 @@ type storageException struct {
 
 // objectStorageExceptions are the functions that assign the slots or the elements of objects.
 var objectStorageExceptions = map[string]storageException{
-	"agent.exec": {
-		count:  7,
-		reason: "adds within the capacity and creates objects; calls in exec cost more than inlined stores",
-	},
 	"realmPart.appendElements": {
 		count:  1,
 		reason: "appends within the room that reserveElems made; a helper costs each push a spill",
@@ -47,10 +43,6 @@ var objectStorageExceptions = map[string]storageException{
 		count:  1,
 		reason: "calls leaveElems and clears the tail itself; a helper is not inlined",
 	},
-	"ExecutionContext.setArrayLength": {
-		count:  1,
-		reason: "clears the tail itself with polls; a helper is not inlined",
-	},
 	"realmPart.DefineMatchResultProperties": {
 		count:  1,
 		reason: "fills the slots of a new array; a helper copies the values twice",
@@ -58,10 +50,6 @@ var objectStorageExceptions = map[string]storageException{
 	"realmPart.DefineMatchResultPropertiesWithIndices": {
 		count:  1,
 		reason: "fills the slots of a new array; a helper copies the values twice",
-	},
-	"ExecutionContext.NewArrayCopy": {
-		count:  1,
-		reason: "creates the object; a helper adds a write barrier sequence",
 	},
 	"realmPart.NewArrayPair": {
 		count:  1,
@@ -78,6 +66,22 @@ var objectStorageExceptions = map[string]storageException{
 	"realmPart.newArgumentsObject": {
 		count:  2,
 		reason: "creates the object; a helper adds a write barrier sequence",
+	},
+	"Poller.truncateElements": {
+		count:  1,
+		reason: "clears the tail itself with polls; a helper is not inlined",
+	},
+	"realmPart.NewArrayCopy": {
+		count:  1,
+		reason: "creates the object; a helper adds a write barrier sequence",
+	},
+	"Raw.ExtendElems": {
+		count:  1,
+		reason: "is what the interpreter loop uses",
+	},
+	"Raw.ExtendSlots": {
+		count:  1,
+		reason: "is what the interpreter loop uses",
 	},
 	"propertyObject.init": {
 		count:  1,

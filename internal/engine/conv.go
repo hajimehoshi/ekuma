@@ -460,7 +460,7 @@ func (cx *ExecutionContext) addValues(a, b storage.Value) storage.Value {
 // LengthOfArrayLike implements LengthOfArrayLike.
 func (cx *ExecutionContext) LengthOfArrayLike(o *storage.Object) int64 {
 	if o.Kind == storage.KindArray {
-		return int64(o.Length)
+		return int64(o.Length())
 	}
 	return numconv.ToLength(cx.ToNumber(cx.GetV(storage.Value{O: o}, cx.Key(storage.KeyLength))))
 }

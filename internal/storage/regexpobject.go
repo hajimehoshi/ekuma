@@ -13,9 +13,9 @@ func NewRegExpObject(s *Shape, state *RegExpState) *Object {
 	o, slots := NewObjectWithStorage(1)
 	o.Kind = KindObject
 	o.Class = ClassRegExp
-	o.Shape = s
+	o.shape = s
 	o.InitSlots(slots)
-	o.Slots[0] = Number(0)
+	o.slots[0] = Number(0)
 	o.Ext = state
 	return o
 }
@@ -38,7 +38,7 @@ func (r *RealmPart) hasRegExpShape(o *Object) bool {
 		r.checkRegExpShape(o)
 	}
 	s := r.Shapes.regExp
-	return s != nil && o.Shape == s
+	return s != nil && o.shape == s
 }
 
 // RegExpLastIndex is quiet.Context.RegExpLastIndex.
@@ -46,7 +46,7 @@ func (r *RealmPart) RegExpLastIndex(o *Object) (Value, bool) {
 	if !r.hasRegExpShape(o) {
 		return Undefined, false
 	}
-	return o.Slots[0], true
+	return o.slots[0], true
 }
 
 // SetRegExpLastIndex is quiet.Context.SetRegExpLastIndex.
@@ -54,7 +54,7 @@ func (r *RealmPart) SetRegExpLastIndex(o *Object, v Value) bool {
 	if !r.hasRegExpShape(o) {
 		return false
 	}
-	o.Slots[0] = v
+	o.slots[0] = v
 	r.TouchProto(o)
 	return true
 }
@@ -63,10 +63,10 @@ func (r *RealmPart) SetRegExpLastIndex(o *Object, v Value) bool {
 func (o *Object) RenewRegExp(s *Shape) {
 	// Only the pointers that differ from those of a new object are stored, so that reusing o needs
 	// no write barrier while the garbage collector marks.
-	if o.Shape != s {
-		o.Shape = s
+	if o.shape != s {
+		o.shape = s
 	}
-	SetNumber(&o.Slots[0], 0)
+	SetNumber(&o.slots[0], 0)
 }
 
 // regExpOriginals is what quiet.Context.UnmodifiedRegExpMatcher compares against.
@@ -106,13 +106,13 @@ type originalData struct {
 // find looks the property up in its holder, and reports whether it has the recorded attributes,
 // and the recorded getter if it is an accessor property.
 func (p *originalProp) find() bool {
-	q, ok := p.holder.Shape.Lookup(p.key)
+	q, ok := p.holder.shape.Lookup(p.key)
 	if !ok || q.Slot < 0 || q.Flags != p.flags {
 		return false
 	}
 	p.slot = q.Slot
 	if q.Flags&FlagAccessor != 0 {
-		return p.holder.Slots[q.Slot].Accessor().Getter == p.value
+		return p.holder.slots[q.Slot].Accessor().Getter == p.value
 	}
 	return true
 }
@@ -129,11 +129,11 @@ func (r *RealmPart) RecordRegExpOriginals(protoKeys, ctorKeys []*Object) {
 	o.props = o.props[:0]
 	record := func(holder *Object, keys []*Object) {
 		for _, k := range keys {
-			p, ok := holder.Shape.Lookup(k)
+			p, ok := holder.shape.Lookup(k)
 			if !ok || p.Slot < 0 {
 				panic("engine: RecordRegExpOriginals: missing property " + k.Text)
 			}
-			v := holder.Slots[p.Slot]
+			v := holder.slots[p.Slot]
 			var val *Object
 			if p.Flags&FlagAccessor != 0 {
 				val = v.Accessor().Getter
@@ -156,7 +156,7 @@ func (r *RealmPart) RecordRegExpOriginals(protoKeys, ctorKeys []*Object) {
 	record(ctor, ctorKeys)
 	// Adding, removing or redefining a property of an object marked as a prototype moves
 	// ProtoEpoch. Assigning to a data property does not.
-	ctor.Flags |= ObjIsProto
+	ctor.flags |= ObjIsProto
 	o.checked = false
 }
 
@@ -181,7 +181,7 @@ func (r *RealmPart) UnmodifiedRegExpMatcher(o *Object) *regexp.Regexp {
 			}
 			if p.flags&FlagAccessor == 0 {
 				rec.data = append(rec.data, originalData{
-					ref:   &p.holder.Slots[p.slot],
+					ref:   &p.holder.slots[p.slot],
 					value: p.value,
 				})
 			}
@@ -232,19 +232,19 @@ func (r *RealmPart) matchResultShapesFor(array *Shape) *matchResultShapes {
 // result on a, in that order, as CreateDataPropertyOrThrow does. a must be an array from
 // ExecutionContext.NewArrayWithRoom that has no named properties.
 func (r *RealmPart) DefineMatchResultProperties(a *Object, index, input, groups Value) {
-	if a.Shape != r.Shapes.Array || len(a.Slots) != 0 {
+	if a.shape != r.Shapes.Array || len(a.slots) != 0 {
 		panic("engine: DefineMatchResultProperties on an array that is not new")
 	}
-	a.Shape = r.matchResultShapesFor(a.Shape).plain
-	a.Slots = append(a.Slots, index, input, groups)
+	a.shape = r.matchResultShapesFor(a.shape).plain
+	a.slots = append(a.slots, index, input, groups)
 }
 
 // DefineMatchResultPropertiesWithIndices is like ExecutionContext.DefineMatchResultProperties and creates
 // the data property indices after groups.
 func (r *RealmPart) DefineMatchResultPropertiesWithIndices(a *Object, index, input, groups, indices Value) {
-	if a.Shape != r.Shapes.Array || len(a.Slots) != 0 {
+	if a.shape != r.Shapes.Array || len(a.slots) != 0 {
 		panic("engine: DefineMatchResultPropertiesWithIndices on an array that is not new")
 	}
-	a.Shape = r.matchResultShapesFor(a.Shape).withIndices
-	a.Slots = append(a.Slots, index, input, groups, indices)
+	a.shape = r.matchResultShapesFor(a.shape).withIndices
+	a.slots = append(a.slots, index, input, groups, indices)
 }

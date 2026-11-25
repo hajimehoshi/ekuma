@@ -85,11 +85,9 @@ func (cx *ExecutionContext) getGlobal(key *storage.Object, c *storage.GlobalCach
 	if v, ok := cx.getGlobalLexical(key, c); ok {
 		return v
 	}
-	if p, ok := g.Shape.Lookup(key); ok && p.Flags&storage.FlagAccessor == 0 {
-		c.Holder = g
-		c.Shape = g.Shape
-		c.Ref = &g.Slots[p.Slot]
-		return g.Slots[p.Slot]
+	if p, ok := g.Shape().Lookup(key); ok && p.Flags&storage.FlagAccessor == 0 {
+		c.Remember(g, g, p)
+		return g.SlotValue(p)
 	}
 	switch l := quiet.ContextOf(r).LookupNamed(g, key); l.Kind {
 	case storage.LookupAbsent, storage.LookupNumericMiss:
@@ -127,29 +125,27 @@ func (cx *ExecutionContext) getGlobal(key *storage.Object, c *storage.GlobalCach
 
 func (cx *ExecutionContext) getGlobalLexical(key *storage.Object, c *storage.GlobalCache) (storage.Value, bool) {
 	r := cx.realmPart
-	p, ok := r.GlobalLex.Shape.Lookup(key)
+	p, ok := r.GlobalLex.Shape().Lookup(key)
 	if !ok {
 		return storage.Undefined, false
 	}
-	slot := &r.GlobalLex.Slots[p.Slot]
-	if slot.O == tdzObject {
+	v := r.GlobalLex.SlotValue(p)
+	if v.O == tdzObject {
 		cx.throwTDZ(key)
 	}
 	// Only initialized bindings enter the cache, and they stay initialized.
-	c.Holder = r.Global
-	c.Shape = r.Global.Shape
-	c.Ref = slot
-	return *slot, true
+	c.Remember(r.Global, r.GlobalLex, p)
+	return v, true
 }
 
 // resolveGlobal returns undefined for a global binding and null for an unresolvable name.
 func (cx *ExecutionContext) resolveGlobal(key *storage.Object, c *storage.GlobalCache) storage.Value {
 	g := cx.realm.Global
-	_, lex := cx.realm.GlobalLex.Shape.Lookup(key)
-	if _, own := g.Shape.Lookup(key); lex || own {
+	_, lex := cx.realm.GlobalLex.Shape().Lookup(key)
+	if _, own := g.Shape().Lookup(key); lex || own {
 		if c != nil {
 			c.Holder = g
-			c.Shape = g.Shape
+			c.Shape = g.Shape()
 		}
 		return storage.Undefined
 	}
@@ -163,25 +159,19 @@ func (cx *ExecutionContext) resolveGlobal(key *storage.Object, c *storage.Global
 func (cx *ExecutionContext) setGlobal(key *storage.Object, val storage.Value, c *storage.GlobalCache, strict bool) {
 	r := cx.realm
 	g := r.Global
-	if p, ok := r.GlobalLex.Shape.Lookup(key); ok {
-		if r.GlobalLex.Slots[p.Slot].O == tdzObject {
+	if p, ok := r.GlobalLex.Shape().Lookup(key); ok {
+		if r.GlobalLex.SlotValue(p).O == tdzObject {
 			cx.throwTDZ(key)
 		}
-		if p.Flags&storage.FlagWritable == 0 {
+		if !r.GlobalLex.StoreData(p, val) {
 			cx.ThrowTypeError("assignment to constant variable '" + wtf8.ToValidUTF8(key.Text) + "'")
 		}
-		r.GlobalLex.Slots[p.Slot] = val
 		// As in getGlobal, c refers only to initialized bindings.
-		c.Holder = g
-		c.Shape = g.Shape
-		c.Ref = &r.GlobalLex.Slots[p.Slot]
+		c.Remember(g, r.GlobalLex, p)
 		return
 	}
-	if p, ok := g.Shape.Lookup(key); ok && p.Flags&(storage.FlagAccessor|storage.FlagWritable) == storage.FlagWritable {
-		g.Slots[p.Slot] = val
-		c.Holder = g
-		c.Shape = g.Shape
-		c.Ref = &g.Slots[p.Slot]
+	if p, ok := g.Shape().Lookup(key); ok && g.StoreData(p, val) {
+		c.Remember(g, g, p)
 		return
 	}
 	k := storage.NamedKey(key)
@@ -199,7 +189,7 @@ func (cx *ExecutionContext) setGlobal(key *storage.Object, val storage.Value, c 
 // with an existing declaration. what is a bytecode Decl kind.
 func (cx *ExecutionContext) checkGlobalDecl(key *storage.Object, what int) {
 	r := cx.realm
-	_, lex := r.GlobalLex.Shape.Lookup(key)
+	_, lex := r.GlobalLex.Shape().Lookup(key)
 	switch what {
 	case bytecode.DeclVar:
 		if lex {
@@ -262,7 +252,7 @@ func (cx *ExecutionContext) declareGlobalVar(key *storage.Object, flags int, fn 
 // flags is a set of the bytecode GlobalVar flags.
 func (cx *ExecutionContext) declareGlobalAnnexB(key *storage.Object, flags int) bool {
 	r := cx.realm
-	if _, lex := r.GlobalLex.Shape.Lookup(key); lex {
+	if _, lex := r.GlobalLex.Shape().Lookup(key); lex {
 		return false
 	}
 	if !cx.HasOwnProperty(r.Global, storage.NamedKey(key)) && !cx.IsExtensible(r.Global) {
@@ -287,8 +277,7 @@ func (cx *ExecutionContext) declareGlobalLex(key *storage.Object, isConst bool) 
 
 func (cx *ExecutionContext) initGlobalLex(key *storage.Object, val storage.Value) {
 	r := cx.realm
-	p, _ := r.GlobalLex.Shape.Lookup(key)
-	r.GlobalLex.Slots[p.Slot] = val
+	r.GlobalLex.InitBinding(key, val)
 }
 
 // getValue returns v[k], or the getter to call.
@@ -303,8 +292,8 @@ func (cx *ExecutionContext) getValue(v, k storage.Value) (storage.Value, *storag
 	} else if ko != nil && ko.Kind == storage.KindString {
 		// An element in elems is an own data property, whatever object v is.
 		if i, ok := ko.KnownArrayIndex(); ok {
-			if o := v.O; o != nil && o.ObjectProperties != nil && int64(i) < int64(len(o.Elems)) {
-				if e := o.Elems[i]; !e.IsHole() {
+			if o := v.O; o != nil {
+				if e, ok := o.ElementAt(i); ok {
 					return e, nil
 				}
 			}
@@ -348,8 +337,8 @@ func (cx *ExecutionContext) storeValue(v, k, val storage.Value) (*storage.Object
 	} else if ko != nil && ko.Kind == storage.KindString {
 		// An element in elems is a writable own data property, whatever object v is.
 		if i, ok := ko.KnownArrayIndex(); ok {
-			if o := v.O; o != nil && o.ObjectProperties != nil && int64(i) < int64(len(o.Elems)) && !o.Elems[i].IsHole() {
-				o.Elems[i] = val
+			if o := v.O; o != nil && o.HasProperties() && o.HasElementAt(i) {
+				o.StoreElement(i, val)
 				return nil, true, storage.PropKey{}
 			}
 		}
@@ -488,7 +477,7 @@ func (call defaultHasInstanceCall) run(cx *ExecutionContext, v storage.Value, si
 	h := v.O
 	if slot != nil && slot.IsObject() {
 		for h.Class != storage.ClassProxy {
-			h = h.Shape.Proto
+			h = h.Shape().Proto
 			if h == slot.O {
 				return true
 			}
@@ -567,8 +556,8 @@ func (cx *ExecutionContext) privateStorage(o *storage.Object) *storage.Object {
 func (cx *ExecutionContext) getPrivate(v storage.Value, name *storage.Object) (storage.Value, *storage.Object) {
 	if v.IsObject() {
 		o := cx.privateStorage(v.O)
-		if p, ok := o.Shape.Lookup(name); ok {
-			val := o.Slots[p.Slot]
+		if p, ok := o.Shape().Lookup(name); ok {
+			val := o.SlotValue(p)
 			if p.Flags&storage.FlagAccessor != 0 {
 				g := val.Accessor().Getter
 				if g == nil {
@@ -587,18 +576,17 @@ func (cx *ExecutionContext) getPrivate(v storage.Value, name *storage.Object) (s
 func (cx *ExecutionContext) setPrivate(v storage.Value, name *storage.Object, val storage.Value) *storage.Object {
 	if v.IsObject() {
 		o := cx.privateStorage(v.O)
-		if p, ok := o.Shape.Lookup(name); ok {
+		if p, ok := o.Shape().Lookup(name); ok {
 			if p.Flags&storage.FlagAccessor != 0 {
-				s := o.Slots[p.Slot].Accessor().Setter
+				s := o.SlotValue(p).Accessor().Setter
 				if s == nil {
 					cx.ThrowTypeError("'#" + wtf8.ToValidUTF8(name.Text) + "' was defined without a setter")
 				}
 				return s
 			}
-			if p.Flags&storage.FlagWritable == 0 {
+			if !o.StoreData(p, val) {
 				cx.ThrowTypeError("private method '#" + wtf8.ToValidUTF8(name.Text) + "' is not writable")
 			}
-			o.Slots[p.Slot] = val
 			return nil
 		}
 	}
@@ -612,14 +600,14 @@ func (cx *ExecutionContext) definePrivate(v storage.Value, name *storage.Object,
 		cx.ThrowTypeError("cannot define a private member on a non-object")
 	}
 	o := cx.privateStorage(v.O)
-	if _, ok := o.Shape.Lookup(name); ok {
+	if _, ok := o.Shape().Lookup(name); ok {
 		cx.ThrowTypeError("cannot initialize #" + wtf8.ToValidUTF8(name.Text) + " twice on the same object")
 	}
 	flags := storage.FlagWritable
 	switch {
 	case val.O != nil && val.O.Kind == storage.KindAccessor:
 		flags = storage.FlagAccessor
-	case name.Flags&storage.ObjFrozenLength != 0:
+	case name.Flags()&storage.ObjFrozenLength != 0:
 		// The name stands for a method, which cannot be assigned to.
 		flags = 0
 	}
@@ -876,8 +864,8 @@ func (cx *ExecutionContext) defineClassElement(this storage.Value, e *storage.Cl
 	case bytecode.ElemGetter, bytecode.ElemSetter:
 		if this.IsObject() {
 			o := cx.privateStorage(this.O)
-			if p, ok := o.Shape.Lookup(e.Key.O); ok && p.Flags&storage.FlagAccessor != 0 {
-				a := o.Slots[p.Slot].Accessor()
+			if p, ok := o.Shape().Lookup(e.Key.O); ok && p.Flags&storage.FlagAccessor != 0 {
+				a := o.SlotValue(p).Accessor()
 				if e.Kind == bytecode.ElemGetter && a.AddGetter(e.Val) {
 					return
 				}
@@ -902,14 +890,14 @@ func (cx *ExecutionContext) defineField(o *storage.Object, k, val storage.Value)
 
 // defineFieldK defines the enumerable data property key of o.
 func (cx *ExecutionContext) defineFieldK(o *storage.Object, key *storage.Object, val storage.Value, c *storage.PropCache) {
-	if o.Class == storage.ClassObject && o.Flags&(storage.ObjNotExtensible|storage.ObjIsProto|storage.ObjExotic) == 0 {
-		if _, ok := o.Shape.Lookup(key); !ok {
-			old := o.Shape
+	if o.Class == storage.ClassObject && o.Flags()&(storage.ObjNotExtensible|storage.ObjIsProto|storage.ObjExotic) == 0 {
+		if _, ok := o.Shape().Lookup(key); !ok {
+			old := o.Shape()
 			cx.Add(o, key, val, storage.FlagsData)
-			if !old.Private && !o.Shape.Private {
+			if !old.Private && !o.Shape().Private {
 				c.Shape = old
 				c.Kind = storage.CacheAdd
-				c.Next = o.Shape
+				c.Next = o.Shape()
 			}
 			return
 		}
@@ -920,12 +908,11 @@ func (cx *ExecutionContext) defineFieldK(o *storage.Object, key *storage.Object,
 // definePublicField implements CreateDataPropertyOrThrow for the public class field k of o.
 // c caches the shape transition of the field, whose key is always k.
 func (cx *ExecutionContext) definePublicField(o *storage.Object, k, val storage.Value, c *storage.PropCache) {
-	if o.Class == storage.ClassObject && o.Flags&(storage.ObjNotExtensible|storage.ObjIsProto|storage.ObjExotic) == 0 && o.Shape == c.Shape && c.Kind == storage.CacheAdd {
+	if o.Class == storage.ClassObject && o.Flags()&(storage.ObjNotExtensible|storage.ObjIsProto|storage.ObjExotic) == 0 && o.Shape() == c.Shape && c.Kind == storage.CacheAdd {
 		if validateExec {
 			cx.checkDefineHit(nil, 0, o, cx.ToPropertyKey(k).Key, c.Next)
 		}
-		o.Shape = c.Next
-		o.AppendSlot(val)
+		c.AddTo(o, val)
 		return
 	}
 	if pk := cx.ToPropertyKey(k); pk.Key != nil {
@@ -992,7 +979,7 @@ func (cx *ExecutionContext) setFuncName(f, k storage.Value, prefix int) {
 	}
 	o := f.O
 	if o.Fn.Materialized {
-		if _, ok := o.Shape.Lookup(cx.Key(storage.KeyName)); ok {
+		if _, ok := o.Shape().Lookup(cx.Key(storage.KeyName)); ok {
 			if d, _ := cx.GetOwnProperty(o, storage.NamedKey(cx.Key(storage.KeyName))); d.IsAccessor() || !d.Value().IsString() || d.Value().RawString() != "" {
 				return
 			}
@@ -1023,7 +1010,7 @@ func (cx *ExecutionContext) copyDataProperties(dst *storage.Object, src storage.
 		skip = append(skip, cx.ToPropertyKey(e))
 	}
 	ks := cx.OwnKeys(from)
-	if dst.Flags&storage.ObjExotic == 0 {
+	if dst.Flags()&storage.ObjExotic == 0 {
 		// The keys of the elements come first, and the other keys usually get slots.
 		elems := 0
 		for elems < len(ks) && ks[elems].IsIndex() {
@@ -1477,11 +1464,11 @@ func (cx *ExecutionContext) setScoped(o *storage.Object, key *storage.Object, va
 // deleteName deletes the global variable key.
 func (cx *ExecutionContext) deleteName(key *storage.Object) bool {
 	r := cx.realm
-	if _, ok := r.GlobalLex.Shape.Lookup(key); ok {
+	if _, ok := r.GlobalLex.Shape().Lookup(key); ok {
 		return false
 	}
 	g := r.Global
-	if p, ok := g.Shape.Lookup(key); ok {
+	if p, ok := g.Shape().Lookup(key); ok {
 		return cx.deleteOwnSlot(g, key, p)
 	}
 	// An inherited HasBinding check can create a lexical binding or an own global property.
@@ -1489,7 +1476,7 @@ func (cx *ExecutionContext) deleteName(key *storage.Object) bool {
 	if !cx.Quiet().Delegates(g) || !cx.HasProperty(g, k) {
 		return true
 	}
-	if _, ok := r.GlobalLex.Shape.Lookup(key); ok {
+	if _, ok := r.GlobalLex.Shape().Lookup(key); ok {
 		return false
 	}
 	return cx.DeleteProp(g, k)
@@ -1497,7 +1484,7 @@ func (cx *ExecutionContext) deleteName(key *storage.Object) bool {
 
 // BoundFunctionCreate implements BoundFunctionCreate. It copies args.
 func (cx *ExecutionContext) BoundFunctionCreate(target *storage.Object, this storage.Value, args []storage.Value) *storage.Object {
-	s := cx.ShapeForRealm(cx.ProtoOf(target), target.Shape.Realm)
+	s := cx.ShapeForRealm(cx.ProtoOf(target), target.Shape().Realm)
 	b := &boundObject{
 		bound: storage.BoundFunc{
 			Target: target,

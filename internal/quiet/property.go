@@ -34,8 +34,8 @@ func (q Context) LookupNamed(o, key *storage.Object) storage.NamedLookup {
 // Delegates reports whether looking up a property that is not found on o and its prototype chain
 // can run code.
 func (q Context) Delegates(o *storage.Object) bool {
-	for h := o; h != nil; h = h.Shape.Proto {
-		if h.Shape.Family == storage.DelegatedRoot {
+	for h := o; h != nil; h = h.Shape().Proto {
+		if h.Shape().Family == storage.DelegatedRoot {
 			return true
 		}
 	}

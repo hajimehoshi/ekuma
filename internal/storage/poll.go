@@ -93,9 +93,9 @@ func comparedBytes(v Value) int {
 	return 0
 }
 
-// AppendPolled returns append(dst, src...), checking for an interruption while it copies many
+// appendPolled returns append(dst, src...), checking for an interruption while it copies many
 // elements. When the call stops, dst is unchanged except past its length.
-func AppendPolled[T any](p *Poller, dst, src []T) []T {
+func appendPolled[T any](p *Poller, dst, src []T) []T {
 	if len(dst)+len(src) <= PollChunk {
 		return append(dst, src...)
 	}
@@ -120,4 +120,14 @@ func CopyPolled[T any](p *Poller, dst, src []T) int {
 		copy(dst[i:n], src[i:min(i+PollChunk, n)])
 	}
 	return n
+}
+
+// clearPolled is clear, checking for an interruption while it clears many elements.
+func clearPolled[T any](p *Poller, s []T) {
+	for i := 0; i < len(s); i += PollChunk {
+		if i > 0 {
+			p.Poll()
+		}
+		clear(s[i:min(i+PollChunk, len(s))])
+	}
 }

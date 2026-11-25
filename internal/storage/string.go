@@ -40,7 +40,7 @@ func newStringPos(p wtf8.Pos) stringPos {
 
 // Str returns the content of the string o in WTF-8.
 func (o *Object) Str() wtf8.String {
-	if o.Flags&ObjReversed != 0 {
+	if o.flags&ObjReversed != 0 {
 		o.Unreverse()
 	}
 	return o.Text
@@ -48,10 +48,10 @@ func (o *Object) Str() wtf8.String {
 
 // IsASCII reports whether the string o consists of ASCII characters only.
 func (o *Object) IsASCII() bool {
-	if o.Flags&ObjASCIIKnown == 0 {
+	if o.flags&ObjASCIIKnown == 0 {
 		o.classifyASCII()
 	}
-	return o.Flags&ObjASCII != 0
+	return o.flags&ObjASCII != 0
 }
 
 // classifyASCII records in the flags of the string o whether it is ASCII.
@@ -59,9 +59,9 @@ func (o *Object) IsASCII() bool {
 //
 //go:noinline
 func (o *Object) classifyASCII() {
-	o.Flags |= ObjASCIIKnown
+	o.flags |= ObjASCIIKnown
 	if wtf8.IsASCII(o.Text) {
-		o.Flags |= ObjASCII
+		o.flags |= ObjASCII
 	}
 }
 
@@ -101,7 +101,7 @@ func (o *Object) ArrayIndex() (uint32, bool) {
 	}
 	i, ok := StringIndex(o.Str())
 	if ok {
-		o.Length = i + 1
+		o.length = i + 1
 	}
 	return i, ok
 }
@@ -109,7 +109,7 @@ func (o *Object) ArrayIndex() (uint32, bool) {
 // KnownArrayIndex returns the array index that the string o stands for, if it is known
 // already. It reports false otherwise, even when o is an array index.
 func (o *Object) KnownArrayIndex() (uint32, bool) {
-	return o.Length - 1, o.Length != 0
+	return o.length - 1, o.length != 0
 }
 
 // seek returns the position of the code unit i of the non-ASCII string o.
@@ -190,7 +190,7 @@ func (o *Object) UnitAt(i int) uint16 {
 }
 
 func (o *Object) asciiUnitAt(i int) uint16 {
-	if o.Flags&ObjReversed != 0 {
+	if o.flags&ObjReversed != 0 {
 		// Reading one unit leaves a string that is being prepended to reversed.
 		return uint16(o.Text[len(o.Text)-1-i])
 	}

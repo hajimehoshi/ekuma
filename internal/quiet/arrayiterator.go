@@ -42,7 +42,7 @@ func (it *ArrayIterator) StepPlain(q Context) (key, value storage.Value, st Pair
 	var length int64
 	switch {
 	case o.Kind == storage.KindArray:
-		length = int64(o.Length)
+		length = int64(o.Length())
 	case o.Class == storage.ClassTypedArray:
 		t := o.ExtState().(*storage.TypedArray)
 		if it.Kind != IterateKeys && i <= storage.MaxArrayIndex {
@@ -70,8 +70,8 @@ func (it *ArrayIterator) StepPlain(q Context) (key, value storage.Value, st Pair
 		it.NextIndex = i + 1
 		return key, storage.Undefined, PairYielded
 	}
-	if i < int64(len(o.Elems)) && !o.Elems[i].IsHole() {
-		value = o.Elems[i]
+	if e, ok := o.ElementAt(uint32(i)); ok && i <= storage.MaxArrayIndex {
+		value = e
 		it.NextIndex = i + 1
 		r.PollAtIndex(i)
 		return key, value, PairYielded

@@ -49,11 +49,8 @@ func (cx *ExecutionContext) newArguments(fr *frame, mapped bool) *storage.Object
 				continue
 			}
 			m.params[i] = cx.captureRegister(fr, i)
-			// A mapped property stays out of elems, so that every access to it takes a path that consults the map.
-			cx.Add(o, cx.IndexName(uint32(i)), storage.Undefined, storage.FlagsData)
-			o.Elems[i] = storage.Hole
+			cx.AddMappedElement(o, uint32(i))
 		}
-		o.Flags |= storage.ObjSparse
 		o.SetExtState(m)
 	}
 	cx.Add(o, cx.Key(storage.KeyCallee), storage.Value{O: fr.cl}, storage.FlagsHidden)
@@ -78,8 +75,8 @@ func mappedParam(o *storage.Object, i uint32) *storage.Upvalue {
 func (cx *ExecutionContext) defineMappedArgument(o *storage.Object, i uint32, u *storage.Upvalue, d storage.PropDesc) bool {
 	m := o.ExtState().(*argumentsMap)
 	// The ordinary definition validates against the value in the slot.
-	p, _ := o.Shape.Lookup(cx.IndexName(i))
-	o.Slots[p.Slot] = *u.P
+	p, _ := o.Shape().Lookup(cx.IndexName(i))
+	o.StoreMapped(p, *u.P)
 	readOnly := d.HasFalse(storage.HasWritable, storage.FlagWritable)
 	if d.IsData() && !d.HasField(storage.HasValue) && readOnly {
 		d.SetValue(*u.P)
@@ -87,7 +84,7 @@ func (cx *ExecutionContext) defineMappedArgument(o *storage.Object, i uint32, u 
 	m.params[i] = nil
 	if !cx.defineOwnProperty(o, storage.IndexKey(i), d) {
 		m.params[i] = u
-		o.Slots[p.Slot] = storage.Undefined
+		o.StoreMapped(p, storage.Undefined)
 		return false
 	}
 	if d.IsAccessor() {
@@ -98,7 +95,7 @@ func (cx *ExecutionContext) defineMappedArgument(o *storage.Object, i uint32, u 
 	}
 	if !readOnly {
 		m.params[i] = u
-		o.Slots[p.Slot] = storage.Undefined
+		o.StoreMapped(p, storage.Undefined)
 	}
 	return true
 }
@@ -107,10 +104,10 @@ func (cx *ExecutionContext) defineMappedArgument(o *storage.Object, i uint32, u 
 // which is mapped to a parameter.
 func (cx *ExecutionContext) deleteMappedArgument(o *storage.Object, i uint32) bool {
 	key := cx.IndexName(i)
-	if p, _ := o.Shape.Lookup(key); p.Flags&storage.FlagConfigurable == 0 {
+	if p, _ := o.Shape().Lookup(key); p.Flags&storage.FlagConfigurable == 0 {
 		return false
 	}
-	cx.remove(o, key)
+	cx.Remove(o, key)
 	o.ExtState().(*argumentsMap).params[i] = nil
 	return true
 }

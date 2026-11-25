@@ -513,7 +513,7 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 			}
 		case bytecode.OpGetGlobal, bytecode.OpGetGlobalStrict, bytecode.OpGetGlobalOrUndef, bytecode.OpGetGlobalOrUndefStrict:
 			c := &fp.Globals[i.C]
-			if h := c.Holder; h != nil && h.Shape == c.Shape {
+			if h := c.Holder; h != nil && h.Shape() == c.Shape {
 				if validateExec {
 					ag.active.checkGlobalHit(fp, pc-1, fp.Keys[i.B], c, false)
 				}
@@ -523,7 +523,7 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 		case bytecode.OpSetGlobal, bytecode.OpSetGlobalStrict:
 			// Only setGlobal fills the cache of an assignment.
 			c := &fp.Globals[i.C]
-			if h := c.Holder; h != nil && h.Shape == c.Shape {
+			if h := c.Holder; h != nil && h.Shape() == c.Shape {
 				if validateExec {
 					ag.active.checkGlobalHit(fp, pc-1, fp.Keys[i.B], c, true)
 				}
@@ -538,7 +538,7 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 			continue
 		case bytecode.OpCopyPropToGlobal:
 			g := &fp.Globals[fp.Code[i.C-1].C]
-			if h := g.Holder; h == nil || h.Shape != g.Shape {
+			if h := g.Holder; h == nil || h.Shape() != g.Shape {
 				break
 			}
 			if validateExec {
@@ -547,7 +547,7 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 			regs[i.A] = storage.Value{}
 			c := &fp.Caches[fp.Code[pc].C]
 			o := regs[i.B].O
-			if o == nil || c.Shape != o.Shape {
+			if o == nil || c.Shape != o.Shape() {
 				continue
 			}
 			if c.Kind == storage.CacheOwnGetter || c.Kind == storage.CacheGetter {
@@ -559,7 +559,7 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 			var v storage.Value
 			switch c.Kind {
 			case storage.CacheOwn:
-				v = o.Slots[c.Slot]
+				v = o.Raw().Slot(int(c.Slot))
 			case storage.CacheProto:
 				if c.Epoch != ag.ProtoEpoch {
 					continue
@@ -577,7 +577,7 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 			continue
 		case bytecode.OpResolveGlobal:
 			c := &fp.Globals[i.C]
-			if h := c.Holder; h == nil || h.Shape != c.Shape {
+			if h := c.Holder; h == nil || h.Shape() != c.Shape {
 				break
 			}
 			if validateExec {
@@ -587,11 +587,11 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 			// A named read may supply the value of the assignment.
 			if n := &fp.Code[pc]; n.Op == bytecode.OpGetProp {
 				c := &fp.Caches[n.C]
-				if o := regs[n.B].O; o != nil && c.Kind == storage.CacheOwn && c.Shape == o.Shape {
+				if o := regs[n.B].O; o != nil && c.Kind == storage.CacheOwn && c.Shape == o.Shape() {
 					if validateExec {
 						ag.active.checkEntryRead(fp, pc, regs[n.B], o, fp.Keys[n.C], &c.CacheEntry)
 					}
-					regs[n.A] = o.Slots[c.Slot]
+					regs[n.A] = o.Raw().Slot(int(c.Slot))
 					pc++
 				}
 			}
@@ -602,9 +602,9 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 			if a, o := i.A, regs[i.B].O; o != nil {
 				c := &fp.Caches[i.C]
 				e := &c.CacheEntry
-				if o.Shape != e.Shape {
+				if o.Shape() != e.Shape {
 					e = &c.Second
-					if o.Shape != e.Shape {
+					if o.Shape() != e.Shape {
 						break
 					}
 				}
@@ -621,16 +621,16 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 				if validateExec {
 					ag.active.checkEntryRead(fp, pc-1, regs[i.B], o, fp.Keys[i.C], e)
 				}
-				regs[a] = o.Slots[e.Slot]
+				regs[a] = o.Raw().Slot(int(e.Slot))
 				continue
 			}
 		case bytecode.OpGetPropChain:
 			if a, o := i.A, regs[i.B].O; o != nil {
 				c := &fp.Caches[i.C]
 				e := &c.CacheEntry
-				if o.Shape != e.Shape {
+				if o.Shape() != e.Shape {
 					e = &c.Second
-					if o.Shape != e.Shape {
+					if o.Shape() != e.Shape {
 						break
 					}
 				}
@@ -641,7 +641,7 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 					}
 					w = *e.Ref
 				} else {
-					w = o.Slots[e.Slot]
+					w = o.Raw().Slot(int(e.Slot))
 				}
 				if validateExec {
 					ag.active.checkEntryRead(fp, pc-1, regs[i.B], o, fp.Keys[i.C], e)
@@ -652,9 +652,9 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 					n := &fp.Code[pc]
 					c := &fp.Caches[n.C]
 					e := &c.CacheEntry
-					if o.Shape != e.Shape {
+					if o.Shape() != e.Shape {
 						e = &c.Second
-						if o.Shape != e.Shape {
+						if o.Shape() != e.Shape {
 							continue
 						}
 					}
@@ -670,7 +670,7 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 						if validateExec {
 							ag.active.checkEntryRead(fp, pc, w, o, fp.Keys[n.C], e)
 						}
-						regs[n.A] = o.Slots[e.Slot]
+						regs[n.A] = o.Raw().Slot(int(e.Slot))
 					}
 					pc++
 				}
@@ -680,27 +680,27 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 			if o := regs[i.A].O; o != nil {
 				c := &fp.Caches[i.B]
 				e := &c.CacheEntry
-				if o.Shape != e.Shape {
+				if o.Shape() != e.Shape {
 					e = &c.Second
-					if o.Shape != e.Shape {
+					if o.Shape() != e.Shape {
 						break
 					}
 				}
 				if e.Kind == storage.CacheOwn {
 					if validateExec {
-						ag.active.checkStoreHit(fp, pc-1, regs[i.A], fp.Keys[i.B], &o.Slots[e.Slot])
+						ag.active.checkStoreHit(fp, pc-1, regs[i.A], fp.Keys[i.B], o, e.Slot)
 					}
-					o.Slots[e.Slot] = regs[i.C]
+					o.Raw().SetSlot(int(e.Slot), regs[i.C])
 					continue
 				}
-				if e.Kind == storage.CacheAdd && o.ObjectProperties != nil && e.Epoch == ag.ProtoEpoch && o.Flags&storage.ObjIsProto == 0 {
-					if n := len(o.Slots); n < cap(o.Slots) {
+				if e.Kind == storage.CacheAdd && o.HasProperties() && e.Epoch == ag.ProtoEpoch && o.Flags()&storage.ObjIsProto == 0 {
+					if n := o.Raw().SlotCount(); n < o.Raw().SlotRoom() {
 						if validateExec {
 							ag.active.checkAddHit(fp, pc-1, o, fp.Keys[i.B], e.Next)
 						}
-						o.Shape = e.Next
-						o.Slots = o.Slots[:n+1]
-						o.Slots[n] = regs[i.C]
+						o.Raw().SetShape(e.Next)
+						o.Raw().ExtendSlots(n + 1)
+						o.Raw().SetSlot(n, regs[i.C])
 						continue
 					}
 				}
@@ -708,16 +708,16 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 		case bytecode.OpGetLength:
 			if o := regs[i.B].O; o != nil && o.Kind == storage.KindArray {
 				if validateExec {
-					ag.active.checkLengthHit(fp, pc-1, regs[i.B], float64(o.Length))
+					ag.active.checkLengthHit(fp, pc-1, regs[i.B], float64(o.Length()))
 				}
-				storage.SetNumber(&regs[i.A], float64(o.Length))
+				storage.SetNumber(&regs[i.A], float64(o.Length()))
 				continue
 			}
 			// The destination and the cache are read first, so that the instruction need not
 			// stay in registers across the tests, as in OpGetProp.
 			if a, c, o := i.A, &fp.Caches[i.C], regs[i.B].O; o != nil {
 				// The length of a string known to be ASCII, as in Value.StringLength.
-				if o.Kind == storage.KindString && o.Flags&(storage.ObjASCIIKnown|storage.ObjASCII) == storage.ObjASCIIKnown|storage.ObjASCII {
+				if o.Kind == storage.KindString && o.Flags()&(storage.ObjASCIIKnown|storage.ObjASCII) == storage.ObjASCIIKnown|storage.ObjASCII {
 					if validateExec {
 						ag.active.checkLengthHit(fp, pc-1, regs[i.B], float64(len(o.Text)))
 					}
@@ -729,7 +729,7 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 				// shared or detached buffer is empty, so only an empty view of one passes the
 				// bounds check.
 				if t, ok := o.Ext.(*storage.TypedArray); ok && !t.Tracking && t.Offset+t.FixedLength*t.Type.Size() <= len(t.Data.Data) {
-					if o.Shape == c.Shape && c.Kind == storage.CacheGetter && c.Epoch == ag.ProtoEpoch && c.Holder == ag.active.realm.Intrinsics[storage.IntrinsicTypedArrayPrototypeLengthGetter] {
+					if o.Shape() == c.Shape && c.Kind == storage.CacheGetter && c.Epoch == ag.ProtoEpoch && c.Holder == ag.active.realm.Intrinsics[storage.IntrinsicTypedArrayPrototypeLengthGetter] {
 						if validateExec {
 							ag.active.checkTypedArrayLengthHit(fp, pc-1, regs[i.B], float64(t.FixedLength))
 						}
@@ -739,15 +739,15 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 				}
 				// A length data property that the cache locates, as in OpGetProp.
 				e := &c.CacheEntry
-				if o.Shape != e.Shape {
+				if o.Shape() != e.Shape {
 					e = &c.Second
 				}
-				if o.Shape == e.Shape {
+				if o.Shape() == e.Shape {
 					if e.Kind == storage.CacheOwn {
 						if validateExec {
 							ag.active.checkEntryRead(fp, pc-1, regs[i.B], o, ag.Key(storage.KeyLength), e)
 						}
-						regs[a] = o.Slots[e.Slot]
+						regs[a] = o.Raw().Slot(int(e.Slot))
 						continue
 					}
 					if e.Kind == storage.CacheProto && e.Epoch == ag.ProtoEpoch {
@@ -761,9 +761,9 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 			}
 		case bytecode.OpGetIndex:
 			v, k := regs[i.B], regs[i.C]
-			if o := v.O; o != nil && o.ObjectProperties != nil && k.O == storage.NumberObject {
-				if j := int(k.N); float64(j) == k.N && uint(j) < uint(len(o.Elems)) {
-					if e := o.Elems[j]; e.O != storage.HoleObject {
+			if o := v.O; o != nil && o.HasProperties() && k.O == storage.NumberObject {
+				if j := int(k.N); float64(j) == k.N && uint(j) < uint(o.Raw().ElemCount()) {
+					if e := o.Raw().Elem(j); e.O != storage.HoleObject {
 						regs[i.A] = e
 						continue
 					}
@@ -809,11 +809,11 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 						}
 					}
 				}
-			} else if o != nil && o.Kind == storage.KindString && o.Flags&(storage.ObjASCIIKnown|storage.ObjASCII) == storage.ObjASCIIKnown|storage.ObjASCII && k.O == storage.NumberObject {
+			} else if o != nil && o.Kind == storage.KindString && o.Flags()&(storage.ObjASCIIKnown|storage.ObjASCII) == storage.ObjASCIIKnown|storage.ObjASCII && k.O == storage.NumberObject {
 				// A unit of a string known to be ASCII, as in asciiUnitAt. An index in its range is an
 				// own property that nothing shadows.
 				if j := int(k.N); float64(j) == k.N && uint(j) < uint(len(o.Text)) {
-					if o.Flags&storage.ObjReversed != 0 {
+					if o.Flags()&storage.ObjReversed != 0 {
 						j = len(o.Text) - 1 - j
 					}
 					regs[i.A] = ag.Strings.Ascii[o.Text[j]]
@@ -821,8 +821,8 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 				}
 			}
 		case bytecode.OpGetIndexInt:
-			if o := regs[i.B].O; o != nil && o.ObjectProperties != nil && uint(i.C) < uint(len(o.Elems)) {
-				if e := o.Elems[i.C]; e.O != storage.HoleObject {
+			if o := regs[i.B].O; o != nil && o.HasProperties() && uint(i.C) < uint(o.Raw().ElemCount()) {
+				if e := o.Raw().Elem(int(i.C)); e.O != storage.HoleObject {
 					regs[i.A] = e
 					continue
 				}
@@ -863,9 +863,9 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 					}
 				}
 				// The same as OpGetIndex for a string.
-				if o.Kind == storage.KindString && o.Flags&(storage.ObjASCIIKnown|storage.ObjASCII) == storage.ObjASCIIKnown|storage.ObjASCII && uint(i.C) < uint(len(o.Text)) {
+				if o.Kind == storage.KindString && o.Flags()&(storage.ObjASCIIKnown|storage.ObjASCII) == storage.ObjASCIIKnown|storage.ObjASCII && uint(i.C) < uint(len(o.Text)) {
 					j := int(i.C)
-					if o.Flags&storage.ObjReversed != 0 {
+					if o.Flags()&storage.ObjReversed != 0 {
 						j = len(o.Text) - 1 - j
 					}
 					regs[i.A] = ag.Strings.Ascii[o.Text[j]]
@@ -876,10 +876,10 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 			// OpSetIndexInt's case at the end of this switch has the same fast paths for the key in
 			// the instruction; a change to one belongs in the other.
 			v, k := regs[i.A], regs[i.B]
-			if o := v.O; o != nil && o.ObjectProperties != nil && k.O == storage.NumberObject {
-				if j := int(k.N); float64(j) == k.N && uint(j) < uint(len(o.Elems)) {
-					if o.Elems[j].O != storage.HoleObject {
-						o.Elems[j] = regs[i.C]
+			if o := v.O; o != nil && o.HasProperties() && k.O == storage.NumberObject {
+				if j := int(k.N); float64(j) == k.N && uint(j) < uint(o.Raw().ElemCount()) {
+					if o.Raw().Elem(j).O != storage.HoleObject {
+						o.Raw().SetElem(j, regs[i.C])
 						continue
 					}
 					// A store into a hole takes the switch below.
@@ -945,19 +945,19 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 				}
 				// An append to a plain array that has room for it, as in the switch below, with the
 				// conditions of ElemsResizable and NewElementsPlain written out.
-				if j := int(k.N); j == len(o.Elems) && j < cap(o.Elems) &&
-					o.Kind == storage.KindArray && uint32(j) == o.Length && o.Flags == 0 && float64(j) == k.N && o.Shape == ag.active.realm.Shapes.Array {
-					if a := ag.active.realm.Intrinsics[storage.IntrinsicArrayPrototype]; len(a.Elems) == 0 && a.Flags&storage.ObjSparse == 0 {
-						if p := a.Shape.Proto; p == ag.active.realm.Intrinsics[storage.IntrinsicObjectPrototype] && len(p.Elems) == 0 && p.Flags&storage.ObjSparse == 0 {
+				if j := int(k.N); j == o.Raw().ElemCount() && j < o.Raw().ElemRoom() &&
+					o.Kind == storage.KindArray && uint32(j) == o.Length() && o.Flags() == 0 && float64(j) == k.N && o.Shape() == ag.active.realm.Shapes.Array {
+					if a := ag.active.realm.Intrinsics[storage.IntrinsicArrayPrototype]; a.Raw().ElemCount() == 0 && a.Flags()&storage.ObjSparse == 0 {
+						if p := a.Shape().Proto; p == ag.active.realm.Intrinsics[storage.IntrinsicObjectPrototype] && p.Raw().ElemCount() == 0 && p.Flags()&storage.ObjSparse == 0 {
 							if validateExec {
 								ag.active.checkAppend(o)
 							}
 							// Reading x first keeps i.C from being read again after the
 							// store to the length.
 							x := regs[i.C]
-							o.Elems = o.Elems[:j+1]
-							o.Elems[j] = x
-							o.Length++
+							o.Raw().ExtendElems(j + 1)
+							o.Raw().SetElem(j, x)
+							o.Raw().SetLength(o.Length() + 1)
 							continue
 						}
 					}
@@ -1133,7 +1133,7 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 				eq = xn && yn || x.IsHTMLDDA() || y.IsHTMLDDA()
 			} else if x.O.Kind >= storage.KindFirstObject && y.O.Kind >= storage.KindFirstObject {
 				eq = x.O == y.O
-			} else if x.O == y.O || x.O.Flags&y.O.Flags&storage.ObjInterned == 0 {
+			} else if x.O == y.O || x.O.Flags()&y.O.Flags()&storage.ObjInterned == 0 {
 				known = false
 			}
 			if known {
@@ -1242,7 +1242,7 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 				eq = xn && yn || x.IsHTMLDDA() || y.IsHTMLDDA()
 			} else if x.O.Kind >= storage.KindFirstObject && y.O.Kind >= storage.KindFirstObject {
 				eq = x.O == y.O
-			} else if x.O == y.O || x.O.Flags&y.O.Flags&storage.ObjInterned == 0 {
+			} else if x.O == y.O || x.O.Flags()&y.O.Flags()&storage.ObjInterned == 0 {
 				known = false
 			}
 			if known {
@@ -1261,7 +1261,7 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 				continue
 			} else if x.O == y.O && math.Float64bits(x.N) == math.Float64bits(y.N) {
 				continue
-			} else if x.O != y.O && x.O != nil && y.O != nil && x.O.Flags&y.O.Flags&storage.ObjInterned != 0 {
+			} else if x.O != y.O && x.O != nil && y.O != nil && x.O.Flags()&y.O.Flags()&storage.ObjInterned != 0 {
 				pc = int(i.A)
 				continue
 			}
@@ -1275,7 +1275,7 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 			} else if x.O == y.O && math.Float64bits(x.N) == math.Float64bits(y.N) {
 				pc = int(i.A)
 				continue
-			} else if x.O != y.O && x.O != nil && y.O != nil && x.O.Flags&y.O.Flags&storage.ObjInterned != 0 {
+			} else if x.O != y.O && x.O != nil && y.O != nil && x.O.Flags()&y.O.Flags()&storage.ObjInterned != 0 {
 				continue
 			}
 		case bytecode.OpStrictEq, bytecode.OpStrictNe:
@@ -1286,7 +1286,7 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 			} else if x.O == y.O && math.Float64bits(x.N) == math.Float64bits(y.N) {
 				regs[i.A] = storage.Bool(i.Op == bytecode.OpStrictEq)
 				continue
-			} else if x.O != y.O && x.O != nil && y.O != nil && x.O.Flags&y.O.Flags&storage.ObjInterned != 0 {
+			} else if x.O != y.O && x.O != nil && y.O != nil && x.O.Flags()&y.O.Flags()&storage.ObjInterned != 0 {
 				regs[i.A] = storage.Bool(i.Op != bytecode.OpStrictEq)
 				continue
 			}
@@ -1349,8 +1349,8 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 			// chain of b, unless a proxy is on it.
 			if co := regs[i.C].O; co != nil && !ag.InterruptFlag.Load() {
 				c := &fp.Caches[fp.Code[pc].A]
-				if co.Shape == c.Shape && c.Kind == storage.CacheOwn && c.Epoch == ag.ProtoEpoch && co.Class == storage.ClassFunction && co.Fn != nil && co.Fn.Bound == nil {
-					if p := co.Slots[c.Slot].O; p != nil && p.Kind >= storage.KindFirstObject {
+				if co.Shape() == c.Shape && c.Kind == storage.CacheOwn && c.Epoch == ag.ProtoEpoch && co.Class == storage.ClassFunction && co.Fn != nil && co.Fn.Bound == nil {
+					if p := co.Raw().Slot(int(c.Slot)).O; p != nil && p.Kind >= storage.KindFirstObject {
 						r, known := false, true
 						if o := regs[i.B].O; o != nil && o.Kind >= storage.KindFirstObject {
 							for h := o; ; {
@@ -1358,7 +1358,7 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 									known = false
 									break
 								}
-								if h = h.Shape.Proto; h == nil {
+								if h = h.Shape().Proto; h == nil {
 									break
 								}
 								if h == p {
@@ -1369,7 +1369,7 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 						}
 						if known {
 							if validateExec {
-								ag.active.checkInstanceofHit(fp, pc-1, regs[i.B], co, &co.Slots[c.Slot], r)
+								ag.active.checkInstanceofHit(fp, pc-1, regs[i.B], co, c.Slot, r)
 							}
 							regs[i.A] = storage.Bool(r)
 							pc++
@@ -1379,23 +1379,23 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 				}
 			}
 		case bytecode.OpArrayPush:
-			if o := regs[i.A].O; len(o.Elems) < cap(o.Elems) {
-				n := len(o.Elems)
-				o.Elems = o.Elems[:n+1]
-				o.Elems[n] = regs[i.B]
-				o.Length = uint32(n + 1)
+			if o := regs[i.A].O; o.Raw().ElemCount() < o.Raw().ElemRoom() {
+				n := o.Raw().ElemCount()
+				o.Raw().ExtendElems(n + 1)
+				o.Raw().SetElem(n, regs[i.B])
+				o.Raw().SetLength(uint32(n + 1))
 				continue
 			}
 		case bytecode.OpDefineFieldK:
 			o := regs[i.A].O
-			if c := &fp.Caches[i.B]; o.Shape == c.Shape && c.Kind == storage.CacheAdd {
-				if n := len(o.Slots); n < cap(o.Slots) {
+			if c := &fp.Caches[i.B]; o.Shape() == c.Shape && c.Kind == storage.CacheAdd {
+				if n := o.Raw().SlotCount(); n < o.Raw().SlotRoom() {
 					if validateExec {
 						ag.active.checkDefineHit(fp, pc-1, o, fp.Keys[i.B], c.Next)
 					}
-					o.Shape = c.Next
-					o.Slots = o.Slots[:n+1]
-					o.Slots[n] = regs[i.C]
+					o.Raw().SetShape(c.Next)
+					o.Raw().ExtendSlots(n + 1)
+					o.Raw().SetSlot(n, regs[i.C])
 					continue
 				}
 			}
@@ -1414,9 +1414,9 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 				}
 				c := &fp.Caches[i.C]
 				e := &c.CacheEntry
-				if o.Shape != e.Shape {
+				if o.Shape() != e.Shape {
 					e = &c.Second
-					if o.Shape != e.Shape {
+					if o.Shape() != e.Shape {
 						break
 					}
 				}
@@ -1427,7 +1427,7 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 					}
 					m = *e.Ref
 				} else {
-					m = o.Slots[e.Slot]
+					m = o.Raw().Slot(int(e.Slot))
 				}
 				if validateExec {
 					ag.active.checkEntryRead(fp, pc-1, v, o, fp.Keys[i.C], e)
@@ -1468,11 +1468,11 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 							this = regs[first-1]
 						}
 						if site := c.ReturnedProperty; site != nil && this.IsObject() {
-							if e := site.Entry(this.O.Shape); e != nil && e.Kind == storage.CacheOwn {
+							if e := site.Entry(this.O.Shape()); e != nil && e.Kind == storage.CacheOwn {
 								if validateExec {
 									ag.active.checkReturnedProperty(c, this, e)
 								}
-								regs[i.A] = this.O.Slots[e.Slot]
+								regs[i.A] = this.O.Raw().Slot(int(e.Slot))
 								continue
 							}
 						}
@@ -1571,11 +1571,11 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 			}
 		case bytecode.OpSetIndexInt, bytecode.OpSetIndexIntStrict:
 			// The fast paths of OpSetIndex's case, in the same order, for the key b.
-			if o := regs[i.A].O; o != nil && o.ObjectProperties != nil {
+			if o := regs[i.A].O; o != nil && o.HasProperties() {
 				j := int(i.B)
-				if uint(j) < uint(len(o.Elems)) {
-					if o.Elems[j].O != storage.HoleObject {
-						o.Elems[j] = regs[i.C]
+				if uint(j) < uint(o.Raw().ElemCount()) {
+					if o.Raw().Elem(j).O != storage.HoleObject {
+						o.Raw().SetElem(j, regs[i.C])
 						continue
 					}
 					break
@@ -1633,16 +1633,16 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 					}
 					break
 				}
-				if j == len(o.Elems) && j < cap(o.Elems) && o.Kind == storage.KindArray && uint32(j) == o.Length && o.Flags == 0 && o.Shape == ag.active.realm.Shapes.Array {
-					if a := ag.active.realm.Intrinsics[storage.IntrinsicArrayPrototype]; len(a.Elems) == 0 && a.Flags&storage.ObjSparse == 0 {
-						if p := a.Shape.Proto; p == ag.active.realm.Intrinsics[storage.IntrinsicObjectPrototype] && len(p.Elems) == 0 && p.Flags&storage.ObjSparse == 0 {
+				if j == o.Raw().ElemCount() && j < o.Raw().ElemRoom() && o.Kind == storage.KindArray && uint32(j) == o.Length() && o.Flags() == 0 && o.Shape() == ag.active.realm.Shapes.Array {
+					if a := ag.active.realm.Intrinsics[storage.IntrinsicArrayPrototype]; a.Raw().ElemCount() == 0 && a.Flags()&storage.ObjSparse == 0 {
+						if p := a.Shape().Proto; p == ag.active.realm.Intrinsics[storage.IntrinsicObjectPrototype] && p.Raw().ElemCount() == 0 && p.Flags()&storage.ObjSparse == 0 {
 							if validateExec {
 								ag.active.checkAppend(o)
 							}
 							x := regs[i.C]
-							o.Elems = o.Elems[:j+1]
-							o.Elems[j] = x
-							o.Length++
+							o.Raw().ExtendElems(j + 1)
+							o.Raw().SetElem(j, x)
+							o.Raw().SetLength(o.Length() + 1)
 							continue
 						}
 					}
@@ -1861,10 +1861,10 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 			fn := o.Fn
 			o.Kind = storage.KindFunction
 			o.Class = storage.ClassFunction
-			o.Flags = storage.ObjExotic
-			o.Shape = ag.active.realm.Shapes.Function
+			o.Raw().SetFlags(storage.ObjExotic)
+			o.Raw().SetShape(ag.active.realm.Shapes.Function)
 			if p.IsGenerator || p.IsAsync {
-				o.Shape = ag.active.FunctionShapeFor(p.ClosurePrototype())
+				o.Raw().SetShape(ag.active.FunctionShapeFor(p.ClosurePrototype()))
 			}
 			cur := &ag.frames[len(ag.frames)-1]
 			for j, d := range p.Upvals {
@@ -1946,16 +1946,16 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 				// getNamed starts at Number.prototype for a number. Its own slot
 				// stays valid for its shape, and the method receives v as this.
 				o = ag.active.realm.Intrinsics[storage.IntrinsicNumberPrototype]
-				if c.Kind == storage.CacheOwn && c.Shape == o.Shape {
+				if c.Kind == storage.CacheOwn && c.Shape == o.Shape() {
 					if validateExec {
 						ag.active.checkEntryRead(fp, pc-1, v, o, fp.Keys[i.C], &c.CacheEntry)
 					}
-					regs[i.A] = o.Slots[c.Slot]
+					regs[i.A] = o.Raw().Slot(int(c.Slot))
 					continue
 				}
 			}
 			if o != nil {
-				if e := c.Entry(o.Shape); e != nil {
+				if e := c.Entry(o.Shape()); e != nil {
 					if e.Kind == storage.CacheGetter && e.Epoch == ag.ProtoEpoch {
 						if validateExec {
 							ag.active.checkGetterHit(fp, pc-1, v, fp.Keys[i.C], e.Holder)
@@ -1965,9 +1965,9 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 					}
 					if e.Kind == storage.CacheOwnGetter {
 						if validateExec {
-							ag.active.checkOwnGetterHit(fp, pc-1, v, fp.Keys[i.C], &o.Slots[e.Slot])
+							ag.active.checkOwnGetterHit(fp, pc-1, v, fp.Keys[i.C], o, e.Slot)
 						}
-						g := o.Slots[e.Slot].Accessor().Getter
+						g := o.Raw().Slot(int(e.Slot)).Accessor().Getter
 						if g == nil {
 							regs[i.A] = storage.Undefined
 							continue
@@ -1983,14 +1983,14 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 			v := regs[i.A]
 			c := &fp.Caches[i.B]
 			if o := v.O; o != nil {
-				if e := c.Entry(o.Shape); e != nil {
+				if e := c.Entry(o.Shape()); e != nil {
 					switch e.Kind {
 					case storage.CacheAdd:
-						if o.ObjectProperties != nil && e.Epoch == ag.ProtoEpoch && o.Flags&storage.ObjIsProto == 0 {
+						if o.HasProperties() && e.Epoch == ag.ProtoEpoch && o.Flags()&storage.ObjIsProto == 0 {
 							if validateExec {
 								ag.active.checkAddHit(fp, pc-1, o, fp.Keys[i.B], e.Next)
 							}
-							o.Shape = e.Next
+							o.Raw().SetShape(e.Next)
 							o.AppendSlot(regs[i.C])
 							continue
 						}
@@ -2032,14 +2032,14 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 			} else {
 				k = storage.Number(float64(i.B))
 			}
-			if o := v.O; o != nil && o.ObjectProperties != nil && k.O == storage.NumberObject {
-				if j := int(k.N); j == len(o.Elems) && o.Kind == storage.KindArray && uint32(j) == o.Length && o.Flags == 0 && float64(j) == k.N && o.Shape == ag.active.realm.Shapes.Array && ag.active.ArrayProtoPlain() {
+			if o := v.O; o != nil && o.HasProperties() && k.O == storage.NumberObject {
+				if j := int(k.N); j == o.Raw().ElemCount() && o.Kind == storage.KindArray && uint32(j) == o.Length() && o.Flags() == 0 && float64(j) == k.N && o.Shape() == ag.active.realm.Shapes.Array && ag.active.ArrayProtoPlain() {
 					// Appending to a plain array, as in the first switch.
 					if validateExec {
 						ag.active.checkAppend(o)
 					}
 					o.AppendElem(regs[i.C])
-					o.Length++
+					o.Raw().SetLength(o.Length() + 1)
 					continue
 				}
 			}
@@ -2100,7 +2100,7 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 			if !o.IsObject() {
 				ag.active.ThrowTypeError("cannot use 'in' operator to search for a private field in a non-object")
 			}
-			_, ok := ag.active.privateStorage(o.O).Shape.Lookup(regs[i.C].O)
+			_, ok := ag.active.privateStorage(o.O).Shape().Lookup(regs[i.C].O)
 			regs[i.A] = storage.Bool(ok)
 		case bytecode.OpGetPrivate:
 			v := regs[i.B]
@@ -2549,7 +2549,7 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 		case bytecode.OpCallSpread, bytecode.OpNewSpread, bytecode.OpSuperSpread:
 			b := int(i.B)
 			f, callThis, ret, isNew, newTarget = regs[b].O, regs[b+1], i.A, false, nil
-			args := regs[b+2].O.Elems
+			args := regs[b+2].O.Raw().Elems()
 			argc = len(args)
 			argBase = ag.frames[len(ag.frames)-1].top()
 			ag.ensureStack(argBase + argc)
@@ -2598,7 +2598,7 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 		case bytecode.OpTailCallSpread:
 			b := int(i.B)
 			f, callThis, ret, isNew, newTarget = regs[b].O, regs[b+1], i.A, false, nil
-			args := regs[b+2].O.Elems
+			args := regs[b+2].O.Raw().Elems()
 			argc = len(args)
 			argBase = ag.sp
 			ag.ensureStack(argBase + argc)
@@ -2614,11 +2614,11 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 				// The common case: a plain constructor function, whose prototype property is cached.
 				c := &fp.Caches[site]
 				var proto storage.Value
-				if f.Shape == c.Shape && c.Kind == storage.CacheOwn {
+				if f.Shape() == c.Shape && c.Kind == storage.CacheOwn {
 					if validateExec {
 						ag.active.checkEntryRead(fp, pc-2, storage.Value{O: f}, f, ag.Key(storage.KeyPrototype), &c.CacheEntry)
 					}
-					proto = f.Slots[c.Slot]
+					proto = f.Raw().Slot(int(c.Slot))
 				} else {
 					ag.frames[len(ag.frames)-1].pc = pc
 					proto, _ = ag.active.getNamed(storage.Value{O: f}, ag.Key(storage.KeyPrototype), c)
@@ -2778,26 +2778,24 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 		case bytecode.OpNewObject:
 			o, slots := storage.NewObjectWithStorage(int(i.C))
 			o.Kind = storage.KindObject
-			o.Shape = ag.active.realm.Shapes.Object
-			o.Slots = slots[:0]
+			o.Raw().SetShape(ag.active.realm.Shapes.Object)
+			o.InitSlots(slots[:0])
 			regs[i.A] = storage.Value{O: o}
 		case bytecode.OpNewArray:
 			o, elems := storage.NewObjectWithStorage(int(i.C))
 			o.Kind = storage.KindArray
 			o.Class = storage.ClassArray
-			o.Shape = ag.active.realm.Shapes.Array
-			o.Elems = elems[:0]
+			o.Raw().SetShape(ag.active.realm.Shapes.Array)
+			o.InitElems(elems[:0])
 			regs[i.A] = storage.Value{O: o}
 		case bytecode.OpNewArrayK:
 			regs[i.A] = storage.Value{O: ag.active.NewArrayCopy(fp.Consts[i.B : i.B+i.C])}
 		case bytecode.OpArrayPush:
 			o := regs[i.A].O
-			o.AppendElem(regs[i.B])
-			o.Length = uint32(len(o.Elems))
+			o.PushElement(regs[i.B])
 		case bytecode.OpArrayHole:
 			o := regs[i.A].O
-			o.AppendElem(storage.Hole)
-			o.Length = uint32(len(o.Elems))
+			o.PushElement(storage.Hole)
 		case bytecode.OpArraySpread:
 			ag.frames[len(ag.frames)-1].pc = pc
 			o := regs[i.A].O
@@ -2828,11 +2826,11 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 		case bytecode.OpDefineFieldK:
 			o := regs[i.A].O
 			c := &fp.Caches[i.B]
-			if o.Shape == c.Shape && c.Kind == storage.CacheAdd {
+			if o.Shape() == c.Shape && c.Kind == storage.CacheAdd {
 				if validateExec {
 					ag.active.checkDefineHit(fp, pc-1, o, fp.Keys[i.B], c.Next)
 				}
-				o.Shape = c.Next
+				o.Raw().SetShape(c.Next)
 				o.AppendSlot(regs[i.C])
 				continue
 			}
@@ -2888,7 +2886,7 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 				Text:  fp.Keys[i.B].Text,
 			}
 			if i.C != 0 {
-				name.Flags |= storage.ObjFrozenLength
+				name.FreezeLength()
 			}
 			regs[i.A] = storage.Value{O: name}
 		case bytecode.OpInitFields:
@@ -2952,7 +2950,7 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 			if idx := regs[i.B]; idx.O == storage.NumberObject {
 				o := regs[i.B+1].O
 				j := uint32(idx.N)
-				if j >= o.Length {
+				if j >= o.Length() {
 					// Mark the iterator as finished, so that closing it does nothing.
 					regs[i.B] = storage.Undefined
 					regs[i.B+1] = storage.Undefined
@@ -2961,8 +2959,8 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 					continue
 				}
 				regs[i.B].N = idx.N + 1
-				if uint(j) < uint(len(o.Elems)) && o.Elems[j].O != storage.HoleObject {
-					regs[i.A] = o.Elems[j]
+				if uint(j) < uint(o.Raw().ElemCount()) && o.Raw().Elem(int(j)).O != storage.HoleObject {
+					regs[i.A] = o.Raw().Elem(int(j))
 					continue
 				}
 				ag.frames[len(ag.frames)-1].pc = pc
@@ -3009,16 +3007,16 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 				// A plain array iterated by index, whose element is itself a plain array of at
 				// least two elements.
 				o, j := next.O, uint32(it.N)
-				if j >= o.Length || uint(j) >= uint(len(o.Elems)) {
+				if j >= o.Length() || uint(j) >= uint(o.Raw().ElemCount()) {
 					continue
 				}
-				e := o.Elems[j].O
-				if e == nil || e.Shape != ag.active.realm.Shapes.Array || e.Length < 2 || len(e.Elems) < 2 || e.Elems[0].IsHole() || e.Elems[1].IsHole() || !ag.PairDestructuringPlain(ag.active.realmPart) {
+				e := o.Raw().Elem(int(j)).O
+				if e == nil || e.Shape() != ag.active.realm.Shapes.Array || e.Length() < 2 || e.Raw().ElemCount() < 2 || e.Raw().Elem(0).IsHole() || e.Raw().Elem(1).IsHole() || !ag.PairDestructuringPlain(ag.active.realmPart) {
 					continue
 				}
 				regs[i.B].N = it.N + 1
-				regs[i.A] = e.Elems[0]
-				regs[b] = e.Elems[1]
+				regs[i.A] = e.Raw().Elem(0)
+				regs[b] = e.Raw().Elem(1)
 				pc = int(i.C)
 				continue
 			}
@@ -3031,7 +3029,7 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 			if step := iteratorPairStepOf(next.O.Fn, ag.active.realmPart); step != nil {
 				x, y, st = step(storage.IteratorState(it))
 				if st == quiet.PairYielded {
-					pairRealm = it.O.Shape.Realm
+					pairRealm = it.O.Shape().Realm
 				}
 			} else if next.O == ag.active.realm.Intrinsics[storage.IntrinsicArrayIteratorPrototypeNext] {
 				// Reading an array entry can run JavaScript. A throwing step finishes the iterator.
@@ -3319,7 +3317,7 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 		// A call with the arguments of the running function.
 		if (i.Op == bytecode.OpCallFwd || i.Op == bytecode.OpTailCallFwd) && (!regs[i.C].IsUndefined() || !ag.ArrayIterationUnmodified(ag.active.realmPart)) {
 			ag.frames[len(ag.frames)-1].pc = pc
-			args := ag.active.spreadArgs(ag.active.forwardedArguments(i.C)).Elems
+			args := ag.active.spreadArgs(ag.active.forwardedArguments(i.C)).Raw().Elems()
 			argc, ret, isNew, newTarget = len(args), i.A, false, nil
 			argBase = ag.frames[len(ag.frames)-1].top()
 			ag.ensureStack(argBase + argc)
@@ -3362,11 +3360,11 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 					ag.active.ThrowRangeError("maximum call stack size exceeded")
 				}
 				if site := c.ReturnedProperty; site != nil && !isNew && newTarget == nil && c.Realm == fp.Realm && callThis.IsObject() {
-					if e := site.Entry(callThis.O.Shape); e != nil && e.Kind == storage.CacheOwn {
+					if e := site.Entry(callThis.O.Shape()); e != nil && e.Kind == storage.CacheOwn {
 						if validateExec {
 							ag.active.checkReturnedProperty(c, callThis, e)
 						}
-						regs[ret] = callThis.O.Slots[e.Slot]
+						regs[ret] = callThis.O.Raw().Slot(int(e.Slot))
 						continue
 					}
 				}

@@ -20,7 +20,7 @@ type sparseIndexCache struct {
 // list returns the array indices that o stores in its shape, in ascending order.
 // The result must not be modified.
 func (c *sparseIndexCache) list(o *Object) []uint32 {
-	s := o.Shape
+	s := o.shape
 	if c.shape == s && c.count == s.Count {
 		if ValidateExec {
 			c.checkSparseIndices(s)
@@ -131,41 +131,41 @@ func growElems(elems []Value, i uint32) bool {
 // AddIndex creates the data property with the array index i on o, which has no such own property.
 // It reports false when o does not allow it.
 func (r *RealmPart) AddIndex(o *Object, i uint32, val Value, flags uint8) bool {
-	if o.Flags&ObjNotExtensible != 0 {
+	if o.flags&ObjNotExtensible != 0 {
 		return false
 	}
-	if o.Kind == KindArray && i >= o.Length {
-		if o.Flags&ObjFrozenLength != 0 {
+	if o.Kind == KindArray && i >= o.length {
+		if o.flags&ObjFrozenLength != 0 {
 			return false
 		}
-		o.Length = i + 1
+		o.length = i + 1
 	}
-	n := len(o.Elems)
+	n := len(o.elems)
 	if flags == FlagsData {
 		if uint(i) < uint(n) {
-			o.Elems[i] = val
+			o.elems[i] = val
 			return true
 		}
-		if growElems(o.Elems, i) {
+		if growElems(o.elems, i) {
 			o.ReserveElems(int(i) + 1 - n)
-			for uint32(len(o.Elems)) < i {
+			for uint32(len(o.elems)) < i {
 				o.pushElem(Hole)
 			}
 			o.pushElem(val)
 			// The elements may have reached the indices in the shape. Checking only when their
 			// number passes a power of two bounds the cost of the checks by that of the growth.
-			if o.Flags&ObjSparse != 0 && bits.Len(uint(n)) != bits.Len(uint(len(o.Elems))) {
+			if o.flags&ObjSparse != 0 && bits.Len(uint(n)) != bits.Len(uint(len(o.elems))) {
 				r.densify(o)
 			}
 			return true
 		}
 	}
-	o.Flags |= ObjSparse
+	o.flags |= ObjSparse
 	r.Add(o, r.IndexName(i), val, flags)
 	// Checking only when the number of properties in the shape reaches a power of two bounds
 	// the cost of the checks by that of the additions. The elements would need more than i
 	// slots.
-	if c := int64(o.Shape.Count); flags == FlagsData && c&(c-1) == 0 && (int64(len(o.Elems))+c)*denseFactor > int64(i) {
+	if c := int64(o.shape.Count); flags == FlagsData && c&(c-1) == 0 && (int64(len(o.elems))+c)*denseFactor > int64(i) {
 		r.densify(o)
 	}
 	return true
@@ -175,12 +175,12 @@ func (r *RealmPart) AddIndex(o *Object, i uint32, val Value, flags uint8) bool {
 // when they are all writable, enumerable and configurable data properties and elems would have
 // at most denseFactor slots per element.
 func (r *RealmPart) densify(o *Object) {
-	if o.Kind != KindArray && o.Class != ClassObject || o.Flags&(ObjExotic|ObjNotExtensible) != 0 {
+	if o.Kind != KindArray && o.Class != ClassObject || o.flags&(ObjExotic|ObjNotExtensible) != 0 {
 		return
 	}
 	// The new shape adds the named properties to root, which keeps its own properties, if any,
 	// in the first base slots.
-	s := o.Shape
+	s := o.shape
 	var root *Shape
 	var base int
 	if s.Private {
@@ -194,7 +194,7 @@ func (r *RealmPart) densify(o *Object) {
 	}
 	keys := s.Keys()
 	var count int64
-	end := int64(len(o.Elems))
+	end := int64(len(o.elems))
 	for j, k := range keys {
 		if k.Kind != KindString {
 			continue
@@ -212,11 +212,11 @@ func (r *RealmPart) densify(o *Object) {
 		count++
 		end = max(end, int64(i)+1)
 	}
-	if (int64(len(o.Elems))+count)*denseFactor < end {
+	if (int64(len(o.elems))+count)*denseFactor < end {
 		return
 	}
 	present := count
-	for _, e := range o.Elems {
+	for _, e := range o.elems {
 		if !e.IsHole() {
 			present++
 		}
@@ -225,24 +225,24 @@ func (r *RealmPart) densify(o *Object) {
 		return
 	}
 
-	o.ReserveElems(int(end) - len(o.Elems))
-	for int64(len(o.Elems)) < end {
+	o.ReserveElems(int(end) - len(o.elems))
+	for int64(len(o.elems)) < end {
 		o.pushElem(Hole)
 	}
-	o.Shape = root
-	slots := o.detachSlots(base, len(o.Slots)-int(count))
+	o.shape = root
+	slots := o.detachSlots(base, len(o.slots)-int(count))
 	for _, k := range keys[base:] {
 		p, _ := s.Lookup(k)
 		if k.Kind == KindString {
 			if i, ok := StringIndex(k.Text); ok {
-				o.Elems[i] = slots[p.Slot]
+				o.elems[i] = slots[p.Slot]
 				continue
 			}
 		}
 		r.Add(o, k, slots[p.Slot], p.Flags)
 	}
 	o.leaveSlots(slots)
-	o.Flags &^= ObjSparse
+	o.flags &^= ObjSparse
 	if o.Kind != KindArray {
 		// The shape may be one that o had before, with other slots. The inline caches of
 		// global variables point into the slots of the global object while it keeps its

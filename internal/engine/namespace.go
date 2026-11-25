@@ -164,7 +164,7 @@ func (cx *ExecutionContext) namespaceDefineOwnProperty(o *storage.Object, k stor
 // namespaceOwnKeys implements [[OwnPropertyKeys]] of the module namespace object o.
 func (cx *ExecutionContext) namespaceOwnKeys(o *storage.Object) []storage.PropKey {
 	keys := slices.Clone(cx.namespaceExports(o).keys)
-	for _, k := range o.Shape.Keys() {
+	for _, k := range o.Shape().Keys() {
 		keys = append(keys, storage.NamedKey(k))
 	}
 	return keys

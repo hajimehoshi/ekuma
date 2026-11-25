@@ -44,7 +44,7 @@ type Peeked struct {
 
 // Slot returns the Slot of a data property or an accessor property.
 func (p *Peeked) Slot() *Value {
-	return &p.Holder.Slots[p.Prop.Slot]
+	return &p.Holder.slots[p.Prop.Slot]
 }
 
 func (p *Peeked) String() string {
@@ -95,7 +95,7 @@ func (r *RealmPart) Peek(v Value, key *Object) Peeked {
 
 // PeekFrom is peek from the object start on.
 func (r *RealmPart) PeekFrom(start, key *Object) Peeked {
-	for h := start; h != nil; h = h.Shape.Proto {
+	for h := start; h != nil; h = h.shape.Proto {
 		p, why := r.PeekOwn(h, key)
 		if why != "" {
 			return Peeked{
@@ -127,7 +127,7 @@ func (sp *Space) PeekOwn(h, key *Object) (p Peeked, why string) {
 		return Peeked{
 			Kind:   PeekLength,
 			Holder: h,
-			Length: float64(h.Length),
+			Length: float64(h.length),
 		}, ""
 	case h.Class == ClassTypedArray && IsCanonicalNumericString(key):
 		return Peeked{
@@ -135,7 +135,7 @@ func (sp *Space) PeekOwn(h, key *Object) (p Peeked, why string) {
 			Holder: h,
 		}, ""
 	}
-	q, ok := h.Shape.Lookup(key)
+	q, ok := h.shape.Lookup(key)
 	if !ok {
 		return Peeked{}, ""
 	}
@@ -189,7 +189,7 @@ func (r *RealmPart) CheckNoIteratorReturn() {
 // checkPlainArray checks that iterating o starts with the original values method, if
 // ArrayIterationPlain says so.
 func (r *RealmPart) checkPlainArray(o *Object) {
-	if o.Shape != r.Shapes.Array || !r.ArrayIterationUnmodified(r) {
+	if o.shape != r.Shapes.Array || !r.ArrayIterationUnmodified(r) {
 		return
 	}
 	r.checkOriginal(o, r.WellKnownSymbol(SymbolIterator), r.Intrinsic(IntrinsicArrayPrototypeValues))
@@ -232,7 +232,7 @@ func (r *RealmPart) checkUnmodifiedRegExp(o *Object) {
 // 0, if o has the shape that says so.
 func (r *RealmPart) checkRegExpShape(o *Object) {
 	s := r.Shapes.regExp
-	if s == nil || o.Shape != s {
+	if s == nil || o.shape != s {
 		return
 	}
 	p, _ := r.PeekOwn(o, r.Key(KeyLastIndex))

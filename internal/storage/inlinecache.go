@@ -112,7 +112,7 @@ func (c *PropCache) Keep(shape *Shape) bool {
 
 // RememberRead records the location of p for subsequent reads from start's shape.
 func (c *PropCache) RememberRead(sp *Space, start, holder *Object, p Prop) {
-	s := start.Shape
+	s := start.shape
 	if s.ReadID == 0 {
 		if sp.lastReadShapeID == ^uint32(0) {
 			return
@@ -133,7 +133,7 @@ func (c *PropCache) RememberRead(sp *Space, start, holder *Object, p Prop) {
 		r.Epoch = sp.ProtoEpoch
 	}
 	var depth int32
-	for h := start; h != holder; h = h.Shape.Proto {
+	for h := start; h != holder; h = h.shape.Proto {
 		depth++
 	}
 	r.Shapes[s.ReadID] = namedRead{
@@ -141,4 +141,32 @@ func (c *PropCache) RememberRead(sp *Space, start, holder *Object, p Prop) {
 		Count: s.Count,
 		Prop:  p,
 	}
+}
+
+// OwnValue returns the value or the accessors that e, an entry for an own property, remembers
+// of o, whose shape is that of e.
+func (e *CacheEntry) OwnValue(o *Object) Value {
+	return o.slots[e.Slot]
+}
+
+// RememberAbsent records that a receiver with the shape s has no property of the name.
+func (c *PropCache) RememberAbsent(sp *Space, s *Shape) {
+	c.Keep(s)
+	c.SetInherited(s, CacheProto, sp.ProtoEpoch)
+	c.Ref = &sp.MissHolder.slots[0]
+}
+
+// Remember records that a binding of the realm with the global object global is p of holder,
+// which is global or the global lexical bindings.
+func (c *GlobalCache) Remember(global, holder *Object, p Prop) {
+	c.Holder = global
+	c.Shape = global.shape
+	c.Ref = &holder.slots[p.Slot]
+}
+
+// AddTo adds the property that e, an entry that adds one, remembers to o, whose shape is that of
+// e, with the value v.
+func (e *CacheEntry) AddTo(o *Object, v Value) {
+	o.shape = e.Next
+	o.AppendSlot(v)
 }

@@ -192,8 +192,8 @@ func arrayIteratorStep(it *quiet.ArrayIterator, cx *ExecutionContext) (key, valu
 	if it.Kind == quiet.IterateKeys {
 		return key, storage.Undefined, quiet.PairYielded
 	}
-	if i < int64(len(o.Elems)) && !o.Elems[i].IsHole() {
-		value = o.Elems[i]
+	if e, ok := o.ElementAt(uint32(i)); ok && i <= storage.MaxArrayIndex {
+		value = e
 		cx.PollAt(i)
 		return key, value, quiet.PairYielded
 	}
@@ -446,15 +446,15 @@ func (cx *ExecutionContext) iteratePlainArray(o *storage.Object, f func(storage.
 	var nextIndex uint32
 	cx.iterate(func() (storage.Value, bool) {
 		i := nextIndex
-		if i >= o.Length {
+		if i >= o.Length() {
 			return storage.Undefined, false
 		}
 		if cx.InterruptFlag.Load() {
 			cx.Poll()
 		}
 		nextIndex++
-		if uint(i) < uint(len(o.Elems)) && !o.Elems[i].IsHole() {
-			return o.Elems[i], true
+		if e, ok := o.ElementAt(i); ok {
+			return e, true
 		}
 		return cx.plainArrayIteratorIndex(o, i), true
 	}, func(pending bool) {
@@ -465,7 +465,7 @@ func (cx *ExecutionContext) iteratePlainArray(o *storage.Object, f func(storage.
 // plainArrayIteratorIndex reads an element outside dense storage with the native next frame
 // that a getter or proxy can observe.
 func (cx *ExecutionContext) plainArrayIteratorIndex(o *storage.Object, i uint32) storage.Value {
-	if o.Flags&storage.ObjSparse == 0 && o.HolesAreAbsent() {
+	if o.Flags()&storage.ObjSparse == 0 && o.HolesAreAbsent() {
 		return storage.Undefined
 	}
 	// ArrayIterationPlain proved this method was selected when iteration started.
@@ -527,11 +527,10 @@ func (cx *ExecutionContext) spreadArgs(v storage.Value) *storage.Object {
 // appendIterable appends the values that iterating v yields to the array o.
 func (cx *ExecutionContext) appendIterable(o *storage.Object, v storage.Value) {
 	if s := v.O; s != nil && s.Kind == storage.KindArray {
-		o.ReserveElems(len(s.Elems))
+		o.ReserveElems(s.ElemCount())
 	}
 	cx.Iterate(v, func(e storage.Value) bool {
-		o.AppendElem(e)
-		o.Length = uint32(len(o.Elems))
+		o.PushElement(e)
 		return true
 	})
 }
@@ -580,15 +579,15 @@ func (cx *ExecutionContext) forInOwnKeys(o *storage.Object) (indices uint32, len
 	if o.Class == storage.ClassProxy || o.Class == storage.ClassModuleNamespace {
 		return 0, false, cx.OwnKeys(o)
 	}
-	if o.Flags&storage.ObjExotic != 0 {
+	if o.Flags()&storage.ObjExotic != 0 {
 		cx.resolve(o)
 	}
 	// The own keys of any other object are its elements, the length of an array, and the
 	// keys of its shape.
-	if o.Flags&(storage.ObjExotic|storage.ObjSparse) != 0 || o.Class == storage.ClassString || storage.ContainsHole(o.Elems) {
+	if o.Flags()&(storage.ObjExotic|storage.ObjSparse) != 0 || o.Class == storage.ClassString || o.HasHole() {
 		return 0, false, cx.OwnKeys(o)
 	}
-	return uint32(len(o.Elems)), o.Kind == storage.KindArray, o.Shape.StringKeys()
+	return uint32(o.ElemCount()), o.Kind == storage.KindArray, o.Shape().StringKeys()
 }
 
 // forInNext returns the next key of the for-in iterator o.
@@ -598,7 +597,7 @@ func (cx *ExecutionContext) forInNext(o *storage.Object) (storage.Value, bool) {
 		for it.index < it.indices {
 			i := it.index
 			it.index++
-			if obj := it.obj; int64(i) < int64(len(obj.Elems)) && !obj.Elems[i].IsHole() {
+			if obj := it.obj; obj.HasElementAt(i) {
 				return cx.indexString(i), true
 			}
 			cx.PollAt(int64(i))
@@ -663,23 +662,23 @@ func (cx *ExecutionContext) forInNextObject(it *forIn) {
 // forInMayVisit reports whether a for-in loop might visit a key of o or of its prototypes. When
 // it reports false, visiting the keys of those objects would have no observable effect.
 func (cx *ExecutionContext) forInMayVisit(o *storage.Object) bool {
-	for ; o != nil; o = o.Shape.Proto {
+	for ; o != nil; o = o.Shape().Proto {
 		if o.Class == storage.ClassProxy || o.Class == storage.ClassModuleNamespace {
 			return true
 		}
-		if o.Flags&storage.ObjExotic != 0 {
+		if o.Flags()&storage.ObjExotic != 0 {
 			cx.resolve(o)
-			if o.Flags&storage.ObjExotic != 0 {
+			if o.Flags()&storage.ObjExotic != 0 {
 				return true
 			}
 		}
 		if o.Class == storage.ClassString && o.ExtState().(*storage.Object).StringLength() > 0 {
 			return true
 		}
-		if slices.ContainsFunc(o.Elems, func(e storage.Value) bool { return !e.IsHole() }) {
+		if o.HasElement() {
 			return true
 		}
-		if o.Shape.HasEnumerableString() {
+		if o.Shape().HasEnumerableString() {
 			return true
 		}
 	}
@@ -780,11 +779,11 @@ func (cx *ExecutionContext) iterResultValue(r storage.Value) (storage.Value, boo
 // IteratorToList implements IteratorToList(GetIteratorFromMethod(v, method)).
 func (cx *ExecutionContext) IteratorToList(v storage.Value, method *storage.Object) []storage.Value {
 	if method == cx.Intrinsic(storage.IntrinsicArrayPrototypeValues) && v.O != nil && v.O.Kind == storage.KindArray && cx.ArrayIterationPlain(v.O) {
-		if n := v.O.Length; uint64(n) <= uint64(len(v.O.Elems)) && !storage.ContainsHole(v.O.Elems[:n]) {
-			return storage.AppendPolled(&cx.Poller, nil, v.O.Elems[:n])
+		if elems, ok := cx.CopyDenseElements(v.O); ok {
+			return elems
 		}
 		// The length of a sparse array says nothing about the memory it holds.
-		vals := make([]storage.Value, 0, len(v.O.Elems))
+		vals := make([]storage.Value, 0, v.O.ElemCount())
 		cx.iteratePlainArray(v.O, func(e storage.Value) bool {
 			vals = append(vals, e)
 			return true

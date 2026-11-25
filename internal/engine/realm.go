@@ -4,9 +4,7 @@
 package engine
 
 import (
-	"github.com/hajimehoshi/ekuma/internal/shortstrings"
 	"github.com/hajimehoshi/ekuma/internal/storage"
-	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 // executionContextOf returns the execution context of the realm that embeds r.
@@ -107,14 +105,7 @@ func (cx *ExecutionContext) initRealmPrototypes() {
 	// A primitive string has its own length even when an ordinary object with the same
 	// prototype inherits its length.
 	r.Shapes.String = cx.RootShape(stringProto, cx.realmPart, storage.PrimitiveStringRoot)
-	r.Shapes.ShortStrings = new([shortstrings.MaxBytes + 1]storage.Object)
-	for i := range r.Shapes.ShortStrings {
-		r.Shapes.ShortStrings[i] = storage.Object{
-			Kind:  storage.KindString,
-			Shape: r.Shapes.String,
-			Text:  wtf8.String("\x00\x00\x00\x00\x00\x00\x00\x00")[:i],
-		}
-	}
+	r.InitShortStrings()
 }
 
 // initRealmGlobals finishes the prototypes of the current realm and creates its global object.

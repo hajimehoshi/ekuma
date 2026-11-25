@@ -24,7 +24,7 @@ func (r *RealmPart) ArrayIterationPlain(o *Object) bool {
 	if ValidateExec {
 		r.checkPlainArray(o)
 	}
-	return o.Shape == r.Shapes.Array && r.ArrayIterationUnmodified(r)
+	return o.shape == r.Shapes.Array && r.ArrayIterationUnmodified(r)
 }
 
 // ArrayIterationUnmodified reports whether %Array.prototype%[@@iterator] and
@@ -53,9 +53,9 @@ func (sp *Space) ArrayIterationUnmodified(r *RealmPart) bool {
 // property to one moves ProtoEpoch.
 func (sp *Space) NoArrayIteratorReturn(proto *Object) bool {
 	key := sp.Key(KeyReturn)
-	for p := proto; p != nil; p = p.Shape.Proto {
-		p.Flags |= ObjIsProto
-		if _, ok := p.getOwn(key); ok || p.Flags&ObjExotic != 0 {
+	for p := proto; p != nil; p = p.shape.Proto {
+		p.flags |= ObjIsProto
+		if _, ok := p.getOwn(key); ok || p.flags&ObjExotic != 0 {
 			return false
 		}
 	}

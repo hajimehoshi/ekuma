@@ -22,34 +22,34 @@ func WithoutLast[T any](s []T) []T {
 }
 
 // InitSlots makes storage the slots of an object that has none.
-func (p *ObjectProperties) InitSlots(storage []Value) {
-	if ValidateExec && len(p.Slots) != 0 {
+func (p *objectProperties) InitSlots(storage []Value) {
+	if ValidateExec && len(p.slots) != 0 {
 		panic("engine: initSlots on an object with slots")
 	}
-	p.Slots = storage
+	p.slots = storage
 }
 
 // fillSlots copies vals to the slots of an object that has none.
-func (p *ObjectProperties) fillSlots(vals []Value) {
-	if ValidateExec && len(p.Slots) != 0 {
+func (p *objectProperties) fillSlots(vals []Value) {
+	if ValidateExec && len(p.slots) != 0 {
 		panic("engine: fillSlots on an object with slots")
 	}
-	p.Slots = append(p.Slots[:0], vals...)
+	p.slots = append(p.slots[:0], vals...)
 }
 
 // AppendSlot appends v to the slots of o.
 func (o *Object) AppendSlot(v Value) {
-	old := o.Slots
-	o.Slots = append(old, v)
-	if cap(o.Slots) != cap(old) {
+	old := o.slots
+	o.slots = append(old, v)
+	if cap(o.slots) != cap(old) {
 		o.leaveSlots(old)
 	}
 }
 
 // ReserveSlots gives the slots of o room for n more values.
 func (o *Object) ReserveSlots(n int) {
-	if old := o.Slots; cap(old)-len(old) < n {
-		o.Slots = slices.Grow(old, n)
+	if old := o.slots; cap(old)-len(old) < n {
+		o.slots = slices.Grow(old, n)
 		o.leaveSlots(old)
 	}
 }
@@ -57,7 +57,7 @@ func (o *Object) ReserveSlots(n int) {
 // leaveSlots clears old, storage that the slots of o have moved out of, when it stays reachable.
 func (o *Object) leaveSlots(old []Value) {
 	// Inline caches point into the slots of global objects and of prototypes.
-	if o.Pinned&(PinnedSlots|PinnedGlobalSlots) != 0 || o.Flags&ObjIsProto != 0 {
+	if o.Pinned&(PinnedSlots|PinnedGlobalSlots) != 0 || o.flags&ObjIsProto != 0 {
 		clear(old)
 	}
 	o.Pinned &^= PinnedSlots
@@ -72,45 +72,45 @@ func (o *Object) leaveElems(old []Value) {
 	}
 }
 
-// ReplaceSlots makes slots, which holds the values that remain, the slots of o.
-func (o *Object) ReplaceSlots(slots []Value) {
-	o.leaveSlots(o.Slots)
-	o.Slots = slots
+// replaceSlots makes slots, which holds the values that remain, the slots of o.
+func (o *Object) replaceSlots(slots []Value) {
+	o.leaveSlots(o.slots)
+	o.slots = slots
 }
 
 // detachSlots moves the first n slots of o to new storage with room for room values, and returns
 // the old storage with all the slots. The caller must call leaveSlots with it after reading the
 // others.
 func (o *Object) detachSlots(n, room int) []Value {
-	old := o.Slots
-	o.Slots = append(make([]Value, 0, room), old[:n]...)
+	old := o.slots
+	o.slots = append(make([]Value, 0, room), old[:n]...)
 	return old
 }
 
 // truncateSlots removes the slots beyond the first n.
 func (o *Object) truncateSlots(n int) {
-	o.Slots = Truncated(o.Slots, n)
+	o.slots = Truncated(o.slots, n)
 }
 
-// RemoveSlot removes the slot i, moving the later ones down.
-func (o *Object) RemoveSlot(i int) {
-	n := len(o.Slots) - 1
-	copy(o.Slots[i:], o.Slots[i+1:])
-	o.Slots[n] = Value{}
-	o.Slots = o.Slots[:n]
+// removeSlot removes the slot i, moving the later ones down.
+func (o *Object) removeSlot(i int) {
+	n := len(o.slots) - 1
+	copy(o.slots[i:], o.slots[i+1:])
+	o.slots[n] = Value{}
+	o.slots = o.slots[:n]
 }
 
 // InitElems makes storage the elements of an object that has none.
-func (p *ObjectProperties) InitElems(storage []Value) {
-	if ValidateExec && len(p.Elems) != 0 {
+func (p *objectProperties) InitElems(storage []Value) {
+	if ValidateExec && len(p.elems) != 0 {
 		panic("engine: initElems on an object with elements")
 	}
-	p.Elems = storage
+	p.elems = storage
 }
 
 // ReserveElems gives the elements of o room for n more elements.
 func (o *Object) ReserveElems(n int) {
-	if cap(o.Elems)-len(o.Elems) < n {
+	if cap(o.elems)-len(o.elems) < n {
 		o.moveElems(n)
 	}
 }
@@ -120,23 +120,23 @@ func (o *Object) ReserveElems(n int) {
 //
 //go:noinline
 func (o *Object) moveElems(n int) {
-	elems := o.Elems
+	elems := o.elems
 	if cap(elems) == 0 {
-		o.Elems = make([]Value, 0, max(n, MinElems))
+		o.elems = make([]Value, 0, max(n, MinElems))
 		return
 	}
-	o.Elems = slices.Grow(elems, n)
+	o.elems = slices.Grow(elems, n)
 	o.leaveElems(elems)
 }
 
 // AppendElem appends v to the elements of o.
 func (o *Object) AppendElem(v Value) {
-	elems := o.Elems
+	elems := o.elems
 	if cap(elems) == 0 {
 		elems = make([]Value, 0, MinElems)
 	}
-	o.Elems = append(elems, v)
-	if cap(o.Elems) != cap(elems) {
+	o.elems = append(elems, v)
+	if cap(o.elems) != cap(elems) {
 		o.leaveElems(elems)
 	}
 }
@@ -144,80 +144,80 @@ func (o *Object) AppendElem(v Value) {
 // ElemsStorage returns the number of values that the storage of the elements of o has room
 // for, counting those before the elements that removing the first elements left unused.
 func (o *Object) ElemsStorage() int {
-	n := cap(o.Elems)
+	n := cap(o.elems)
 	if m := o.Meta(); m != nil && m.shiftedCap == n {
 		n += m.shiftedElems
 	}
 	return n
 }
 
-// ElemsOversized reports whether the elements of o use less than a quarter of their storage
+// elemsOversized reports whether the elements of o use less than a quarter of their storage
 // and the storage is larger than minShrinkElems.
-func (o *Object) ElemsOversized() bool {
+func (o *Object) elemsOversized() bool {
 	n := o.ElemsStorage()
-	return n > minShrinkElems && len(o.Elems) < n/4
+	return n > minShrinkElems && len(o.elems) < n/4
 }
 
-// ReallocElems moves the elements of o to new storage with room for as many elements again.
-func (p *Poller) ReallocElems(o *Object) {
-	elems := make([]Value, len(o.Elems), max(2*len(o.Elems), MinElems))
-	CopyPolled(p, elems, o.Elems)
+// reallocElems moves the elements of o to new storage with room for as many elements again.
+func (p *Poller) reallocElems(o *Object) {
+	elems := make([]Value, len(o.elems), max(2*len(o.elems), MinElems))
+	CopyPolled(p, elems, o.elems)
 	o.replaceElems(elems)
 }
 
 // MoveElemsTo moves the elements of o to new storage with room for room elements in all.
 func (o *Object) MoveElemsTo(room int) {
-	elems := make([]Value, len(o.Elems), room)
-	copy(elems, o.Elems)
+	elems := make([]Value, len(o.elems), room)
+	copy(elems, o.elems)
 	o.replaceElems(elems)
 }
 
 // replaceElems makes elems, which holds the values that remain, the elements of o.
 func (o *Object) replaceElems(elems []Value) {
-	o.leaveElems(o.Elems)
-	o.Elems = elems
+	o.leaveElems(o.elems)
+	o.elems = elems
 	if m := o.Meta(); m != nil {
 		m.shiftedElems, m.shiftedCap = 0, 0
 	}
 }
 
 // shiftElem removes the first element without moving the others. The storage keeps its size: see
-// ElemsOversized.
+// elemsOversized.
 func (o *Object) shiftElem() {
-	m, elems := o.ensureMeta(), o.Elems
+	m, elems := o.ensureMeta(), o.elems
 	if m.shiftedCap != cap(elems) {
 		m.shiftedElems = 0
 	}
 	m.shiftedElems++
 	m.shiftedCap = cap(elems) - 1
 	elems[0] = Value{}
-	o.Elems = elems[1:]
+	o.elems = elems[1:]
 }
 
-// ClipElems keeps the storage after the elements out of reach of later growth.
-func (o *Object) ClipElems() {
-	old := cap(o.Elems)
-	o.Elems = slices.Clip(o.Elems)
+// clipElems keeps the storage after the elements out of reach of later growth.
+func (o *Object) clipElems() {
+	old := cap(o.elems)
+	o.elems = slices.Clip(o.elems)
 	m := o.Meta()
 	switch {
 	case m == nil:
 	case m.shiftedCap == old:
-		m.shiftedCap = cap(o.Elems)
+		m.shiftedCap = cap(o.elems)
 	default:
 		m.shiftedElems, m.shiftedCap = 0, 0
 	}
 }
 
 // pushElem appends v to the elements, which must have room for it.
-func (p *ObjectProperties) pushElem(v Value) {
-	n := len(p.Elems)
-	p.Elems = p.Elems[:n+1]
-	p.Elems[n] = v
+func (p *objectProperties) pushElem(v Value) {
+	n := len(p.elems)
+	p.elems = p.elems[:n+1]
+	p.elems[n] = v
 }
 
-// removeLastElem removes the last element. The storage keeps its size: see ElemsOversized.
-func (p *ObjectProperties) removeLastElem() {
-	n := len(p.Elems) - 1
-	p.Elems[n] = Value{}
-	p.Elems = p.Elems[:n]
+// removeLastElem removes the last element. The storage keeps its size: see elemsOversized.
+func (p *objectProperties) removeLastElem() {
+	n := len(p.elems) - 1
+	p.elems[n] = Value{}
+	p.elems = p.elems[:n]
 }

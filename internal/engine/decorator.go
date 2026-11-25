@@ -188,7 +188,7 @@ func (cx *ExecutionContext) applyClassDecorators(st *classDecoration, f *storage
 	// Nothing has had access to F yet, so its [[Prototype]] is still constructorParent. Without
 	// a ClassHeritage it is %Function.prototype%, whose non-configurable, non-writable
 	// @@metadata is null, as the spec gives for that case.
-	parent := cx.Get(f.Shape.Proto, storage.NamedKey(cx.WellKnownSymbol(storage.SymbolMetadata)))
+	parent := cx.Get(f.Shape().Proto, storage.NamedKey(cx.WellKnownSymbol(storage.SymbolMetadata)))
 	var metadataProto *storage.Object
 	if parent.IsObject() {
 		metadataProto = parent.O
@@ -580,7 +580,7 @@ func decoratorAccessHas(cx *ExecutionContext, this storage.Value, args []storage
 	o := argAt(args, 0)
 	cx.checkDecoratorAccessObject(o)
 	if a.private() {
-		_, ok := cx.privateStorage(o.O).Shape.Lookup(a.name.O)
+		_, ok := cx.privateStorage(o.O).Shape().Lookup(a.name.O)
 		return storage.Bool(ok)
 	}
 	return storage.Bool(cx.HasProperty(o.O, cx.ToPropertyKey(a.name)))

@@ -160,10 +160,10 @@ func (cx *ExecutionContext) resetLentRegExp(site *storage.RegExpSite) *storage.O
 func (cx *ExecutionContext) regExpLiteralMethod(site *storage.RegExpSite, key *storage.Object, c *storage.PropCache) (method storage.Value, this *storage.Object) {
 	o := cx.resetLentRegExp(site)
 	e := &c.CacheEntry
-	if o.Shape != e.Shape {
+	if o.Shape() != e.Shape {
 		e = &c.Second
 	}
-	if o.Shape == e.Shape && e.Kind == storage.CacheProto && e.Epoch == cx.ProtoEpoch {
+	if o.Shape() == e.Shape && e.Kind == storage.CacheProto && e.Epoch == cx.ProtoEpoch {
 		if validateExec {
 			cx.checkEntryRead(nil, 0, storage.Value{O: o}, o, key, e)
 		}

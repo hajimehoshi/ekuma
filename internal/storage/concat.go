@@ -85,7 +85,7 @@ func (o *Object) Unreverse() {
 	sb.Grow(len(o.Text))
 	WriteReversed(&sb, o.Text)
 	o.Text = wtf8.String(sb.String())
-	o.Flags &^= ObjReversed
+	o.flags &^= ObjReversed
 	o.SetExtState(nil)
 }
 
@@ -95,7 +95,7 @@ func sameStrings(a, b *Object) bool {
 	if len(a.Text) != len(b.Text) {
 		return false
 	}
-	if a.Flags&b.Flags&ObjReversed != 0 {
+	if a.flags&b.flags&ObjReversed != 0 {
 		return a.Text == b.Text
 	}
 	return a.Str() == b.Str()
@@ -142,4 +142,48 @@ func reverseBytes(dst []byte, src wtf8.String) {
 	for ; i < n; i++ {
 		dst[i] = src[n-1-i]
 	}
+}
+
+// NewConcatenatedString returns the string s, which is longer than a short string, with the
+// concatenation count count.
+func (r *RealmPart) NewConcatenatedString(s wtf8.String, count ConcatCount) Value {
+	return Value{
+		O: &Object{
+			Kind:  KindString,
+			shape: r.Shapes.String,
+			Text:  s,
+			Ext:   count,
+		},
+	}
+}
+
+// NewBufferedString returns a string with its builder and optional UTF-16 metadata.
+func (r *RealmPart) NewBufferedString(s wtf8.String, flags uint8, builder any, meta *ObjectMeta) Value {
+	if meta == nil {
+		return Value{
+			O: &Object{
+				Kind:  KindString,
+				flags: flags,
+				shape: r.Shapes.String,
+				Text:  s,
+				Ext:   builder,
+			},
+		}
+	}
+	// The metadata belongs only to this string, so both have the same lifetime.
+	p := &struct {
+		object Object
+		meta   ObjectMeta
+	}{
+		object: Object{
+			Kind:  KindString,
+			flags: flags,
+			shape: r.Shapes.String,
+			Text:  s,
+		},
+		meta: *meta,
+	}
+	p.meta.Ext = builder
+	p.object.Ext = &p.meta
+	return Value{O: &p.object}
 }

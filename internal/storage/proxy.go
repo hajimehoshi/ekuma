@@ -16,8 +16,8 @@ func NewProxyObject(s *Shape, state *ProxyState, fn *Function) *Object {
 	return (&PropertyObject{
 		Kind:  KindObject,
 		Class: ClassProxy,
-		Flags: ObjExotic,
-		Shape: s,
+		flags: ObjExotic,
+		shape: s,
 		Fn:    fn,
 		Ext:   state,
 	}).Init()

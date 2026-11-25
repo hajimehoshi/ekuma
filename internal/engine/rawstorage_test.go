@@ -35,6 +35,7 @@ var storageFiles = map[string]string{
 	"sparseindex.go":    "indexed properties in shapes",
 	"regexpobject.go":   "RegExp objects and match results",
 	"weaktable.go":      "entries of weak collections",
+	"raw.go":            "raw access for the interpreter loop",
 	"valuestorage.go":   "slots and elements",
 	"string.go":         "strings",
 	"stringtable.go":    "shared strings",

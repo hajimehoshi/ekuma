@@ -110,20 +110,20 @@ const (
 type Object struct {
 	Kind  Kind
 	Class class
-	Flags uint8
+	flags uint8
 
 	// Pinned holds the Pinned bits of the storage of slots and elems.
 	Pinned uint8
 
 	// Length is the Length of an array, which is at least len(elems). For a string it is 0,
 	// or the array index that the string stands for plus one. See [Object.ArrayIndex].
-	Length uint32
+	length uint32
 
 	// Shape is the layout of slots. Only the singletons and internal values have none.
-	Shape *Shape
+	shape *Shape
 
 	// Primitive values have no property storage.
-	*ObjectProperties
+	*objectProperties
 
 	// Fn is set for a callable object. A closure must call OwnFunction before changing its state.
 	Fn *Function
@@ -141,24 +141,24 @@ type Object struct {
 	Ext any
 }
 
-// ObjectProperties holds the own properties of a JavaScript object.
-type ObjectProperties struct {
-	Slots []Value
+// objectProperties holds the own properties of a JavaScript object.
+type objectProperties struct {
+	slots []Value
 
 	// Elems holds the properties whose keys are array indices, by index.
 	// An element that does not exist holds hole.
-	Elems []Value
+	elems []Value
 }
 
 // PropertyObject keeps an object's header and property storage in one allocation.
 // Primitive heap values use only Object.
 type PropertyObject struct {
 	Object
-	ObjectProperties
+	objectProperties
 }
 
 func (o *PropertyObject) Init() *Object {
-	o.Object.ObjectProperties = &o.ObjectProperties
+	o.Object.objectProperties = &o.objectProperties
 	return &o.Object
 }
 
@@ -257,12 +257,12 @@ func (o *Object) ensureMeta() *ObjectMeta {
 // DelegatesPropertyAccess reports whether a lookup must use the object's property operations
 // even when its storage has no matching key.
 func (o *Object) DelegatesPropertyAccess() bool {
-	return o.Flags&ObjExotic != 0 && o.Shape.Family == DelegatedRoot
+	return o.flags&ObjExotic != 0 && o.shape.Family == DelegatedRoot
 }
 
 // IndicesInElements reports whether elems accounts for all own indexed properties.
 func (o *Object) IndicesInElements() bool {
-	return (o.Kind == KindObject && o.Class == ClassObject || o.Kind == KindArray) && o.Flags&(ObjSparse|ObjExotic) == 0
+	return (o.Kind == KindObject && o.Class == ClassObject || o.Kind == KindArray) && o.flags&(ObjSparse|ObjExotic) == 0
 }
 
 // NewObject returns a new empty object with the prototype proto, which may be nil.
@@ -273,7 +273,7 @@ func (r *RealmPart) NewObject(proto *Object) *Object {
 func NewObject(s *Shape) *Object {
 	return (&PropertyObject{
 		Kind:  KindObject,
-		Shape: s,
+		shape: s,
 	}).Init()
 }
 
@@ -306,7 +306,7 @@ func NewInstance(s *Shape) *Object {
 	}
 	o, slots := NewObjectWithStorage(min(n, maxInstanceSlots))
 	o.Kind = KindObject
-	o.Shape = s
+	o.shape = s
 	o.InitSlots(slots[:0])
 	return o
 }
@@ -316,7 +316,7 @@ func NewInstance(s *Shape) *Object {
 func (r *RealmPart) NewEmptyObjectWithRoom(n int) *Object {
 	o, slots := NewObjectWithStorage(n)
 	o.Kind = KindObject
-	o.Shape = r.Shapes.Object
+	o.shape = r.Shapes.Object
 	o.InitSlots(slots[:0])
 	return o
 }
@@ -378,7 +378,7 @@ type objectWith[S any] struct {
 // properties in slots only. The operations in array.go that depend on the elements of prototypes
 // read them each time.
 func (sp *Space) TouchProto(o *Object) {
-	if o.Flags&ObjIsProto != 0 {
+	if o.flags&ObjIsProto != 0 {
 		sp.ProtoEpoch++
 	}
 }
@@ -387,15 +387,15 @@ func (sp *Space) TouchProto(o *Object) {
 //
 //go:noinline
 func (sp *Space) SetProto(o *Object, proto *Object) {
-	if o.Shape.Proto != proto {
-		sp.rebuildShape(o, proto, o.Shape.Family)
+	if o.shape.Proto != proto {
+		sp.rebuildShape(o, proto, o.shape.Family)
 		sp.ProtoEpoch++
 	}
 }
 
 // MakeNonExtensible makes o refuse new properties.
 func (o *Object) MakeNonExtensible() {
-	o.Flags |= ObjNotExtensible
+	o.flags |= ObjNotExtensible
 	// The inline caches that add properties are keyed by shared shapes.
 	o.MakePrivate()
 }
@@ -404,6 +404,39 @@ func (o *Object) MakeNonExtensible() {
 func (sp *Space) EndLazy(o *Object) {
 	o.Class = ClassObject
 	o.SetExtState(nil)
-	o.Flags &^= ObjExotic
-	sp.rebuildShape(o, o.Shape.Proto, OrdinaryRoot)
+	o.flags &^= ObjExotic
+	sp.rebuildShape(o, o.shape.Proto, OrdinaryRoot)
+}
+
+// HasProperties reports whether o has property storage, which primitive values lack.
+func (o *Object) HasProperties() bool {
+	return o.objectProperties != nil
+}
+
+// Shape returns the layout of the slots of o, or nil for the singletons and internal values.
+func (o *Object) Shape() *Shape {
+	return o.shape
+}
+
+// Flags returns the flags of o.
+func (o *Object) Flags() uint8 {
+	return o.flags
+}
+
+// Length returns the length of the array o.
+func (o *Object) Length() uint32 {
+	return o.length
+}
+
+// SetArrayIndex records that the string o stands for the array index i.
+func (o *Object) SetArrayIndex(i uint32) {
+	o.length = i + 1
+}
+
+// GrowLength makes the length of the array o n, which is greater.
+func (o *Object) GrowLength(n uint32) {
+	if ValidateExec && n < o.length {
+		panic("engine: GrowLength to a smaller length")
+	}
+	o.length = n
 }

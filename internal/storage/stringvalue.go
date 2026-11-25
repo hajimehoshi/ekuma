@@ -41,7 +41,7 @@ func (r *RealmPart) NewString(s wtf8.String) Value {
 	return Value{
 		O: &Object{
 			Kind:  KindString,
-			Shape: r.Shapes.String,
+			shape: r.Shapes.String,
 			Text:  s,
 		},
 	}
@@ -133,7 +133,7 @@ func (v Value) ShortText() wtf8.String {
 // Str returns the content of the string value.
 func (v Value) Str() wtf8.String {
 	// Keep the cached-text path small enough to inline.
-	if v.O.Flags&ObjInterned != 0 {
+	if v.O.flags&ObjInterned != 0 {
 		return v.O.Text
 	}
 	return v.stringSlow()
@@ -147,7 +147,7 @@ func (v Value) stringSlow() wtf8.String {
 }
 
 func (v Value) RawString() wtf8.String {
-	if v.IsShortString() && v.O.Flags&ObjInterned == 0 {
+	if v.IsShortString() && v.O.flags&ObjInterned == 0 {
 		return v.ShortText()
 	}
 	return v.O.Text
@@ -155,7 +155,7 @@ func (v Value) RawString() wtf8.String {
 
 // StringLength returns the number of UTF-16 code units in the string value.
 func (v Value) StringLength() int {
-	if v.O.Flags&(ObjASCIIKnown|ObjASCII) == ObjASCIIKnown|ObjASCII {
+	if v.O.flags&(ObjASCIIKnown|ObjASCII) == ObjASCIIKnown|ObjASCII {
 		return len(v.O.Text)
 	}
 	return v.stringLengthSlow()
@@ -164,7 +164,7 @@ func (v Value) StringLength() int {
 func (v Value) stringLengthSlow() int {
 	if v.IsShortString() {
 		// Interned objects own the text used by this cache.
-		if v.O.Flags&(ObjInterned|ObjASCIIKnown) == ObjInterned {
+		if v.O.flags&(ObjInterned|ObjASCIIKnown) == ObjInterned {
 			v.O.classifyASCII()
 		}
 		return shortstrings.Len(math.Float64bits(v.N), len(v.O.Text))
@@ -173,12 +173,12 @@ func (v Value) stringLengthSlow() int {
 }
 
 func (v Value) StringObject() *Object {
-	if !v.IsShortString() || v.O.Flags&ObjInterned != 0 {
+	if !v.IsShortString() || v.O.flags&ObjInterned != 0 {
 		return v.O
 	}
 	return &Object{
 		Kind:  KindString,
-		Shape: v.O.Shape,
+		shape: v.O.shape,
 		Text:  v.ShortText(),
 	}
 }
@@ -211,7 +211,7 @@ func (v Value) CodePointAt(i int) rune {
 
 // Substring returns the string's code units from start up to end, which must be in range and in order.
 func (v Value) Substring(start, end int) wtf8.String {
-	if v.O.Flags&(ObjASCIIKnown|ObjASCII|ObjReversed) == ObjASCIIKnown|ObjASCII {
+	if v.O.flags&(ObjASCIIKnown|ObjASCII|ObjReversed) == ObjASCIIKnown|ObjASCII {
 		return v.O.Text[start:end]
 	}
 	return v.substringSlow(start, end)
@@ -274,7 +274,7 @@ func (v Value) StringByteLength() int {
 // Both values must be strings, and from must be nonnegative. poll, which may be nil, is called
 // now and then during a long search.
 func (v Value) UnitIndexOf(sub Value, from int, poll func()) int {
-	if len(v.O.Text) > shortstrings.MaxBytes && (len(sub.O.Text) > shortstrings.MaxBytes || sub.O.Flags&ObjInterned != 0) {
+	if len(v.O.Text) > shortstrings.MaxBytes && (len(sub.O.Text) > shortstrings.MaxBytes || sub.O.flags&ObjInterned != 0) {
 		return v.O.UnitIndexOf(sub.O.Str(), from, poll)
 	}
 	return v.shortStringIndex(sub, from, false, poll)
@@ -283,7 +283,7 @@ func (v Value) UnitIndexOf(sub Value, from int, poll func()) int {
 // UnitLastIndexOf returns the last UTF-16 index of sub at or before from, or -1.
 // Both values must be strings, and from must be nonnegative. poll is as for [Value.UnitIndexOf].
 func (v Value) UnitLastIndexOf(sub Value, from int, poll func()) int {
-	if len(v.O.Text) > shortstrings.MaxBytes && (len(sub.O.Text) > shortstrings.MaxBytes || sub.O.Flags&ObjInterned != 0) {
+	if len(v.O.Text) > shortstrings.MaxBytes && (len(sub.O.Text) > shortstrings.MaxBytes || sub.O.flags&ObjInterned != 0) {
 		return v.O.UnitLastIndexOf(sub.O.Str(), from, poll)
 	}
 	return v.shortStringIndex(sub, from, true, poll)
@@ -312,15 +312,15 @@ func (v Value) shortStringIndex(sub Value, from int, backward bool, poll func())
 
 // IsASCII reports whether s contains only ASCII code units. s must be a string.
 func (s Value) IsASCII() bool {
-	if s.O.Flags&ObjASCIIKnown != 0 {
-		return s.O.Flags&ObjASCII != 0
+	if s.O.flags&ObjASCIIKnown != 0 {
+		return s.O.flags&ObjASCII != 0
 	}
 	return s.isASCIISlow()
 }
 
 func (s Value) isASCIISlow() bool {
 	// Interned objects own their text; length sentinels share flags across payloads.
-	if len(s.O.Text) <= shortstrings.MaxBytes && s.O.Flags&ObjInterned == 0 {
+	if len(s.O.Text) <= shortstrings.MaxBytes && s.O.flags&ObjInterned == 0 {
 		return shortstrings.IsASCII(math.Float64bits(s.N))
 	}
 	return s.O.IsASCII()
@@ -350,4 +350,16 @@ func IsASCII(v Value, s wtf8.String) bool {
 		return v.O.IsASCII()
 	}
 	return wtf8.IsASCII(s)
+}
+
+// InitShortStrings creates the sentinels of short strings with the shape of strings.
+func (r *RealmPart) InitShortStrings() {
+	r.Shapes.ShortStrings = new([shortstrings.MaxBytes + 1]Object)
+	for i := range r.Shapes.ShortStrings {
+		r.Shapes.ShortStrings[i] = Object{
+			Kind:  KindString,
+			shape: r.Shapes.String,
+			Text:  wtf8.String("\x00\x00\x00\x00\x00\x00\x00\x00")[:i],
+		}
+	}
 }

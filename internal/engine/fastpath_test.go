@@ -71,6 +71,25 @@ var fastPathMethods = map[string]bool{
 	"IsNullish":    true,
 	"FirstCleared": true,
 	"IsHTMLDDA":    true,
+
+	// The property storage of an object.
+	"Shape":         true,
+	"Flags":         true,
+	"Length":        true,
+	"HasProperties": true,
+	"Raw":           true,
+	"ExtendElems":   true,
+	"ExtendSlots":   true,
+	"SetShape":      true,
+	"SetLength":     true,
+	"ElemCount":     true,
+	"ElemRoom":      true,
+	"Elem":          true,
+	"SetElem":       true,
+	"SlotCount":     true,
+	"SlotRoom":      true,
+	"Slot":          true,
+	"SetSlot":       true,
 }
 
 // TestExecFastPathsCallNothing tests that the head of the interpreter loop and its first switch

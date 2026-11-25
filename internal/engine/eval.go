@@ -61,8 +61,8 @@ func evalArg(args []storage.Value, argc int) storage.Value {
 	case argc > 0:
 		return args[0]
 	case argc < 0:
-		if elems := args[0].O.Elems; len(elems) > 0 {
-			return elems[0]
+		if v, ok := args[0].O.ElementAt(0); ok {
+			return v
 		}
 	}
 	return storage.Undefined
