@@ -18,6 +18,7 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/datetime"
 	"github.com/hajimehoshi/ekuma/internal/engine"
 	"github.com/hajimehoshi/ekuma/internal/localetag"
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 // VM is a JavaScript virtual machine with the standard built-in objects.
@@ -219,7 +220,7 @@ func (vm *VM) objectOf(cx *engine.ExecutionContext, x any) engine.Value {
 		if x == nil {
 			panic("ekuma: ValueOf: nil Func")
 		}
-		return vm.funcOf(cx, "", x)
+		return funcOf(cx, "", x)
 	case *SharedDataBlock:
 		if x == nil || x.b == nil {
 			panic("ekuma: ValueOf: invalid *SharedDataBlock")
@@ -288,29 +289,47 @@ func (vm *VM) FuncOf(name string, f Func) Value {
 }
 
 // funcOf implements [Realm.FuncOf] for the execution context.
-func (vm *VM) funcOf(cx *engine.ExecutionContext, name string, f Func) engine.Value {
+func funcOf(cx *engine.ExecutionContext, name string, f Func) engine.Value {
 	if f == nil {
 		panic("ekuma: FuncOf: nil Func")
 	}
-	return cx.NewFunction(name, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		n := len(vm.args)
-		defer func() {
-			clear(vm.args[n:])
-			vm.args = vm.args[:n]
-		}()
+	return engine.ObjectValue(cx.NewNativeWithState(wtf8.FromValidUTF8(name), 0, hostFunction, f))
+}
+
+// hostFunction is the code of the functions that [Realm.FuncOf] makes. Their state is a [Func].
+func hostFunction(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	f := cx.ActiveNativeState().(Func)
+	vm := cx.HostDefined().(*VM)
+	n := len(vm.args)
+	if len(args) > 0 {
+		defer vm.dropArgs(n)
 		for _, a := range args {
 			vm.args = append(vm.args, fromEngine(a))
 		}
-		res, err := f(fromEngine(this), vm.args[n:len(vm.args):len(vm.args)])
-		cx.ResumeInterruption()
-		if err != nil {
-			cx.Throw(vm.thrownValue(cx, err))
-		}
-		if b, ok := res.(*big.Int); ok && b != nil && b.BitLen() > engine.MaxBigIntBits {
-			cx.ThrowRangeError("maximum BigInt size exceeded")
-		}
-		return vm.valueOf(cx, res)
-	})
+	}
+	res, err := f(fromEngine(this), vm.args[n:len(vm.args):len(vm.args)])
+	cx.ResumeInterruption()
+	if err != nil {
+		cx.Throw(vm.thrownValue(cx, err))
+	}
+	if b, ok := res.(*big.Int); ok && b != nil && b.BitLen() > engine.MaxBigIntBits {
+		cx.ThrowRangeError("maximum BigInt size exceeded")
+	}
+	return vm.valueOf(cx, res)
+}
+
+// dropArgs removes the arguments from the index n on.
+func (vm *VM) dropArgs(n int) {
+	dropped := vm.args[n:]
+	vm.args = vm.args[:n]
+	if len(dropped) > 4 {
+		clear(dropped)
+		return
+	}
+	// Clearing a few values one by one costs less than the setup of clear.
+	for i := len(dropped) - 1; i >= 0; i-- {
+		dropped[i] = Value{}
+	}
 }
 
 // withArgs converts the arguments of a call with [VM.ValueOf] and passes them to f.

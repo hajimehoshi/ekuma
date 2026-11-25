@@ -158,21 +158,21 @@ func (cx *ExecutionContext) makeAutoAccessor(k Value) (storage, getter, setter *
 	if k.o.class == classPrivateName {
 		storage.str = k.o.str + " accessor storage"
 	}
-	getter = cx.newNativeWithState("get "+name, 0, autoAccessorGetter, storage)
-	setter = cx.newNativeWithState("set "+name, 1, autoAccessorSetter, storage)
+	getter = cx.NewNativeWithState("get "+name, 0, autoAccessorGetter, storage)
+	setter = cx.NewNativeWithState("set "+name, 1, autoAccessorSetter, storage)
 	return storage, getter, setter
 }
 
 // autoAccessorGetter is the code of the getters of auto-accessors. Their state is the backing
 // private name, an *Object.
 func autoAccessorGetter(cx *ExecutionContext, this Value, args []Value) Value {
-	return cx.PrivateGet(this, cx.activeNativeState().(*Object))
+	return cx.PrivateGet(this, cx.ActiveNativeState().(*Object))
 }
 
 // autoAccessorSetter is the code of the setters of auto-accessors. Their state is the backing
 // private name, an *Object.
 func autoAccessorSetter(cx *ExecutionContext, this Value, args []Value) Value {
-	cx.PrivateSet(this, cx.activeNativeState().(*Object), argAt(args, 0))
+	cx.PrivateSet(this, cx.ActiveNativeState().(*Object), argAt(args, 0))
 	return Undefined
 }
 
@@ -497,7 +497,7 @@ func (cx *ExecutionContext) createDecoratorContextObject(kind int, name Value, i
 	} else {
 		def("name", name)
 	}
-	def("addInitializer", Value{o: cx.newNativeWithState("addInitializer", 1, addInitializerFunction, &addInitializerState{
+	def("addInitializer", Value{o: cx.NewNativeWithState("addInitializer", 1, addInitializerFunction, &addInitializerState{
 		initializers: initializers,
 		decoration:   state,
 	})})
@@ -514,7 +514,7 @@ type addInitializerState struct {
 // addInitializerFunction is the code of the addInitializer functions. Their state is an
 // *addInitializerState.
 func addInitializerFunction(cx *ExecutionContext, this Value, args []Value) Value {
-	st := cx.activeNativeState().(*addInitializerState)
+	st := cx.ActiveNativeState().(*addInitializerState)
 	if st.decoration.finished {
 		cx.ThrowTypeError("addInitializer cannot be called after the decorator returned")
 	}
@@ -533,14 +533,14 @@ func (cx *ExecutionContext) createDecoratorAccessObject(kind int, name Value) Va
 		name: name,
 	}
 	if kind != bytecode.ElemSetter {
-		getter := cx.newNativeWithState("", 1, decoratorAccessGetter, st)
+		getter := cx.NewNativeWithState("", 1, decoratorAccessGetter, st)
 		cx.CreateDataPropertyOrThrow(access, PropKey{key: cx.Key(KeyGet)}, Value{o: getter})
 	}
 	if kind == bytecode.ElemField || kind == bytecode.ElemAccessor || kind == bytecode.ElemSetter {
-		setter := cx.newNativeWithState("", 2, decoratorAccessSetter, st)
+		setter := cx.NewNativeWithState("", 2, decoratorAccessSetter, st)
 		cx.CreateDataPropertyOrThrow(access, PropKey{key: cx.Key(KeySet)}, Value{o: setter})
 	}
-	has := cx.newNativeWithState("has", 1, decoratorAccessHas, st)
+	has := cx.NewNativeWithState("has", 1, decoratorAccessHas, st)
 	cx.CreateDataPropertyOrThrow(access, PropKey{key: cx.Intern("has")}, Value{o: has})
 	return Value{o: access}
 }
@@ -567,7 +567,7 @@ func (cx *ExecutionContext) checkDecoratorAccessObject(o Value) {
 // decoratorAccessGetter is the code of the get functions of decorator access objects. Their state
 // is a *decoratorAccess.
 func decoratorAccessGetter(cx *ExecutionContext, this Value, args []Value) Value {
-	a := cx.activeNativeState().(*decoratorAccess)
+	a := cx.ActiveNativeState().(*decoratorAccess)
 	o := argAt(args, 0)
 	cx.checkDecoratorAccessObject(o)
 	if a.private() {
@@ -579,7 +579,7 @@ func decoratorAccessGetter(cx *ExecutionContext, this Value, args []Value) Value
 // decoratorAccessSetter is the code of the set functions of decorator access objects. Their state
 // is a *decoratorAccess.
 func decoratorAccessSetter(cx *ExecutionContext, this Value, args []Value) Value {
-	a := cx.activeNativeState().(*decoratorAccess)
+	a := cx.ActiveNativeState().(*decoratorAccess)
 	o := argAt(args, 0)
 	cx.checkDecoratorAccessObject(o)
 	if a.private() {
@@ -593,7 +593,7 @@ func decoratorAccessSetter(cx *ExecutionContext, this Value, args []Value) Value
 // decoratorAccessHas is the code of the has functions of decorator access objects. Their state is
 // a *decoratorAccess.
 func decoratorAccessHas(cx *ExecutionContext, this Value, args []Value) Value {
-	a := cx.activeNativeState().(*decoratorAccess)
+	a := cx.ActiveNativeState().(*decoratorAccess)
 	o := argAt(args, 0)
 	cx.checkDecoratorAccessObject(o)
 	if a.private() {

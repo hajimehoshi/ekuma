@@ -75,7 +75,7 @@ func (r *Realm) ValueOf(x any) Value {
 // which may be a primitive or an object from any realm of the same VM. For any other
 // non-nil error, the function throws a new Error object in r.
 func (r *Realm) FuncOf(name string, f Func) Value {
-	return fromEngine(r.vm.funcOf(r.context(), name, f))
+	return fromEngine(funcOf(r.context(), name, f))
 }
 
 // NewArrayBuffer is like [VM.NewArrayBuffer], but the ArrayBuffer belongs to r.

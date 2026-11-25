@@ -18,13 +18,8 @@ func initProxy(cx *engine.ExecutionContext) {
 
 	method(cx, ctor, "revocable", 2, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		p := cx.ProxyCreate(arg(args, 0), arg(args, 1))
-		revocable := p
-		revoke := cx.NewNative("", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-			if revocable != nil {
-				engine.RevokeProxy(revocable)
-				revocable = nil
-			}
-			return engine.Undefined
+		revoke := cx.NewNativeWithState("", 0, proxyRevoke, &proxyRevocation{
+			revocableProxy: p,
 		})
 		r := cx.NewObjectFromProperties(
 			[]engine.PropKey{engine.NamedKey(cx.Intern("proxy")), engine.NamedKey(cx.Intern("revoke"))},
@@ -32,4 +27,20 @@ func initProxy(cx *engine.ExecutionContext) {
 		)
 		return engine.ObjectValue(r)
 	})
+}
+
+// proxyRevocation is the state of a proxy revocation function.
+type proxyRevocation struct {
+	// revocableProxy is nil when the proxy is revoked.
+	revocableProxy *engine.Object
+}
+
+// proxyRevoke is the code of the proxy revocation functions. Their state is a *proxyRevocation.
+func proxyRevoke(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	r := cx.ActiveNativeState().(*proxyRevocation)
+	if p := r.revocableProxy; p != nil {
+		engine.RevokeProxy(p)
+		r.revocableProxy = nil
+	}
+	return engine.Undefined
 }

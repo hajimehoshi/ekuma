@@ -419,6 +419,14 @@ func (nf *numberFormatData) formatRange(cx *engine.ExecutionContext, args []engi
 	return nf.f.FormatRange(x, y, cx.Poll)
 }
 
+// numberFormatFunction is the code of the number format functions. Their state is a
+// *numberFormatData.
+func numberFormatFunction(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	nf := cx.ActiveNativeState().(*numberFormatData)
+	x := toIntlMathematicalValue(cx, arg(args, 0))
+	return formattedString(cx, nf.f.FormatToString(x, cx.Poll))
+}
+
 // initNumberFormat defines Intl.NumberFormat.
 func (r *realm) initNumberFormat(cx *engine.ExecutionContext) {
 	proto := cx.NewObject(cx.Intrinsic(engine.IntrinsicObjectPrototype))
@@ -439,10 +447,7 @@ func (r *realm) initNumberFormat(cx *engine.ExecutionContext) {
 	getter(cx, proto, "format", func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		nf := r.unwrapNumberFormat(cx, this, "format")
 		if nf.boundFormat == nil {
-			nf.boundFormat = cx.NewNative("", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-				x := toIntlMathematicalValue(cx, arg(args, 0))
-				return formattedString(cx, nf.f.FormatToString(x, cx.Poll))
-			})
+			nf.boundFormat = cx.NewNativeWithState("", 1, numberFormatFunction, nf)
 		}
 		return engine.ObjectValue(nf.boundFormat)
 	})

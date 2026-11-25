@@ -56,20 +56,41 @@ func performShadowRealmEval(cx *engine.ExecutionContext, src wtf8.String, target
 // caller realm.
 func shadowRealmImportValue(cx *engine.ExecutionContext, specifier wtf8.String, exportName engine.Value, target *engine.ExecutionContext) engine.Value {
 	inner := target.ImportInRealm(specifier)
-	onFulfilled := cx.NewNative("", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		exports := arg(args, 0).Object()
-		k := cx.ToPropertyKey(exportName)
-		if !cx.HasOwnProperty(exports, k) {
-			cx.ThrowTypeError("the module '" + wtf8.ToValidUTF8(specifier) + "' has no export named '" + wtf8.ToValidUTF8(exportName.Str()) + "'")
-		}
-		return getWrappedValue(cx, cx.Get(exports, k))
-	})
-	onRejected := cx.NewNative("", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		cx.ThrowTypeError("cannot import '" + wtf8.ToValidUTF8(specifier) + "' in the ShadowRealm")
-		return engine.Undefined
-	})
+	st := &shadowRealmImport{
+		specifier:  specifier,
+		exportName: exportName,
+	}
+	onFulfilled := cx.NewNativeWithState("", 1, shadowRealmExportGetter, st)
+	onRejected := cx.NewNativeWithState("", 1, shadowRealmImportRejected, st)
 	c := cx.NewPromiseCapability(engine.ObjectValue(cx.Intrinsic(engine.IntrinsicPromise)))
 	return cx.PerformPromiseThen(engine.ObjectValue(inner), engine.ObjectValue(onFulfilled), engine.ObjectValue(onRejected), c)
+}
+
+// shadowRealmImport is the state of the functions that handle the result of an import in a
+// ShadowRealm.
+type shadowRealmImport struct {
+	specifier  wtf8.String
+	exportName engine.Value
+}
+
+// shadowRealmExportGetter is the code of the ExportGetter functions. Their state is a
+// *shadowRealmImport.
+func shadowRealmExportGetter(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	st := cx.ActiveNativeState().(*shadowRealmImport)
+	exports := arg(args, 0).Object()
+	k := cx.ToPropertyKey(st.exportName)
+	if !cx.HasOwnProperty(exports, k) {
+		cx.ThrowTypeError("the module '" + wtf8.ToValidUTF8(st.specifier) + "' has no export named '" + wtf8.ToValidUTF8(st.exportName.Str()) + "'")
+	}
+	return getWrappedValue(cx, cx.Get(exports, k))
+}
+
+// shadowRealmImportRejected is the code of the functions that throw for a failed import. Their
+// state is a *shadowRealmImport.
+func shadowRealmImportRejected(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	st := cx.ActiveNativeState().(*shadowRealmImport)
+	cx.ThrowTypeError("cannot import '" + wtf8.ToValidUTF8(st.specifier) + "' in the ShadowRealm")
+	return engine.Undefined
 }
 
 // getWrappedValue implements GetWrappedValue with the current realm as the caller realm.
@@ -86,21 +107,26 @@ func getWrappedValue(cx *engine.ExecutionContext, v engine.Value) engine.Value {
 // wrappedFunctionCreate implements WrappedFunctionCreate with the current realm as the caller
 // realm. A wrapped function is a native function of that realm.
 func wrappedFunctionCreate(cx *engine.ExecutionContext, target *engine.Object) *engine.Object {
-	f := cx.NewNative("", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		var result engine.Value
-		if _, ok := cx.Completion(func() {
-			result = ordinaryWrappedFunctionCall(cx, target, this, args)
-		}); !ok {
-			cx.ThrowTypeError("the wrapped function threw")
-		}
-		return result
-	})
+	f := cx.NewNativeWithState("", 0, wrappedFunction, target)
 	if _, ok := cx.Completion(func() {
 		copyNameAndLength(cx, f, target, "", 0)
 	}); !ok {
 		cx.ThrowTypeError("cannot wrap the function for the ShadowRealm")
 	}
 	return f
+}
+
+// wrappedFunction is the code of the wrapped functions. Their state is the target, an
+// *engine.Object.
+func wrappedFunction(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	target := cx.ActiveNativeState().(*engine.Object)
+	var result engine.Value
+	if _, ok := cx.Completion(func() {
+		result = ordinaryWrappedFunctionCall(cx, target, this, args)
+	}); !ok {
+		cx.ThrowTypeError("the wrapped function threw")
+	}
+	return result
 }
 
 // ordinaryWrappedFunctionCall implements OrdinaryWrappedFunctionCall for the wrapped function

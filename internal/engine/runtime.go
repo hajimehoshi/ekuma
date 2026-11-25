@@ -1542,9 +1542,9 @@ func (cx *ExecutionContext) NewNative(name wtf8.String, length int, f NativeFunc
 	return n.init()
 }
 
-// newNativeWithState returns a function implemented in Go whose internal slots are state.
-// f finds them with [agent.activeNativeState].
-func (cx *ExecutionContext) newNativeWithState(name wtf8.String, length int, f NativeFunc, state any) *Object {
+// NewNativeWithState returns a function implemented in Go whose internal slots are state.
+// f finds them with [agent.ActiveNativeState].
+func (cx *ExecutionContext) NewNativeWithState(name wtf8.String, length int, f NativeFunc, state any) *Object {
 	o := cx.NewNative(name, length, f)
 	o.ext = state
 	return o
@@ -1691,8 +1691,8 @@ func (ag *agent) activeNative() *Object {
 	return ag.natives[len(ag.natives)-1].f
 }
 
-// activeNativeState returns the internal slots of the active native function.
-func (ag *agent) activeNativeState() any {
+// ActiveNativeState returns the internal slots of the active native function.
+func (ag *agent) ActiveNativeState() any {
 	return ag.activeNative().extState()
 }
 

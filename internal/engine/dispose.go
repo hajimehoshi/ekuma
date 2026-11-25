@@ -84,13 +84,13 @@ func (cx *ExecutionContext) getDisposeMethod(v Value, hint DisposeHint) *Object 
 	if m == nil {
 		return nil
 	}
-	return cx.newNativeWithState("", 0, asyncDisposeFunction, m)
+	return cx.NewNativeWithState("", 0, asyncDisposeFunction, m)
 }
 
 // asyncDisposeFunction is the code of the functions that GetDisposeMethod makes for a synchronous
 // dispose method. Their state is the method, an *Object.
 func asyncDisposeFunction(cx *ExecutionContext, this Value, args []Value) Value {
-	m := cx.activeNativeState().(*Object)
+	m := cx.ActiveNativeState().(*Object)
 	c := cx.newIntrinsicCapability()
 	if e, ok := cx.Completion(func() {
 		cx.Call(m, this)

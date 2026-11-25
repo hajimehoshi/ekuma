@@ -158,6 +158,14 @@ func thisCollator(cx *engine.ExecutionContext, this engine.Value, name string) *
 	return cd
 }
 
+// collatorCompare is the code of the collator compare functions. Their state is a *collatorData.
+func collatorCompare(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	cd := cx.ActiveNativeState().(*collatorData)
+	x := cx.ToString(arg(args, 0))
+	y := cx.ToString(arg(args, 1))
+	return engine.Number(float64(cd.compare(cx, x, y)))
+}
+
 // initCollator defines Intl.Collator.
 func (r *realm) initCollator(cx *engine.ExecutionContext) {
 	proto := cx.NewObject(cx.Intrinsic(engine.IntrinsicObjectPrototype))
@@ -174,11 +182,7 @@ func (r *realm) initCollator(cx *engine.ExecutionContext) {
 	getter(cx, proto, "compare", func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		cd := thisCollator(cx, this, "compare")
 		if cd.boundCompare == nil {
-			cd.boundCompare = cx.NewNative("", 2, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-				x := cx.ToString(arg(args, 0))
-				y := cx.ToString(arg(args, 1))
-				return engine.Number(float64(cd.compare(cx, x, y)))
-			})
+			cd.boundCompare = cx.NewNativeWithState("", 2, collatorCompare, cd)
 		}
 		return engine.ObjectValue(cd.boundCompare)
 	})

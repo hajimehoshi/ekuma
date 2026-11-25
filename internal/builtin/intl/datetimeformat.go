@@ -561,6 +561,13 @@ func rangeArgs(cx *engine.ExecutionContext, args []engine.Value) (formattable, f
 	return toDateTimeFormattable(cx, start), toDateTimeFormattable(cx, end)
 }
 
+// dateTimeFormatFunction is the code of the DateTime format functions. Their state is a
+// *dateTimeFormatData.
+func dateTimeFormatFunction(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	dtf := cx.ActiveNativeState().(*dateTimeFormatData)
+	return dtf.formatDateTime(cx, dateArg(cx, arg(args, 0)))
+}
+
 // initDateTimeFormat defines Intl.DateTimeFormat.
 func (r *realm) initDateTimeFormat(cx *engine.ExecutionContext) {
 	proto := cx.NewObject(cx.Intrinsic(engine.IntrinsicObjectPrototype))
@@ -580,9 +587,7 @@ func (r *realm) initDateTimeFormat(cx *engine.ExecutionContext) {
 	getter(cx, proto, "format", func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		dtf := r.unwrapDateTimeFormat(cx, this, "format")
 		if dtf.boundFormat == nil {
-			dtf.boundFormat = cx.NewNative("", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-				return dtf.formatDateTime(cx, dateArg(cx, arg(args, 0)))
-			})
+			dtf.boundFormat = cx.NewNativeWithState("", 1, dateTimeFormatFunction, dtf)
 		}
 		return engine.ObjectValue(dtf.boundFormat)
 	})

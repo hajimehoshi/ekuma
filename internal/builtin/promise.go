@@ -89,6 +89,101 @@ func (e *promiseElements) take() []engine.Value {
 	return vals
 }
 
+// aggregateError returns the AggregateError of the collected values.
+func (e *promiseElements) aggregateError(cx *engine.ExecutionContext) engine.Value {
+	err := cx.NewError(engine.ErrorKindAggregate, "all promises were rejected")
+	cx.Define(err.Object(), cx.Key(engine.KeyErrors), engine.ObjectValue(cx.NewArray(e.take())), engine.FlagsHidden)
+	return err
+}
+
+// promiseElement is the state of the functions that settle an element of a promise combinator.
+type promiseElement struct {
+	alreadyCalled bool
+	index         int
+	elements      *promiseElements
+	capability    *engine.PromiseCapability
+}
+
+// resolveWith completes the element with v, and resolves the capability with the array of the
+// collected values when it was the last.
+func (el *promiseElement) resolveWith(cx *engine.ExecutionContext, v engine.Value) {
+	e := el.elements
+	e.values[el.index] = v
+	if e.complete() {
+		cx.ResolveCapability(el.capability, engine.ObjectValue(cx.NewArray(e.take())))
+	}
+}
+
+// promiseAllResolveElement is the code of the Promise.all resolve element functions. Their state
+// is a *promiseElement.
+func promiseAllResolveElement(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	el := cx.ActiveNativeState().(*promiseElement)
+	if el.alreadyCalled {
+		return engine.Undefined
+	}
+	el.alreadyCalled = true
+	el.resolveWith(cx, arg(args, 0))
+	return engine.Undefined
+}
+
+// promiseAllSettledResolveElement is the code of the Promise.allSettled resolve element functions.
+// Their state is a *promiseElement, which the reject element function shares.
+func promiseAllSettledResolveElement(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	el := cx.ActiveNativeState().(*promiseElement)
+	if el.alreadyCalled {
+		return engine.Undefined
+	}
+	el.alreadyCalled = true
+	el.resolveWith(cx, fulfilledResult(cx, arg(args, 0)))
+	return engine.Undefined
+}
+
+// promiseAllSettledRejectElement is the code of the Promise.allSettled reject element functions.
+// Their state is a *promiseElement, which the resolve element function shares.
+func promiseAllSettledRejectElement(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	el := cx.ActiveNativeState().(*promiseElement)
+	if el.alreadyCalled {
+		return engine.Undefined
+	}
+	el.alreadyCalled = true
+	el.resolveWith(cx, rejectedResult(cx, arg(args, 0)))
+	return engine.Undefined
+}
+
+// promiseAnyRejectElement is the code of the Promise.any reject element functions. Their state is
+// a *promiseElement.
+func promiseAnyRejectElement(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	el := cx.ActiveNativeState().(*promiseElement)
+	if el.alreadyCalled {
+		return engine.Undefined
+	}
+	el.alreadyCalled = true
+	e := el.elements
+	e.values[el.index] = arg(args, 0)
+	if e.complete() {
+		cx.RejectCapability(el.capability, e.aggregateError(cx))
+	}
+	return engine.Undefined
+}
+
+// fulfilledResult returns the object that describes an element fulfilled with v.
+func fulfilledResult(cx *engine.ExecutionContext, v engine.Value) engine.Value {
+	return settledResult(cx, "fulfilled", cx.Key(engine.KeyValue), v)
+}
+
+// rejectedResult returns the object that describes an element rejected with v.
+func rejectedResult(cx *engine.ExecutionContext, v engine.Value) engine.Value {
+	return settledResult(cx, "rejected", cx.Key(engine.KeyReason), v)
+}
+
+// settledResult returns the object that describes a settled element, with v under key.
+func settledResult(cx *engine.ExecutionContext, status wtf8.String, key *engine.Object, v engine.Value) engine.Value {
+	return engine.ObjectValue(cx.NewObjectFromProperties(
+		[]engine.PropKey{engine.NamedKey(cx.Key(engine.KeyStatus)), engine.NamedKey(key)},
+		[]engine.Value{cx.NewString(status), v},
+	))
+}
+
 // keyedPromiseElements pairs each reserved slot with its property key.
 type keyedPromiseElements struct {
 	promiseElements
@@ -102,6 +197,57 @@ func (e *keyedPromiseElements) resolveIfDone(cx *engine.ExecutionContext, pc *en
 		e.keys = nil
 		cx.ResolveCapability(pc, engine.ObjectValue(createKeyedPromiseCombinatorResultObject(cx, keys, vals)))
 	}
+}
+
+// keyedPromiseElement is the state of the functions that settle an element of a keyed promise
+// combinator.
+type keyedPromiseElement struct {
+	alreadyCalled bool
+	index         int
+	elements      *keyedPromiseElements
+	capability    *engine.PromiseCapability
+}
+
+// resolveWith completes the element with v, and resolves the capability when it was the last.
+func (el *keyedPromiseElement) resolveWith(cx *engine.ExecutionContext, v engine.Value) {
+	el.elements.values[el.index] = v
+	el.elements.resolveIfDone(cx, el.capability)
+}
+
+// promiseAllKeyedResolveElement is the code of the Promise.allKeyed resolve element functions.
+// Their state is a *keyedPromiseElement.
+func promiseAllKeyedResolveElement(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	el := cx.ActiveNativeState().(*keyedPromiseElement)
+	if el.alreadyCalled {
+		return engine.Undefined
+	}
+	el.alreadyCalled = true
+	el.resolveWith(cx, arg(args, 0))
+	return engine.Undefined
+}
+
+// promiseAllSettledKeyedResolveElement is the code of the Promise.allSettledKeyed resolve element
+// functions. Their state is a *keyedPromiseElement, which the reject element function shares.
+func promiseAllSettledKeyedResolveElement(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	el := cx.ActiveNativeState().(*keyedPromiseElement)
+	if el.alreadyCalled {
+		return engine.Undefined
+	}
+	el.alreadyCalled = true
+	el.resolveWith(cx, fulfilledResult(cx, arg(args, 0)))
+	return engine.Undefined
+}
+
+// promiseAllSettledKeyedRejectElement is the code of the Promise.allSettledKeyed reject element
+// functions. Their state is a *keyedPromiseElement, which the resolve element function shares.
+func promiseAllSettledKeyedRejectElement(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	el := cx.ActiveNativeState().(*keyedPromiseElement)
+	if el.alreadyCalled {
+		return engine.Undefined
+	}
+	el.alreadyCalled = true
+	el.resolveWith(cx, rejectedResult(cx, arg(args, 0)))
+	return engine.Undefined
 }
 
 // createKeyedPromiseCombinatorResultObject implements CreateKeyedPromiseCombinatorResultObject.
@@ -147,41 +293,61 @@ func performPromiseAllKeyed(cx *engine.ExecutionContext, settled bool, promises 
 		i := e.reserve()
 		e.keys = append(e.keys, k)
 		next := cx.CallValue(resolve, c, v)
-		called := false
+		el := &keyedPromiseElement{
+			index:      i,
+			elements:   e,
+			capability: pc,
+		}
 		var onFulfilled, onRejected engine.Value
 		if settled {
-			element := func(status string, key engine.CommonKey) engine.Value {
-				return engine.ObjectValue(cx.NewNative("", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-					if called {
-						return engine.Undefined
-					}
-					called = true
-					o := cx.NewObjectFromProperties(
-						[]engine.PropKey{engine.NamedKey(cx.Key(engine.KeyStatus)), engine.NamedKey(cx.Key(key))},
-						[]engine.Value{cx.NewString(wtf8.String(status)), arg(args, 0)},
-					)
-					e.values[i] = engine.ObjectValue(o)
-					e.resolveIfDone(cx, pc)
-					return engine.Undefined
-				}))
-			}
-			onFulfilled = element("fulfilled", engine.KeyValue)
-			onRejected = element("rejected", engine.KeyReason)
+			onFulfilled = engine.ObjectValue(cx.NewNativeWithState("", 1, promiseAllSettledKeyedResolveElement, el))
+			onRejected = engine.ObjectValue(cx.NewNativeWithState("", 1, promiseAllSettledKeyedRejectElement, el))
 		} else {
-			onFulfilled = engine.ObjectValue(cx.NewNative("", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-				if called {
-					return engine.Undefined
-				}
-				called = true
-				e.values[i] = arg(args, 0)
-				e.resolveIfDone(cx, pc)
-				return engine.Undefined
-			}))
+			onFulfilled = engine.ObjectValue(cx.NewNativeWithState("", 1, promiseAllKeyedResolveElement, el))
 			onRejected = cx.CapabilityReject(pc)
 		}
 		invoke(cx, next, cx.Key(engine.KeyThen), onFulfilled, onRejected)
 	}
 	e.resolveIfDone(cx, pc)
+}
+
+// promiseFinally is the state of the then finally and catch finally functions.
+type promiseFinally struct {
+	onFinally   *engine.Object
+	constructor *engine.Object
+}
+
+// promiseThenFinally is the code of the then finally functions. Their state is a *promiseFinally.
+func promiseThenFinally(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	f := cx.ActiveNativeState().(*promiseFinally)
+	value := arg(args, 0)
+	result := cx.Call(f.onFinally, engine.Undefined)
+	p := cx.PromiseResolve(f.constructor, result)
+	valueThunk := cx.NewNativeWithState("", 0, promiseValueThunk, value)
+	return invoke(cx, p, cx.Key(engine.KeyThen), engine.ObjectValue(valueThunk))
+}
+
+// promiseCatchFinally is the code of the catch finally functions. Their state is a *promiseFinally.
+func promiseCatchFinally(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	f := cx.ActiveNativeState().(*promiseFinally)
+	reason := arg(args, 0)
+	result := cx.Call(f.onFinally, engine.Undefined)
+	p := cx.PromiseResolve(f.constructor, result)
+	thrower := cx.NewNativeWithState("", 0, promiseThrower, reason)
+	return invoke(cx, p, cx.Key(engine.KeyThen), engine.ObjectValue(thrower))
+}
+
+// promiseValueThunk is the code of the functions that return the value of a then finally function.
+// Their state is the value, an [engine.Value].
+func promiseValueThunk(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return cx.ActiveNativeState().(engine.Value)
+}
+
+// promiseThrower is the code of the functions that throw the reason of a catch finally function.
+// Their state is the reason, an [engine.Value].
+func promiseThrower(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	cx.Throw(cx.ActiveNativeState().(engine.Value))
+	return engine.Undefined
 }
 
 func initPromise(cx *engine.ExecutionContext) {
@@ -208,19 +374,12 @@ func initPromise(cx *engine.ExecutionContext) {
 	method(cx, ctor, "all", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		e := newPromiseElements()
 		return promiseCombinator(cx, this, arg(args, 0), func(pc *engine.PromiseCapability, next engine.Value) {
-			i := e.reserve()
-			called := false
-			onFulfilled := cx.NewNative("", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-				if called {
-					return engine.Undefined
-				}
-				called = true
-				e.values[i] = arg(args, 0)
-				if e.complete() {
-					cx.ResolveCapability(pc, engine.ObjectValue(cx.NewArray(e.take())))
-				}
-				return engine.Undefined
-			})
+			el := &promiseElement{
+				index:      e.reserve(),
+				elements:   &e,
+				capability: pc,
+			}
+			onFulfilled := cx.NewNativeWithState("", 1, promiseAllResolveElement, el)
 			invoke(cx, next, cx.Key(engine.KeyThen), engine.ObjectValue(onFulfilled), cx.CapabilityReject(pc))
 		}, func(pc *engine.PromiseCapability) {
 			if e.complete() {
@@ -232,27 +391,13 @@ func initPromise(cx *engine.ExecutionContext) {
 	method(cx, ctor, "allSettled", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		e := newPromiseElements()
 		return promiseCombinator(cx, this, arg(args, 0), func(pc *engine.PromiseCapability, next engine.Value) {
-			i := e.reserve()
-			called := false
-			element := func(status string, key engine.CommonKey) *engine.Object {
-				return cx.NewNative("", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-					if called {
-						return engine.Undefined
-					}
-					called = true
-					o := cx.NewObjectFromProperties(
-						[]engine.PropKey{engine.NamedKey(cx.Key(engine.KeyStatus)), engine.NamedKey(cx.Key(key))},
-						[]engine.Value{cx.NewString(wtf8.String(status)), arg(args, 0)},
-					)
-					e.values[i] = engine.ObjectValue(o)
-					if e.complete() {
-						cx.ResolveCapability(pc, engine.ObjectValue(cx.NewArray(e.take())))
-					}
-					return engine.Undefined
-				})
+			el := &promiseElement{
+				index:      e.reserve(),
+				elements:   &e,
+				capability: pc,
 			}
-			onFulfilled := element("fulfilled", engine.KeyValue)
-			onRejected := element("rejected", engine.KeyReason)
+			onFulfilled := cx.NewNativeWithState("", 1, promiseAllSettledResolveElement, el)
+			onRejected := cx.NewNativeWithState("", 1, promiseAllSettledRejectElement, el)
 			invoke(cx, next, cx.Key(engine.KeyThen), engine.ObjectValue(onFulfilled), engine.ObjectValue(onRejected))
 		}, func(pc *engine.PromiseCapability) {
 			if e.complete() {
@@ -271,29 +416,17 @@ func initPromise(cx *engine.ExecutionContext) {
 
 	method(cx, ctor, "any", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		e := newPromiseElements()
-		aggregate := func(cx *engine.ExecutionContext) engine.Value {
-			err := cx.NewError(engine.ErrorKindAggregate, "all promises were rejected")
-			cx.Define(err.Object(), cx.Key(engine.KeyErrors), engine.ObjectValue(cx.NewArray(e.take())), engine.FlagsHidden)
-			return err
-		}
 		return promiseCombinator(cx, this, arg(args, 0), func(pc *engine.PromiseCapability, next engine.Value) {
-			i := e.reserve()
-			called := false
-			onRejected := cx.NewNative("", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-				if called {
-					return engine.Undefined
-				}
-				called = true
-				e.values[i] = arg(args, 0)
-				if e.complete() {
-					cx.RejectCapability(pc, aggregate(cx))
-				}
-				return engine.Undefined
-			})
+			el := &promiseElement{
+				index:      e.reserve(),
+				elements:   &e,
+				capability: pc,
+			}
+			onRejected := cx.NewNativeWithState("", 1, promiseAnyRejectElement, el)
 			invoke(cx, next, cx.Key(engine.KeyThen), cx.CapabilityResolve(pc), engine.ObjectValue(onRejected))
 		}, func(pc *engine.PromiseCapability) {
 			if e.complete() {
-				cx.Throw(aggregate(cx))
+				cx.Throw(e.aggregateError(cx))
 			}
 		})
 	})
@@ -358,25 +491,12 @@ func initPromise(cx *engine.ExecutionContext) {
 		onFinally := arg(args, 0)
 		thenFinally, catchFinally := onFinally, onFinally
 		if onFinally.IsCallable() {
-			thenFinally = engine.ObjectValue(cx.NewNative("", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-				value := arg(args, 0)
-				result := cx.Call(onFinally.Object(), engine.Undefined)
-				p := cx.PromiseResolve(c, result)
-				valueThunk := cx.NewNative("", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-					return value
-				})
-				return invoke(cx, p, cx.Key(engine.KeyThen), engine.ObjectValue(valueThunk))
-			}))
-			catchFinally = engine.ObjectValue(cx.NewNative("", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-				reason := arg(args, 0)
-				result := cx.Call(onFinally.Object(), engine.Undefined)
-				p := cx.PromiseResolve(c, result)
-				thrower := cx.NewNative("", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-					cx.Throw(reason)
-					return engine.Undefined
-				})
-				return invoke(cx, p, cx.Key(engine.KeyThen), engine.ObjectValue(thrower))
-			}))
+			f := &promiseFinally{
+				onFinally:   onFinally.Object(),
+				constructor: c,
+			}
+			thenFinally = engine.ObjectValue(cx.NewNativeWithState("", 1, promiseThenFinally, f))
+			catchFinally = engine.ObjectValue(cx.NewNativeWithState("", 1, promiseCatchFinally, f))
 		}
 		return invoke(cx, this, cx.Key(engine.KeyThen), thenFinally, catchFinally)
 	})

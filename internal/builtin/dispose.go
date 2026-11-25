@@ -83,6 +83,19 @@ func thisPendingDisposableStack(cx *engine.ExecutionContext, hint engine.Dispose
 	return s
 }
 
+// adoptedResource is the state of the dispose function of a value that a stack adopted.
+type adoptedResource struct {
+	value     engine.Value
+	onDispose *engine.Object
+}
+
+// disposeAdopted is the code of the dispose functions of adopted values. Their state is an
+// *adoptedResource.
+func disposeAdopted(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	r := cx.ActiveNativeState().(*adoptedResource)
+	return cx.Call(r.onDispose, engine.Undefined, r.value)
+}
+
 // initDisposableStack creates DisposableStack, or AsyncDisposableStack when async is set.
 func initDisposableStack(cx *engine.ExecutionContext, async bool) {
 	hint := engine.SyncDispose
@@ -107,8 +120,9 @@ func initDisposableStack(cx *engine.ExecutionContext, async bool) {
 		if !onDispose.IsCallable() {
 			cx.ThrowTypeError(cx.DisplayString(onDispose) + " is not a function")
 		}
-		f := cx.NewNative("", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-			return cx.Call(onDispose.Object(), engine.Undefined, v)
+		f := cx.NewNativeWithState("", 0, disposeAdopted, &adoptedResource{
+			value:     v,
+			onDispose: onDispose.Object(),
 		})
 		cx.AddDisposableResource(s.dc, engine.Undefined, hint, f)
 		return v

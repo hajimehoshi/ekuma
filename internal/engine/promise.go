@@ -189,14 +189,14 @@ func (cx *ExecutionContext) CreateResolvingFunctions(p *Object) *PromiseCapabili
 }
 
 func (cx *ExecutionContext) createResolvingFunctions(c *PromiseCapability) {
-	c.resolve = cx.newNativeWithState("", 1, promiseResolveFunction, c)
-	c.reject = cx.newNativeWithState("", 1, promiseRejectFunction, c)
+	c.resolve = cx.NewNativeWithState("", 1, promiseResolveFunction, c)
+	c.reject = cx.NewNativeWithState("", 1, promiseRejectFunction, c)
 }
 
 // promiseResolveFunction is the code of the promise resolve functions. Their state is a
 // *PromiseCapability.
 func promiseResolveFunction(cx *ExecutionContext, this Value, args []Value) Value {
-	c := cx.activeNativeState().(*PromiseCapability)
+	c := cx.ActiveNativeState().(*PromiseCapability)
 	if !c.alreadyResolved {
 		c.alreadyResolved = true
 		cx.resolvePromise(c.resolvingRealm(), c.promise, argAt(args, 0))
@@ -207,7 +207,7 @@ func promiseResolveFunction(cx *ExecutionContext, this Value, args []Value) Valu
 // promiseRejectFunction is the code of the promise reject functions. Their state is a
 // *PromiseCapability.
 func promiseRejectFunction(cx *ExecutionContext, this Value, args []Value) Value {
-	c := cx.activeNativeState().(*PromiseCapability)
+	c := cx.ActiveNativeState().(*PromiseCapability)
 	if !c.alreadyResolved {
 		c.alreadyResolved = true
 		cx.rejectPromise(c.promise, argAt(args, 0))
@@ -235,7 +235,7 @@ func (cx *ExecutionContext) NewPromiseCapability(c Value) *PromiseCapability {
 		resolve: Undefined,
 		reject:  Undefined,
 	}
-	executor := cx.newNativeWithState("", 2, capabilityExecutor, fs)
+	executor := cx.NewNativeWithState("", 2, capabilityExecutor, fs)
 	p := cx.Construct(c.o, []Value{{o: executor}}, c.o)
 	if !fs.resolve.IsCallable() {
 		cx.ThrowTypeError("promise capability resolve function is not callable")
@@ -258,7 +258,7 @@ type resolvingFunctions struct {
 // capabilityExecutor is the code of the executors of NewPromiseCapability. Their state is a
 // *resolvingFunctions.
 func capabilityExecutor(cx *ExecutionContext, this Value, args []Value) Value {
-	fs := cx.activeNativeState().(*resolvingFunctions)
+	fs := cx.ActiveNativeState().(*resolvingFunctions)
 	if !fs.resolve.IsUndefined() {
 		cx.ThrowTypeError("promise capability resolve function is already set")
 	}
