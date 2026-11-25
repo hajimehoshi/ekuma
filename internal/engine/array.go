@@ -213,9 +213,6 @@ func (ag *agent) observePush(o *Object) {
 			elems := make([]Value, n, room)
 			copy(elems, o.elems)
 			o.replaceElems(elems)
-			if m := o.meta(); m != nil {
-				m.shiftedElems, m.shiftedCap = 0, 0
-			}
 		}
 	}
 }
@@ -285,13 +282,7 @@ func (o *Object) RemoveFirstElement() (Value, bool) {
 		o.elems[n] = Value{}
 		o.elems = o.elems[:n]
 	} else {
-		// The storage before the elements is released when they move to new storage.
-		shifted := o.elemsStorage() - cap(o.elems) + 1
-		o.elems[0] = Value{}
-		o.elems = o.elems[1:]
-		m := o.ensureMeta()
-		m.shiftedElems = shifted
-		m.shiftedCap = cap(o.elems)
+		o.shiftElem()
 	}
 	o.length = uint32(n)
 	if o.elemsOversized() {

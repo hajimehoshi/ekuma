@@ -40,7 +40,7 @@ var objectStorageExceptions = map[string]storageException{
 		reason: "calls leaveElems itself; a helper is not inlined",
 	},
 	"Object.RemoveFirstElement": {
-		count:  2,
+		count:  1,
 		reason: "clears the removed element itself; a helper is not inlined",
 	},
 	"QuietContext.SpliceElements": {
@@ -48,7 +48,7 @@ var objectStorageExceptions = map[string]storageException{
 		reason: "calls leaveElems and clears the tail itself; a helper is not inlined",
 	},
 	"ExecutionContext.setArrayLength": {
-		count:  2,
+		count:  1,
 		reason: "clears the tail itself with polls; a helper is not inlined",
 	},
 	"ExecutionContext.DefineMatchResultProperties": {

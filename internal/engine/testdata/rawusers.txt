@@ -85,7 +85,7 @@ ExecutionContext.regExpLiteralMethod Value.o:lit*3 propCache.cacheEntry:ref prop
 ExecutionContext.regExpShape shapeTable.regExp:write
 ExecutionContext.resetLentRegExp Object.shape:write objectProperties.slots:ref
 ExecutionContext.resolveGlobal PropKey.key:lit globalCache.holder:write globalCache.shape:write shape.lookup:read
-ExecutionContext.setArrayLength Object.length:write*3 objectProperties.elems:read objectProperties.elems:ref*3 objectProperties.elems:write*2 shape.lookup:read
+ExecutionContext.setArrayLength Object.length:write*3 objectProperties.elems:read objectProperties.elems:ref*2 objectProperties.elems:write shape.lookup:read
 ExecutionContext.setGlobal PropKey.key:lit Value.o:lit*2 globalCache.holder:write*2 globalCache.ref:write*2 globalCache.shape:write*2 objectProperties.slots:read objectProperties.slots:ref*2 objectProperties.slots:write*2 shape.lookup:read
 ExecutionContext.setIndex PropKey.idx:lit*4 objectProperties.elems:read objectProperties.elems:write
 ExecutionContext.setNamed PropKey.key:lit*4 Value.accessor:read cacheEntry.epoch:write cacheEntry.holder:write cacheEntry.kind:write*2 cacheEntry.next:write cacheEntry.shape:write*2 cacheEntry.slot:write objectProperties.slots:read objectProperties.slots:write
@@ -96,7 +96,7 @@ ExecutionContext.templateObject Object.flags:write Object.length:write Value.o:l
 Module.initializeEnvironment Object.class:lit Object.flags:lit Object.fn:lit Object.kind:lit Object.shape:lit Value.o:lit*4
 NewBigInt Object.kind:lit Value.o:lit
 NewExecutionContext Object.kind:lit Object.shape:lit objectProperties.slots:lit shape.small:lit shape.space:lit space.strings:ref*3
-Object.RemoveFirstElement Object.length:write objectMeta.shiftedCap:write objectMeta.shiftedElems:write objectProperties.elems:read objectProperties.elems:ref*3 objectProperties.elems:write*5
+Object.RemoveFirstElement Object.length:write objectProperties.elems:read objectProperties.elems:ref*2 objectProperties.elems:write*3
 Object.RemoveLastElement Object.length:write objectProperties.elems:read
 Object.SetElement objectProperties.elems:read objectProperties.elems:write
 Object.takeDataProperties Object.shape:write objectProperties.elems:read objectProperties.elems:ref*2 objectProperties.slots:ref
@@ -126,7 +126,6 @@ agent.InitLazyObject Object.class:write Object.flags:write
 agent.exec *
 agent.newClassDecoration Object.ext:lit Object.kind:lit Value.o:lit
 agent.newRegExpObject Object.class:write Object.kind:write Object.shape:write objectProperties.slots:write
-agent.observePush objectMeta.shiftedCap:write objectMeta.shiftedElems:write objectProperties.elems:read
 agent.saveException Object.ext:lit Object.kind:lit Value.o:lit
 closeSignal Object.kind:lit
 evalArg objectProperties.elems:ref
@@ -174,6 +173,7 @@ QuietContext.PushElements objectProperties.elems:read
 QuietContext.RegExpLastIndex objectProperties.slots:read
 QuietContext.SkipHoles objectProperties.elems:read
 QuietContext.SkipHolesBackward objectProperties.elems:read
+agent.observePush objectProperties.elems:read
 arrayIterator.step objectProperties.elems:read
 arrayIterator.stepPlain objectProperties.elems:read
 dataSlot.value objectProperties.slots:read

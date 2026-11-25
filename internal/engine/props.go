@@ -1221,7 +1221,7 @@ func (cx *ExecutionContext) setArrayLength(o *Object, n uint32) bool {
 		oversized := o.elemsOversized()
 		if len(tail) > pollChunk {
 			// The tail, which may be left uncleared, stays out of reach of later growth.
-			o.elems = o.elems[:n:n]
+			o.clipElems()
 		}
 		o.length = n
 		if oversized {

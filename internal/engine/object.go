@@ -207,7 +207,8 @@ type objectMeta struct {
 
 	// shiftedElems is the number of unused values before the elements of an array in their
 	// storage, left by removing the first elements. It counts only while the elements have the
-	// capacity shiftedCap. See [Object.elemsStorage].
+	// capacity shiftedCap: growing them makes the capacity greater, and the operations that can
+	// make it smaller keep the two in step. See [Object.elemsStorage].
 	shiftedElems int
 	shiftedCap   int
 

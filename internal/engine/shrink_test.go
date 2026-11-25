@@ -51,6 +51,24 @@ func TestArrayStorageShrinks(t *testing.T) {
 	}
 }
 
+// TestShiftedStorageAfterTruncation tests that the storage that shift leaves unused before the
+// elements of an array still counts after a truncation that leaves the end of the storage unused.
+func TestShiftedStorageAfterTruncation(t *testing.T) {
+	cx := newTestContext(t)
+	v, err := runScript(cx, "truncation", `
+		var a = new Array(2000000).fill(0);
+		for (var i = 0; i < 20000; i++) a.shift();
+		a.length = 800000;
+		a;
+	`)
+	if err != nil {
+		t.Fatalf("runScript: %v", err)
+	}
+	if got, want := engine.ElementStorage(v), 820000; got != want {
+		t.Errorf("got storage for %d elements, want %d", got, want)
+	}
+}
+
 // TestStackReleased tests that a call with many arguments does not keep its stack slots
 // after it returns to Go.
 func TestStackReleased(t *testing.T) {

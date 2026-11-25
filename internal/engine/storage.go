@@ -171,6 +171,36 @@ func (p *poller) reallocElems(o *Object) {
 func (o *Object) replaceElems(elems []Value) {
 	o.leaveElems(o.elems)
 	o.elems = elems
+	if m := o.meta(); m != nil {
+		m.shiftedElems, m.shiftedCap = 0, 0
+	}
+}
+
+// shiftElem removes the first element without moving the others. The storage keeps its size: see
+// elemsOversized.
+func (o *Object) shiftElem() {
+	m, elems := o.ensureMeta(), o.elems
+	if m.shiftedCap != cap(elems) {
+		m.shiftedElems = 0
+	}
+	m.shiftedElems++
+	m.shiftedCap = cap(elems) - 1
+	elems[0] = Value{}
+	o.elems = elems[1:]
+}
+
+// clipElems keeps the storage after the elements out of reach of later growth.
+func (o *Object) clipElems() {
+	old := cap(o.elems)
+	o.elems = slices.Clip(o.elems)
+	m := o.meta()
+	switch {
+	case m == nil:
+	case m.shiftedCap == old:
+		m.shiftedCap = cap(o.elems)
+	default:
+		m.shiftedElems, m.shiftedCap = 0, 0
+	}
 }
 
 // pushElem appends v to the elements, which must have room for it.
