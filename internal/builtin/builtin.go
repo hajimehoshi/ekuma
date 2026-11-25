@@ -793,7 +793,7 @@ func initError(cx *engine.ExecutionContext) {
 		}
 		ctor := constructor(cx, wtf8.String(name), length, protoID, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 			nt := cx.GetNewTarget()
-			e := cx.NewErrorObject(cx.GetPrototypeFromConstructor(nt, protoID))
+			e := cx.NewErrorObject(cx.GetPrototypeFromConstructor(nt, engine.ErrorPrototypeIntrinsic(kind)))
 			msgArg, optArg := arg(args, 0), arg(args, 1)
 			switch kind {
 			case engine.ErrorKindAggregate:

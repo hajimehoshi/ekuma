@@ -437,35 +437,10 @@ func initString(cx *engine.ExecutionContext) {
 			return cx.NewString(b.String())
 		})
 	}
-	// mapShortCase registers the non-locale methods with packed ASCII conversion.
-	mapShortCase := func(name string, toUpper bool, ascii func(string) string, f stringMapping) {
-		asciiMap := contextFree(ascii)
-		method(cx, proto, wtf8.String(name), 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-			s := thisStringValue(cx, this, name)
-			if mapped, ok := cx.MapASCII(s, toUpper); ok {
-				return mapped
-			}
-			o := s.Object()
-			if o.IsASCII() {
-				return cx.NewString(wtf8.String(mapInChunks(cx, string(o.Str()), asciiMap, anyBoundary)))
-			}
-			return cx.NewString(mapLimited(cx, o.Str(), f))
-		})
-	}
-	// The uppercase mapping without a language maps each character on its own.
-	upper := stringMapping{
-		f:        contextFree(xstrings.ToUpperCase),
-		boundary: runeBoundary,
-	}
-	lower := stringMapping{
-		f:        xstrings.ToLowerCase,
-		boundary: runeBoundary,
-	}
-	mapShortCase("toUpperCase", true, strings.ToUpper, upper)
-	mapShortCase("toLowerCase", false, strings.ToLower, lower)
-	mapShortCase("toLocaleUpperCase", true, strings.ToUpper, upper)
-	mapShortCase("toLocaleLowerCase", false, strings.ToLower, lower)
-	nfc, nfd, nfkc, nfkd := normalization(unorm.NFC), normalization(unorm.NFD), normalization(unorm.NFKC), normalization(unorm.NFKD)
+	defineCaseMapping(cx, "toUpperCase", true, upperASCII, upperMapping)
+	defineCaseMapping(cx, "toLowerCase", false, lowerASCII, lowerMapping)
+	defineCaseMapping(cx, "toLocaleUpperCase", true, upperASCII, upperMapping)
+	defineCaseMapping(cx, "toLocaleLowerCase", false, lowerASCII, lowerMapping)
 	method(cx, proto, "localeCompare", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		s := thisStringValue(cx, this, "localeCompare")
 		that := cx.ToStringValue(arg(args, 0))
@@ -473,20 +448,20 @@ func initString(cx *engine.ExecutionContext) {
 			// An ASCII string is in every normalization form.
 			return engine.Number(float64(engine.CompareStrings(s, that)))
 		}
-		return engine.Number(float64(wtf8.Compare(mapWellFormed(cx, s.Str(), nfc), mapWellFormed(cx, that.Str(), nfc))))
+		return engine.Number(float64(wtf8.Compare(mapWellFormed(cx, s.Str(), normalizations[unorm.NFC]), mapWellFormed(cx, that.Str(), normalizations[unorm.NFC]))))
 	})
 	method(cx, proto, "normalize", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		s := thisStringValue(cx, this, "normalize")
-		form, quick := nfc, unorm.NFC
+		form := unorm.NFC
 		if f := arg(args, 0); !f.IsUndefined() {
 			switch cx.ToString(f) {
 			case "NFC":
 			case "NFD":
-				form, quick = nfd, unorm.NFD
+				form = unorm.NFD
 			case "NFKC":
-				form, quick = nfkc, unorm.NFKC
+				form = unorm.NFKC
 			case "NFKD":
-				form, quick = nfkd, unorm.NFKD
+				form = unorm.NFKD
 			default:
 				cx.ThrowRangeError("the normalization form should be one of NFC, NFD, NFKC, NFKD")
 			}
@@ -495,10 +470,10 @@ func initString(cx *engine.ExecutionContext) {
 			return s
 		}
 		str := s.Str()
-		if wtf8.IsWellFormed(str) && unorm.QuickCheck(quick, string(str), cx.Poll) {
+		if wtf8.IsWellFormed(str) && unorm.QuickCheck(form, string(str), cx.Poll) {
 			return s
 		}
-		return cx.NewString(mapLimited(cx, str, form))
+		return cx.NewString(mapLimited(cx, str, normalizations[form]))
 	})
 	method(cx, proto, "isWellFormed", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		return engine.Bool(thisStringValue(cx, this, "isWellFormed").IsWellFormed())
@@ -746,11 +721,52 @@ type stringMapping struct {
 	boundary func(s string) int
 }
 
-// contextFree returns f as the function of a stringMapping.
-func contextFree(f func(string) string) func(s string, start, end int, poll func()) string {
-	return func(s string, start, end int, poll func()) string {
-		return f(s[start:end])
-	}
+// upperMapping is the uppercase mapping without a language, which maps each character on its own.
+var upperMapping = stringMapping{
+	f: func(s string, start, end int, poll func()) string {
+		return xstrings.ToUpperCase(s[start:end])
+	},
+	boundary: runeBoundary,
+}
+
+// lowerMapping is the lowercase mapping without a language.
+var lowerMapping = stringMapping{
+	f:        xstrings.ToLowerCase,
+	boundary: runeBoundary,
+}
+
+// upperASCII is the function of the uppercase mapping of ASCII strings.
+func upperASCII(s string, start, end int, poll func()) string {
+	return strings.ToUpper(s[start:end])
+}
+
+// lowerASCII is the function of the lowercase mapping of ASCII strings.
+func lowerASCII(s string, start, end int, poll func()) string {
+	return strings.ToLower(s[start:end])
+}
+
+// defineCaseMapping defines the method name of String.prototype that maps a string with ascii when
+// it is an ASCII string and with m otherwise.
+func defineCaseMapping(cx *engine.ExecutionContext, name string, toUpper bool, ascii func(s string, start, end int, poll func()) string, m stringMapping) {
+	method(cx, cx.Intrinsic(engine.IntrinsicStringPrototype), wtf8.String(name), 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		s := thisStringValue(cx, this, name)
+		if mapped, ok := cx.MapASCII(s, toUpper); ok {
+			return mapped
+		}
+		o := s.Object()
+		if o.IsASCII() {
+			return cx.NewString(wtf8.String(mapInChunks(cx, string(o.Str()), ascii, anyBoundary)))
+		}
+		return cx.NewString(mapLimited(cx, o.Str(), m))
+	})
+}
+
+// normalizations are the mappings to the normalization forms.
+var normalizations = [...]stringMapping{
+	unorm.NFC:  normalization(unorm.NFC),
+	unorm.NFD:  normalization(unorm.NFD),
+	unorm.NFKC: normalization(unorm.NFKC),
+	unorm.NFKD: normalization(unorm.NFKD),
 }
 
 // normalization returns the mapping to the normalization form.

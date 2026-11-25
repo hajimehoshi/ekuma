@@ -141,20 +141,25 @@ func initIteratorHelpers(cx *engine.ExecutionContext) {
 
 	// The properties that Iterator.prototype had in earlier editions are accessors whose setters
 	// ignore the prototype.
-	ignoringAccessor := func(key *engine.Object, name string, v engine.Value, set engine.NativeFunc) {
-		get := cx.NewNative(wtf8.String("get "+name), 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-			return v
-		})
-		cx.DefineAccessor(proto, key, get, cx.NewNative(wtf8.String("set "+name), 1, set), engine.FlagConfigurable)
-	}
-	ignoringAccessor(cx.Key(engine.KeyConstructor), "constructor", engine.ObjectValue(ctor), func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		setIgnoringIteratorPrototype(cx, this, cx.Key(engine.KeyConstructor), arg(args, 0))
-		return engine.Undefined
-	})
-	ignoringAccessor(cx.WellKnownSymbol(engine.SymbolToStringTag), "[Symbol.toStringTag]", cx.SharedString("Iterator"), func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		setIgnoringIteratorPrototype(cx, this, cx.WellKnownSymbol(engine.SymbolToStringTag), arg(args, 0))
-		return engine.Undefined
-	})
+	cx.DefineAccessor(proto, cx.Key(engine.KeyConstructor),
+		cx.NewNative("get constructor", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+			return cx.IntrinsicValue(engine.IntrinsicIterator)
+		}),
+		cx.NewNative("set constructor", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+			setIgnoringIteratorPrototype(cx, this, cx.Key(engine.KeyConstructor), arg(args, 0))
+			return engine.Undefined
+		}),
+		engine.FlagConfigurable)
+	tag := cx.SharedString("Iterator")
+	cx.DefineAccessor(proto, cx.WellKnownSymbol(engine.SymbolToStringTag),
+		cx.NewNativeWithState("get [Symbol.toStringTag]", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+			return *cx.ActiveNativeState().(*engine.Value)
+		}, &tag),
+		cx.NewNative("set [Symbol.toStringTag]", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+			setIgnoringIteratorPrototype(cx, this, cx.WellKnownSymbol(engine.SymbolToStringTag), arg(args, 0))
+			return engine.Undefined
+		}),
+		engine.FlagConfigurable)
 
 	symMethod(cx, proto, cx.WellKnownSymbol(engine.SymbolDispose), "[Symbol.dispose]", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		if m := cx.GetMethod(this, cx.Key(engine.KeyReturn)); m != nil {

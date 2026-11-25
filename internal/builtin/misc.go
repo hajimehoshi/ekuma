@@ -780,44 +780,30 @@ func initMath(cx *engine.ExecutionContext) {
 	method(cx, m, "random", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		return engine.Number(cx.RandomNumber())
 	})
-	minmax := func(name string, e engine.Extremum, start float64, pick func(a, b float64) bool) {
-		// next returns the result so far r updated with n.
-		next := func(r, n float64) float64 {
-			// The zeros are ordered by sign.
-			if pick(n, r) || (n == 0 && r == 0 && math.Signbit(n) != math.Signbit(r) && math.Signbit(n) == (start > 0)) {
-				return n
-			}
-			return r
+	// Go's min and max of floats give NaN when an argument is NaN and order -0 below +0, as the
+	// specification does.
+	maxFn := method(cx, m, "max", 2, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		r := math.Inf(-1)
+		for _, a := range args {
+			r = max(r, cx.ToNumber(a))
 		}
-		fn := method(cx, m, wtf8.String(name), 2, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-			r := start
-			nan := false
-			for _, a := range args {
-				n := cx.ToNumber(a)
-				if n != n {
-					nan = true
-				}
-				r = next(r, n)
-			}
-			if nan {
-				return engine.Number(math.NaN())
-			}
-			return engine.Number(r)
-		})
-		cx.SetNumberKernels(fn, shortContract, nil, func(x, y float64) float64 {
-			if x != x || y != y {
-				return math.NaN()
-			}
-			return next(next(start, x), y)
-		})
-		cx.SetExtremum(fn, e)
-	}
-	minmax("max", engine.ExtremumMax, math.Inf(-1), func(a, b float64) bool {
-		return a > b
+		return engine.Number(r)
 	})
-	minmax("min", engine.ExtremumMin, math.Inf(1), func(a, b float64) bool {
-		return a < b
+	cx.SetNumberKernels(maxFn, shortContract, nil, func(x, y float64) float64 {
+		return max(x, y)
 	})
+	cx.SetExtremum(maxFn, engine.ExtremumMax)
+	minFn := method(cx, m, "min", 2, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		r := math.Inf(1)
+		for _, a := range args {
+			r = min(r, cx.ToNumber(a))
+		}
+		return engine.Number(r)
+	})
+	cx.SetNumberKernels(minFn, shortContract, nil, func(x, y float64) float64 {
+		return min(x, y)
+	})
+	cx.SetExtremum(minFn, engine.ExtremumMin)
 	method(cx, m, "sumPrecise", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		return engine.Number(sumPrecise(cx, arg(args, 0)))
 	})

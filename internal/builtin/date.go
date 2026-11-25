@@ -88,6 +88,52 @@ func formatDate(cx *engine.ExecutionContext, method string, tv float64) string {
 	panic("invalid Date format method")
 }
 
+// defineDateGetter defines the method name of Date.prototype that returns a component of the date,
+// in local time or in UTC.
+func defineDateGetter(cx *engine.ExecutionContext, name string, local bool, component func(float64) float64) {
+	method(cx, cx.Intrinsic(engine.IntrinsicDatePrototype), wtf8.String(name), 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		t := thisDate(cx, this, name)
+		if math.IsNaN(t) {
+			return engine.Number(t)
+		}
+		if local {
+			t = datetime.LocalTime(t, cx.DefaultTimeZone())
+		}
+		return engine.Number(component(t))
+	})
+}
+
+// defineDateSetter defines the method name of Date.prototype that sets the components from first on,
+// as many as there are arguments up to count, in local time or in UTC.
+func defineDateSetter(cx *engine.ExecutionContext, name string, local bool, first, count int) {
+	method(cx, cx.Intrinsic(engine.IntrinsicDatePrototype), wtf8.String(name), count, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		t := thisDate(cx, this, name)
+		var vals [dateComponentCount]float64
+		n := max(1, min(len(args), count))
+		for i := range n {
+			vals[i] = cx.ToNumber(arg(args, i))
+		}
+		tz := cx.DefaultTimeZone()
+		switch {
+		case math.IsNaN(t) && first == dateYear:
+			t = 0
+		case math.IsNaN(t):
+			return engine.Number(t)
+		case local:
+			t = datetime.LocalTime(t, tz)
+		}
+		c := components(t)
+		copy(c[first:first+n], vals[:n])
+		u := makeDate(&c)
+		if local {
+			u = datetime.UTC(u, tz)
+		}
+		u = datetime.TimeClip(u)
+		engine.SetDateValue(this, u)
+		return engine.Number(u)
+	})
+}
+
 func initDate(cx *engine.ExecutionContext) {
 	proto := cx.Intrinsic(engine.IntrinsicDatePrototype)
 
@@ -185,22 +231,8 @@ func initDate(cx *engine.ExecutionContext) {
 		},
 	}
 	for _, g := range getters {
-		for _, local := range []bool{true, false} {
-			name := g.utc
-			if local {
-				name = g.local
-			}
-			method(cx, proto, wtf8.String(name), 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-				t := thisDate(cx, this, name)
-				if math.IsNaN(t) {
-					return engine.Number(t)
-				}
-				if local {
-					t = datetime.LocalTime(t, cx.DefaultTimeZone())
-				}
-				return engine.Number(g.component(t))
-			})
-		}
+		defineDateGetter(cx, g.local, true, g.component)
+		defineDateGetter(cx, g.utc, false, g.component)
 	}
 	method(cx, proto, "getDay", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		t := thisDate(cx, this, "getDay")
@@ -252,39 +284,8 @@ func initDate(cx *engine.ExecutionContext) {
 		{"setMilliseconds", "setUTCMilliseconds", dateMilliseconds, 1},
 	}
 	for _, s := range setters {
-		for _, local := range []bool{true, false} {
-			name := s.utc
-			if local {
-				name = s.local
-			}
-			first, count := s.first, s.count
-			method(cx, proto, wtf8.String(name), count, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-				t := thisDate(cx, this, name)
-				var vals [dateComponentCount]float64
-				n := max(1, min(len(args), count))
-				for i := range n {
-					vals[i] = cx.ToNumber(arg(args, i))
-				}
-				tz := cx.DefaultTimeZone()
-				switch {
-				case math.IsNaN(t) && first == dateYear:
-					t = 0
-				case math.IsNaN(t):
-					return engine.Number(t)
-				case local:
-					t = datetime.LocalTime(t, tz)
-				}
-				c := components(t)
-				copy(c[first:first+n], vals[:n])
-				u := makeDate(&c)
-				if local {
-					u = datetime.UTC(u, tz)
-				}
-				u = datetime.TimeClip(u)
-				engine.SetDateValue(this, u)
-				return engine.Number(u)
-			})
-		}
+		defineDateSetter(cx, s.local, true, s.first, s.count)
+		defineDateSetter(cx, s.utc, false, s.first, s.count)
 	}
 	method(cx, proto, "setTime", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		thisDate(cx, this, "setTime")

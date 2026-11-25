@@ -15,8 +15,8 @@ type disposableStack struct {
 }
 
 func initDisposableStacks(cx *engine.ExecutionContext) {
-	initDisposableStack(cx, false)
-	initDisposableStack(cx, true)
+	initDisposableStack(cx, engine.SyncDispose)
+	initDisposableStack(cx, engine.AsyncDispose)
 
 	symMethod(cx, cx.Intrinsic(engine.IntrinsicAsyncIteratorPrototype), cx.WellKnownSymbol(engine.SymbolAsyncDispose), "[Symbol.asyncDispose]", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		pc := cx.NewPromiseCapability(engine.ObjectValue(cx.Intrinsic(engine.IntrinsicPromise)))
@@ -96,12 +96,8 @@ func disposeAdopted(cx *engine.ExecutionContext, this engine.Value, args []engin
 	return cx.Call(r.onDispose, engine.Undefined, r.value)
 }
 
-// initDisposableStack creates DisposableStack, or AsyncDisposableStack when async is set.
-func initDisposableStack(cx *engine.ExecutionContext, async bool) {
-	hint := engine.SyncDispose
-	if async {
-		hint = engine.AsyncDispose
-	}
+// initDisposableStack creates the constructor of the stacks with hint and its prototype.
+func initDisposableStack(cx *engine.ExecutionContext, hint engine.DisposeHint) {
 	name := disposableStackName(hint)
 	protoID := disposableStackPrototype(hint)
 	proto := cx.NewOrdinaryObject()
@@ -109,7 +105,7 @@ func initDisposableStack(cx *engine.ExecutionContext, async bool) {
 	constructor(cx, wtf8.String(name), 0, protoID, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		nt := cx.GetNewTarget()
 		if nt == nil {
-			cx.ThrowTypeError("constructor " + name + " requires 'new'")
+			cx.ThrowTypeError("constructor " + disposableStackName(hint) + " requires 'new'")
 		}
 		return newDisposableStack(cx, hint, cx.GetPrototypeFromConstructor(nt, disposableStackPrototype(hint)), engine.NewDisposeCapability())
 	})
@@ -137,10 +133,10 @@ func initDisposableStack(cx *engine.ExecutionContext, async bool) {
 		return engine.Undefined
 	})
 	var dispose *engine.Object
-	if async {
+	if hint == engine.AsyncDispose {
 		dispose = method(cx, proto, "disposeAsync", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 			pc := cx.NewPromiseCapability(engine.ObjectValue(cx.Intrinsic(engine.IntrinsicPromise)))
-			s, _ := engine.DisposableStackState(this, async).(*disposableStack)
+			s, _ := engine.DisposableStackState(this, true).(*disposableStack)
 			switch {
 			case s == nil:
 				cx.RejectCapability(pc, cx.NewError(engine.ErrorKindType, "AsyncDisposableStack.prototype.disposeAsync called on incompatible receiver "+cx.DisplayString(this)))

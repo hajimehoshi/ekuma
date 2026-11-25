@@ -879,6 +879,13 @@ func (cx *ExecutionContext) Intrinsic(id Intrinsic) *Object {
 	return cx.realm.intrinsics[id]
 }
 
+// IntrinsicValue returns the intrinsic object id of the execution realm, which must be set, as a value.
+func (cx *ExecutionContext) IntrinsicValue(id Intrinsic) Value {
+	return Value{
+		o: cx.realm.intrinsics[id],
+	}
+}
+
 // SetIntrinsic makes o the intrinsic object id.
 func (cx *ExecutionContext) SetIntrinsic(id Intrinsic, o *Object) {
 	cx.realm.intrinsics[id] = o
