@@ -52,6 +52,11 @@ func TestExecutionContextBoundary(t *testing.T) {
 			objs:   []types.Object{prog.field(t, "realmPart", "owner")},
 			owners: []string{"agent.newRealm", "realmPart.executionContext", "agent.exec"},
 		},
+		useRule{
+			what:   "ScriptOrModule of linked code",
+			objs:   []types.Object{prog.field(t, "funcProto", "script")},
+			owners: []string{"ExecutionContext.linkFunc", "funcProto.scriptOrModule"},
+		},
 	)
 
 	checkActiveReads(t, prog)
