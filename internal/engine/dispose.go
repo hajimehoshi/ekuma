@@ -84,17 +84,22 @@ func (cx *ExecutionContext) getDisposeMethod(v Value, hint DisposeHint) *Object 
 	if m == nil {
 		return nil
 	}
-	return cx.NewNative("", 0, func(cx *ExecutionContext, this Value, args []Value) Value {
-		c := cx.newIntrinsicCapability()
-		if e, ok := cx.Completion(func() {
-			cx.Call(m, this)
-		}); !ok {
-			cx.RejectCapability(c, e)
-			return Value{o: c.promise}
-		}
-		cx.ResolveCapability(c, Undefined)
+	return cx.newNativeWithState("", 0, asyncDisposeFunction, m)
+}
+
+// asyncDisposeFunction is the code of the functions that GetDisposeMethod makes for a synchronous
+// dispose method. Their state is the method, an *Object.
+func asyncDisposeFunction(cx *ExecutionContext, this Value, args []Value) Value {
+	m := cx.activeNativeState().(*Object)
+	c := cx.newIntrinsicCapability()
+	if e, ok := cx.Completion(func() {
+		cx.Call(m, this)
+	}); !ok {
+		cx.RejectCapability(c, e)
 		return Value{o: c.promise}
-	})
+	}
+	cx.ResolveCapability(c, Undefined)
+	return Value{o: c.promise}
 }
 
 // beginDispose starts DisposeResources on dc for the completion v, which is a throw

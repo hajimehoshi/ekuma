@@ -56,12 +56,7 @@ func (cx *ExecutionContext) ProxyCreate(target, handler Value) *Object {
 		// The native function is the [[Call]] and [[Construct]] of the proxy, so that every way
 		// of calling a function reaches them.
 		p.fn = &function{
-			native: func(cx *ExecutionContext, this Value, args []Value) Value {
-				if nt := cx.GetNewTarget(); nt != nil {
-					return Value{o: cx.proxyConstruct(p, args, nt)}
-				}
-				return cx.proxyCall(p, this, args)
-			},
+			native:       proxyFunction,
 			materialized: true,
 			constructor:  cx.IsConstructor(target.o),
 		}
@@ -561,6 +556,15 @@ func (cx *ExecutionContext) propertyKeyList(v Value) []PropKey {
 		keys = append(keys, cx.ToPropertyKey(e))
 	}
 	return keys
+}
+
+// proxyFunction is the code of the proxies that can be called.
+func proxyFunction(cx *ExecutionContext, this Value, args []Value) Value {
+	p := cx.activeNative()
+	if nt := cx.GetNewTarget(); nt != nil {
+		return Value{o: cx.proxyConstruct(p, args, nt)}
+	}
+	return cx.proxyCall(p, this, args)
 }
 
 // proxyCall implements [[Call]] of a proxy.

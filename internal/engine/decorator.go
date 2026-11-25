@@ -158,14 +158,22 @@ func (cx *ExecutionContext) makeAutoAccessor(k Value) (storage, getter, setter *
 	if k.o.class == classPrivateName {
 		storage.str = k.o.str + " accessor storage"
 	}
-	getter = cx.NewNative("get "+name, 0, func(cx *ExecutionContext, this Value, args []Value) Value {
-		return cx.PrivateGet(this, storage)
-	})
-	setter = cx.NewNative("set "+name, 1, func(cx *ExecutionContext, this Value, args []Value) Value {
-		cx.PrivateSet(this, storage, argAt(args, 0))
-		return Undefined
-	})
+	getter = cx.newNativeWithState("get "+name, 0, autoAccessorGetter, storage)
+	setter = cx.newNativeWithState("set "+name, 1, autoAccessorSetter, storage)
 	return storage, getter, setter
+}
+
+// autoAccessorGetter is the code of the getters of auto-accessors. Their state is the backing
+// private name, an *Object.
+func autoAccessorGetter(cx *ExecutionContext, this Value, args []Value) Value {
+	return cx.PrivateGet(this, cx.activeNativeState().(*Object))
+}
+
+// autoAccessorSetter is the code of the setters of auto-accessors. Their state is the backing
+// private name, an *Object.
+func autoAccessorSetter(cx *ExecutionContext, this Value, args []Value) Value {
+	cx.PrivateSet(this, cx.activeNativeState().(*Object), argAt(args, 0))
+	return Undefined
 }
 
 // PrivateGet implements PrivateGet.
@@ -489,63 +497,108 @@ func (cx *ExecutionContext) createDecoratorContextObject(kind int, name Value, i
 	} else {
 		def("name", name)
 	}
-	def("addInitializer", Value{o: cx.NewNative("addInitializer", 1, func(cx *ExecutionContext, this Value, args []Value) Value {
-		if state.finished {
-			cx.ThrowTypeError("addInitializer cannot be called after the decorator returned")
-		}
-		init := argAt(args, 0)
-		if !init.IsCallable() {
-			cx.ThrowTypeError("an initializer must be a function")
-		}
-		*initializers = append(*initializers, init.o)
-		return Undefined
+	def("addInitializer", Value{o: cx.newNativeWithState("addInitializer", 1, addInitializerFunction, &addInitializerState{
+		initializers: initializers,
+		decoration:   state,
 	})})
 	def("metadata", Value{o: metadata})
 	return Value{o: ctx}
 }
 
+// addInitializerState is the state of an addInitializer function of a decorator context.
+type addInitializerState struct {
+	initializers *[]*Object
+	decoration   *decorationState
+}
+
+// addInitializerFunction is the code of the addInitializer functions. Their state is an
+// *addInitializerState.
+func addInitializerFunction(cx *ExecutionContext, this Value, args []Value) Value {
+	st := cx.activeNativeState().(*addInitializerState)
+	if st.decoration.finished {
+		cx.ThrowTypeError("addInitializer cannot be called after the decorator returned")
+	}
+	init := argAt(args, 0)
+	if !init.IsCallable() {
+		cx.ThrowTypeError("an initializer must be a function")
+	}
+	*st.initializers = append(*st.initializers, init.o)
+	return Undefined
+}
+
 // createDecoratorAccessObject implements CreateDecoratorAccessObject.
 func (cx *ExecutionContext) createDecoratorAccessObject(kind int, name Value) Value {
 	access := cx.NewOrdinaryObject()
-	private := name.o != nil && name.o.class == classPrivateName
-	checkObject := func(cx *ExecutionContext, o Value) {
-		if !o.IsObject() {
-			cx.ThrowTypeError("the object of a decorator access must be an object")
-		}
+	st := &decoratorAccess{
+		name: name,
 	}
 	if kind != bytecode.ElemSetter {
-		getter := cx.NewNative("", 1, func(cx *ExecutionContext, this Value, args []Value) Value {
-			o := argAt(args, 0)
-			checkObject(cx, o)
-			if private {
-				return cx.PrivateGet(o, name.o)
-			}
-			return cx.Get(o.o, cx.ToPropertyKey(name))
-		})
+		getter := cx.newNativeWithState("", 1, decoratorAccessGetter, st)
 		cx.CreateDataPropertyOrThrow(access, PropKey{key: cx.Key(KeyGet)}, Value{o: getter})
 	}
 	if kind == bytecode.ElemField || kind == bytecode.ElemAccessor || kind == bytecode.ElemSetter {
-		setter := cx.NewNative("", 2, func(cx *ExecutionContext, this Value, args []Value) Value {
-			o := argAt(args, 0)
-			checkObject(cx, o)
-			if private {
-				cx.PrivateSet(o, name.o, argAt(args, 1))
-			} else {
-				cx.Set(o.o, cx.ToPropertyKey(name), argAt(args, 1))
-			}
-			return Undefined
-		})
+		setter := cx.newNativeWithState("", 2, decoratorAccessSetter, st)
 		cx.CreateDataPropertyOrThrow(access, PropKey{key: cx.Key(KeySet)}, Value{o: setter})
 	}
-	has := cx.NewNative("has", 1, func(cx *ExecutionContext, this Value, args []Value) Value {
-		o := argAt(args, 0)
-		checkObject(cx, o)
-		if private {
-			_, ok := cx.privateStorage(o.o).shape.lookup(name.o)
-			return Bool(ok)
-		}
-		return Bool(cx.HasProperty(o.o, cx.ToPropertyKey(name)))
-	})
+	has := cx.newNativeWithState("has", 1, decoratorAccessHas, st)
 	cx.CreateDataPropertyOrThrow(access, PropKey{key: cx.Intern("has")}, Value{o: has})
 	return Value{o: access}
+}
+
+// decoratorAccess is the state of the functions of a decorator access object.
+type decoratorAccess struct {
+	// name is the property key or the private name of the decorated element.
+	name Value
+}
+
+// private reports whether the name is a private name.
+func (a *decoratorAccess) private() bool {
+	return a.name.o != nil && a.name.o.class == classPrivateName
+}
+
+// checkDecoratorAccessObject throws when o, which a decorator access function was called for, is
+// not an object.
+func (cx *ExecutionContext) checkDecoratorAccessObject(o Value) {
+	if !o.IsObject() {
+		cx.ThrowTypeError("the object of a decorator access must be an object")
+	}
+}
+
+// decoratorAccessGetter is the code of the get functions of decorator access objects. Their state
+// is a *decoratorAccess.
+func decoratorAccessGetter(cx *ExecutionContext, this Value, args []Value) Value {
+	a := cx.activeNativeState().(*decoratorAccess)
+	o := argAt(args, 0)
+	cx.checkDecoratorAccessObject(o)
+	if a.private() {
+		return cx.PrivateGet(o, a.name.o)
+	}
+	return cx.Get(o.o, cx.ToPropertyKey(a.name))
+}
+
+// decoratorAccessSetter is the code of the set functions of decorator access objects. Their state
+// is a *decoratorAccess.
+func decoratorAccessSetter(cx *ExecutionContext, this Value, args []Value) Value {
+	a := cx.activeNativeState().(*decoratorAccess)
+	o := argAt(args, 0)
+	cx.checkDecoratorAccessObject(o)
+	if a.private() {
+		cx.PrivateSet(o, a.name.o, argAt(args, 1))
+	} else {
+		cx.Set(o.o, cx.ToPropertyKey(a.name), argAt(args, 1))
+	}
+	return Undefined
+}
+
+// decoratorAccessHas is the code of the has functions of decorator access objects. Their state is
+// a *decoratorAccess.
+func decoratorAccessHas(cx *ExecutionContext, this Value, args []Value) Value {
+	a := cx.activeNativeState().(*decoratorAccess)
+	o := argAt(args, 0)
+	cx.checkDecoratorAccessObject(o)
+	if a.private() {
+		_, ok := cx.privateStorage(o.o).shape.lookup(a.name.o)
+		return Bool(ok)
+	}
+	return Bool(cx.HasProperty(o.o, cx.ToPropertyKey(a.name)))
 }

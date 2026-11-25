@@ -1542,6 +1542,14 @@ func (cx *ExecutionContext) NewNative(name wtf8.String, length int, f NativeFunc
 	return n.init()
 }
 
+// newNativeWithState returns a function implemented in Go whose internal slots are state.
+// f finds them with [agent.activeNativeState].
+func (cx *ExecutionContext) newNativeWithState(name wtf8.String, length int, f NativeFunc, state any) *Object {
+	o := cx.NewNative(name, length, f)
+	o.ext = state
+	return o
+}
+
 // ShortcutFrame states how a shortcut accounts for the frame that calls of its function show.
 type ShortcutFrame uint8
 
@@ -1675,6 +1683,17 @@ func (ag *agent) GetNewTarget() *Object {
 		return ag.natives[n-1].newTarget
 	}
 	return nil
+}
+
+// activeNative returns the active function object of the running native code, which is a native
+// function or a proxy. It is another one while that code calls functions.
+func (ag *agent) activeNative() *Object {
+	return ag.natives[len(ag.natives)-1].f
+}
+
+// activeNativeState returns the internal slots of the active native function.
+func (ag *agent) activeNativeState() any {
+	return ag.activeNative().extState()
 }
 
 // findScope returns the innermost of the depth innermost dynamic scopes of the running

@@ -189,20 +189,30 @@ func (cx *ExecutionContext) CreateResolvingFunctions(p *Object) *PromiseCapabili
 }
 
 func (cx *ExecutionContext) createResolvingFunctions(c *PromiseCapability) {
-	c.resolve = cx.NewNative("", 1, func(cx *ExecutionContext, this Value, args []Value) Value {
-		if !c.alreadyResolved {
-			c.alreadyResolved = true
-			cx.resolvePromise(c.resolvingRealm(), c.promise, argAt(args, 0))
-		}
-		return Undefined
-	})
-	c.reject = cx.NewNative("", 1, func(cx *ExecutionContext, this Value, args []Value) Value {
-		if !c.alreadyResolved {
-			c.alreadyResolved = true
-			cx.rejectPromise(c.promise, argAt(args, 0))
-		}
-		return Undefined
-	})
+	c.resolve = cx.newNativeWithState("", 1, promiseResolveFunction, c)
+	c.reject = cx.newNativeWithState("", 1, promiseRejectFunction, c)
+}
+
+// promiseResolveFunction is the code of the promise resolve functions. Their state is a
+// *PromiseCapability.
+func promiseResolveFunction(cx *ExecutionContext, this Value, args []Value) Value {
+	c := cx.activeNativeState().(*PromiseCapability)
+	if !c.alreadyResolved {
+		c.alreadyResolved = true
+		cx.resolvePromise(c.resolvingRealm(), c.promise, argAt(args, 0))
+	}
+	return Undefined
+}
+
+// promiseRejectFunction is the code of the promise reject functions. Their state is a
+// *PromiseCapability.
+func promiseRejectFunction(cx *ExecutionContext, this Value, args []Value) Value {
+	c := cx.activeNativeState().(*PromiseCapability)
+	if !c.alreadyResolved {
+		c.alreadyResolved = true
+		cx.rejectPromise(c.promise, argAt(args, 0))
+	}
+	return Undefined
 }
 
 func argAt(args []Value, i int) Value {
@@ -221,30 +231,42 @@ func (cx *ExecutionContext) NewPromiseCapability(c Value) *PromiseCapability {
 		// Constructing %Promise% with an executor observes nothing that this does not.
 		return cx.newIntrinsicCapability()
 	}
-	var resolve, reject Value
-	resolve, reject = Undefined, Undefined
-	executor := cx.NewNative("", 2, func(cx *ExecutionContext, this Value, args []Value) Value {
-		if !resolve.IsUndefined() {
-			cx.ThrowTypeError("promise capability resolve function is already set")
-		}
-		if !reject.IsUndefined() {
-			cx.ThrowTypeError("promise capability reject function is already set")
-		}
-		resolve, reject = argAt(args, 0), argAt(args, 1)
-		return Undefined
-	})
+	fs := &resolvingFunctions{
+		resolve: Undefined,
+		reject:  Undefined,
+	}
+	executor := cx.newNativeWithState("", 2, capabilityExecutor, fs)
 	p := cx.Construct(c.o, []Value{{o: executor}}, c.o)
-	if !resolve.IsCallable() {
+	if !fs.resolve.IsCallable() {
 		cx.ThrowTypeError("promise capability resolve function is not callable")
 	}
-	if !reject.IsCallable() {
+	if !fs.reject.IsCallable() {
 		cx.ThrowTypeError("promise capability reject function is not callable")
 	}
 	return &PromiseCapability{
 		promise: p,
-		resolve: resolve.o,
-		reject:  reject.o,
+		resolve: fs.resolve.o,
+		reject:  fs.reject.o,
 	}
+}
+
+// resolvingFunctions is the Record that NewPromiseCapability collects the resolving functions in.
+type resolvingFunctions struct {
+	resolve, reject Value
+}
+
+// capabilityExecutor is the code of the executors of NewPromiseCapability. Their state is a
+// *resolvingFunctions.
+func capabilityExecutor(cx *ExecutionContext, this Value, args []Value) Value {
+	fs := cx.activeNativeState().(*resolvingFunctions)
+	if !fs.resolve.IsUndefined() {
+		cx.ThrowTypeError("promise capability resolve function is already set")
+	}
+	if !fs.reject.IsUndefined() {
+		cx.ThrowTypeError("promise capability reject function is already set")
+	}
+	fs.resolve, fs.reject = argAt(args, 0), argAt(args, 1)
+	return Undefined
 }
 
 // ensureResolvingFunctions materializes the deferred functions of an intrinsic capability.
