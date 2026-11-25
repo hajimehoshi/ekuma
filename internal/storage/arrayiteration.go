@@ -3,18 +3,18 @@
 
 package storage
 
-// arrayIterCache is what ArrayIterationPlain found for arrays with the initial shape.
+// arrayIterCache is what [Space.ArrayIterationUnmodified] found for arrays with the initial shape.
 type arrayIterCache struct {
 	// iter and next are the data properties that iterating such an array reads.
 	iter dataSlot
 	next dataSlot
 
-	// Epoch is the value of agent.ProtoEpoch at which iter and next were found.
+	// Epoch is the value of [Space.ProtoEpoch] at which iter and next were found.
 	Epoch   uint32
 	checked bool
 	// found reports whether iter and next were found as data properties.
 	found bool
-	// NoReturn reports whether array iterators had no return method at epoch.
+	// NoReturn reports whether array iterators had no return method at Epoch.
 	NoReturn bool
 }
 

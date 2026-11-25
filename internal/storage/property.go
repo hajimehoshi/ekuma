@@ -255,7 +255,7 @@ func (r *RealmPart) LookupDataSlot(o, key *Object) dataSlot {
 	}
 }
 
-// Value returns the current Value of the slot.
+// Value returns the current value of the slot.
 func (d *dataSlot) Value() Value {
 	return d.Holder.slots[d.slot]
 }

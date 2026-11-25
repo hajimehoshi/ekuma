@@ -36,9 +36,9 @@ const (
 	ObjExotic
 )
 
-// ObjReversed marks a string whose str holds its contents with the bytes in reverse order.
+// ObjReversed marks a string whose Text holds its contents with the bytes in reverse order.
 // Its bit is that of ObjFrozenLength, which only arrays and private names use. The byte length,
-// the ASCII-ness and the UTF-16 length of str are those of the contents, so only a read of the
+// the ASCII-ness and the UTF-16 length of Text are those of the contents, so only a read of the
 // contents themselves needs [Object.Str].
 const ObjReversed = ObjFrozenLength
 
@@ -112,14 +112,14 @@ type Object struct {
 	Class class
 	flags uint8
 
-	// Pinned holds the Pinned bits of the storage of slots and elems.
+	// Pinned holds the pinned bits of the storage of slots and elems.
 	Pinned uint8
 
-	// Length is the Length of an array, which is at least len(elems). For a string it is 0,
+	// length is the length of an array, which is at least len(elems). For a string it is 0,
 	// or the array index that the string stands for plus one. See [Object.ArrayIndex].
 	length uint32
 
-	// Shape is the layout of slots. Only the singletons and internal values have none.
+	// shape is the layout of slots. Only the singletons and internal values have none.
 	shape *Shape
 
 	// Primitive values have no property storage.
@@ -136,7 +136,7 @@ type Object struct {
 	// Ext is the internal state of a built-in object or the push size hint of a closure.
 	// For a string that is not interned it is the interned string with the same content,
 	// once that was looked up, or the state of concatenations onto it (see concat.go).
-	// When the object has side data, ext is its *ObjectMeta, which holds the internal state
+	// When the object has side data, Ext is its *ObjectMeta, which holds the internal state
 	// instead. See [Object.ExtState] and [Object.Meta].
 	Ext any
 }
@@ -145,8 +145,8 @@ type Object struct {
 type objectProperties struct {
 	slots []Value
 
-	// Elems holds the properties whose keys are array indices, by index.
-	// An element that does not exist holds hole.
+	// elems holds the properties whose keys are array indices, by index.
+	// An element that does not exist holds Hole.
 	elems []Value
 }
 
@@ -166,14 +166,14 @@ func (o *PropertyObject) Init() *Object {
 // the entries in weak collections of an object or a symbol, the empty shapes of the objects
 // whose prototype is this object, and the room that removing the first elements of an array left.
 type ObjectMeta struct {
-	// Length and cursor are the cached UTF-16 view of a string that is not ASCII:
+	// Length and Cursor are the cached UTF-16 view of a string that is not ASCII:
 	// its length, or 0 before it is known, and the position of the most recent access.
 	// Only a string of at most MaxStringLength bytes has them, so they fit in 32 bits.
 	Length int32
 	Cursor stringPos
 
 	// checkpoints holds the positions of the code units of such a string whose indices are
-	// multiples of checkpointInterval, once an access far from cursor needed one. See
+	// multiples of checkpointInterval, once an access far from Cursor needed one. See
 	// [checkpointsOf].
 	checkpoints *[]uint32
 

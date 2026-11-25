@@ -7,33 +7,33 @@ package storage
 const (
 	CacheNone uint8 = iota
 
-	// CacheOwn: the property is in slot of the receiver.
+	// CacheOwn: the property is in Slot of the receiver.
 	CacheOwn
 
-	// CacheProto: ref points to an inherited data slot or the undefined slot for a cached miss.
+	// CacheProto: Ref points to an inherited data slot or the undefined slot for a cached miss.
 	CacheProto
 
-	// CacheGetter and CacheSetter: holder is the function to call.
+	// CacheGetter and CacheSetter: Holder is the function to call.
 	CacheGetter
 	CacheSetter
 
-	// CacheOwnGetter: the property is an accessor in slot of the receiver, whose getter is called.
+	// CacheOwnGetter: the property is an accessor in Slot of the receiver, whose getter is called.
 	CacheOwnGetter
 
-	// CacheAdd: a store adds the property and moves the receiver to the shape next.
+	// CacheAdd: a store adds the property and moves the receiver to the shape Next.
 	CacheAdd
 )
 
 // CacheEntry is what an inline cache remembers about one receiver shape.
 type CacheEntry struct {
-	// Shape is the Shape of the receiver the entry is valid for.
+	// Shape is the shape of the receiver the entry is valid for.
 	Shape *Shape
 	Kind  uint8
 	Slot  int32
 
 	Holder *Object
 
-	// Epoch is the value of agent.ProtoEpoch the entry was filled at.
+	// Epoch is the value of [Space.ProtoEpoch] the entry was filled at.
 	Epoch uint32
 
 	Next *Shape
@@ -59,7 +59,7 @@ type PropCache struct {
 	Reads  *namedReads
 }
 
-// Entry returns the inline Entry for s, or nil on a miss.
+// Entry returns the inline entry for s, or nil on a miss.
 func (c *PropCache) Entry(s *Shape) *CacheEntry {
 	if c.Shape == s {
 		return &c.CacheEntry
@@ -79,17 +79,17 @@ type namedReads struct {
 }
 
 type namedRead struct {
-	// Depth counts the prototype links to the holder. count detects properties added
+	// Depth counts the prototype links to the holder. Count detects properties added
 	// to the receiver while it keeps its private shape.
 	Depth int32
 	Count int32
 	Prop
 }
 
-// GlobalCache is the inline cache of an instruction that accesses a global variable. holder is
+// GlobalCache is the inline cache of an instruction that accesses a global variable. Holder is
 // the global object of the realm, or nil. While its shape matches, the binding exists.
 // A resolution caches existence alone. Reads and writes also cache the initialized slot
-// in ref, and writes only cache writable bindings.
+// in Ref, and writes only cache writable bindings.
 //
 // Declaring a global lexical binding or invalidating a cached global slot changes the
 // global object's shape.

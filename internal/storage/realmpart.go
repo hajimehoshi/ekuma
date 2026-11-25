@@ -41,7 +41,7 @@ type RealmPart struct {
 
 	LegacyRegExp legacyRegExpStatics
 
-	// space is the space of the agent of the realm.
+	// Space is the space of the agent of the realm.
 	*Space
 
 	// Owner is the execution context of the realm. Only executionContextOf and the

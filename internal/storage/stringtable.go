@@ -19,7 +19,7 @@ type stringTable struct {
 	// Ascii are the strings of one ASCII character.
 	Ascii [128]Value
 
-	// Empty is the Empty string.
+	// Empty is the empty string.
 	Empty Value
 }
 
@@ -43,7 +43,7 @@ func (t *stringTable) EndKeeping() {
 	t.keepNew = false
 }
 
-// Character returns the string of the ASCII Character c.
+// Character returns the string of the ASCII character c.
 func (t *stringTable) Character(c byte) Value {
 	return t.Ascii[c]
 }

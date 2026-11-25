@@ -10,7 +10,7 @@ import (
 
 // MapIterator is the state of a Map Iterator object.
 type MapIterator struct {
-	// table is nil once the iterator is done.
+	// Table is nil once the iterator is done.
 	Table  *collection.Table
 	Cursor collection.Cursor
 	Kind   IterationKind
@@ -18,7 +18,7 @@ type MapIterator struct {
 
 // SetIterator is the state of a Set Iterator object.
 type SetIterator struct {
-	// table is nil once the iterator is done.
+	// Table is nil once the iterator is done.
 	Table  *collection.Table
 	Cursor collection.Cursor
 	Kind   IterationKind

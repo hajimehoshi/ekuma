@@ -53,8 +53,8 @@ func mul64(x, y int64) (int64, bool) {
 	return p, hi == uint64(p>>63)
 }
 
-// ArithBigInt64 is arith for two BigInts that fit in an int64. It reports false when the result
-// does not fit in an int64 or the operation throws, which arith then handles with big.Int.
+// ArithBigInt64 is ExecutionContext.arith for two BigInts that fit in an int64. It reports false
+// when the result does not fit in an int64 or the operation throws.
 func ArithBigInt64(op bytecode.Opcode, x, y int64) (Value, bool) {
 	var r int64
 	ok := true

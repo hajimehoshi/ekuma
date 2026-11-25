@@ -21,7 +21,7 @@ type ClassElement struct {
 
 // FieldDecoration is what the decorators of a field or an auto-accessor add to it.
 type FieldDecoration struct {
-	// Initializers are the Initializers that the decorators returned, in the order they were applied.
+	// Initializers are the initializers that the decorators returned, in the order they were applied.
 	Initializers []*Object
 	// Extra are the initializers that the decorators added with addInitializer.
 	Extra []*Object

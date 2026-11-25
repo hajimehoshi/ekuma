@@ -213,7 +213,7 @@ func (r *RealmPart) Materialize(o *Object) {
 	r.Add(o, r.Key(KeyName), r.SharedString(f.NativeName()), FlagConfigurable)
 }
 
-// IsLazyKey reports whether key names a property that materialize creates.
+// IsLazyKey reports whether key names a property that [RealmPart.Materialize] creates.
 func (sp *Space) IsLazyKey(key *Object) bool {
 	return key == sp.Key(KeyPrototype) || key == sp.Key(KeyName) || key == sp.Key(KeyLength) || key == sp.Key(KeyCaller) || key == sp.Key(KeyArguments)
 }

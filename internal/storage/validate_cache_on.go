@@ -42,7 +42,7 @@ type Peeked struct {
 	Why string
 }
 
-// Slot returns the Slot of a data property or an accessor property.
+// Slot returns the slot of a data property or an accessor property.
 func (p *Peeked) Slot() *Value {
 	return &p.Holder.slots[p.Prop.Slot]
 }
@@ -93,7 +93,7 @@ func (r *RealmPart) Peek(v Value, key *Object) Peeked {
 	return r.PeekFrom(start, key)
 }
 
-// PeekFrom is peek from the object start on.
+// PeekFrom is [RealmPart.Peek] from the object start on.
 func (r *RealmPart) PeekFrom(start, key *Object) Peeked {
 	for h := start; h != nil; h = h.shape.Proto {
 		p, why := r.PeekOwn(h, key)
@@ -163,8 +163,8 @@ func CacheMismatch(cache, got, want string) string {
 	return cache + " answered " + got + ", but the lookup finds " + want
 }
 
-// checkArrayIteration checks what c, which ArrayIterationUnmodified has brought up to date, says
-// about the iteration of the arrays of r.
+// checkArrayIteration checks what r.ArrayIter, which [Space.ArrayIterationUnmodified] has brought up
+// to date, says about the iteration of the arrays of r.
 func (r *RealmPart) checkArrayIteration() {
 	c := &r.ArrayIter
 	values := r.Intrinsics[IntrinsicArrayPrototypeValues]
@@ -203,7 +203,7 @@ func (r *RealmPart) checkOriginal(o, key, want *Object) {
 }
 
 // checkUnmodifiedRegExp checks that o finds the properties recorded by
-// ExecutionContext.RecordRegExpOriginals.
+// [RealmPart.RecordRegExpOriginals].
 func (r *RealmPart) checkUnmodifiedRegExp(o *Object) {
 	proto := r.Intrinsic(IntrinsicRegExpPrototype)
 	for i := range r.regExpOriginals.props {

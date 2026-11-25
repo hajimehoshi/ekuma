@@ -49,10 +49,10 @@ func (sp *Space) ErrorOf(v Value) *Error {
 type ErrorData struct {
 	stack wtf8.String
 
-	// Pending is set until stack is formatted from name, msg and calls.
+	// Pending is set until stack is formatted from Name, Msg and Calls.
 	Pending bool
 
-	// Name in WTF-8 and msg in UTF-8 begin the stack trace, and calls are its lines.
+	// Name in WTF-8 and Msg in UTF-8 begin the stack trace, and Calls are its lines.
 	Name  wtf8.String
 	Msg   string
 	Calls []StackCall
@@ -100,13 +100,13 @@ type StackCall struct {
 	// Fp is the function that runs, or nil for a native function.
 	Fp *FuncProto
 
-	// Name is the Name of the function.
+	// Name is the name of the function.
 	Name wtf8.String
 
 	// Recv is the type name of the receiver of a method call, or empty.
 	Recv wtf8.String
 
-	// Pc is past the instruction of fp that is running.
+	// Pc is past the instruction of Fp that is running.
 	Pc int
 
 	IsNew bool

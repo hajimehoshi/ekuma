@@ -15,9 +15,9 @@ import (
 // polling, whether there is a host clock, and the RegExp matcher.
 //
 // It must not refer to the agent, a realm, a frame or an execution context, except that a shape
-// records its realm. hostDefined belongs to the host and is opaque to the engine.
+// records its realm. HostDefinedValue belongs to the host and is opaque to the engine.
 type Space struct {
-	// poller comes first, as the interpreter loop reads its flag often.
+	// Poller comes first, as the interpreter loop reads its flag often.
 	Poller
 
 	Keys keys
@@ -36,8 +36,8 @@ type Space struct {
 
 	sparseIndices sparseIndexCache
 
-	// IndexStrings holds the strings of the array indices below indexStringCount that were
-	// made, by index, and nil for the others.
+	// IndexStrings holds the strings of the smallest array indices that were made, by index,
+	// and nil for the others.
 	IndexStrings []*Object
 
 	// SymbolShape is the shape of the symbols of the agent. It records the space that they belong
@@ -72,7 +72,7 @@ type Space struct {
 	HostDefinedValue any
 }
 
-// HostDefined returns the value that NewExecutionContext was given.
+// HostDefined returns the host-defined value of the agent.
 func (sp *Space) HostDefined() any {
 	return sp.HostDefinedValue
 }

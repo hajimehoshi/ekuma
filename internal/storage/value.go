@@ -50,9 +50,9 @@ type Value struct {
 
 	N float64
 
-	// O is nil for undefined, NumberObject for the number n, BigInt64Object for the BigInt
-	// whose two's complement bits n holds, and the object for anything else.
-	// Every string of at most shortstrings.MaxBytes bytes holds its bytes in n.
+	// O is nil for undefined, NumberObject for the number N, BigInt64Object for the BigInt
+	// whose two's complement bits N holds, and the object for anything else.
+	// Every string of at most shortstrings.MaxBytes bytes holds its bytes in N.
 	// Its object carries the byte length and realm, and may also be an interned key.
 	O *Object
 }
@@ -67,7 +67,7 @@ var TrueObject = &Object{Kind: KindTrue}
 
 var HoleObject = &Object{Kind: KindHole}
 
-// BigInt64Object is the o of every BigInt that fits in an int64. Every other BigInt is an
+// BigInt64Object is the O of every BigInt that fits in an int64. Every other BigInt is an
 // object of its own holding a *big.Int, so each BigInt has exactly one representation.
 var BigInt64Object = &Object{Kind: KindBigInt}
 
@@ -321,7 +321,7 @@ func StringIndex(s wtf8.String) (uint32, bool) {
 
 // SetNumber stores the number n in the register r.
 func SetNumber(r *Value, n float64) {
-	// Over a number only n changes. Leaving the object pointer as it is needs no write barrier
+	// Over a number only N changes. Leaving the object pointer as it is needs no write barrier
 	// while the garbage collector marks.
 	if r.O != NumberObject {
 		r.O = NumberObject

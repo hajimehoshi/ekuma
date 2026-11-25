@@ -85,7 +85,7 @@ const (
 	IntrinsicIntlRelativeTimeFormatPrototype
 	IntrinsicIntlSegmenterPrototype
 
-	// The prototypes of the native error types are in the order of ErrorKind.
+	// The prototypes of the native error types are in the order of engine.ErrorKind.
 	IntrinsicErrorPrototype
 	IntrinsicTypeErrorPrototype
 	IntrinsicRangeErrorPrototype

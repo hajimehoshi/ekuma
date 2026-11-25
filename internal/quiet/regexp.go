@@ -76,7 +76,7 @@ func (q Context) SetRegExpLastIndex(o *storage.Object, v storage.Value) bool {
 
 // UnmodifiedRegExpMatcher returns the compiled pattern of o when o is an initialized RegExp object
 // whose prototype is %RegExp.prototype% and whose only own property is a writable lastIndex, while
-// the properties recorded by ExecutionContext.RecordRegExpOriginals are unchanged, and nil
+// the properties recorded by [storage.RealmPart.RecordRegExpOriginals] are unchanged, and nil
 // otherwise. When it is not nil, those properties are the only ones that reading the recorded keys
 // from o finds, and lastIndex is an ordinary data property.
 func (q Context) UnmodifiedRegExpMatcher(o *storage.Object) *regexp.Regexp {

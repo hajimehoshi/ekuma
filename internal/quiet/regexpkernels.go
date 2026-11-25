@@ -46,7 +46,7 @@ func AdvanceStringIndex(s storage.Value, index int64, unicode bool) int64 {
 	return index + 1
 }
 
-// Capture returns the Capture i of caps in s, or undefined.
+// Capture returns the capture i of caps in s, or undefined.
 func Capture(q Context, s storage.Value, caps []int, i int) storage.Value {
 	a, b := caps[2*i], caps[2*i+1]
 	if a < 0 {

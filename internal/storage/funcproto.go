@@ -18,7 +18,7 @@ type FuncProto struct {
 	Consts []Value
 	Keys   []*Object
 
-	// Caches holds the inline Caches, and is nil until a frame of the function is pushed.
+	// Caches holds the inline caches, and is nil until a frame of the function is pushed.
 	Caches []PropCache
 	Protos []*FuncProto
 
@@ -34,8 +34,8 @@ type FuncProto struct {
 	Nclear  int
 	Nregs   int
 
-	// ClearFrom is the first register from nparams on that a new frame clears. The first
-	// instructions write the registers between nparams and ClearFrom before anything reads them.
+	// ClearFrom is the first register from Nparams on that a new frame clears. The first
+	// instructions write the registers between Nparams and ClearFrom before anything reads them.
 	ClearFrom int
 
 	Strict             bool
@@ -53,7 +53,7 @@ type FuncProto struct {
 	// Script is the [[ScriptOrModule]] of the functions. Only scriptOrModuleOf reads it.
 	Script any
 
-	// Realm is the [[Realm]] of the functions. Each frame enters the context of the Realm of its
+	// Realm is the [[Realm]] of the functions. Each frame enters the context of the realm of its
 	// linked code, including a replacement tail frame.
 	Realm *RealmPart
 
@@ -75,8 +75,8 @@ type FuncProto struct {
 	// ReturnedProperty is the cache for x when the function starts with return this.x.
 	ReturnedProperty *PropCache
 
-	// Globals holds the inline caches of global variables, which prepare allocates with
-	// caches. It comes after the fields that calls read.
+	// Globals holds the inline caches of global variables, which Prepare allocates with
+	// Caches. It comes after the fields that calls read.
 	Globals []GlobalCache
 
 	// plainFunction is the initial state of ordinary closures without upvalues.

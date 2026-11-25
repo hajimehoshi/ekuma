@@ -12,10 +12,10 @@ import (
 
 // Function is the state of a callable object.
 type Function struct {
-	// Code is the compiled Code of a function written in JavaScript.
+	// Code is the compiled code of a function written in JavaScript.
 	Code *FuncProto
 
-	// Upvals are the variables of enclosing functions that code refers to.
+	// Upvals are the variables of enclosing functions that Code refers to.
 	Upvals []*Upvalue
 
 	// Info describes a native function. It is nil for any other function.
@@ -45,7 +45,7 @@ type Function struct {
 	// ClassConstructor marks a function that throws when called without new.
 	ClassConstructor bool
 
-	// Scopes points to the dynamic Scopes that were open where the function was created,
+	// Scopes points to the dynamic scopes that were open where the function was created,
 	// innermost last, or is nil when none were.
 	Scopes *[]*Object
 }
@@ -104,12 +104,12 @@ type BoundFunc struct {
 	Args   []Value
 }
 
-// Upvalue is a variable of an enclosing function. p points to the variable: into the registers
-// of that function while it is running, and to val afterwards.
+// Upvalue is a variable of an enclosing function. P points to the variable: into the registers
+// of that function while it is running, and to Val afterwards.
 type Upvalue struct {
 	P *Value
 
-	// Index is the stack Index or, for a generator, the register that p points to while the upvalue is open.
+	// Index is the stack index or, for a generator, the register that P points to while the upvalue is open.
 	Index int
 	Val   Value
 }

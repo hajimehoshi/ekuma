@@ -118,8 +118,8 @@ func (c *sparseIndexCache) addedKeys(s *Shape, buf []*Object) ([]*Object, bool) 
 	return added, true
 }
 
-// denseFactor is the largest number of slots per element for which ExecutionContext.densify moves the array
-// index properties of an object into elems.
+// denseFactor is the largest number of slots per element for which [RealmPart.densify] moves the
+// array index properties of an object into elems.
 const denseFactor = 4
 
 // growElems reports whether storing the index i should extend elems.

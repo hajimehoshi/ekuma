@@ -10,7 +10,7 @@ import (
 
 // InterruptSignal is what an interruption unwinds Go frames with. No JavaScript code can catch it.
 type InterruptSignal struct {
-	// Cause is the Cause of the interruption.
+	// Cause is the cause of the interruption.
 	Cause error
 }
 

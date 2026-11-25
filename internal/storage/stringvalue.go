@@ -343,8 +343,8 @@ func (v Value) AppendStringBytes(dst []byte) []byte {
 	return append(dst, v.O.Str()...)
 }
 
-// IsASCII reports whether s, which is the str of v when v is a string, consists of ASCII
-// characters only.
+// IsASCII reports whether s, which is the [Value.RawString] of v when v is a string, consists of
+// ASCII characters only.
 func IsASCII(v Value, s wtf8.String) bool {
 	if v.IsString() && !v.IsShortString() {
 		return v.O.IsASCII()

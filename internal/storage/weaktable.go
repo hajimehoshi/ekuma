@@ -9,7 +9,7 @@ import (
 	"weak"
 )
 
-// WeakTable is the [WeakMapData] of a WeakMap or the [WeakSetData] of a WeakSet.
+// WeakTable is the [[WeakMapData]] of a WeakMap or the [[WeakSetData]] of a WeakSet.
 // Every key must be a value for which CanBeHeldWeakly holds.
 type WeakTable struct {
 	// Operations on keys keep the table alive until its entries have been read or updated.

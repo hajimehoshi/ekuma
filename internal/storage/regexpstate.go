@@ -27,7 +27,7 @@ type RegExpState struct {
 type RegExpSite struct {
 	Literal bytecode.RegExp
 
-	// State is the internal State that the RegExp objects of the literal share, once the
+	// State is the internal state that the RegExp objects of the literal share, once the
 	// pattern is compiled.
 	State *RegExpState
 
@@ -63,9 +63,9 @@ func (o *Object) RegExpLegacyFeaturesEnabled() bool {
 
 // legacyRegExpStatics holds the internal slots of %RegExp% for its legacy static properties.
 type legacyRegExpStatics struct {
-	// Input and str are undefined when their respective properties are unavailable.
+	// Input and Str are undefined when their respective properties are unavailable.
 	Input Value
-	// Str and caps are the subject and the capture indices of the last match, if any.
+	// Str and Caps are the subject and the capture indices of the last match, if any.
 	Str  Value
 	Caps []int
 }

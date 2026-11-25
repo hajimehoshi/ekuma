@@ -11,7 +11,7 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
-// PropKey is a property key: an array index when key is nil, otherwise an interned string or a symbol.
+// PropKey is a property key: an array index when Key is nil, otherwise an interned string or a symbol.
 type PropKey struct {
 	Key *Object
 	Idx uint32
@@ -66,12 +66,12 @@ func (sp *Space) IndexKey(i uint32) *Object {
 // QueryKey is a property key for an operation that only reads properties. It may be a string that
 // no property key has.
 type QueryKey struct {
-	// Key and idx are as in [PropKey], except that Key is not interned when idx is MissingKey.
+	// Key and Idx are as in [PropKey], except that Key is not interned when Idx is MissingKey.
 	Key *Object
 	Idx uint32
 }
 
-// MissingKey is the idx of a query key whose key has the contents of no property key.
+// MissingKey is the Idx of a query key whose Key has the contents of no property key.
 const MissingKey = 1
 
 func (k QueryKey) Missing() bool {

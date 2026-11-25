@@ -70,7 +70,7 @@ func (q Context) SearchElements(o *storage.Object, i, end int64, target storage.
 }
 
 // JoinStrings joins an array of the given length with sep when its elements and sep are
-// ASCII strings and the result fits in MaxStringLength bytes. It reports false otherwise.
+// ASCII strings and the result fits in [storage.MaxStringLength] bytes. It reports false otherwise.
 func (q Context) JoinStrings(o *storage.Object, length int64, sep wtf8.String) (storage.Value, bool) {
 	return q.Realm.JoinStrings(o, length, sep)
 }

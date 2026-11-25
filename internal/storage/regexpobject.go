@@ -77,7 +77,7 @@ type regExpOriginals struct {
 	// does not move ProtoEpoch, so their values are compared at every check.
 	data []originalData
 
-	// epoch is the value of agent.ProtoEpoch when the slots of props were last found.
+	// epoch is the value of [Space.ProtoEpoch] when the slots of props were last found.
 	epoch   uint32
 	checked bool
 	// found reports whether every property of props had its recorded attributes at epoch,
@@ -204,7 +204,7 @@ func (r *RealmPart) UnmodifiedRegExpMatcher(o *Object) *regexp.Regexp {
 }
 
 // matchResultShapes are the shapes that a match result array has after
-// ExecutionContext.DefineMatchResultProperties or ExecutionContext.DefineMatchResultPropertiesWithIndices.
+// [RealmPart.DefineMatchResultProperties] or [RealmPart.DefineMatchResultPropertiesWithIndices].
 type matchResultShapes struct {
 	// array is the shape of a new array that the others derive from.
 	array *Shape
@@ -230,7 +230,7 @@ func (r *RealmPart) matchResultShapesFor(array *Shape) *matchResultShapes {
 
 // DefineMatchResultProperties creates the data properties index, input and groups of a match
 // result on a, in that order, as CreateDataPropertyOrThrow does. a must be an array from
-// ExecutionContext.NewArrayWithRoom that has no named properties.
+// [RealmPart.NewArrayWithRoom] that has no named properties.
 func (r *RealmPart) DefineMatchResultProperties(a *Object, index, input, groups Value) {
 	if a.shape != r.Shapes.Array || len(a.slots) != 0 {
 		panic("engine: DefineMatchResultProperties on an array that is not new")
@@ -239,7 +239,7 @@ func (r *RealmPart) DefineMatchResultProperties(a *Object, index, input, groups 
 	a.slots = append(a.slots, index, input, groups)
 }
 
-// DefineMatchResultPropertiesWithIndices is like ExecutionContext.DefineMatchResultProperties and creates
+// DefineMatchResultPropertiesWithIndices is like [RealmPart.DefineMatchResultProperties] and creates
 // the data property indices after groups.
 func (r *RealmPart) DefineMatchResultPropertiesWithIndices(a *Object, index, input, groups, indices Value) {
 	if a.shape != r.Shapes.Array || len(a.slots) != 0 {

@@ -102,8 +102,8 @@ func sameStrings(a, b *Object) bool {
 }
 
 // JoinsPair reports whether the contents of two strings form a surrogate pair where they meet,
-// so that their bytes do not simply concatenate. x and y are the str of the strings, and xr
-// and yr report whether they are reversed.
+// so that their bytes do not simply concatenate. x and y are the [Value.RawString] of the strings,
+// and xr and yr report whether they are reversed.
 func JoinsPair(x wtf8.String, xr bool, y wtf8.String, yr bool) bool {
 	if len(x) < 3 || len(y) < 3 {
 		return false

@@ -15,7 +15,7 @@ type Native struct {
 	FastIndex uint8
 }
 
-// HasFast reports whether fast returns something.
+// HasFast reports whether there is something that callers use instead of calling the function.
 func (n Native) HasFast() bool {
 	// Widening the index as nativeFastOf does lets the compiler share its register.
 	return uint(n.FastIndex) != 0
@@ -23,10 +23,10 @@ func (n Native) HasFast() bool {
 
 // NativeInfo is the description of a native function.
 type NativeInfo struct {
-	// Native is the Native function.
+	// Native is the native function.
 	Native Native
 
-	// Name and length are the initial values of the properties Name and length.
+	// Name and Length are the initial values of the properties name and length.
 	Name   wtf8.String
 	Length int32
 
@@ -37,7 +37,7 @@ type NativeInfo struct {
 	// Frameless says that calls of the function show no frame, as agent.SetFrameless describes.
 	Frameless bool
 
-	// Prototype is the intrinsic of realm that the property Prototype of the function holds,
+	// Prototype is the intrinsic of Realm that the property prototype of the function holds,
 	// when FixedPrototype is set. The property can then be neither changed nor deleted.
 	Prototype      Intrinsic
 	FixedPrototype bool

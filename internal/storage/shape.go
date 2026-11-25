@@ -46,14 +46,14 @@ const (
 // A shared shape never changes, so an inline cache that remembers one stays valid for as long
 // as the prototypes it looked through keep their properties.
 type Shape struct {
-	// Space and realm identify where the objects with this shape were created.
+	// Space and Realm identify where the objects with this shape were created.
 	Space *Space
 	Realm *RealmPart
 
 	Proto  *Object
 	Parent *Shape
 
-	// Key is the property this shape adds to parent, stored in slot count-1.
+	// Key is the property this shape adds to Parent, stored in slot Count-1.
 	// It is an interned string or a symbol.
 	Key    *Object
 	Flags  uint8
@@ -95,9 +95,9 @@ type Shape struct {
 	// ReadID identifies this shape in its agent's megamorphic read caches. Zero is unassigned.
 	ReadID uint32
 
-	// Order lists the keys of a private shape in insertion Order, at the indices of their
-	// slots. A deleted key leaves nil behind until the shape is compacted, so count is the number
-	// of keys and len(order) the number of slots.
+	// Order lists the keys of a private shape in insertion order, at the indices of their
+	// slots. A deleted key leaves nil behind until the shape is compacted, so Count is the number
+	// of keys and len(Order) the number of slots.
 	Order []*Object
 
 	// deletion is the result of the last deletion of a property from a shared shape, or nil.
@@ -120,7 +120,7 @@ type ShapeEntry struct {
 // The zero value is an empty table.
 type transitionTable struct {
 	// only is the shape of the sole transition while there is only one, and nil otherwise.
-	// Its key and flags are the key of the transition.
+	// Its Key and Flags are the key of the transition.
 	only *Shape
 
 	// rest holds the transitions once there is more than one.
@@ -199,7 +199,7 @@ func (s *Shape) Lookup(key *Object) (Prop, bool) {
 	return Prop{}, false
 }
 
-// Keys returns the property Keys in insertion order. The result must not be modified.
+// Keys returns the property keys in insertion order. The result must not be modified.
 func (s *Shape) Keys() []*Object {
 	if s.Private {
 		if len(s.Order) != int(s.Count) {
@@ -249,7 +249,7 @@ func (s *Shape) StringKeys() []PropKey {
 	return slices.DeleteFunc(keys, PropKey.IsSymbol)
 }
 
-// Values of shape.enumerable.
+// Values of Shape.enumerable.
 const (
 	enumerableUnknown uint8 = iota
 	enumerableNone
@@ -613,7 +613,7 @@ type builtinLayout struct {
 	// building is set between [Space.StartBuiltins] and [Space.FinishBuiltins].
 	building bool
 
-	// Objects are the Objects that got a private shape while building.
+	// Objects are the objects that got a private shape while building.
 	Objects []*Object
 }
 
