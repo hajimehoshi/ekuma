@@ -38,8 +38,9 @@ func (f *interruptFlag) yield() {
 	runtime.Gosched()
 }
 
-// PollYield yields at each call of agent.Poll, as its callers call it only between runs of many
-// steps. The goroutines that request an interruption may need more than one yield to run.
+// PollYield yields at each call of agent.Poll and [Poller.Poll], as their callers call them only
+// between runs of many steps. The goroutines that request an interruption may need more than one
+// yield to run.
 func (p *Poller) PollYield() {
 	p.InterruptFlag.yield()
 }

@@ -19,7 +19,8 @@ type closureObjectWith[U, C any] struct {
 	upvals U
 }
 
-// NewClosure returns a fresh function object and the storage for its copied upvalues.
+// NewClosure returns an object with the function state of a new closure of p, whose upvalues are
+// nil, and the storage for its copied upvalues. The object is zero otherwise.
 func NewClosure(p *FuncProto) (*Object, []Upvalue) {
 	if len(p.Upvals) == 0 && !p.IsMethod && !p.IsClassConstructor {
 		if p.plainFunction == nil {

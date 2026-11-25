@@ -94,7 +94,8 @@ func comparedBytes(v Value) int {
 }
 
 // appendPolled returns append(dst, src...), checking for an interruption while it copies many
-// elements. When the call stops, dst is unchanged except past its length.
+// elements. src must not overlap the storage of dst past its length. When the call stops, dst is
+// unchanged except there.
 func appendPolled[T any](p *Poller, dst, src []T) []T {
 	if len(dst)+len(src) <= PollChunk {
 		return append(dst, src...)
@@ -111,6 +112,8 @@ func appendPolled[T any](p *Poller, dst, src []T) []T {
 	return dst
 }
 
+// CopyPolled is copy for slices that do not overlap, checking for an interruption while it
+// copies many elements.
 func CopyPolled[T any](p *Poller, dst, src []T) int {
 	n := min(len(dst), len(src))
 	for i := 0; i < n; i += PollChunk {

@@ -159,7 +159,7 @@ const (
 	intrinsicCount
 )
 
-// Intrinsic returns the intrinsic object id of the execution realm, or nil before it is set.
+// Intrinsic returns the intrinsic object id of r, or nil before it is set.
 func (r *RealmPart) Intrinsic(id Intrinsic) *Object {
 	return r.Intrinsics[id]
 }

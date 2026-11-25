@@ -484,7 +484,7 @@ func (sp *Space) NewShape(proto *Object, r *RealmPart, family shapeFamily) *Shap
 	}
 }
 
-// ShapeFor returns the ordinary root shape in the current realm for prototype proto, which may be nil.
+// ShapeFor returns the ordinary root shape in r for prototype proto, which may be nil.
 func (r *RealmPart) ShapeFor(proto *Object) *Shape {
 	return r.ShapeForRealm(proto, r)
 }

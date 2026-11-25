@@ -214,7 +214,7 @@ type matchResultShapes struct {
 }
 
 // matchResultShapesFor returns the match result shapes that derive from the shape array of a
-// new array of the current realm.
+// new array of r.
 func (r *RealmPart) matchResultShapesFor(array *Shape) *matchResultShapes {
 	m := &r.matchResultShapes
 	if m.array != array {

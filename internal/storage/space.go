@@ -9,10 +9,10 @@ import (
 )
 
 // Space is the state of an agent that its objects and values need: the property keys and the
-// strings, the symbols, the shapes that belong to no realm, the epochs and IDs that the inline
+// strings, the symbols, the shapes that belong to no realm, the epoch and the IDs that the inline
 // caches rely on, and the objects that WeakRefs keep alive. The objects of an agent lead to its
 // space through their shapes. It also holds what operations on them need besides: the state of
-// polling, the clock and the RegExp matcher.
+// polling, whether there is a host clock, and the RegExp matcher.
 //
 // It must not refer to the agent, a realm, a frame or an execution context, except that a shape
 // records its realm. hostDefined belongs to the host and is opaque to the engine.

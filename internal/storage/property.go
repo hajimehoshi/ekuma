@@ -333,7 +333,7 @@ func takenShape(dst, from *Object) *Shape {
 }
 
 // InheritsHasInstance reports whether the @@hasInstance property of c is the one that it
-// inherits from %Function.prototype% of the current realm. A false result does not mean the
+// inherits from %Function.prototype% of r. A false result does not mean the
 // opposite.
 func (r *RealmPart) InheritsHasInstance(c *Object) bool {
 	// The property of %Function.prototype% is neither writable nor configurable, so only the

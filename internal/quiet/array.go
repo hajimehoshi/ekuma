@@ -93,8 +93,8 @@ func (q Context) SpliceElements(o *storage.Object, length, start, del int64, ite
 	return q.Realm.SpliceElements(o, length, start, del, items)
 }
 
-// AppendElementsOf adds the elements of the array src at the end of the array dst,
-// which must have the length n, exactly n elements and no other property.
+// AppendElementsOf adds the elements of the array src at the end of the array dst, which must have
+// the length n, n elements, any of which can be holes, and no other property.
 func (q Context) AppendElementsOf(dst *storage.Object, n int64, src *storage.Object) bool {
 	return q.Realm.AppendElementsOf(dst, n, src)
 }

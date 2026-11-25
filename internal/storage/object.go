@@ -163,8 +163,8 @@ func (o *PropertyObject) Init() *Object {
 }
 
 // ObjectMeta is the side data that few objects need: what indexing a non-ASCII string needs,
-// the entries in weak collections of an object or a symbol, and the empty shapes of the
-// objects whose prototype is this object.
+// the entries in weak collections of an object or a symbol, the empty shapes of the objects
+// whose prototype is this object, and the room that removing the first elements of an array left.
 type ObjectMeta struct {
 	// Length and cursor are the cached UTF-16 view of a string that is not ASCII:
 	// its length, or 0 before it is known, and the position of the most recent access.

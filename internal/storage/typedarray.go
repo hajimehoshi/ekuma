@@ -161,7 +161,8 @@ func (t *TypedArray) StoreElement(i int, x uint64) {
 	}
 }
 
-// ElementBytes returns the bytes of the element i of t, or reports false when i is not a valid integer index.
+// ElementBytes returns the bytes of the element i of t. It reports false when i is not a valid
+// integer index or the buffer is shared.
 func (t *TypedArray) ElementBytes(i uint32) ([]byte, bool) {
 	size := t.Type.Size()
 	data := t.Data.Data
