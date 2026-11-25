@@ -848,13 +848,14 @@ func regExpReplace(cx *engine.ExecutionContext, rx *storage.Object, s storage.Va
 			matched = cx.ToString(cx.Get(res, storage.IndexKey(0)))
 			p := cx.ToIntegerOrInfinity(cx.Get(res, storage.NamedKey(cx.Key(storage.KeyIndex))))
 			position = int(math.Max(math.Min(p, float64(length)), 0))
-			captures = make([]storage.Value, n)
-			for i := range captures {
-				c := getAt(cx, res, int64(i)+1)
+			// The length is not trusted to allocate: the values are read one by one, which may throw.
+			captures = make([]storage.Value, 0, min(n, 1024))
+			for i := range n {
+				c := getAt(cx, res, i+1)
 				if !c.IsUndefined() {
 					c = cx.ToStringValue(c)
 				}
-				captures[i] = c
+				captures = append(captures, c)
 			}
 			named = cx.Get(res, storage.NamedKey(cx.Key(storage.KeyGroups)))
 		}
