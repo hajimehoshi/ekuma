@@ -140,29 +140,33 @@ func (rtf *relativeTimeFormatData) partitionArgs(cx *engine.ExecutionContext, ar
 func initRelativeTimeFormat(cx *engine.ExecutionContext, ns *engine.Object) {
 	ctor, proto := constructor(cx, ns, "RelativeTimeFormat", 0, engine.IntrinsicIntlRelativeTimeFormatPrototype, newRelativeTimeFormat)
 
-	method(cx, ctor, "supportedLocalesOf", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		return supportedLocalesOf(cx, args)
-	})
-	method(cx, proto, "format", 2, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		rtf := thisRelativeTimeFormat(cx, this, "format")
-		var b strings.Builder
-		for _, p := range rtf.partitionArgs(cx, args) {
-			b.WriteString(p.value)
-		}
-		return cx.NewString(wtf8.String(b.String()))
-	})
-	method(cx, proto, "formatToParts", 2, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		rtf := thisRelativeTimeFormat(cx, this, "formatToParts")
-		parts := rtf.partitionArgs(cx, args)
-		return unitPartsArray(cx, len(parts), func(i int) (string, string, string) {
-			return parts[i].typ, parts[i].value, parts[i].unit
-		})
-	})
-	method(cx, proto, "resolvedOptions", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		rtf := thisRelativeTimeFormat(cx, this, "resolvedOptions")
-		return resolvedOptions(cx, "locale", rtf.locale, "style", rtf.style, "numeric", rtf.numeric, "numberingSystem", rtf.numberingSystem)
-	})
+	method(cx, ctor, "supportedLocalesOf", 1, supportedLocalesOf)
+	method(cx, proto, "format", 2, relativeTimeFormatFormat)
+	method(cx, proto, "formatToParts", 2, relativeTimeFormatFormatToParts)
+	method(cx, proto, "resolvedOptions", 0, relativeTimeFormatResolvedOptions)
 	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Intl.RelativeTimeFormat"), engine.FlagConfigurable)
+}
+
+func relativeTimeFormatFormat(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	rtf := thisRelativeTimeFormat(cx, this, "format")
+	var b strings.Builder
+	for _, p := range rtf.partitionArgs(cx, args) {
+		b.WriteString(p.value)
+	}
+	return cx.NewString(wtf8.String(b.String()))
+}
+
+func relativeTimeFormatFormatToParts(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	rtf := thisRelativeTimeFormat(cx, this, "formatToParts")
+	parts := rtf.partitionArgs(cx, args)
+	return unitPartsArray(cx, len(parts), func(i int) (string, string, string) {
+		return parts[i].typ, parts[i].value, parts[i].unit
+	})
+}
+
+func relativeTimeFormatResolvedOptions(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	rtf := thisRelativeTimeFormat(cx, this, "resolvedOptions")
+	return resolvedOptions(cx, "locale", rtf.locale, "style", rtf.style, "numeric", rtf.numeric, "numberingSystem", rtf.numberingSystem)
 }
 
 // unitPartsArray returns the parts as an array of objects with the properties "type" and

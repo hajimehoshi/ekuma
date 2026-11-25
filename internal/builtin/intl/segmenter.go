@@ -178,52 +178,60 @@ func initSegmenter(cx *engine.ExecutionContext, ns *engine.Object) {
 	iterProto := cx.NewObject(cx.Intrinsic(engine.IntrinsicIteratorPrototype))
 	cx.SetIntrinsic(engine.IntrinsicIntlSegmentIteratorPrototype, iterProto)
 
-	method(cx, ctor, "supportedLocalesOf", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		return supportedLocalesOf(cx, args)
-	})
-	method(cx, proto, "resolvedOptions", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		sd := thisSegmenter(cx, this, "resolvedOptions")
-		out := cx.NewObjectFromProperties(
-			[]engine.PropKey{engine.NamedKey(cx.Intern("locale")), engine.NamedKey(cx.Intern("granularity"))},
-			[]engine.Value{cx.NewString(wtf8.String(sd.locale)), cx.NewString(wtf8.String(sd.granularity))},
-		)
-		return engine.ObjectValue(out)
-	})
-	method(cx, proto, "segment", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		sd := thisSegmenter(cx, this, "segment")
-		s := cx.ToString(arg(args, 0))
-		str := cx.NewString(s)
-		return engine.ObjectValue(cx.NewIntlObject(cx.Intrinsic(engine.IntrinsicIntlSegmentsPrototype), newSegmentsData(cx, sd, str, s)))
-	})
+	method(cx, ctor, "supportedLocalesOf", 1, supportedLocalesOf)
+	method(cx, proto, "resolvedOptions", 0, segmenterResolvedOptions)
+	method(cx, proto, "segment", 1, segmenterSegment)
 	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Intl.Segmenter"), engine.FlagConfigurable)
 
-	method(cx, segmentsProto, "containing", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		d := thisSegments(cx, this, "containing")
-		n := cx.ToIntegerOrInfinity(arg(args, 0))
-		if n < 0 || n >= float64(d.length()) {
-			return engine.Undefined
-		}
-		return d.segmentData(cx, d.segmentAt(cx, int(n)))
-	})
-	cx.Define(segmentsProto, cx.WellKnownSymbol(engine.SymbolIterator), engine.ObjectValue(cx.NewNative("[Symbol.iterator]", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		d := thisSegments(cx, this, "[Symbol.iterator]")
-		return engine.ObjectValue(cx.NewIntlObject(cx.Intrinsic(engine.IntrinsicIntlSegmentIteratorPrototype), &segmentIteratorData{
-			segments: d,
-		}))
-	})), engine.FlagsHidden)
+	method(cx, segmentsProto, "containing", 1, segmentsContaining)
+	cx.Define(segmentsProto, cx.WellKnownSymbol(engine.SymbolIterator), engine.ObjectValue(cx.NewNative("[Symbol.iterator]", 0, segmentsIterator)), engine.FlagsHidden)
 
-	method(cx, iterProto, "next", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		it, ok := engine.IntlData(this).(*segmentIteratorData)
-		if !ok {
-			cx.ThrowTypeError("%SegmentIteratorPrototype%.next called on an object that is not a Segment Iterator")
-		}
-		d := it.segments
-		if it.next+1 >= len(d.boundaries(cx)) {
-			return cx.CreateIterResultObject(engine.Undefined, true)
-		}
-		v := d.segmentData(cx, it.next)
-		it.next++
-		return cx.CreateIterResultObject(v, false)
-	})
+	method(cx, iterProto, "next", 0, segmentIteratorNext)
 	cx.Define(iterProto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Segmenter String Iterator"), engine.FlagConfigurable)
+}
+
+func segmenterResolvedOptions(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	sd := thisSegmenter(cx, this, "resolvedOptions")
+	out := cx.NewObjectFromProperties(
+		[]engine.PropKey{engine.NamedKey(cx.Intern("locale")), engine.NamedKey(cx.Intern("granularity"))},
+		[]engine.Value{cx.NewString(wtf8.String(sd.locale)), cx.NewString(wtf8.String(sd.granularity))},
+	)
+	return engine.ObjectValue(out)
+}
+
+func segmenterSegment(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	sd := thisSegmenter(cx, this, "segment")
+	s := cx.ToString(arg(args, 0))
+	str := cx.NewString(s)
+	return engine.ObjectValue(cx.NewIntlObject(cx.Intrinsic(engine.IntrinsicIntlSegmentsPrototype), newSegmentsData(cx, sd, str, s)))
+}
+
+func segmentsContaining(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	d := thisSegments(cx, this, "containing")
+	n := cx.ToIntegerOrInfinity(arg(args, 0))
+	if n < 0 || n >= float64(d.length()) {
+		return engine.Undefined
+	}
+	return d.segmentData(cx, d.segmentAt(cx, int(n)))
+}
+
+func segmentsIterator(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	d := thisSegments(cx, this, "[Symbol.iterator]")
+	return engine.ObjectValue(cx.NewIntlObject(cx.Intrinsic(engine.IntrinsicIntlSegmentIteratorPrototype), &segmentIteratorData{
+		segments: d,
+	}))
+}
+
+func segmentIteratorNext(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	it, ok := engine.IntlData(this).(*segmentIteratorData)
+	if !ok {
+		cx.ThrowTypeError("%SegmentIteratorPrototype%.next called on an object that is not a Segment Iterator")
+	}
+	d := it.segments
+	if it.next+1 >= len(d.boundaries(cx)) {
+		return cx.CreateIterResultObject(engine.Undefined, true)
+	}
+	v := d.segmentData(cx, it.next)
+	it.next++
+	return cx.CreateIterResultObject(v, false)
 }

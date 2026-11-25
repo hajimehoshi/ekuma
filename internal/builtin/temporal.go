@@ -91,6 +91,8 @@ func check(err error) {
 }
 
 // temporalNative returns f as a function that throws the errors that must and check report.
+//
+//go:noinline
 func temporalNative(f engine.NativeFunc) engine.NativeFunc {
 	return func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		defer func() {
@@ -103,16 +105,6 @@ func temporalNative(f engine.NativeFunc) engine.NativeFunc {
 		}()
 		return f(cx, this, args)
 	}
-}
-
-// tmethod is method for the functions of Temporal.
-func tmethod(cx *engine.ExecutionContext, o *engine.Object, name wtf8.String, length int, f engine.NativeFunc) *engine.Object {
-	return method(cx, o, name, length, temporalNative(f))
-}
-
-// tgetter is getter for the functions of Temporal.
-func tgetter(cx *engine.ExecutionContext, o *engine.Object, key *engine.Object, name wtf8.String, f engine.NativeFunc) {
-	getter(cx, o, key, name, temporalNative(f))
 }
 
 // get returns the property name of o.
@@ -605,7 +597,7 @@ func newTarget(cx *engine.ExecutionContext, name string) *engine.Object {
 func temporalConstructor(cx *engine.ExecutionContext, ns *engine.Object, name wtf8.String, length int, protoID engine.Intrinsic, f engine.NativeFunc) (*engine.Object, *engine.Object) {
 	proto := cx.NewOrdinaryObject()
 	cx.SetIntrinsic(protoID, proto)
-	c := cx.NewNativeConstructor(name, length, temporalNative(f))
+	c := cx.NewNativeConstructor(name, length, f)
 	cx.DefineConstructorPrototype(c, protoID)
 	cx.Define(proto, cx.Key(engine.KeyConstructor), engine.ObjectValue(c), engine.FlagsHidden)
 	cx.Define(ns, cx.Intern(name), engine.ObjectValue(c), engine.FlagsHidden)
@@ -613,9 +605,11 @@ func temporalConstructor(cx *engine.ExecutionContext, ns *engine.Object, name wt
 	return c, proto
 }
 
-// valueOfThrows defines the valueOf method of the prototype of the type name, which throws.
-func valueOfThrows(cx *engine.ExecutionContext, proto *engine.Object, name string) {
-	tmethod(cx, proto, "valueOf", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+// temporalValueOfNative returns the valueOf method of the prototype of the type name, which throws.
+//
+//go:noinline
+func temporalValueOfNative(name string) engine.NativeFunc {
+	return temporalNative(func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		cx.ThrowTypeError("use Temporal." + name + ".compare or equals to compare Temporal." + name + " values, and toString to convert them")
 		return engine.Undefined
 	})
@@ -671,13 +665,17 @@ func initTemporal(cx *engine.ExecutionContext) {
 	cx.SetIntrinsic(engine.IntrinsicTemporal, ns)
 	cx.Define(cx.GlobalObject().Object(), cx.Intern("Temporal"), engine.ObjectValue(ns), engine.FlagsHidden)
 
-	tmethod(cx, cx.Intrinsic(engine.IntrinsicDatePrototype), "toTemporalInstant", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		tv := thisDate(cx, this, "toTemporalInstant")
-		if math.IsNaN(tv) {
-			cx.ThrowRangeError("invalid time value")
-		}
-		return newInstant(cx, temporal.Mul64(int64(tv), 1_000_000), nil)
-	})
+	method(cx, cx.Intrinsic(engine.IntrinsicDatePrototype), "toTemporalInstant", 0, nativeDateToTemporalInstant)
+}
+
+var nativeDateToTemporalInstant = temporalNative(dateToTemporalInstant)
+
+func dateToTemporalInstant(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	tv := thisDate(cx, this, "toTemporalInstant")
+	if math.IsNaN(tv) {
+		cx.ThrowRangeError("invalid time value")
+	}
+	return newInstant(cx, temporal.Mul64(int64(tv), 1_000_000), nil)
 }
 
 // TemporalPlainDateOf returns the ISO date and the calendar of v, and reports whether v is a

@@ -352,163 +352,180 @@ func promiseThrower(cx *engine.ExecutionContext, this engine.Value, args []engin
 
 func initPromise(cx *engine.ExecutionContext) {
 	proto := cx.Intrinsic(engine.IntrinsicPromisePrototype)
-	ctor := constructor(cx, "Promise", 1, engine.IntrinsicPromisePrototype, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		nt := cx.GetNewTarget()
-		if nt == nil {
-			cx.ThrowTypeError("Promise constructor cannot be invoked without 'new'")
-		}
-		executor := arg(args, 0)
-		if !executor.IsCallable() {
-			cx.ThrowTypeError("Promise resolver " + cx.DisplayString(executor) + " is not a function")
-		}
-		p := cx.NewPromiseObject(cx.GetPrototypeFromConstructor(nt, engine.IntrinsicPromisePrototype))
-		rf := cx.CreateResolvingFunctions(p)
-		cx.IfAbruptRejectPromise(rf, func() {
-			cx.Call(executor.Object(), engine.Undefined, cx.CapabilityResolve(rf), cx.CapabilityReject(rf))
-		})
-		return engine.ObjectValue(p)
-	})
+	ctor := constructor(cx, "Promise", 1, engine.IntrinsicPromisePrototype, promiseConstructor)
 	cx.SetIntrinsic(engine.IntrinsicPromise, ctor)
 	speciesGetter(cx, ctor)
 
-	method(cx, ctor, "all", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		e := newPromiseElements()
-		return promiseCombinator(cx, this, arg(args, 0), func(pc *engine.PromiseCapability, next engine.Value) {
-			el := &promiseElement{
-				index:      e.reserve(),
-				elements:   &e,
-				capability: pc,
-			}
-			onFulfilled := cx.NewNativeWithState("", 1, promiseAllResolveElement, el)
-			invoke(cx, next, cx.Key(engine.KeyThen), engine.ObjectValue(onFulfilled), cx.CapabilityReject(pc))
-		}, func(pc *engine.PromiseCapability) {
-			if e.complete() {
-				cx.CallCapabilityResolve(pc, engine.ObjectValue(cx.NewArray(e.take())))
-			}
-		})
-	})
+	method(cx, ctor, "all", 1, promiseAll)
+	method(cx, ctor, "allSettled", 1, promiseAllSettled)
+	method(cx, ctor, "allKeyed", 1, promiseAllKeyed)
+	method(cx, ctor, "allSettledKeyed", 1, promiseAllSettledKeyed)
+	method(cx, ctor, "any", 1, promiseAny)
+	method(cx, ctor, "race", 1, promiseRace)
+	method(cx, ctor, "reject", 1, promiseReject)
+	method(cx, ctor, "resolve", 1, promiseResolve)
+	method(cx, ctor, "try", 1, promiseTry)
+	method(cx, ctor, "withResolvers", 0, promiseWithResolvers)
 
-	method(cx, ctor, "allSettled", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		e := newPromiseElements()
-		return promiseCombinator(cx, this, arg(args, 0), func(pc *engine.PromiseCapability, next engine.Value) {
-			el := &promiseElement{
-				index:      e.reserve(),
-				elements:   &e,
-				capability: pc,
-			}
-			onFulfilled := cx.NewNativeWithState("", 1, promiseAllSettledResolveElement, el)
-			onRejected := cx.NewNativeWithState("", 1, promiseAllSettledRejectElement, el)
-			invoke(cx, next, cx.Key(engine.KeyThen), engine.ObjectValue(onFulfilled), engine.ObjectValue(onRejected))
-		}, func(pc *engine.PromiseCapability) {
-			if e.complete() {
-				cx.CallCapabilityResolve(pc, engine.ObjectValue(cx.NewArray(e.take())))
-			}
-		})
-	})
-
-	method(cx, ctor, "allKeyed", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		return promiseKeyedCombinator(cx, this, arg(args, 0), false, "Promise.allKeyed")
-	})
-
-	method(cx, ctor, "allSettledKeyed", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		return promiseKeyedCombinator(cx, this, arg(args, 0), true, "Promise.allSettledKeyed")
-	})
-
-	method(cx, ctor, "any", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		e := newPromiseElements()
-		return promiseCombinator(cx, this, arg(args, 0), func(pc *engine.PromiseCapability, next engine.Value) {
-			el := &promiseElement{
-				index:      e.reserve(),
-				elements:   &e,
-				capability: pc,
-			}
-			onRejected := cx.NewNativeWithState("", 1, promiseAnyRejectElement, el)
-			invoke(cx, next, cx.Key(engine.KeyThen), cx.CapabilityResolve(pc), engine.ObjectValue(onRejected))
-		}, func(pc *engine.PromiseCapability) {
-			if e.complete() {
-				cx.Throw(e.aggregateError(cx))
-			}
-		})
-	})
-
-	method(cx, ctor, "race", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		return promiseCombinator(cx, this, arg(args, 0), func(pc *engine.PromiseCapability, next engine.Value) {
-			invoke(cx, next, cx.Key(engine.KeyThen), cx.CapabilityResolve(pc), cx.CapabilityReject(pc))
-		}, func(pc *engine.PromiseCapability) {})
-	})
-
-	method(cx, ctor, "reject", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		pc := cx.NewPromiseCapability(this)
-		cx.RejectCapability(pc, arg(args, 0))
-		return pc.Promise()
-	})
-
-	method(cx, ctor, "resolve", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		if !this.IsObject() {
-			cx.ThrowTypeError("Promise.resolve called on non-object")
-		}
-		return cx.PromiseResolve(this.Object(), arg(args, 0))
-	})
-
-	method(cx, ctor, "try", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		if !this.IsObject() {
-			cx.ThrowTypeError("Promise.try called on non-object")
-		}
-		var status engine.Value
-		e, ok := cx.Completion(func() {
-			status = cx.CallValue(arg(args, 0), engine.Undefined, args[min(1, len(args)):]...)
-		})
-		if ok {
-			return cx.PromiseResolve(this.Object(), status)
-		}
-		pc := cx.NewPromiseCapability(this)
-		cx.RejectCapability(pc, e)
-		return pc.Promise()
-	})
-
-	method(cx, ctor, "withResolvers", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		pc := cx.NewPromiseCapability(this)
-		o := cx.NewObjectFromProperties(
-			[]engine.PropKey{
-				engine.NamedKey(cx.Intern("promise")),
-				engine.NamedKey(cx.Intern("resolve")),
-				engine.NamedKey(cx.Intern("reject")),
-			},
-			[]engine.Value{pc.Promise(), cx.CapabilityResolve(pc), cx.CapabilityReject(pc)},
-		)
-		return engine.ObjectValue(o)
-	})
-
-	method(cx, proto, "catch", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		return invoke(cx, this, cx.Key(engine.KeyThen), engine.Undefined, arg(args, 0))
-	})
-
-	method(cx, proto, "finally", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		if !this.IsObject() {
-			cx.ThrowTypeError("Promise.prototype.finally called on non-object")
-		}
-		c := speciesConstructor(cx, this.Object(), cx.Intrinsic(engine.IntrinsicPromise))
-		onFinally := arg(args, 0)
-		thenFinally, catchFinally := onFinally, onFinally
-		if onFinally.IsCallable() {
-			f := &promiseFinally{
-				onFinally:   onFinally.Object(),
-				constructor: c,
-			}
-			thenFinally = engine.ObjectValue(cx.NewNativeWithState("", 1, promiseThenFinally, f))
-			catchFinally = engine.ObjectValue(cx.NewNativeWithState("", 1, promiseCatchFinally, f))
-		}
-		return invoke(cx, this, cx.Key(engine.KeyThen), thenFinally, catchFinally)
-	})
-
-	method(cx, proto, "then", 2, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		if !engine.IsPromise(this) {
-			cx.ThrowTypeError("Promise.prototype.then called on incompatible receiver " + cx.DisplayString(this))
-		}
-		c := speciesConstructor(cx, this.Object(), cx.Intrinsic(engine.IntrinsicPromise))
-		pc := cx.NewPromiseCapability(engine.ObjectValue(c))
-		return cx.PerformPromiseThen(this, arg(args, 0), arg(args, 1), pc)
-	})
+	method(cx, proto, "catch", 1, promiseCatch)
+	method(cx, proto, "finally", 1, promiseFinallyMethod)
+	method(cx, proto, "then", 2, promiseThen)
 
 	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Promise"), engine.FlagConfigurable)
+}
+
+func promiseConstructor(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	nt := cx.GetNewTarget()
+	if nt == nil {
+		cx.ThrowTypeError("Promise constructor cannot be invoked without 'new'")
+	}
+	executor := arg(args, 0)
+	if !executor.IsCallable() {
+		cx.ThrowTypeError("Promise resolver " + cx.DisplayString(executor) + " is not a function")
+	}
+	p := cx.NewPromiseObject(cx.GetPrototypeFromConstructor(nt, engine.IntrinsicPromisePrototype))
+	rf := cx.CreateResolvingFunctions(p)
+	cx.IfAbruptRejectPromise(rf, func() {
+		cx.Call(executor.Object(), engine.Undefined, cx.CapabilityResolve(rf), cx.CapabilityReject(rf))
+	})
+	return engine.ObjectValue(p)
+}
+
+func promiseAll(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	e := newPromiseElements()
+	return promiseCombinator(cx, this, arg(args, 0), func(pc *engine.PromiseCapability, next engine.Value) {
+		el := &promiseElement{
+			index:      e.reserve(),
+			elements:   &e,
+			capability: pc,
+		}
+		onFulfilled := cx.NewNativeWithState("", 1, promiseAllResolveElement, el)
+		invoke(cx, next, cx.Key(engine.KeyThen), engine.ObjectValue(onFulfilled), cx.CapabilityReject(pc))
+	}, func(pc *engine.PromiseCapability) {
+		if e.complete() {
+			cx.CallCapabilityResolve(pc, engine.ObjectValue(cx.NewArray(e.take())))
+		}
+	})
+}
+
+func promiseAllSettled(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	e := newPromiseElements()
+	return promiseCombinator(cx, this, arg(args, 0), func(pc *engine.PromiseCapability, next engine.Value) {
+		el := &promiseElement{
+			index:      e.reserve(),
+			elements:   &e,
+			capability: pc,
+		}
+		onFulfilled := cx.NewNativeWithState("", 1, promiseAllSettledResolveElement, el)
+		onRejected := cx.NewNativeWithState("", 1, promiseAllSettledRejectElement, el)
+		invoke(cx, next, cx.Key(engine.KeyThen), engine.ObjectValue(onFulfilled), engine.ObjectValue(onRejected))
+	}, func(pc *engine.PromiseCapability) {
+		if e.complete() {
+			cx.CallCapabilityResolve(pc, engine.ObjectValue(cx.NewArray(e.take())))
+		}
+	})
+}
+
+func promiseAllKeyed(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return promiseKeyedCombinator(cx, this, arg(args, 0), false, "Promise.allKeyed")
+}
+
+func promiseAllSettledKeyed(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return promiseKeyedCombinator(cx, this, arg(args, 0), true, "Promise.allSettledKeyed")
+}
+
+func promiseAny(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	e := newPromiseElements()
+	return promiseCombinator(cx, this, arg(args, 0), func(pc *engine.PromiseCapability, next engine.Value) {
+		el := &promiseElement{
+			index:      e.reserve(),
+			elements:   &e,
+			capability: pc,
+		}
+		onRejected := cx.NewNativeWithState("", 1, promiseAnyRejectElement, el)
+		invoke(cx, next, cx.Key(engine.KeyThen), cx.CapabilityResolve(pc), engine.ObjectValue(onRejected))
+	}, func(pc *engine.PromiseCapability) {
+		if e.complete() {
+			cx.Throw(e.aggregateError(cx))
+		}
+	})
+}
+
+func promiseRace(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return promiseCombinator(cx, this, arg(args, 0), func(pc *engine.PromiseCapability, next engine.Value) {
+		invoke(cx, next, cx.Key(engine.KeyThen), cx.CapabilityResolve(pc), cx.CapabilityReject(pc))
+	}, func(pc *engine.PromiseCapability) {})
+}
+
+func promiseReject(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	pc := cx.NewPromiseCapability(this)
+	cx.RejectCapability(pc, arg(args, 0))
+	return pc.Promise()
+}
+
+func promiseResolve(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	if !this.IsObject() {
+		cx.ThrowTypeError("Promise.resolve called on non-object")
+	}
+	return cx.PromiseResolve(this.Object(), arg(args, 0))
+}
+
+func promiseTry(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	if !this.IsObject() {
+		cx.ThrowTypeError("Promise.try called on non-object")
+	}
+	var status engine.Value
+	e, ok := cx.Completion(func() {
+		status = cx.CallValue(arg(args, 0), engine.Undefined, args[min(1, len(args)):]...)
+	})
+	if ok {
+		return cx.PromiseResolve(this.Object(), status)
+	}
+	pc := cx.NewPromiseCapability(this)
+	cx.RejectCapability(pc, e)
+	return pc.Promise()
+}
+
+func promiseWithResolvers(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	pc := cx.NewPromiseCapability(this)
+	o := cx.NewObjectFromProperties(
+		[]engine.PropKey{
+			engine.NamedKey(cx.Intern("promise")),
+			engine.NamedKey(cx.Intern("resolve")),
+			engine.NamedKey(cx.Intern("reject")),
+		},
+		[]engine.Value{pc.Promise(), cx.CapabilityResolve(pc), cx.CapabilityReject(pc)},
+	)
+	return engine.ObjectValue(o)
+}
+
+func promiseCatch(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return invoke(cx, this, cx.Key(engine.KeyThen), engine.Undefined, arg(args, 0))
+}
+
+func promiseFinallyMethod(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	if !this.IsObject() {
+		cx.ThrowTypeError("Promise.prototype.finally called on non-object")
+	}
+	c := speciesConstructor(cx, this.Object(), cx.Intrinsic(engine.IntrinsicPromise))
+	onFinally := arg(args, 0)
+	thenFinally, catchFinally := onFinally, onFinally
+	if onFinally.IsCallable() {
+		f := &promiseFinally{
+			onFinally:   onFinally.Object(),
+			constructor: c,
+		}
+		thenFinally = engine.ObjectValue(cx.NewNativeWithState("", 1, promiseThenFinally, f))
+		catchFinally = engine.ObjectValue(cx.NewNativeWithState("", 1, promiseCatchFinally, f))
+	}
+	return invoke(cx, this, cx.Key(engine.KeyThen), thenFinally, catchFinally)
+}
+
+func promiseThen(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	if !engine.IsPromise(this) {
+		cx.ThrowTypeError("Promise.prototype.then called on incompatible receiver " + cx.DisplayString(this))
+	}
+	c := speciesConstructor(cx, this.Object(), cx.Intrinsic(engine.IntrinsicPromise))
+	pc := cx.NewPromiseCapability(engine.ObjectValue(c))
+	return cx.PerformPromiseThen(this, arg(args, 0), arg(args, 1), pc)
 }

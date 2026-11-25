@@ -72,8 +72,9 @@ func localeMatcher(cx *engine.ExecutionContext, options *engine.Object) bool {
 	return getStringOption(cx, options, "localeMatcher", "best fit", "lookup", "best fit") == "best fit"
 }
 
-// supportedLocalesOf implements FilterLocales for the arguments of supportedLocalesOf.
-func supportedLocalesOf(cx *engine.ExecutionContext, args []engine.Value) engine.Value {
+// supportedLocalesOf is the method supportedLocalesOf of the constructors. It implements
+// FilterLocales.
+func supportedLocalesOf(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	requested := canonicalizeLocaleList(cx, arg(args, 0))
 	bestFit := localeMatcher(cx, optionsObject(cx, arg(args, 1)))
 	return stringArray(cx, locale.SupportedLocales(requested, bestFit))
@@ -428,44 +429,52 @@ func initNumberFormat(cx *engine.ExecutionContext, ns *engine.Object) {
 	ctor, proto := constructor(cx, ns, "NumberFormat", 0, engine.IntrinsicIntlNumberFormatPrototype, newNumberFormat)
 	cx.SetIntrinsic(engine.IntrinsicIntlNumberFormat, ctor)
 
-	method(cx, ctor, "supportedLocalesOf", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		return supportedLocalesOf(cx, args)
-	})
-	method(cx, proto, "resolvedOptions", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		nf := unwrapNumberFormat(cx, this, "resolvedOptions")
-		return nf.resolvedOptions(cx)
-	})
-	getter(cx, proto, "format", func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		nf := unwrapNumberFormat(cx, this, "format")
-		if nf.boundFormat == nil {
-			nf.boundFormat = cx.NewNativeWithState("", 1, numberFormatFunction, nf)
-		}
-		return engine.ObjectValue(nf.boundFormat)
-	})
-	method(cx, proto, "formatRange", 2, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		nf := thisNumberFormat(cx, this, "formatRange")
-		var b strings.Builder
-		for _, p := range nf.formatRange(cx, args) {
-			b.WriteString(p.Value)
-		}
-		checkStringLength(cx, b.Len())
-		return cx.NewString(wtf8.String(b.String()))
-	})
-	method(cx, proto, "formatRangeToParts", 2, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		nf := thisNumberFormat(cx, this, "formatRangeToParts")
-		parts := nf.formatRange(cx, args)
-		return partsArray(cx, len(parts), func(i int) (string, string, string) {
-			return parts[i].Type, parts[i].Value, parts[i].Source
-		})
-	})
-	method(cx, proto, "formatToParts", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		nf := thisNumberFormat(cx, this, "formatToParts")
-		parts := nf.f.Format(toIntlMathematicalValue(cx, arg(args, 0)), cx.Poll)
-		return partsArray(cx, len(parts), func(i int) (string, string, string) {
-			return parts[i].Type, parts[i].Value, ""
-		})
-	})
+	method(cx, ctor, "supportedLocalesOf", 1, supportedLocalesOf)
+	method(cx, proto, "resolvedOptions", 0, numberFormatResolvedOptions)
+	getter(cx, proto, "format", numberFormatFormat)
+	method(cx, proto, "formatRange", 2, numberFormatFormatRange)
+	method(cx, proto, "formatRangeToParts", 2, numberFormatFormatRangeToParts)
+	method(cx, proto, "formatToParts", 1, numberFormatFormatToParts)
 	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Intl.NumberFormat"), engine.FlagConfigurable)
+}
+
+func numberFormatResolvedOptions(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	nf := unwrapNumberFormat(cx, this, "resolvedOptions")
+	return nf.resolvedOptions(cx)
+}
+
+func numberFormatFormat(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	nf := unwrapNumberFormat(cx, this, "format")
+	if nf.boundFormat == nil {
+		nf.boundFormat = cx.NewNativeWithState("", 1, numberFormatFunction, nf)
+	}
+	return engine.ObjectValue(nf.boundFormat)
+}
+
+func numberFormatFormatRange(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	nf := thisNumberFormat(cx, this, "formatRange")
+	var b strings.Builder
+	for _, p := range nf.formatRange(cx, args) {
+		b.WriteString(p.Value)
+	}
+	checkStringLength(cx, b.Len())
+	return cx.NewString(wtf8.String(b.String()))
+}
+
+func numberFormatFormatRangeToParts(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	nf := thisNumberFormat(cx, this, "formatRangeToParts")
+	parts := nf.formatRange(cx, args)
+	return partsArray(cx, len(parts), func(i int) (string, string, string) {
+		return parts[i].Type, parts[i].Value, parts[i].Source
+	})
+}
+
+func numberFormatFormatToParts(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	nf := thisNumberFormat(cx, this, "formatToParts")
+	parts := nf.f.Format(toIntlMathematicalValue(cx, arg(args, 0)), cx.Poll)
+	return partsArray(cx, len(parts), func(i int) (string, string, string) {
+		return parts[i].Type, parts[i].Value, ""
+	})
 }
 
 // resolvedOptions implements Intl.NumberFormat.prototype.resolvedOptions after the check of
@@ -535,18 +544,22 @@ func formatToLocaleString(cx *engine.ExecutionContext, args []engine.Value, x nu
 // initToLocaleString replaces Number.prototype.toLocaleString and
 // BigInt.prototype.toLocaleString with the versions of ECMA-402.
 func initToLocaleString(cx *engine.ExecutionContext) {
-	method(cx, cx.Intrinsic(engine.IntrinsicNumberPrototype), "toLocaleString", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		x, ok := engine.ThisNumberValue(this)
-		if !ok {
-			cx.ThrowTypeError("Number.prototype.toLocaleString requires that 'this' be a Number")
-		}
-		return formatToLocaleString(cx, args, number.FromFloat(x))
-	})
-	method(cx, cx.Intrinsic(engine.IntrinsicBigIntPrototype), "toLocaleString", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		x, ok := engine.ThisBigIntValue(this)
-		if !ok {
-			cx.ThrowTypeError("BigInt.prototype.toLocaleString requires that 'this' be a BigInt")
-		}
-		return formatToLocaleString(cx, args, number.FromInteger(string(cx.BigIntToString(x, 10))))
-	})
+	method(cx, cx.Intrinsic(engine.IntrinsicNumberPrototype), "toLocaleString", 0, numberToLocaleString)
+	method(cx, cx.Intrinsic(engine.IntrinsicBigIntPrototype), "toLocaleString", 0, bigIntToLocaleString)
+}
+
+func numberToLocaleString(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	x, ok := engine.ThisNumberValue(this)
+	if !ok {
+		cx.ThrowTypeError("Number.prototype.toLocaleString requires that 'this' be a Number")
+	}
+	return formatToLocaleString(cx, args, number.FromFloat(x))
+}
+
+func bigIntToLocaleString(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	x, ok := engine.ThisBigIntValue(this)
+	if !ok {
+		cx.ThrowTypeError("BigInt.prototype.toLocaleString requires that 'this' be a BigInt")
+	}
+	return formatToLocaleString(cx, args, number.FromInteger(string(cx.BigIntToString(x, 10))))
 }

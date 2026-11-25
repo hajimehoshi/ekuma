@@ -39,29 +39,36 @@ var (
 // unescape on the global object.
 func initURIFunctions(cx *engine.ExecutionContext) {
 	g := cx.GlobalObject().Object()
-	uriFunc := func(name string, f func(cx *engine.ExecutionContext, s wtf8.String) wtf8.String) {
-		method(cx, g, wtf8.String(name), 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-			return cx.NewString(f(cx, cx.ToString(arg(args, 0))))
-		})
-	}
-	uriFunc("decodeURI", func(cx *engine.ExecutionContext, s wtf8.String) wtf8.String {
-		return uriDecode(cx, s, uriReserved+"#")
-	})
-	uriFunc("decodeURIComponent", func(cx *engine.ExecutionContext, s wtf8.String) wtf8.String {
-		return uriDecode(cx, s, "")
-	})
-	uriFunc("encodeURI", func(cx *engine.ExecutionContext, s wtf8.String) wtf8.String {
-		return uriEncode(cx, s, &uriEncodeSet)
-	})
-	uriFunc("encodeURIComponent", func(cx *engine.ExecutionContext, s wtf8.String) wtf8.String {
-		return uriEncode(cx, s, &uriComponentSet)
-	})
-	uriFunc("escape", func(cx *engine.ExecutionContext, s wtf8.String) wtf8.String {
-		return escape(cx, s)
-	})
-	uriFunc("unescape", func(cx *engine.ExecutionContext, s wtf8.String) wtf8.String {
-		return unescape(cx, s)
-	})
+	method(cx, g, "decodeURI", 1, globalDecodeURI)
+	method(cx, g, "decodeURIComponent", 1, globalDecodeURIComponent)
+	method(cx, g, "encodeURI", 1, globalEncodeURI)
+	method(cx, g, "encodeURIComponent", 1, globalEncodeURIComponent)
+	method(cx, g, "escape", 1, globalEscape)
+	method(cx, g, "unescape", 1, globalUnescape)
+}
+
+func globalDecodeURI(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return cx.NewString(uriDecode(cx, cx.ToString(arg(args, 0)), uriReserved+"#"))
+}
+
+func globalDecodeURIComponent(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return cx.NewString(uriDecode(cx, cx.ToString(arg(args, 0)), ""))
+}
+
+func globalEncodeURI(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return cx.NewString(uriEncode(cx, cx.ToString(arg(args, 0)), &uriEncodeSet))
+}
+
+func globalEncodeURIComponent(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return cx.NewString(uriEncode(cx, cx.ToString(arg(args, 0)), &uriComponentSet))
+}
+
+func globalEscape(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return cx.NewString(escape(cx, cx.ToString(arg(args, 0))))
+}
+
+func globalUnescape(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return cx.NewString(unescape(cx, cx.ToString(arg(args, 0))))
 }
 
 func throwURIError(cx *engine.ExecutionContext, msg string) {

@@ -569,44 +569,52 @@ func initDateTimeFormat(cx *engine.ExecutionContext, ns *engine.Object) {
 	ctor, proto := constructor(cx, ns, "DateTimeFormat", 0, engine.IntrinsicIntlDateTimeFormatPrototype, newDateTimeFormat)
 	cx.SetIntrinsic(engine.IntrinsicIntlDateTimeFormat, ctor)
 
-	method(cx, ctor, "supportedLocalesOf", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		return supportedLocalesOf(cx, args)
-	})
-	method(cx, proto, "resolvedOptions", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		return unwrapDateTimeFormat(cx, this, "resolvedOptions").resolvedOptions(cx)
-	})
-	getter(cx, proto, "format", func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		dtf := unwrapDateTimeFormat(cx, this, "format")
-		if dtf.boundFormat == nil {
-			dtf.boundFormat = cx.NewNativeWithState("", 1, dateTimeFormatFunction, dtf)
-		}
-		return engine.ObjectValue(dtf.boundFormat)
-	})
-	method(cx, proto, "formatToParts", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		dtf := thisDateTimeFormat(cx, this, "formatToParts")
-		parts := dtf.partitionDateTimePattern(cx, dateArg(cx, arg(args, 0)))
-		return partsArray(cx, len(parts), func(i int) (string, string, string) {
-			return parts[i].Type, parts[i].Value, ""
-		})
-	})
-	method(cx, proto, "formatRange", 2, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		dtf := thisDateTimeFormat(cx, this, "formatRange")
-		x, y := rangeArgs(cx, args)
-		var b strings.Builder
-		for _, p := range dtf.partitionDateTimeRangePattern(cx, x, y) {
-			b.WriteString(p.Value)
-		}
-		return cx.NewString(wtf8.String(b.String()))
-	})
-	method(cx, proto, "formatRangeToParts", 2, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		dtf := thisDateTimeFormat(cx, this, "formatRangeToParts")
-		x, y := rangeArgs(cx, args)
-		parts := dtf.partitionDateTimeRangePattern(cx, x, y)
-		return partsArray(cx, len(parts), func(i int) (string, string, string) {
-			return parts[i].Type, parts[i].Value, parts[i].Source
-		})
-	})
+	method(cx, ctor, "supportedLocalesOf", 1, supportedLocalesOf)
+	method(cx, proto, "resolvedOptions", 0, dateTimeFormatResolvedOptions)
+	getter(cx, proto, "format", dateTimeFormatFormat)
+	method(cx, proto, "formatToParts", 1, dateTimeFormatFormatToParts)
+	method(cx, proto, "formatRange", 2, dateTimeFormatFormatRange)
+	method(cx, proto, "formatRangeToParts", 2, dateTimeFormatFormatRangeToParts)
 	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Intl.DateTimeFormat"), engine.FlagConfigurable)
+}
+
+func dateTimeFormatResolvedOptions(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return unwrapDateTimeFormat(cx, this, "resolvedOptions").resolvedOptions(cx)
+}
+
+func dateTimeFormatFormat(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	dtf := unwrapDateTimeFormat(cx, this, "format")
+	if dtf.boundFormat == nil {
+		dtf.boundFormat = cx.NewNativeWithState("", 1, dateTimeFormatFunction, dtf)
+	}
+	return engine.ObjectValue(dtf.boundFormat)
+}
+
+func dateTimeFormatFormatToParts(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	dtf := thisDateTimeFormat(cx, this, "formatToParts")
+	parts := dtf.partitionDateTimePattern(cx, dateArg(cx, arg(args, 0)))
+	return partsArray(cx, len(parts), func(i int) (string, string, string) {
+		return parts[i].Type, parts[i].Value, ""
+	})
+}
+
+func dateTimeFormatFormatRange(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	dtf := thisDateTimeFormat(cx, this, "formatRange")
+	x, y := rangeArgs(cx, args)
+	var b strings.Builder
+	for _, p := range dtf.partitionDateTimeRangePattern(cx, x, y) {
+		b.WriteString(p.Value)
+	}
+	return cx.NewString(wtf8.String(b.String()))
+}
+
+func dateTimeFormatFormatRangeToParts(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	dtf := thisDateTimeFormat(cx, this, "formatRangeToParts")
+	x, y := rangeArgs(cx, args)
+	parts := dtf.partitionDateTimeRangePattern(cx, x, y)
+	return partsArray(cx, len(parts), func(i int) (string, string, string) {
+		return parts[i].Type, parts[i].Value, parts[i].Source
+	})
 }
 
 // resolvedOptions implements Intl.DateTimeFormat.prototype.resolvedOptions after the check of
@@ -662,34 +670,46 @@ func initTemporalToLocaleString(cx *engine.ExecutionContext) {
 			d, _ := cx.GetOwnProperty(orig, k)
 			cx.DefineOwnProperty(ns, k, d)
 		}
-		for _, c := range []struct {
-			name string
-			kind temporalKind
-		}{
-			{"Instant", temporalInstant},
-			{"PlainDate", temporalPlainDate},
-			{"PlainDateTime", temporalPlainDateTime},
-			{"PlainMonthDay", temporalPlainMonthDay},
-			{"PlainTime", temporalPlainTime},
-			{"PlainYearMonth", temporalPlainYearMonth},
-			{"ZonedDateTime", temporalZonedDateTime},
-		} {
-			ctor := cx.Get(ns, engine.NamedKey(cx.Intern(wtf8.String(c.name))))
+		define := func(name string, f engine.NativeFunc) {
+			ctor := cx.Get(ns, engine.NamedKey(cx.Intern(wtf8.String(name))))
 			proto := cx.Get(ctor.Object(), engine.NamedKey(cx.Key(engine.KeyPrototype))).Object()
-			method(cx, proto, "toLocaleString", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-				tv, ok := temporalValueOf(this)
-				if !ok || tv.kind != c.kind {
-					cx.ThrowTypeError("Temporal." + c.name + ".prototype.toLocaleString called on an object that is not a Temporal." + c.name)
-				}
-				return formatTemporalLocaleString(cx, tv, arg(args, 0), arg(args, 1))
-			})
+			method(cx, proto, "toLocaleString", 0, f)
 		}
-		ctor := cx.Get(ns, engine.NamedKey(cx.Intern("Duration")))
-		proto := cx.Get(ctor.Object(), engine.NamedKey(cx.Key(engine.KeyPrototype))).Object()
-		method(cx, proto, "toLocaleString", 0, durationToLocaleString)
+		define("Instant", instantToLocaleString)
+		define("PlainDate", plainDateToLocaleString)
+		define("PlainDateTime", plainDateTimeToLocaleString)
+		define("PlainMonthDay", plainMonthDayToLocaleString)
+		define("PlainTime", plainTimeToLocaleString)
+		define("PlainYearMonth", plainYearMonthToLocaleString)
+		define("ZonedDateTime", zonedDateTimeToLocaleString)
+		define("Duration", durationToLocaleString)
 	})
 	cx.SetIntrinsic(engine.IntrinsicTemporal, ns)
 	cx.Define(global, cx.Intern("Temporal"), engine.ObjectValue(ns), engine.FlagsHidden)
+}
+
+var (
+	instantToLocaleString        = temporalToLocaleStringNative("Instant", temporalInstant)
+	plainDateToLocaleString      = temporalToLocaleStringNative("PlainDate", temporalPlainDate)
+	plainDateTimeToLocaleString  = temporalToLocaleStringNative("PlainDateTime", temporalPlainDateTime)
+	plainMonthDayToLocaleString  = temporalToLocaleStringNative("PlainMonthDay", temporalPlainMonthDay)
+	plainTimeToLocaleString      = temporalToLocaleStringNative("PlainTime", temporalPlainTime)
+	plainYearMonthToLocaleString = temporalToLocaleStringNative("PlainYearMonth", temporalPlainYearMonth)
+	zonedDateTimeToLocaleString  = temporalToLocaleStringNative("ZonedDateTime", temporalZonedDateTime)
+)
+
+// temporalToLocaleStringNative returns the toLocaleString method of the prototype of the Temporal
+// type name, whose objects are of kind.
+//
+//go:noinline
+func temporalToLocaleStringNative(name string, kind temporalKind) engine.NativeFunc {
+	return func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		tv, ok := temporalValueOf(this)
+		if !ok || tv.kind != kind {
+			cx.ThrowTypeError("Temporal." + name + ".prototype.toLocaleString called on an object that is not a Temporal." + name)
+		}
+		return formatTemporalLocaleString(cx, tv, arg(args, 0), arg(args, 1))
+	}
 }
 
 // formatTemporalLocaleString implements the toLocaleString method of the Temporal object tv.
@@ -722,26 +742,34 @@ func formatTemporalLocaleString(cx *engine.ExecutionContext, tv temporalValue, l
 // initDateToLocaleString replaces the toLocaleString, toLocaleDateString and
 // toLocaleTimeString of Date.prototype with the versions of ECMA-402.
 func initDateToLocaleString(cx *engine.ExecutionContext) {
-	for _, m := range []struct {
-		name               string
-		required, defaults string
-	}{
-		{"toLocaleString", date.Any, date.All},
-		{"toLocaleDateString", date.Date, date.Date},
-		{"toLocaleTimeString", date.Time, date.Time},
-	} {
-		method(cx, cx.Intrinsic(engine.IntrinsicDatePrototype), m.name, 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-			t, ok := engine.ThisTimeValue(this)
-			if !ok {
-				cx.ThrowTypeError("Date.prototype." + m.name + " requires that 'this' be a Date")
-			}
-			if math.IsNaN(t) {
-				return cx.NewString("Invalid Date")
-			}
-			dtf := createDateTimeFormat(cx, arg(args, 0), arg(args, 1), m.required, m.defaults, nil)
-			return dtf.formatDateTime(cx, formattable{
-				t: t,
-			})
+	proto := cx.Intrinsic(engine.IntrinsicDatePrototype)
+	method(cx, proto, "toLocaleString", 0, dateToLocaleString)
+	method(cx, proto, "toLocaleDateString", 0, dateToLocaleDateString)
+	method(cx, proto, "toLocaleTimeString", 0, dateToLocaleTimeString)
+}
+
+var (
+	dateToLocaleString     = dateToLocaleStringNative("toLocaleString", date.Any, date.All)
+	dateToLocaleDateString = dateToLocaleStringNative("toLocaleDateString", date.Date, date.Date)
+	dateToLocaleTimeString = dateToLocaleStringNative("toLocaleTimeString", date.Time, date.Time)
+)
+
+// dateToLocaleStringNative returns the method name of Date.prototype, which formats a date with the
+// components required and defaults.
+//
+//go:noinline
+func dateToLocaleStringNative(name, required, defaults string) engine.NativeFunc {
+	return func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		t, ok := engine.ThisTimeValue(this)
+		if !ok {
+			cx.ThrowTypeError("Date.prototype." + name + " requires that 'this' be a Date")
+		}
+		if math.IsNaN(t) {
+			return cx.NewString("Invalid Date")
+		}
+		dtf := createDateTimeFormat(cx, arg(args, 0), arg(args, 1), required, defaults, nil)
+		return dtf.formatDateTime(cx, formattable{
+			t: t,
 		})
 	}
 }

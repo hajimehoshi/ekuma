@@ -137,16 +137,18 @@ func isASCII(s string) bool {
 func initDisplayNames(cx *engine.ExecutionContext, ns *engine.Object) {
 	ctor, proto := constructor(cx, ns, "DisplayNames", 2, engine.IntrinsicIntlDisplayNamesPrototype, newDisplayNames)
 
-	method(cx, ctor, "supportedLocalesOf", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		return supportedLocalesOf(cx, args)
-	})
-	method(cx, proto, "of", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		dn := thisDisplayNames(cx, this, "of")
-		return dn.of(cx, wtf8.ToValidUTF8(cx.ToString(arg(args, 0))))
-	})
-	method(cx, proto, "resolvedOptions", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		dn := thisDisplayNames(cx, this, "resolvedOptions")
-		return resolvedOptions(cx, "locale", dn.locale, "style", dn.style, "type", dn.typ, "fallback", dn.fallback, "languageDisplay", dn.languageDisplay)
-	})
+	method(cx, ctor, "supportedLocalesOf", 1, supportedLocalesOf)
+	method(cx, proto, "of", 1, displayNamesOf)
+	method(cx, proto, "resolvedOptions", 0, displayNamesResolvedOptions)
 	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Intl.DisplayNames"), engine.FlagConfigurable)
+}
+
+func displayNamesOf(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	dn := thisDisplayNames(cx, this, "of")
+	return dn.of(cx, wtf8.ToValidUTF8(cx.ToString(arg(args, 0))))
+}
+
+func displayNamesResolvedOptions(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	dn := thisDisplayNames(cx, this, "resolvedOptions")
+	return resolvedOptions(cx, "locale", dn.locale, "style", dn.style, "type", dn.typ, "fallback", dn.fallback, "languageDisplay", dn.languageDisplay)
 }

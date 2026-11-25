@@ -11,35 +11,41 @@ import (
 func initShadowRealm(cx *engine.ExecutionContext) {
 	proto := cx.NewObject(cx.Intrinsic(engine.IntrinsicObjectPrototype))
 	cx.SetIntrinsic(engine.IntrinsicShadowRealmPrototype, proto)
-	constructor(cx, "ShadowRealm", 0, engine.IntrinsicShadowRealmPrototype, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		nt := cx.GetNewTarget()
-		if nt == nil {
-			cx.ThrowTypeError("constructor ShadowRealm requires 'new'")
-		}
-		p := cx.GetPrototypeFromConstructor(nt, engine.IntrinsicShadowRealmPrototype)
-		r := cx.CreateRealm(func(cx *engine.ExecutionContext) {
-			Install(cx)
-		})
-		return engine.ObjectValue(cx.NewShadowRealmObject(p, r))
-	})
-	method(cx, proto, "evaluate", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		r := cx.ValidateShadowRealmObject(this)
-		src := arg(args, 0)
-		if !src.IsString() {
-			cx.ThrowTypeError("ShadowRealm.prototype.evaluate requires a string")
-		}
-		return performShadowRealmEval(cx, src.Str(), r)
-	})
-	method(cx, proto, "importValue", 2, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		r := cx.ValidateShadowRealmObject(this)
-		specifier := cx.ToString(arg(args, 0))
-		exportName := arg(args, 1)
-		if !exportName.IsString() {
-			cx.ThrowTypeError("the export name of ShadowRealm.prototype.importValue must be a string")
-		}
-		return shadowRealmImportValue(cx, specifier, exportName, r)
-	})
+	constructor(cx, "ShadowRealm", 0, engine.IntrinsicShadowRealmPrototype, shadowRealmConstructor)
+	method(cx, proto, "evaluate", 1, shadowRealmEvaluate)
+	method(cx, proto, "importValue", 2, shadowRealmImportValueMethod)
 	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("ShadowRealm"), engine.FlagConfigurable)
+}
+
+func shadowRealmConstructor(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	nt := cx.GetNewTarget()
+	if nt == nil {
+		cx.ThrowTypeError("constructor ShadowRealm requires 'new'")
+	}
+	p := cx.GetPrototypeFromConstructor(nt, engine.IntrinsicShadowRealmPrototype)
+	r := cx.CreateRealm(func(cx *engine.ExecutionContext) {
+		Install(cx)
+	})
+	return engine.ObjectValue(cx.NewShadowRealmObject(p, r))
+}
+
+func shadowRealmEvaluate(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	r := cx.ValidateShadowRealmObject(this)
+	src := arg(args, 0)
+	if !src.IsString() {
+		cx.ThrowTypeError("ShadowRealm.prototype.evaluate requires a string")
+	}
+	return performShadowRealmEval(cx, src.Str(), r)
+}
+
+func shadowRealmImportValueMethod(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	r := cx.ValidateShadowRealmObject(this)
+	specifier := cx.ToString(arg(args, 0))
+	exportName := arg(args, 1)
+	if !exportName.IsString() {
+		cx.ThrowTypeError("the export name of ShadowRealm.prototype.importValue must be a string")
+	}
+	return shadowRealmImportValue(cx, specifier, exportName, r)
 }
 
 // performShadowRealmEval implements PerformShadowRealmEval with the current realm as the

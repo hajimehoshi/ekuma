@@ -609,499 +609,54 @@ func throwNotTypedArray(cx *engine.ExecutionContext, what string) {
 
 func initTypedArrays(cx *engine.ExecutionContext) {
 	proto := cx.NewOrdinaryObject()
-	ctor := cx.NewNativeConstructor("TypedArray", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		cx.ThrowTypeError("abstract class TypedArray not directly constructable")
-		return engine.Undefined
-	})
+	ctor := cx.NewNativeConstructor("TypedArray", 0, typedArrayConstructor)
 	cx.Define(ctor, cx.Key(engine.KeyPrototype), engine.ObjectValue(proto), 0)
 	cx.Define(proto, cx.Key(engine.KeyConstructor), engine.ObjectValue(ctor), engine.FlagsHidden)
 	speciesGetter(cx, ctor)
 
-	method(cx, ctor, "from", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		if !this.IsCallable() || !cx.IsConstructor(this.Object()) {
-			cx.ThrowTypeError(cx.DisplayString(this) + " is not a constructor")
-		}
-		c := this.Object()
-		source, mapFn, thisArg := arg(args, 0), arg(args, 1), arg(args, 2)
-		if !mapFn.IsUndefined() && !mapFn.IsCallable() {
-			cx.ThrowTypeError(cx.DisplayString(mapFn) + " is not a function")
-		}
-		mapped := func(v engine.Value, i int) engine.Value {
-			if mapFn.IsUndefined() {
-				return v
-			}
-			return cx.Call(mapFn.Object(), thisArg, v, engine.Number(float64(i)))
-		}
-		if m := cx.GetMethod(source, cx.WellKnownSymbol(engine.SymbolIterator)); m != nil {
-			vals := cx.IteratorToList(source, m)
-			o, t := createFromConstructor(cx, c, []engine.Value{engine.Number(float64(len(vals)))}, true)
-			var i int
-			if mapFn.IsUndefined() {
-				i = storeNumberValues(cx, t, vals)
-			}
-			for ; i < len(vals); i++ {
-				storeAt(cx, o, t, i, mapped(vals[i], i))
-			}
-			return engine.ObjectValue(o)
-		}
-		src := cx.ToObject(source)
-		n := cx.LengthOfArrayLike(src)
-		o, t := createFromConstructor(cx, c, []engine.Value{engine.Number(float64(n))}, true)
-		for i := range n {
-			storeAt(cx, o, t, int(i), mapped(getAt(cx, src, i), int(i)))
-		}
-		return engine.ObjectValue(o)
-	})
-	method(cx, ctor, "of", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		if !this.IsCallable() || !cx.IsConstructor(this.Object()) {
-			cx.ThrowTypeError(cx.DisplayString(this) + " is not a constructor")
-		}
-		o, t := createFromConstructor(cx, this.Object(), []engine.Value{engine.Number(float64(len(args)))}, true)
-		for i, v := range args {
-			storeAt(cx, o, t, i, v)
-		}
-		return engine.ObjectValue(o)
-	})
+	method(cx, ctor, "from", 1, typedArrayFrom)
+	method(cx, ctor, "of", 0, typedArrayOf)
 
-	getter(cx, proto, cx.Intern("buffer"), "buffer", func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		t := engine.TypedArrayData(this)
-		requireTypedArray(cx, t, "buffer")
-		return engine.ObjectValue(t.Buffer())
-	})
-	getter(cx, proto, cx.Intern("byteLength"), "byteLength", func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		t := engine.TypedArrayData(this)
-		requireTypedArray(cx, t, "byteLength")
-		n, _ := t.Length()
-		return engine.Number(float64(n * t.ElementType().Size()))
-	})
-	getter(cx, proto, cx.Intern("byteOffset"), "byteOffset", func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		t := engine.TypedArrayData(this)
-		requireTypedArray(cx, t, "byteOffset")
-		if _, ok := t.Length(); !ok {
-			return engine.Number(0)
-		}
-		return engine.Number(float64(t.ByteOffset()))
-	})
-	lengthGetter := cx.NewNative("get length", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		t := engine.TypedArrayData(this)
-		requireTypedArray(cx, t, "length")
-		n, _ := t.Length()
-		return engine.Number(float64(n))
-	})
+	getter(cx, proto, cx.Intern("buffer"), "buffer", typedArrayBuffer)
+	getter(cx, proto, cx.Intern("byteLength"), "byteLength", typedArrayByteLength)
+	getter(cx, proto, cx.Intern("byteOffset"), "byteOffset", typedArrayByteOffset)
+	lengthGetter := cx.NewNative("get length", 0, typedArrayLengthGetter)
 	cx.SetIntrinsic(engine.IntrinsicTypedArrayPrototypeLengthGetter, lengthGetter)
 	cx.DefineAccessor(proto, cx.Key(engine.KeyLength), lengthGetter, nil, engine.FlagConfigurable)
-	getter(cx, proto, cx.WellKnownSymbol(engine.SymbolToStringTag), "[Symbol.toStringTag]", func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		t := engine.TypedArrayData(this)
-		if t == nil {
-			return engine.Undefined
-		}
-		return cx.NewString(wtf8.String(typedArrayNames[t.ElementType()]))
-	})
+	getter(cx, proto, cx.WellKnownSymbol(engine.SymbolToStringTag), "[Symbol.toStringTag]", typedArrayToStringTag)
 
-	method(cx, proto, "at", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		o, _, n := validateTypedArray(cx, this, "%TypedArray%.prototype.at")
-		i := cx.ToIntegerOrInfinity(arg(args, 0))
-		if i < 0 {
-			i += float64(n)
-		}
-		if i < 0 || i >= float64(n) {
-			return engine.Undefined
-		}
-		return getAt(cx, o, int64(i))
-	})
-	method(cx, proto, "copyWithin", 2, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		o, t, n := validateWritableTypedArray(cx, this, "%TypedArray%.prototype.copyWithin")
-		target := numconv.RelativeIndex(cx.ToIntegerOrInfinity(arg(args, 0)), n)
-		start, end := relativeRange(cx, arg(args, 1), arg(args, 2), n)
-		count := min(end-start, n-target)
-		if count > 0 {
-			n, ok := t.Length()
-			if !ok {
-				cx.ThrowTypeError("%TypedArray%.prototype.copyWithin: the typed array is detached or out of bounds")
-			}
-			size := t.ElementType().Size()
-			limit := n * size
-			from, to := start*size, target*size
-			if c := min(count*size, limit-from, limit-to); c > 0 {
-				copyBytesWithin(t, to, from, c)
-			}
-		}
-		return engine.ObjectValue(o)
-	})
-	iterMethod := func(name string, kind engine.IterationKind) *engine.Object {
-		return method(cx, proto, wtf8.String(name), 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-			o, _, _ := validateTypedArray(cx, this, "%TypedArray%.prototype."+name)
-			return engine.ObjectValue(cx.NewArrayIterator(o, kind))
-		})
-	}
-	iterMethod("entries", engine.IterateEntries)
-	iterMethod("keys", engine.IterateKeys)
-	values := iterMethod("values", engine.IterateValues)
+	method(cx, proto, "at", 1, typedArrayAt)
+	method(cx, proto, "copyWithin", 2, typedArrayCopyWithin)
+	method(cx, proto, "entries", 0, typedArrayEntries)
+	method(cx, proto, "keys", 0, typedArrayKeys)
+	values := method(cx, proto, "values", 0, typedArrayValues)
 	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolIterator), engine.ObjectValue(values), engine.FlagsHidden)
 
-	// predicate defines the methods that call a callback for the elements in order until it returns true.
-	predicate := func(name string, backward bool, result func(found bool, i int, v engine.Value) engine.Value) {
-		method(cx, proto, wtf8.String(name), 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-			o, _, n := validateTypedArray(cx, this, "%TypedArray%.prototype."+name)
-			f := callback(cx, args, name)
-			thisArg := arg(args, 1)
-			for j := range n {
-				i := j
-				if backward {
-					i = n - 1 - j
-				}
-				v := getAt(cx, o, int64(i))
-				if engine.ToBoolean(cx.Call(f, thisArg, v, engine.Number(float64(i)), engine.ObjectValue(o))) {
-					return result(true, i, v)
-				}
-			}
-			return result(false, -1, engine.Undefined)
-		})
-	}
-	predicate("find", false, func(found bool, i int, v engine.Value) engine.Value {
-		return v
-	})
-	predicate("findIndex", false, func(found bool, i int, v engine.Value) engine.Value {
-		return engine.Number(float64(i))
-	})
-	predicate("findLast", true, func(found bool, i int, v engine.Value) engine.Value {
-		return v
-	})
-	predicate("findLastIndex", true, func(found bool, i int, v engine.Value) engine.Value {
-		return engine.Number(float64(i))
-	})
-	predicate("some", false, func(found bool, i int, v engine.Value) engine.Value {
-		return engine.Bool(found)
-	})
-	// every stops at the first false result instead.
-	method(cx, proto, "every", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		o, _, n := validateTypedArray(cx, this, "%TypedArray%.prototype.every")
-		f := callback(cx, args, "every")
-		thisArg := arg(args, 1)
-		for i := range n {
-			v := getAt(cx, o, int64(i))
-			if !engine.ToBoolean(cx.Call(f, thisArg, v, engine.Number(float64(i)), engine.ObjectValue(o))) {
-				return engine.False
-			}
-		}
-		return engine.True
-	})
-	method(cx, proto, "forEach", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		o, _, n := validateTypedArray(cx, this, "%TypedArray%.prototype.forEach")
-		f := callback(cx, args, "forEach")
-		thisArg := arg(args, 1)
-		for i := range n {
-			cx.Call(f, thisArg, getAt(cx, o, int64(i)), engine.Number(float64(i)), engine.ObjectValue(o))
-		}
-		return engine.Undefined
-	})
-	method(cx, proto, "fill", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		o, t, n := validateWritableTypedArray(cx, this, "%TypedArray%.prototype.fill")
-		typ := t.ElementType()
-		v := cx.ToElementValue(typ, arg(args, 0))
-		start, end := relativeRange(cx, arg(args, 1), arg(args, 2), n)
-		cur, ok := t.Length()
-		if !ok {
-			cx.ThrowTypeError("%TypedArray%.prototype.fill: the typed array is detached or out of bounds")
-		}
-		end = min(end, cur)
-		if start < end {
-			fillRange(cx, t, start, end, engine.ElementBits(typ, v))
-		}
-		return engine.ObjectValue(o)
-	})
-	method(cx, proto, "filter", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		o, t, n := validateTypedArray(cx, this, "%TypedArray%.prototype.filter")
-		f := callback(cx, args, "filter")
-		thisArg := arg(args, 1)
-		var kept []engine.Value
-		for i := range n {
-			v := getAt(cx, o, int64(i))
-			if engine.ToBoolean(cx.Call(f, thisArg, v, engine.Number(float64(i)), engine.ObjectValue(o))) {
-				kept = append(kept, v)
-			}
-		}
-		a, at := typedArraySpeciesCreate(cx, o, t, []engine.Value{engine.Number(float64(len(kept)))}, true)
-		for i, v := range kept {
-			storeAt(cx, a, at, i, v)
-		}
-		return engine.ObjectValue(a)
-	})
-	search := func(name string, backward, sameValueZero bool) {
-		method(cx, proto, wtf8.String(name), 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-			notFound := engine.Number(-1)
-			if sameValueZero {
-				notFound = engine.False
-			}
-			_, t, n := validateTypedArray(cx, this, "%TypedArray%.prototype."+name)
-			if n == 0 {
-				return notFound
-			}
-			x := arg(args, 0)
-			var from, to int
-			if backward {
-				from = n - 1
-				if len(args) > 1 {
-					f := cx.ToIntegerOrInfinity(args[1])
-					if math.IsInf(f, -1) {
-						return notFound
-					}
-					if f >= 0 {
-						from = int(min(f, float64(n-1)))
-					} else {
-						from = int(float64(n) + f)
-					}
-				}
-				to = 0
-			} else {
-				f := cx.ToIntegerOrInfinity(arg(args, 1))
-				if math.IsInf(f, 1) {
-					return notFound
-				}
-				from = numconv.RelativeIndex(f, n)
-				to = n
-			}
-			// The conversion of the index may have shrunk the buffer: the elements beyond its end are undefined.
-			cur, _ := t.Length()
-			if sameValueZero && x.IsUndefined() && from < to && to > cur {
-				return engine.True
-			}
-			if backward {
-				from = min(from, cur-1)
-			} else {
-				to = min(to, cur)
-			}
-			i := searchRange(cx, t, x, from, to, backward, sameValueZero)
-			if sameValueZero {
-				return engine.Bool(i >= 0)
-			}
-			return engine.Number(float64(i))
-		})
-	}
-	search("includes", false, true)
-	search("indexOf", false, false)
-	search("lastIndexOf", true, false)
-	method(cx, proto, "join", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		o, _, n := validateTypedArray(cx, this, "%TypedArray%.prototype.join")
-		sep := wtf8.String(",")
-		if s := arg(args, 0); !s.IsUndefined() {
-			sep = cx.ToString(s)
-		}
-		var b wtf8.Buffer
-		for i := range n {
-			if i > 0 {
-				b.WriteString(sep)
-			}
-			if e := getAt(cx, o, int64(i)); !e.IsUndefined() {
-				writeString(cx, &b, e)
-			}
-			if b.Len() > engine.MaxStringLength {
-				cx.ThrowRangeError("invalid string length")
-			}
-		}
-		return cx.NewString(b.String())
-	})
-	method(cx, proto, "map", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		o, t, n := validateTypedArray(cx, this, "%TypedArray%.prototype.map")
-		f := callback(cx, args, "map")
-		thisArg := arg(args, 1)
-		a, at := typedArraySpeciesCreate(cx, o, t, []engine.Value{engine.Number(float64(n))}, true)
-		for i := range n {
-			v := cx.Call(f, thisArg, getAt(cx, o, int64(i)), engine.Number(float64(i)), engine.ObjectValue(o))
-			storeAt(cx, a, at, i, v)
-		}
-		return engine.ObjectValue(a)
-	})
-	reduce := func(name string, backward bool) {
-		method(cx, proto, wtf8.String(name), 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-			o, _, n := validateTypedArray(cx, this, "%TypedArray%.prototype."+name)
-			f := callback(cx, args, name)
-			index := func(j int) int {
-				if backward {
-					return n - 1 - j
-				}
-				return j
-			}
-			j := 0
-			var acc engine.Value
-			if len(args) > 1 {
-				acc = args[1]
-			} else {
-				if n == 0 {
-					cx.ThrowTypeError("reduce of empty array with no initial value")
-				}
-				acc = getAt(cx, o, int64(index(0)))
-				j = 1
-			}
-			for ; j < n; j++ {
-				i := index(j)
-				acc = cx.Call(f, engine.Undefined, acc, getAt(cx, o, int64(i)), engine.Number(float64(i)), engine.ObjectValue(o))
-			}
-			return acc
-		})
-	}
-	reduce("reduce", false)
-	reduce("reduceRight", true)
-	method(cx, proto, "reverse", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		o, t, n := validateWritableTypedArray(cx, this, "%TypedArray%.prototype.reverse")
-		reverseFirst(cx, t, n)
-		return engine.ObjectValue(o)
-	})
-	method(cx, proto, "set", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		t := engine.TypedArrayData(this)
-		if t == nil {
-			cx.ThrowTypeError("%TypedArray%.prototype.set: this is not a typed array")
-		}
-		if t.ArrayBuffer().IsImmutable() {
-			cx.ThrowTypeError("%TypedArray%.prototype.set: the typed array is backed by an immutable ArrayBuffer")
-		}
-		offset := cx.ToIntegerOrInfinity(arg(args, 1))
-		if offset < 0 {
-			cx.ThrowRangeError("offset is out of bounds")
-		}
-		setTypedArrayFrom(cx, this.Object(), t, offset, arg(args, 0))
-		return engine.Undefined
-	})
-	method(cx, proto, "slice", 2, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		o, t, n := validateTypedArray(cx, this, "%TypedArray%.prototype.slice")
-		start, end := relativeRange(cx, arg(args, 0), arg(args, 1), n)
-		count := max(end-start, 0)
-		a, at := typedArraySpeciesCreate(cx, o, t, []engine.Value{engine.Number(float64(count))}, true)
-		if count == 0 {
-			return engine.ObjectValue(a)
-		}
-		cur, ok := t.Length()
-		if !ok {
-			cx.ThrowTypeError("%TypedArray%.prototype.slice: the typed array is detached or out of bounds")
-		}
-		end = min(end, cur)
-		count = max(end-start, 0)
-		typ := t.ElementType()
-		if typ != at.ElementType() {
-			for i := range count {
-				storeAt(cx, a, at, i, getAt(cx, o, int64(start+i)))
-			}
-			return engine.ObjectValue(a)
-		}
-		size := typ.Size()
-		src, dst := start*size+t.ByteOffset(), at.ByteOffset()
-		if at.ArrayBuffer().SameDataBlock(t.ArrayBuffer()) && src < dst && dst < src+count*size {
-			// The bytes are copied one at a time from the first on, as the specification says.
-			copyBytesForward(cx, t.ArrayBuffer(), dst, src, count*size)
-		} else {
-			engine.CopyBufferBytes(at.ArrayBuffer(), dst, t.ArrayBuffer(), src, count*size)
-		}
-		return engine.ObjectValue(a)
-	})
-	method(cx, proto, "sort", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		cmp := arg(args, 0)
-		if !cmp.IsUndefined() && !cmp.IsCallable() {
-			cx.ThrowTypeError("the comparison function must be either a function or undefined")
-		}
-		o, t, n := validateWritableTypedArray(cx, this, "%TypedArray%.prototype.sort")
-		if cmp.IsUndefined() {
-			sortFirst(cx, t, n)
-			return engine.ObjectValue(o)
-		}
-		vals := make([]engine.Value, n)
-		for i := range vals {
-			vals[i] = getAt(cx, o, int64(i))
-		}
-		sortValues(cx, vals, cmp)
-		for i, v := range vals {
-			storeAt(cx, o, t, i, v)
-		}
-		return engine.ObjectValue(o)
-	})
-	method(cx, proto, "subarray", 2, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		t := engine.TypedArrayData(this)
-		if t == nil {
-			cx.ThrowTypeError("%TypedArray%.prototype.subarray: this is not a typed array")
-		}
-		n, _ := t.Length()
-		start := numconv.RelativeIndex(cx.ToIntegerOrInfinity(arg(args, 0)), n)
-		size := t.ElementType().Size()
-		begin := engine.Number(float64(t.ByteOffset() + start*size))
-		buf := engine.ObjectValue(t.Buffer())
-		var a *engine.Object
-		if end := arg(args, 1); t.IsLengthTracking() && end.IsUndefined() {
-			a, _ = typedArraySpeciesCreate(cx, this.Object(), t, []engine.Value{buf, begin}, false)
-		} else {
-			e := n
-			if !end.IsUndefined() {
-				e = numconv.RelativeIndex(cx.ToIntegerOrInfinity(end), n)
-			}
-			a, _ = typedArraySpeciesCreate(cx, this.Object(), t, []engine.Value{buf, begin, engine.Number(float64(max(e-start, 0)))}, false)
-		}
-		return engine.ObjectValue(a)
-	})
-	method(cx, proto, "toLocaleString", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		o, _, n := validateTypedArray(cx, this, "%TypedArray%.prototype.toLocaleString")
-		var b wtf8.Buffer
-		for i := range n {
-			if i > 0 {
-				b.WriteString(",")
-			}
-			if e := getAt(cx, o, int64(i)); !e.IsNullish() {
-				b.WriteString(cx.ToString(cx.CallValue(cx.GetV(e, cx.Key(engine.KeyToLocaleString)), e)))
-			}
-			if b.Len() > engine.MaxStringLength {
-				cx.ThrowRangeError("invalid string length")
-			}
-		}
-		return cx.NewString(b.String())
-	})
-	method(cx, proto, "toReversed", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		_, t, n := validateTypedArray(cx, this, "%TypedArray%.prototype.toReversed")
-		a, at := typedArrayCreateSameType(cx, t, n)
-		copyElements(at, 0, t, n)
-		reverseFirst(cx, at, n)
-		return engine.ObjectValue(a)
-	})
-	method(cx, proto, "toSorted", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		cmp := arg(args, 0)
-		if !cmp.IsUndefined() && !cmp.IsCallable() {
-			cx.ThrowTypeError("the comparison function must be either a function or undefined")
-		}
-		o, t, n := validateTypedArray(cx, this, "%TypedArray%.prototype.toSorted")
-		a, at := typedArrayCreateSameType(cx, t, n)
-		if cmp.IsUndefined() {
-			copyElements(at, 0, t, n)
-			sortFirst(cx, at, n)
-			return engine.ObjectValue(a)
-		}
-		vals := make([]engine.Value, n)
-		for i := range vals {
-			vals[i] = getAt(cx, o, int64(i))
-		}
-		sortValues(cx, vals, cmp)
-		for i, v := range vals {
-			storeAt(cx, a, at, i, v)
-		}
-		return engine.ObjectValue(a)
-	})
-	method(cx, proto, "with", 2, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		o, t, n := validateTypedArray(cx, this, "%TypedArray%.prototype.with")
-		rel := cx.ToIntegerOrInfinity(arg(args, 0))
-		idx := rel
-		if rel < 0 {
-			idx = float64(n) + rel
-		}
-		typ := t.ElementType()
-		v := cx.ToElementValue(typ, arg(args, 1))
-		cur, _ := t.Length()
-		if idx < 0 || idx >= float64(cur) {
-			cx.ThrowRangeError("invalid typed array index")
-		}
-		a, at := typedArrayCreateSameType(cx, t, n)
-		copied := min(n, cur)
-		copyElements(at, 0, t, copied)
-		for i := copied; i < n; i++ {
-			storeAt(cx, a, at, i, getAt(cx, o, int64(i)))
-		}
-		storeAt(cx, a, at, int(idx), v)
-		return engine.ObjectValue(a)
-	})
+	method(cx, proto, "find", 1, typedArrayFind)
+	method(cx, proto, "findIndex", 1, typedArrayFindIndex)
+	method(cx, proto, "findLast", 1, typedArrayFindLast)
+	method(cx, proto, "findLastIndex", 1, typedArrayFindLastIndex)
+	method(cx, proto, "some", 1, typedArraySome)
+	method(cx, proto, "every", 1, typedArrayEvery)
+	method(cx, proto, "forEach", 1, typedArrayForEach)
+	method(cx, proto, "fill", 1, typedArrayFill)
+	method(cx, proto, "filter", 1, typedArrayFilter)
+	method(cx, proto, "includes", 1, typedArrayIncludes)
+	method(cx, proto, "indexOf", 1, typedArrayIndexOf)
+	method(cx, proto, "lastIndexOf", 1, typedArrayLastIndexOf)
+	method(cx, proto, "join", 1, typedArrayJoin)
+	method(cx, proto, "map", 1, typedArrayMap)
+	method(cx, proto, "reduce", 1, typedArrayReduce)
+	method(cx, proto, "reduceRight", 1, typedArrayReduceRight)
+	method(cx, proto, "reverse", 0, typedArrayReverse)
+	method(cx, proto, "set", 1, typedArraySet)
+	method(cx, proto, "slice", 2, typedArraySlice)
+	method(cx, proto, "sort", 1, typedArraySort)
+	method(cx, proto, "subarray", 2, typedArraySubarray)
+	method(cx, proto, "toLocaleString", 0, typedArrayToLocaleString)
+	method(cx, proto, "toReversed", 0, typedArrayToReversed)
+	method(cx, proto, "toSorted", 1, typedArrayToSorted)
+	method(cx, proto, "with", 2, typedArrayWith)
 	toString := cx.Get(cx.Intrinsic(engine.IntrinsicArrayPrototype), engine.NamedKey(cx.Key(engine.KeyToString)))
 	cx.Define(proto, cx.Key(engine.KeyToString), toString, engine.FlagsHidden)
 
@@ -1109,9 +664,7 @@ func initTypedArrays(cx *engine.ExecutionContext) {
 		name := typedArrayNames[typ]
 		p := cx.NewObject(proto)
 		cx.SetIntrinsic(engine.TypedArrayPrototypeIntrinsic(typ), p)
-		c := cx.NewNativeConstructor(wtf8.String(name), 3, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-			return constructTypedArray(cx, typ, args)
-		})
+		c := cx.NewNativeConstructor(wtf8.String(name), 3, typedArrayConstructors[typ])
 		cx.SetIntrinsic(engine.TypedArrayConstructorIntrinsic(typ), c)
 		cx.SetPrototypeOf(c, ctor)
 		cx.DefineConstructorPrototype(c, engine.TypedArrayPrototypeIntrinsic(typ))
@@ -1122,6 +675,574 @@ func initTypedArrays(cx *engine.ExecutionContext) {
 		constant(cx, p, "BYTES_PER_ELEMENT", bpe)
 	}
 	initUint8ArrayBase64(cx)
+}
+
+func typedArrayConstructor(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	cx.ThrowTypeError("abstract class TypedArray not directly constructable")
+	return engine.Undefined
+}
+
+func typedArrayFrom(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	if !this.IsCallable() || !cx.IsConstructor(this.Object()) {
+		cx.ThrowTypeError(cx.DisplayString(this) + " is not a constructor")
+	}
+	c := this.Object()
+	source, mapFn, thisArg := arg(args, 0), arg(args, 1), arg(args, 2)
+	if !mapFn.IsUndefined() && !mapFn.IsCallable() {
+		cx.ThrowTypeError(cx.DisplayString(mapFn) + " is not a function")
+	}
+	mapped := func(v engine.Value, i int) engine.Value {
+		if mapFn.IsUndefined() {
+			return v
+		}
+		return cx.Call(mapFn.Object(), thisArg, v, engine.Number(float64(i)))
+	}
+	if m := cx.GetMethod(source, cx.WellKnownSymbol(engine.SymbolIterator)); m != nil {
+		vals := cx.IteratorToList(source, m)
+		o, t := createFromConstructor(cx, c, []engine.Value{engine.Number(float64(len(vals)))}, true)
+		var i int
+		if mapFn.IsUndefined() {
+			i = storeNumberValues(cx, t, vals)
+		}
+		for ; i < len(vals); i++ {
+			storeAt(cx, o, t, i, mapped(vals[i], i))
+		}
+		return engine.ObjectValue(o)
+	}
+	src := cx.ToObject(source)
+	n := cx.LengthOfArrayLike(src)
+	o, t := createFromConstructor(cx, c, []engine.Value{engine.Number(float64(n))}, true)
+	for i := range n {
+		storeAt(cx, o, t, int(i), mapped(getAt(cx, src, i), int(i)))
+	}
+	return engine.ObjectValue(o)
+}
+
+func typedArrayOf(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	if !this.IsCallable() || !cx.IsConstructor(this.Object()) {
+		cx.ThrowTypeError(cx.DisplayString(this) + " is not a constructor")
+	}
+	o, t := createFromConstructor(cx, this.Object(), []engine.Value{engine.Number(float64(len(args)))}, true)
+	for i, v := range args {
+		storeAt(cx, o, t, i, v)
+	}
+	return engine.ObjectValue(o)
+}
+
+func typedArrayBuffer(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	t := engine.TypedArrayData(this)
+	requireTypedArray(cx, t, "buffer")
+	return engine.ObjectValue(t.Buffer())
+}
+
+func typedArrayByteLength(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	t := engine.TypedArrayData(this)
+	requireTypedArray(cx, t, "byteLength")
+	n, _ := t.Length()
+	return engine.Number(float64(n * t.ElementType().Size()))
+}
+
+func typedArrayByteOffset(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	t := engine.TypedArrayData(this)
+	requireTypedArray(cx, t, "byteOffset")
+	if _, ok := t.Length(); !ok {
+		return engine.Number(0)
+	}
+	return engine.Number(float64(t.ByteOffset()))
+}
+
+func typedArrayLengthGetter(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	t := engine.TypedArrayData(this)
+	requireTypedArray(cx, t, "length")
+	n, _ := t.Length()
+	return engine.Number(float64(n))
+}
+
+func typedArrayToStringTag(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	t := engine.TypedArrayData(this)
+	if t == nil {
+		return engine.Undefined
+	}
+	return cx.NewString(wtf8.String(typedArrayNames[t.ElementType()]))
+}
+
+func typedArrayAt(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	o, _, n := validateTypedArray(cx, this, "%TypedArray%.prototype.at")
+	i := cx.ToIntegerOrInfinity(arg(args, 0))
+	if i < 0 {
+		i += float64(n)
+	}
+	if i < 0 || i >= float64(n) {
+		return engine.Undefined
+	}
+	return getAt(cx, o, int64(i))
+}
+
+func typedArrayCopyWithin(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	o, t, n := validateWritableTypedArray(cx, this, "%TypedArray%.prototype.copyWithin")
+	target := numconv.RelativeIndex(cx.ToIntegerOrInfinity(arg(args, 0)), n)
+	start, end := relativeRange(cx, arg(args, 1), arg(args, 2), n)
+	count := min(end-start, n-target)
+	if count > 0 {
+		n, ok := t.Length()
+		if !ok {
+			cx.ThrowTypeError("%TypedArray%.prototype.copyWithin: the typed array is detached or out of bounds")
+		}
+		size := t.ElementType().Size()
+		limit := n * size
+		from, to := start*size, target*size
+		if c := min(count*size, limit-from, limit-to); c > 0 {
+			copyBytesWithin(t, to, from, c)
+		}
+	}
+	return engine.ObjectValue(o)
+}
+
+var (
+	typedArrayEntries = typedArrayIterationNative("entries", engine.IterateEntries)
+	typedArrayKeys    = typedArrayIterationNative("keys", engine.IterateKeys)
+	typedArrayValues  = typedArrayIterationNative("values", engine.IterateValues)
+)
+
+// typedArrayIterationNative returns the method name of %TypedArray%.prototype, which returns an
+// Array Iterator of kind.
+//
+//go:noinline
+func typedArrayIterationNative(name string, kind engine.IterationKind) engine.NativeFunc {
+	return func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		o, _, _ := validateTypedArray(cx, this, "%TypedArray%.prototype."+name)
+		return engine.ObjectValue(cx.NewArrayIterator(o, kind))
+	}
+}
+
+var (
+	typedArrayFind          = typedArrayFindNative("find", false, foundElement)
+	typedArrayFindIndex     = typedArrayFindNative("findIndex", false, foundIndex)
+	typedArrayFindLast      = typedArrayFindNative("findLast", true, foundElement)
+	typedArrayFindLastIndex = typedArrayFindNative("findLastIndex", true, foundIndex)
+	typedArraySome          = typedArrayFindNative("some", false, foundAny)
+)
+
+// typedArrayFindNative returns the method name of %TypedArray%.prototype, which calls a callback for
+// the elements in order until it returns true, and returns result for that element. With backward,
+// the method starts at the last element.
+//
+//go:noinline
+func typedArrayFindNative(name string, backward bool, result func(found bool, i int, v engine.Value) engine.Value) engine.NativeFunc {
+	return func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		o, _, n := validateTypedArray(cx, this, "%TypedArray%.prototype."+name)
+		f := callback(cx, args, name)
+		thisArg := arg(args, 1)
+		for j := range n {
+			i := j
+			if backward {
+				i = n - 1 - j
+			}
+			v := getAt(cx, o, int64(i))
+			if engine.ToBoolean(cx.Call(f, thisArg, v, engine.Number(float64(i)), engine.ObjectValue(o))) {
+				return result(true, i, v)
+			}
+		}
+		return result(false, -1, engine.Undefined)
+	}
+}
+
+func foundElement(found bool, i int, v engine.Value) engine.Value {
+	return v
+}
+
+func foundIndex(found bool, i int, v engine.Value) engine.Value {
+	return engine.Number(float64(i))
+}
+
+func foundAny(found bool, i int, v engine.Value) engine.Value {
+	return engine.Bool(found)
+}
+
+// typedArrayEvery stops at the first false result instead of the first true one.
+func typedArrayEvery(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	o, _, n := validateTypedArray(cx, this, "%TypedArray%.prototype.every")
+	f := callback(cx, args, "every")
+	thisArg := arg(args, 1)
+	for i := range n {
+		v := getAt(cx, o, int64(i))
+		if !engine.ToBoolean(cx.Call(f, thisArg, v, engine.Number(float64(i)), engine.ObjectValue(o))) {
+			return engine.False
+		}
+	}
+	return engine.True
+}
+
+func typedArrayForEach(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	o, _, n := validateTypedArray(cx, this, "%TypedArray%.prototype.forEach")
+	f := callback(cx, args, "forEach")
+	thisArg := arg(args, 1)
+	for i := range n {
+		cx.Call(f, thisArg, getAt(cx, o, int64(i)), engine.Number(float64(i)), engine.ObjectValue(o))
+	}
+	return engine.Undefined
+}
+
+func typedArrayFill(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	o, t, n := validateWritableTypedArray(cx, this, "%TypedArray%.prototype.fill")
+	typ := t.ElementType()
+	v := cx.ToElementValue(typ, arg(args, 0))
+	start, end := relativeRange(cx, arg(args, 1), arg(args, 2), n)
+	cur, ok := t.Length()
+	if !ok {
+		cx.ThrowTypeError("%TypedArray%.prototype.fill: the typed array is detached or out of bounds")
+	}
+	end = min(end, cur)
+	if start < end {
+		fillRange(cx, t, start, end, engine.ElementBits(typ, v))
+	}
+	return engine.ObjectValue(o)
+}
+
+func typedArrayFilter(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	o, t, n := validateTypedArray(cx, this, "%TypedArray%.prototype.filter")
+	f := callback(cx, args, "filter")
+	thisArg := arg(args, 1)
+	var kept []engine.Value
+	for i := range n {
+		v := getAt(cx, o, int64(i))
+		if engine.ToBoolean(cx.Call(f, thisArg, v, engine.Number(float64(i)), engine.ObjectValue(o))) {
+			kept = append(kept, v)
+		}
+	}
+	a, at := typedArraySpeciesCreate(cx, o, t, []engine.Value{engine.Number(float64(len(kept)))}, true)
+	for i, v := range kept {
+		storeAt(cx, a, at, i, v)
+	}
+	return engine.ObjectValue(a)
+}
+
+var (
+	typedArrayIncludes    = typedArraySearchNative("includes", false, true)
+	typedArrayIndexOf     = typedArraySearchNative("indexOf", false, false)
+	typedArrayLastIndexOf = typedArraySearchNative("lastIndexOf", true, false)
+)
+
+// typedArraySearchNative returns the method name of %TypedArray%.prototype, which searches a typed
+// array for a value. With backward, the method goes from the end of the array to its start. With
+// sameValueZero, it compares by SameValueZero and returns whether it finds the value. Otherwise, it
+// compares by IsStrictlyEqual and returns the index.
+//
+//go:noinline
+func typedArraySearchNative(name string, backward, sameValueZero bool) engine.NativeFunc {
+	return func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		notFound := engine.Number(-1)
+		if sameValueZero {
+			notFound = engine.False
+		}
+		_, t, n := validateTypedArray(cx, this, "%TypedArray%.prototype."+name)
+		if n == 0 {
+			return notFound
+		}
+		x := arg(args, 0)
+		var from, to int
+		if backward {
+			from = n - 1
+			if len(args) > 1 {
+				f := cx.ToIntegerOrInfinity(args[1])
+				if math.IsInf(f, -1) {
+					return notFound
+				}
+				if f >= 0 {
+					from = int(min(f, float64(n-1)))
+				} else {
+					from = int(float64(n) + f)
+				}
+			}
+			to = 0
+		} else {
+			f := cx.ToIntegerOrInfinity(arg(args, 1))
+			if math.IsInf(f, 1) {
+				return notFound
+			}
+			from = numconv.RelativeIndex(f, n)
+			to = n
+		}
+		// The conversion of the index may have shrunk the buffer: the elements beyond its end are undefined.
+		cur, _ := t.Length()
+		if sameValueZero && x.IsUndefined() && from < to && to > cur {
+			return engine.True
+		}
+		if backward {
+			from = min(from, cur-1)
+		} else {
+			to = min(to, cur)
+		}
+		i := searchRange(cx, t, x, from, to, backward, sameValueZero)
+		if sameValueZero {
+			return engine.Bool(i >= 0)
+		}
+		return engine.Number(float64(i))
+	}
+}
+
+func typedArrayJoin(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	o, _, n := validateTypedArray(cx, this, "%TypedArray%.prototype.join")
+	sep := wtf8.String(",")
+	if s := arg(args, 0); !s.IsUndefined() {
+		sep = cx.ToString(s)
+	}
+	var b wtf8.Buffer
+	for i := range n {
+		if i > 0 {
+			b.WriteString(sep)
+		}
+		if e := getAt(cx, o, int64(i)); !e.IsUndefined() {
+			writeString(cx, &b, e)
+		}
+		if b.Len() > engine.MaxStringLength {
+			cx.ThrowRangeError("invalid string length")
+		}
+	}
+	return cx.NewString(b.String())
+}
+
+func typedArrayMap(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	o, t, n := validateTypedArray(cx, this, "%TypedArray%.prototype.map")
+	f := callback(cx, args, "map")
+	thisArg := arg(args, 1)
+	a, at := typedArraySpeciesCreate(cx, o, t, []engine.Value{engine.Number(float64(n))}, true)
+	for i := range n {
+		v := cx.Call(f, thisArg, getAt(cx, o, int64(i)), engine.Number(float64(i)), engine.ObjectValue(o))
+		storeAt(cx, a, at, i, v)
+	}
+	return engine.ObjectValue(a)
+}
+
+var (
+	typedArrayReduce      = typedArrayReduceNative("reduce", false)
+	typedArrayReduceRight = typedArrayReduceNative("reduceRight", true)
+)
+
+// typedArrayReduceNative returns the method name of %TypedArray%.prototype, which reduces a typed
+// array. With backward, the method goes from the end of the array to its start.
+//
+//go:noinline
+func typedArrayReduceNative(name string, backward bool) engine.NativeFunc {
+	return func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		o, _, n := validateTypedArray(cx, this, "%TypedArray%.prototype."+name)
+		f := callback(cx, args, name)
+		index := func(j int) int {
+			if backward {
+				return n - 1 - j
+			}
+			return j
+		}
+		j := 0
+		var acc engine.Value
+		if len(args) > 1 {
+			acc = args[1]
+		} else {
+			if n == 0 {
+				cx.ThrowTypeError("reduce of empty array with no initial value")
+			}
+			acc = getAt(cx, o, int64(index(0)))
+			j = 1
+		}
+		for ; j < n; j++ {
+			i := index(j)
+			acc = cx.Call(f, engine.Undefined, acc, getAt(cx, o, int64(i)), engine.Number(float64(i)), engine.ObjectValue(o))
+		}
+		return acc
+	}
+}
+
+func typedArrayReverse(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	o, t, n := validateWritableTypedArray(cx, this, "%TypedArray%.prototype.reverse")
+	reverseFirst(cx, t, n)
+	return engine.ObjectValue(o)
+}
+
+func typedArraySet(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	t := engine.TypedArrayData(this)
+	if t == nil {
+		cx.ThrowTypeError("%TypedArray%.prototype.set: this is not a typed array")
+	}
+	if t.ArrayBuffer().IsImmutable() {
+		cx.ThrowTypeError("%TypedArray%.prototype.set: the typed array is backed by an immutable ArrayBuffer")
+	}
+	offset := cx.ToIntegerOrInfinity(arg(args, 1))
+	if offset < 0 {
+		cx.ThrowRangeError("offset is out of bounds")
+	}
+	setTypedArrayFrom(cx, this.Object(), t, offset, arg(args, 0))
+	return engine.Undefined
+}
+
+func typedArraySlice(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	o, t, n := validateTypedArray(cx, this, "%TypedArray%.prototype.slice")
+	start, end := relativeRange(cx, arg(args, 0), arg(args, 1), n)
+	count := max(end-start, 0)
+	a, at := typedArraySpeciesCreate(cx, o, t, []engine.Value{engine.Number(float64(count))}, true)
+	if count == 0 {
+		return engine.ObjectValue(a)
+	}
+	cur, ok := t.Length()
+	if !ok {
+		cx.ThrowTypeError("%TypedArray%.prototype.slice: the typed array is detached or out of bounds")
+	}
+	end = min(end, cur)
+	count = max(end-start, 0)
+	typ := t.ElementType()
+	if typ != at.ElementType() {
+		for i := range count {
+			storeAt(cx, a, at, i, getAt(cx, o, int64(start+i)))
+		}
+		return engine.ObjectValue(a)
+	}
+	size := typ.Size()
+	src, dst := start*size+t.ByteOffset(), at.ByteOffset()
+	if at.ArrayBuffer().SameDataBlock(t.ArrayBuffer()) && src < dst && dst < src+count*size {
+		// The bytes are copied one at a time from the first on, as the specification says.
+		copyBytesForward(cx, t.ArrayBuffer(), dst, src, count*size)
+	} else {
+		engine.CopyBufferBytes(at.ArrayBuffer(), dst, t.ArrayBuffer(), src, count*size)
+	}
+	return engine.ObjectValue(a)
+}
+
+func typedArraySort(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	cmp := arg(args, 0)
+	if !cmp.IsUndefined() && !cmp.IsCallable() {
+		cx.ThrowTypeError("the comparison function must be either a function or undefined")
+	}
+	o, t, n := validateWritableTypedArray(cx, this, "%TypedArray%.prototype.sort")
+	if cmp.IsUndefined() {
+		sortFirst(cx, t, n)
+		return engine.ObjectValue(o)
+	}
+	vals := make([]engine.Value, n)
+	for i := range vals {
+		vals[i] = getAt(cx, o, int64(i))
+	}
+	sortValues(cx, vals, cmp)
+	for i, v := range vals {
+		storeAt(cx, o, t, i, v)
+	}
+	return engine.ObjectValue(o)
+}
+
+func typedArraySubarray(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	t := engine.TypedArrayData(this)
+	if t == nil {
+		cx.ThrowTypeError("%TypedArray%.prototype.subarray: this is not a typed array")
+	}
+	n, _ := t.Length()
+	start := numconv.RelativeIndex(cx.ToIntegerOrInfinity(arg(args, 0)), n)
+	size := t.ElementType().Size()
+	begin := engine.Number(float64(t.ByteOffset() + start*size))
+	buf := engine.ObjectValue(t.Buffer())
+	var a *engine.Object
+	if end := arg(args, 1); t.IsLengthTracking() && end.IsUndefined() {
+		a, _ = typedArraySpeciesCreate(cx, this.Object(), t, []engine.Value{buf, begin}, false)
+	} else {
+		e := n
+		if !end.IsUndefined() {
+			e = numconv.RelativeIndex(cx.ToIntegerOrInfinity(end), n)
+		}
+		a, _ = typedArraySpeciesCreate(cx, this.Object(), t, []engine.Value{buf, begin, engine.Number(float64(max(e-start, 0)))}, false)
+	}
+	return engine.ObjectValue(a)
+}
+
+func typedArrayToLocaleString(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	o, _, n := validateTypedArray(cx, this, "%TypedArray%.prototype.toLocaleString")
+	var b wtf8.Buffer
+	for i := range n {
+		if i > 0 {
+			b.WriteString(",")
+		}
+		if e := getAt(cx, o, int64(i)); !e.IsNullish() {
+			b.WriteString(cx.ToString(cx.CallValue(cx.GetV(e, cx.Key(engine.KeyToLocaleString)), e)))
+		}
+		if b.Len() > engine.MaxStringLength {
+			cx.ThrowRangeError("invalid string length")
+		}
+	}
+	return cx.NewString(b.String())
+}
+
+func typedArrayToReversed(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	_, t, n := validateTypedArray(cx, this, "%TypedArray%.prototype.toReversed")
+	a, at := typedArrayCreateSameType(cx, t, n)
+	copyElements(at, 0, t, n)
+	reverseFirst(cx, at, n)
+	return engine.ObjectValue(a)
+}
+
+func typedArrayToSorted(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	cmp := arg(args, 0)
+	if !cmp.IsUndefined() && !cmp.IsCallable() {
+		cx.ThrowTypeError("the comparison function must be either a function or undefined")
+	}
+	o, t, n := validateTypedArray(cx, this, "%TypedArray%.prototype.toSorted")
+	a, at := typedArrayCreateSameType(cx, t, n)
+	if cmp.IsUndefined() {
+		copyElements(at, 0, t, n)
+		sortFirst(cx, at, n)
+		return engine.ObjectValue(a)
+	}
+	vals := make([]engine.Value, n)
+	for i := range vals {
+		vals[i] = getAt(cx, o, int64(i))
+	}
+	sortValues(cx, vals, cmp)
+	for i, v := range vals {
+		storeAt(cx, a, at, i, v)
+	}
+	return engine.ObjectValue(a)
+}
+
+func typedArrayWith(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	o, t, n := validateTypedArray(cx, this, "%TypedArray%.prototype.with")
+	rel := cx.ToIntegerOrInfinity(arg(args, 0))
+	idx := rel
+	if rel < 0 {
+		idx = float64(n) + rel
+	}
+	typ := t.ElementType()
+	v := cx.ToElementValue(typ, arg(args, 1))
+	cur, _ := t.Length()
+	if idx < 0 || idx >= float64(cur) {
+		cx.ThrowRangeError("invalid typed array index")
+	}
+	a, at := typedArrayCreateSameType(cx, t, n)
+	copied := min(n, cur)
+	copyElements(at, 0, t, copied)
+	for i := copied; i < n; i++ {
+		storeAt(cx, a, at, i, getAt(cx, o, int64(i)))
+	}
+	storeAt(cx, a, at, int(idx), v)
+	return engine.ObjectValue(a)
+}
+
+var typedArrayConstructors = [element.TypeCount]engine.NativeFunc{
+	element.Int8:         typedArrayConstructorNative(element.Int8),
+	element.Uint8:        typedArrayConstructorNative(element.Uint8),
+	element.Uint8Clamped: typedArrayConstructorNative(element.Uint8Clamped),
+	element.Int16:        typedArrayConstructorNative(element.Int16),
+	element.Uint16:       typedArrayConstructorNative(element.Uint16),
+	element.Int32:        typedArrayConstructorNative(element.Int32),
+	element.Uint32:       typedArrayConstructorNative(element.Uint32),
+	element.Float16:      typedArrayConstructorNative(element.Float16),
+	element.Float32:      typedArrayConstructorNative(element.Float32),
+	element.Float64:      typedArrayConstructorNative(element.Float64),
+	element.BigInt64:     typedArrayConstructorNative(element.BigInt64),
+	element.BigUint64:    typedArrayConstructorNative(element.BigUint64),
+}
+
+// typedArrayConstructorNative returns the constructor of the typed arrays with elements of typ.
+//
+//go:noinline
+func typedArrayConstructorNative(typ element.Type) engine.NativeFunc {
+	return func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		return constructTypedArray(cx, typ, args)
+	}
 }
 
 // setTypedArrayFrom implements the part of %TypedArray%.prototype.set after the offset is converted.

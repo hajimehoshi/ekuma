@@ -8,7 +8,6 @@ import (
 
 	"github.com/hajimehoshi/ekuma/internal/element"
 	"github.com/hajimehoshi/ekuma/internal/engine"
-	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 // The engine makes the accesses to a shared data block atomic, as other agents may access it.
@@ -104,82 +103,111 @@ func initAtomics(cx *engine.ExecutionContext) {
 	cx.Define(cx.GlobalObject().Object(), cx.Intern("Atomics"), engine.ObjectValue(atomics), engine.FlagsHidden)
 	cx.Define(atomics, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Atomics"), engine.FlagConfigurable)
 
-	// readModifyWrite implements AtomicReadModifyWrite with op on the encodings of the elements.
-	readModifyWrite := func(name string, op engine.AtomicOp) {
-		method(cx, atomics, wtf8.String(name), 3, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-			t, n := validateIntegerTypedArray(cx, arg(args, 0), false, true, name)
-			i := validateAtomicAccess(cx, n, arg(args, 1))
-			typ := t.ElementType()
-			v := toAtomicValue(cx, typ, arg(args, 2))
-			revalidateAtomicAccess(cx, t, i)
-			return cx.ElementFromBits(typ, t.AtomicReadModifyWrite(i, op, engine.ElementBits(typ, v), 0))
-		})
-	}
-	readModifyWrite("add", engine.AtomicAdd)
-	readModifyWrite("and", engine.AtomicAnd)
-	readModifyWrite("exchange", engine.AtomicExchange)
-	readModifyWrite("or", engine.AtomicOr)
-	readModifyWrite("sub", engine.AtomicSub)
-	readModifyWrite("xor", engine.AtomicXor)
+	method(cx, atomics, "add", 3, atomicsAdd)
+	method(cx, atomics, "and", 3, atomicsAnd)
+	method(cx, atomics, "exchange", 3, atomicsExchange)
+	method(cx, atomics, "or", 3, atomicsOr)
+	method(cx, atomics, "sub", 3, atomicsSub)
+	method(cx, atomics, "xor", 3, atomicsXor)
 
-	method(cx, atomics, "compareExchange", 4, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		t, n := validateIntegerTypedArray(cx, arg(args, 0), false, true, "compareExchange")
-		i := validateAtomicAccess(cx, n, arg(args, 1))
-		typ := t.ElementType()
-		expected := toAtomicValue(cx, typ, arg(args, 2))
-		replacement := toAtomicValue(cx, typ, arg(args, 3))
-		revalidateAtomicAccess(cx, t, i)
-		old := t.AtomicReadModifyWrite(i, engine.AtomicCompareExchange, engine.ElementBits(typ, expected), engine.ElementBits(typ, replacement))
-		return cx.ElementFromBits(typ, old)
-	})
-	method(cx, atomics, "isLockFree", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		switch cx.ToIntegerOrInfinity(arg(args, 0)) {
-		case 1, 2, 4, 8:
-			return engine.True
-		}
-		return engine.False
-	})
-	method(cx, atomics, "load", 2, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		t, n := validateIntegerTypedArray(cx, arg(args, 0), false, false, "load")
-		i := validateAtomicAccess(cx, n, arg(args, 1))
-		revalidateAtomicAccess(cx, t, i)
-		return cx.ElementFromBits(t.ElementType(), t.AtomicLoad(i))
-	})
-	method(cx, atomics, "store", 3, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		t, n := validateIntegerTypedArray(cx, arg(args, 0), false, true, "store")
+	method(cx, atomics, "compareExchange", 4, atomicsCompareExchange)
+	method(cx, atomics, "isLockFree", 1, atomicsIsLockFree)
+	method(cx, atomics, "load", 2, atomicsLoad)
+	method(cx, atomics, "store", 3, atomicsStore)
+	method(cx, atomics, "wait", 4, atomicsWait)
+	method(cx, atomics, "waitAsync", 4, atomicsWaitAsync)
+	method(cx, atomics, "notify", 3, atomicsNotify)
+	method(cx, atomics, "pause", 0, atomicsPause)
+}
+
+var (
+	atomicsAdd      = atomicsReadModifyWriteNative("add", engine.AtomicAdd)
+	atomicsAnd      = atomicsReadModifyWriteNative("and", engine.AtomicAnd)
+	atomicsExchange = atomicsReadModifyWriteNative("exchange", engine.AtomicExchange)
+	atomicsOr       = atomicsReadModifyWriteNative("or", engine.AtomicOr)
+	atomicsSub      = atomicsReadModifyWriteNative("sub", engine.AtomicSub)
+	atomicsXor      = atomicsReadModifyWriteNative("xor", engine.AtomicXor)
+)
+
+// atomicsReadModifyWriteNative returns the function name of Atomics, which implements
+// AtomicReadModifyWrite with op on the encodings of the elements.
+//
+//go:noinline
+func atomicsReadModifyWriteNative(name string, op engine.AtomicOp) engine.NativeFunc {
+	return func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		t, n := validateIntegerTypedArray(cx, arg(args, 0), false, true, name)
 		i := validateAtomicAccess(cx, n, arg(args, 1))
 		typ := t.ElementType()
 		v := toAtomicValue(cx, typ, arg(args, 2))
 		revalidateAtomicAccess(cx, t, i)
-		t.AtomicStore(i, engine.ElementBits(typ, v))
-		return v
-	})
-	method(cx, atomics, "wait", 4, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		return doWait(cx, false, args)
-	})
-	method(cx, atomics, "waitAsync", 4, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		return doWait(cx, true, args)
-	})
-	method(cx, atomics, "notify", 3, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		t, n := validateIntegerTypedArray(cx, arg(args, 0), true, false, "notify")
-		i := validateAtomicAccess(cx, n, arg(args, 1))
-		c := math.Inf(1)
-		if v := arg(args, 2); !v.IsUndefined() {
-			c = max(cx.ToIntegerOrInfinity(v), 0)
+		return cx.ElementFromBits(typ, t.AtomicReadModifyWrite(i, op, engine.ElementBits(typ, v), 0))
+	}
+}
+
+func atomicsCompareExchange(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	t, n := validateIntegerTypedArray(cx, arg(args, 0), false, true, "compareExchange")
+	i := validateAtomicAccess(cx, n, arg(args, 1))
+	typ := t.ElementType()
+	expected := toAtomicValue(cx, typ, arg(args, 2))
+	replacement := toAtomicValue(cx, typ, arg(args, 3))
+	revalidateAtomicAccess(cx, t, i)
+	old := t.AtomicReadModifyWrite(i, engine.AtomicCompareExchange, engine.ElementBits(typ, expected), engine.ElementBits(typ, replacement))
+	return cx.ElementFromBits(typ, old)
+}
+
+func atomicsIsLockFree(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	switch cx.ToIntegerOrInfinity(arg(args, 0)) {
+	case 1, 2, 4, 8:
+		return engine.True
+	}
+	return engine.False
+}
+
+func atomicsLoad(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	t, n := validateIntegerTypedArray(cx, arg(args, 0), false, false, "load")
+	i := validateAtomicAccess(cx, n, arg(args, 1))
+	revalidateAtomicAccess(cx, t, i)
+	return cx.ElementFromBits(t.ElementType(), t.AtomicLoad(i))
+}
+
+func atomicsStore(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	t, n := validateIntegerTypedArray(cx, arg(args, 0), false, true, "store")
+	i := validateAtomicAccess(cx, n, arg(args, 1))
+	typ := t.ElementType()
+	v := toAtomicValue(cx, typ, arg(args, 2))
+	revalidateAtomicAccess(cx, t, i)
+	t.AtomicStore(i, engine.ElementBits(typ, v))
+	return v
+}
+
+func atomicsWait(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return doWait(cx, false, args)
+}
+
+func atomicsWaitAsync(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return doWait(cx, true, args)
+}
+
+func atomicsNotify(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	t, n := validateIntegerTypedArray(cx, arg(args, 0), true, false, "notify")
+	i := validateAtomicAccess(cx, n, arg(args, 1))
+	c := math.Inf(1)
+	if v := arg(args, 2); !v.IsUndefined() {
+		c = max(cx.ToIntegerOrInfinity(v), 0)
+	}
+	b := t.ArrayBuffer()
+	if !b.IsShared() {
+		return engine.Number(0)
+	}
+	byteIndex := t.ByteOffset() + i*t.ElementType().Size()
+	return engine.Number(float64(cx.NotifyWaiters(b, byteIndex, c)))
+}
+
+func atomicsPause(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	if v := arg(args, 0); !v.IsUndefined() {
+		if !v.IsNumber() || v.Number() != math.Trunc(v.Number()) || math.IsInf(v.Number(), 0) {
+			cx.ThrowTypeError("Atomics.pause: the argument must be an integral number")
 		}
-		b := t.ArrayBuffer()
-		if !b.IsShared() {
-			return engine.Number(0)
-		}
-		byteIndex := t.ByteOffset() + i*t.ElementType().Size()
-		return engine.Number(float64(cx.NotifyWaiters(b, byteIndex, c)))
-	})
-	method(cx, atomics, "pause", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		if v := arg(args, 0); !v.IsUndefined() {
-			if !v.IsNumber() || v.Number() != math.Trunc(v.Number()) || math.IsInf(v.Number(), 0) {
-				cx.ThrowTypeError("Atomics.pause: the argument must be an integral number")
-			}
-		}
-		return engine.Undefined
-	})
+	}
+	return engine.Undefined
 }

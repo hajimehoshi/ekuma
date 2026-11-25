@@ -30,32 +30,8 @@ func Install(cx *engine.ExecutionContext) {
 // initNamespace defines the properties of the Intl namespace ns.
 func initNamespace(cx *engine.ExecutionContext, ns *engine.Object) {
 	cx.Define(ns, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Intl"), engine.FlagConfigurable)
-	method(cx, ns, "getCanonicalLocales", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		return stringArray(cx, canonicalizeLocaleList(cx, arg(args, 0)))
-	})
-	method(cx, ns, "supportedValuesOf", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		var values []string
-		switch cx.ToString(arg(args, 0)) {
-		case "calendar":
-			values = locale.Calendars
-		case "collation":
-			values = locale.Collations()
-		case "currency":
-			values = make([]string, cldr.Currencies.Len())
-			for i := range values {
-				values[i] = cldr.Currencies.At(i)
-			}
-		case "numberingSystem":
-			values = locale.NumberingSystems()
-		case "timeZone":
-			values = locale.TimeZones()
-		case "unit":
-			values = sanctionedUnits
-		default:
-			cx.ThrowRangeError("invalid key for Intl.supportedValuesOf")
-		}
-		return stringArray(cx, values)
-	})
+	method(cx, ns, "getCanonicalLocales", 1, intlGetCanonicalLocales)
+	method(cx, ns, "supportedValuesOf", 1, intlSupportedValuesOf)
 	initLocale(cx, ns)
 	initNumberFormat(cx, ns)
 	initPluralRules(cx, ns)
@@ -66,6 +42,34 @@ func initNamespace(cx *engine.ExecutionContext, ns *engine.Object) {
 	initRelativeTimeFormat(cx, ns)
 	initDisplayNames(cx, ns)
 	initDurationFormat(cx, ns)
+}
+
+func intlGetCanonicalLocales(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return stringArray(cx, canonicalizeLocaleList(cx, arg(args, 0)))
+}
+
+func intlSupportedValuesOf(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	var values []string
+	switch cx.ToString(arg(args, 0)) {
+	case "calendar":
+		values = locale.Calendars
+	case "collation":
+		values = locale.Collations()
+	case "currency":
+		values = make([]string, cldr.Currencies.Len())
+		for i := range values {
+			values[i] = cldr.Currencies.At(i)
+		}
+	case "numberingSystem":
+		values = locale.NumberingSystems()
+	case "timeZone":
+		values = locale.TimeZones()
+	case "unit":
+		values = sanctionedUnits
+	default:
+		cx.ThrowRangeError("invalid key for Intl.supportedValuesOf")
+	}
+	return stringArray(cx, values)
 }
 
 // sanctionedUnits are the sanctioned single unit identifiers of ECMA-402, sorted.

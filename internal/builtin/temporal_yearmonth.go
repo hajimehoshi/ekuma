@@ -118,191 +118,305 @@ func toTemporalMonthDay(cx *engine.ExecutionContext, item, options engine.Value)
 }
 
 func initTemporalPlainYearMonth(cx *engine.ExecutionContext, ns *engine.Object) {
-	ctor, proto := temporalConstructor(cx, ns, "PlainYearMonth", 2, engine.IntrinsicTemporalPlainYearMonthPrototype, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		nt := newTarget(cx, "Temporal.PlainYearMonth")
-		y := toIntegerWithTruncation(cx, arg(args, 0), "year")
-		m := toIntegerWithTruncation(cx, arg(args, 1), "month")
-		cal := temporal.ISO8601
-		if c := arg(args, 2); !c.IsUndefined() {
-			cal = must(temporal.CanonicalizeCalendar(requireString(cx, c, "calendar")))
+	ctor, proto := temporalConstructor(cx, ns, "PlainYearMonth", 2, engine.IntrinsicTemporalPlainYearMonthPrototype, nativePlainYearMonthConstructor)
+	method(cx, ctor, "from", 1, nativePlainYearMonthFrom)
+	method(cx, ctor, "compare", 2, nativePlainYearMonthCompare)
+	getter(cx, proto, cx.Intern("calendarId"), "calendarId", nativePlainYearMonthCalendarId)
+	getter(cx, proto, cx.Intern("era"), "era", nativePlainYearMonthEra)
+	getter(cx, proto, cx.Intern("eraYear"), "eraYear", nativePlainYearMonthEraYear)
+	getter(cx, proto, cx.Intern("year"), "year", nativePlainYearMonthYear)
+	getter(cx, proto, cx.Intern("month"), "month", nativePlainYearMonthMonth)
+	getter(cx, proto, cx.Intern("monthCode"), "monthCode", nativePlainYearMonthMonthCode)
+	getter(cx, proto, cx.Intern("daysInMonth"), "daysInMonth", nativePlainYearMonthDaysInMonth)
+	getter(cx, proto, cx.Intern("daysInYear"), "daysInYear", nativePlainYearMonthDaysInYear)
+	getter(cx, proto, cx.Intern("monthsInYear"), "monthsInYear", nativePlainYearMonthMonthsInYear)
+	getter(cx, proto, cx.Intern("inLeapYear"), "inLeapYear", nativePlainYearMonthInLeapYear)
+	method(cx, proto, "with", 1, nativePlainYearMonthWith)
+	method(cx, proto, "add", 1, nativePlainYearMonthAdd)
+	method(cx, proto, "subtract", 1, nativePlainYearMonthSubtract)
+	method(cx, proto, "until", 1, nativePlainYearMonthUntil)
+	method(cx, proto, "since", 1, nativePlainYearMonthSince)
+	method(cx, proto, "equals", 1, nativePlainYearMonthEquals)
+	method(cx, proto, "toString", 0, nativePlainYearMonthToString)
+	method(cx, proto, "toJSON", 0, nativePlainYearMonthToJSON)
+	method(cx, proto, "toLocaleString", 0, nativePlainYearMonthToLocaleString)
+	method(cx, proto, "valueOf", 0, nativePlainYearMonthValueOf)
+	method(cx, proto, "toPlainDate", 1, nativePlainYearMonthToPlainDate)
+}
+
+// The native functions of Temporal.PlainYearMonth.
+var (
+	nativePlainYearMonthConstructor    = temporalNative(plainYearMonthConstructor)
+	nativePlainYearMonthFrom           = temporalNative(plainYearMonthFrom)
+	nativePlainYearMonthCompare        = temporalNative(plainYearMonthCompare)
+	nativePlainYearMonthCalendarId     = calendarFieldNative("calendarId", plainYearMonthCalendarDate)
+	nativePlainYearMonthEra            = calendarFieldNative("era", plainYearMonthCalendarDate)
+	nativePlainYearMonthEraYear        = calendarFieldNative("eraYear", plainYearMonthCalendarDate)
+	nativePlainYearMonthYear           = calendarFieldNative("year", plainYearMonthCalendarDate)
+	nativePlainYearMonthMonth          = calendarFieldNative("month", plainYearMonthCalendarDate)
+	nativePlainYearMonthMonthCode      = calendarFieldNative("monthCode", plainYearMonthCalendarDate)
+	nativePlainYearMonthDaysInMonth    = calendarFieldNative("daysInMonth", plainYearMonthCalendarDate)
+	nativePlainYearMonthDaysInYear     = calendarFieldNative("daysInYear", plainYearMonthCalendarDate)
+	nativePlainYearMonthMonthsInYear   = calendarFieldNative("monthsInYear", plainYearMonthCalendarDate)
+	nativePlainYearMonthInLeapYear     = calendarFieldNative("inLeapYear", plainYearMonthCalendarDate)
+	nativePlainYearMonthWith           = temporalNative(plainYearMonthWith)
+	nativePlainYearMonthAdd            = plainYearMonthAddNative("add")
+	nativePlainYearMonthSubtract       = plainYearMonthAddNative("subtract")
+	nativePlainYearMonthUntil          = plainYearMonthUntilNative("until")
+	nativePlainYearMonthSince          = plainYearMonthUntilNative("since")
+	nativePlainYearMonthEquals         = temporalNative(plainYearMonthEquals)
+	nativePlainYearMonthToString       = temporalNative(plainYearMonthToString)
+	nativePlainYearMonthToJSON         = plainYearMonthToJSONNative("toJSON")
+	nativePlainYearMonthToLocaleString = plainYearMonthToJSONNative("toLocaleString")
+	nativePlainYearMonthValueOf        = temporalValueOfNative("PlainYearMonth")
+	nativePlainYearMonthToPlainDate    = temporalNative(plainYearMonthToPlainDate)
+)
+
+// plainYearMonthCalendarDate returns the ISO date and the calendar of this for the getter name.
+func plainYearMonthCalendarDate(cx *engine.ExecutionContext, this engine.Value, name string) (temporal.ISODate, string) {
+	s := thisPlainYearMonth(cx, this, name)
+	return s.date, s.cal
+}
+
+// plainYearMonthAddNative returns the method name of Temporal.PlainYearMonth.prototype, which is
+// add or subtract.
+//
+//go:noinline
+func plainYearMonthAddNative(name string) engine.NativeFunc {
+	return temporalNative(func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		s := thisPlainYearMonth(cx, this, name)
+		d := toTemporalDuration(cx, arg(args, 0))
+		if name == "subtract" {
+			d = d.Negated()
 		}
-		day := 1.0
-		if d := arg(args, 3); !d.IsUndefined() {
-			day = toIntegerWithTruncation(cx, d, "referenceISODay")
-		}
-		date := must(temporal.CreateISODateRecord(y, m, day))
-		return createPlainYearMonth(cx, date, cal, nt)
-	})
-	tmethod(cx, ctor, "from", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		s := toTemporalYearMonth(cx, arg(args, 0), arg(args, 1))
-		return createPlainYearMonth(cx, s.date, s.cal, nil)
-	})
-	tmethod(cx, ctor, "compare", 2, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		one := toTemporalYearMonth(cx, arg(args, 0), engine.Undefined)
-		two := toTemporalYearMonth(cx, arg(args, 1), engine.Undefined)
-		return compareResult(temporal.CompareISODate(one.date, two.date))
-	})
-	defineCalendarGetters(cx, proto, []string{"calendarId", "era", "eraYear", "year", "month", "monthCode", "daysInMonth", "daysInYear", "monthsInYear", "inLeapYear"},
-		func(cx *engine.ExecutionContext, this engine.Value, name string) (temporal.ISODate, string) {
-			s := thisPlainYearMonth(cx, this, name)
-			return s.date, s.cal
-		})
-	tmethod(cx, proto, "with", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		s := thisPlainYearMonth(cx, this, "with")
-		bag := rejectTemporalLikeObject(cx, arg(args, 0))
-		f := temporal.ISODateToFields(s.cal, s.date, temporal.FieldsYearMonth)
-		partial := prepareCalendarFields(cx, s.cal, bag, yearMonthFieldNames, fieldsPartial)
-		f = temporal.CalendarMergeFields(s.cal, f, partial)
+		id := temporal.ToInternalDurationRecord(&d)
 		overflow := getOverflowOption(cx, getOptionsObject(cx, arg(args, 1)))
-		return createPlainYearMonth(cx, must(temporal.CalendarYearMonthFromFields(s.cal, f, overflow)), s.cal, nil)
-	})
-	for _, name := range []string{"add", "subtract"} {
-		tmethod(cx, proto, wtf8.String(name), 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-			s := thisPlainYearMonth(cx, this, name)
-			d := toTemporalDuration(cx, arg(args, 0))
-			if name == "subtract" {
-				d = d.Negated()
-			}
-			id := temporal.ToInternalDurationRecord(&d)
-			overflow := getOverflowOption(cx, getOptionsObject(cx, arg(args, 1)))
-			if id.Date.Weeks != 0 || id.Date.Days != 0 || !id.Time.IsZero() {
-				cx.ThrowRangeError("only years and months can be added to a PlainYearMonth")
-			}
-			f := temporal.ISODateToFields(s.cal, s.date, temporal.FieldsYearMonth)
-			f.Day, f.HasDay = 1, true
-			date := must(temporal.CalendarDateFromFields(s.cal, f, temporal.OverflowConstrain))
-			added := must(temporal.CalendarDateAdd(s.cal, date, id.Date, overflow))
-			af := temporal.ISODateToFields(s.cal, added, temporal.FieldsYearMonth)
-			return createPlainYearMonth(cx, must(temporal.CalendarYearMonthFromFields(s.cal, af, overflow)), s.cal, nil)
-		})
-	}
-	for _, name := range []string{"until", "since"} {
-		tmethod(cx, proto, wtf8.String(name), 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-			s := thisPlainYearMonth(cx, this, name)
-			other := toTemporalYearMonth(cx, arg(args, 0), engine.Undefined)
-			checkSameCalendar(cx, s.cal, other.cal)
-			opts := getOptionsObject(cx, arg(args, 1))
-			settings := getDifferenceSettings(cx, name == "since", opts, unitGroupDate, []temporal.Unit{temporal.UnitWeek, temporal.UnitDay}, temporal.UnitMonth, temporal.UnitYear)
-			if temporal.CompareISODate(s.date, other.date) == 0 {
-				return newDuration(cx, temporal.Duration{}, nil)
-			}
-			tf := temporal.ISODateToFields(s.cal, s.date, temporal.FieldsYearMonth)
-			tf.Day, tf.HasDay = 1, true
-			thisDate := must(temporal.CalendarDateFromFields(s.cal, tf, temporal.OverflowConstrain))
-			of := temporal.ISODateToFields(s.cal, other.date, temporal.FieldsYearMonth)
-			of.Day, of.HasDay = 1, true
-			otherDate := must(temporal.CalendarDateFromFields(s.cal, of, temporal.OverflowConstrain))
-			dd := temporal.CalendarDateUntil(s.cal, thisDate, otherDate, settings.largestUnit)
-			dd = must(temporal.AdjustDateDurationRecord(dd, 0, 0, -1<<63))
-			id := temporal.InternalDuration{
-				Date: dd,
-			}
-			if settings.smallestUnit != temporal.UnitMonth || settings.increment != 1 {
-				from := temporal.ISODateTime{
-					Date: thisDate,
-				}
-				to := temporal.ISODateTime{
-					Date: otherDate,
-				}
-				id = must(temporal.RoundRelativeDuration(id, from.UTCEpochNanoseconds(), to.UTCEpochNanoseconds(), from, s.cal, nil,
-					settings.largestUnit, settings.increment, settings.smallestUnit, settings.mode))
-			}
-			d := must(temporal.TemporalDurationFromInternal(id, temporal.UnitDay))
-			if name == "since" {
-				d = d.Negated()
-			}
-			return newDuration(cx, d, nil)
-		})
-	}
-	tmethod(cx, proto, "equals", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		s := thisPlainYearMonth(cx, this, "equals")
-		other := toTemporalYearMonth(cx, arg(args, 0), engine.Undefined)
-		return engine.Bool(temporal.CompareISODate(s.date, other.date) == 0 && calendarEquals(s.cal, other.cal))
-	})
-	tmethod(cx, proto, "toString", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		s := thisPlainYearMonth(cx, this, "toString")
-		show := getShowCalendarOption(cx, getOptionsObject(cx, arg(args, 0)))
-		return cx.NewString(wtf8.String(temporal.TemporalYearMonthToString(s.date, s.cal, show)))
-	})
-	for _, name := range []string{"toJSON", "toLocaleString"} {
-		tmethod(cx, proto, wtf8.String(name), 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-			s := thisPlainYearMonth(cx, this, name)
-			return cx.NewString(wtf8.String(temporal.TemporalYearMonthToString(s.date, s.cal, temporal.ShowCalendarAuto)))
-		})
-	}
-	valueOfThrows(cx, proto, "PlainYearMonth")
-	tmethod(cx, proto, "toPlainDate", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		s := thisPlainYearMonth(cx, this, "toPlainDate")
-		item := arg(args, 0)
-		if !item.IsObject() {
-			cx.ThrowTypeError("argument must be an object")
+		if id.Date.Weeks != 0 || id.Date.Days != 0 || !id.Time.IsZero() {
+			cx.ThrowRangeError("only years and months can be added to a PlainYearMonth")
 		}
 		f := temporal.ISODateToFields(s.cal, s.date, temporal.FieldsYearMonth)
-		in := prepareCalendarFields(cx, s.cal, item.Object(), []string{"day"}, fieldsNoneRequired)
-		f = temporal.CalendarMergeFields(s.cal, f, in)
-		return createPlainDate(cx, must(temporal.CalendarDateFromFields(s.cal, f, temporal.OverflowConstrain)), s.cal, nil)
+		f.Day, f.HasDay = 1, true
+		date := must(temporal.CalendarDateFromFields(s.cal, f, temporal.OverflowConstrain))
+		added := must(temporal.CalendarDateAdd(s.cal, date, id.Date, overflow))
+		af := temporal.ISODateToFields(s.cal, added, temporal.FieldsYearMonth)
+		return createPlainYearMonth(cx, must(temporal.CalendarYearMonthFromFields(s.cal, af, overflow)), s.cal, nil)
 	})
 }
 
-func initTemporalPlainMonthDay(cx *engine.ExecutionContext, ns *engine.Object) {
-	ctor, proto := temporalConstructor(cx, ns, "PlainMonthDay", 2, engine.IntrinsicTemporalPlainMonthDayPrototype, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		nt := newTarget(cx, "Temporal.PlainMonthDay")
-		m := toIntegerWithTruncation(cx, arg(args, 0), "month")
-		d := toIntegerWithTruncation(cx, arg(args, 1), "day")
-		cal := temporal.ISO8601
-		if c := arg(args, 2); !c.IsUndefined() {
-			cal = must(temporal.CanonicalizeCalendar(requireString(cx, c, "calendar")))
+// plainYearMonthUntilNative returns the method name of Temporal.PlainYearMonth.prototype, which is
+// until or since.
+//
+//go:noinline
+func plainYearMonthUntilNative(name string) engine.NativeFunc {
+	return temporalNative(func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		s := thisPlainYearMonth(cx, this, name)
+		other := toTemporalYearMonth(cx, arg(args, 0), engine.Undefined)
+		checkSameCalendar(cx, s.cal, other.cal)
+		opts := getOptionsObject(cx, arg(args, 1))
+		settings := getDifferenceSettings(cx, name == "since", opts, unitGroupDate, []temporal.Unit{temporal.UnitWeek, temporal.UnitDay}, temporal.UnitMonth, temporal.UnitYear)
+		if temporal.CompareISODate(s.date, other.date) == 0 {
+			return newDuration(cx, temporal.Duration{}, nil)
 		}
-		year := 1972.0
-		if y := arg(args, 3); !y.IsUndefined() {
-			year = toIntegerWithTruncation(cx, y, "referenceISOYear")
+		tf := temporal.ISODateToFields(s.cal, s.date, temporal.FieldsYearMonth)
+		tf.Day, tf.HasDay = 1, true
+		thisDate := must(temporal.CalendarDateFromFields(s.cal, tf, temporal.OverflowConstrain))
+		of := temporal.ISODateToFields(s.cal, other.date, temporal.FieldsYearMonth)
+		of.Day, of.HasDay = 1, true
+		otherDate := must(temporal.CalendarDateFromFields(s.cal, of, temporal.OverflowConstrain))
+		dd := temporal.CalendarDateUntil(s.cal, thisDate, otherDate, settings.largestUnit)
+		dd = must(temporal.AdjustDateDurationRecord(dd, 0, 0, -1<<63))
+		id := temporal.InternalDuration{
+			Date: dd,
 		}
-		date := must(temporal.CreateISODateRecord(year, m, d))
-		return createPlainMonthDay(cx, date, cal, nt)
+		if settings.smallestUnit != temporal.UnitMonth || settings.increment != 1 {
+			from := temporal.ISODateTime{
+				Date: thisDate,
+			}
+			to := temporal.ISODateTime{
+				Date: otherDate,
+			}
+			id = must(temporal.RoundRelativeDuration(id, from.UTCEpochNanoseconds(), to.UTCEpochNanoseconds(), from, s.cal, nil,
+				settings.largestUnit, settings.increment, settings.smallestUnit, settings.mode))
+		}
+		d := must(temporal.TemporalDurationFromInternal(id, temporal.UnitDay))
+		if name == "since" {
+			d = d.Negated()
+		}
+		return newDuration(cx, d, nil)
 	})
-	tmethod(cx, ctor, "from", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		s := toTemporalMonthDay(cx, arg(args, 0), arg(args, 1))
-		return createPlainMonthDay(cx, s.date, s.cal, nil)
+}
+
+// plainYearMonthToJSONNative returns the method name of Temporal.PlainYearMonth.prototype, which is
+// toJSON or toLocaleString.
+//
+//go:noinline
+func plainYearMonthToJSONNative(name string) engine.NativeFunc {
+	return temporalNative(func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		s := thisPlainYearMonth(cx, this, name)
+		return cx.NewString(wtf8.String(temporal.TemporalYearMonthToString(s.date, s.cal, temporal.ShowCalendarAuto)))
 	})
-	defineCalendarGetters(cx, proto, []string{"calendarId", "monthCode", "day"}, func(cx *engine.ExecutionContext, this engine.Value, name string) (temporal.ISODate, string) {
-		s := thisPlainMonthDay(cx, this, name)
-		return s.date, s.cal
-	})
-	tmethod(cx, proto, "with", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		s := thisPlainMonthDay(cx, this, "with")
-		bag := rejectTemporalLikeObject(cx, arg(args, 0))
-		f := temporal.ISODateToFields(s.cal, s.date, temporal.FieldsMonthDay)
-		partial := prepareCalendarFields(cx, s.cal, bag, dateFieldNames, fieldsPartial)
-		f = temporal.CalendarMergeFields(s.cal, f, partial)
-		overflow := getOverflowOption(cx, getOptionsObject(cx, arg(args, 1)))
-		return createPlainMonthDay(cx, must(temporal.CalendarMonthDayFromFields(s.cal, f, overflow)), s.cal, nil)
-	})
-	tmethod(cx, proto, "equals", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		s := thisPlainMonthDay(cx, this, "equals")
-		other := toTemporalMonthDay(cx, arg(args, 0), engine.Undefined)
-		return engine.Bool(temporal.CompareISODate(s.date, other.date) == 0 && calendarEquals(s.cal, other.cal))
-	})
-	tmethod(cx, proto, "toString", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		s := thisPlainMonthDay(cx, this, "toString")
-		show := getShowCalendarOption(cx, getOptionsObject(cx, arg(args, 0)))
-		return cx.NewString(wtf8.String(temporal.TemporalMonthDayToString(s.date, s.cal, show)))
-	})
-	for _, name := range []string{"toJSON", "toLocaleString"} {
-		tmethod(cx, proto, wtf8.String(name), 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-			s := thisPlainMonthDay(cx, this, name)
-			return cx.NewString(wtf8.String(temporal.TemporalMonthDayToString(s.date, s.cal, temporal.ShowCalendarAuto)))
-		})
+}
+
+func plainYearMonthConstructor(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	nt := newTarget(cx, "Temporal.PlainYearMonth")
+	y := toIntegerWithTruncation(cx, arg(args, 0), "year")
+	m := toIntegerWithTruncation(cx, arg(args, 1), "month")
+	cal := temporal.ISO8601
+	if c := arg(args, 2); !c.IsUndefined() {
+		cal = must(temporal.CanonicalizeCalendar(requireString(cx, c, "calendar")))
 	}
-	valueOfThrows(cx, proto, "PlainMonthDay")
-	tmethod(cx, proto, "toPlainDate", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		s := thisPlainMonthDay(cx, this, "toPlainDate")
-		item := arg(args, 0)
-		if !item.IsObject() {
-			cx.ThrowTypeError("argument must be an object")
-		}
-		f := temporal.ISODateToFields(s.cal, s.date, temporal.FieldsMonthDay)
-		in := prepareCalendarFields(cx, s.cal, item.Object(), []string{"year"}, fieldsNoneRequired)
-		f = temporal.CalendarMergeFields(s.cal, f, in)
-		return createPlainDate(cx, must(temporal.CalendarDateFromFields(s.cal, f, temporal.OverflowConstrain)), s.cal, nil)
+	day := 1.0
+	if d := arg(args, 3); !d.IsUndefined() {
+		day = toIntegerWithTruncation(cx, d, "referenceISODay")
+	}
+	date := must(temporal.CreateISODateRecord(y, m, day))
+	return createPlainYearMonth(cx, date, cal, nt)
+}
+
+func plainYearMonthFrom(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	s := toTemporalYearMonth(cx, arg(args, 0), arg(args, 1))
+	return createPlainYearMonth(cx, s.date, s.cal, nil)
+}
+
+func plainYearMonthCompare(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	one := toTemporalYearMonth(cx, arg(args, 0), engine.Undefined)
+	two := toTemporalYearMonth(cx, arg(args, 1), engine.Undefined)
+	return compareResult(temporal.CompareISODate(one.date, two.date))
+}
+
+func plainYearMonthWith(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	s := thisPlainYearMonth(cx, this, "with")
+	bag := rejectTemporalLikeObject(cx, arg(args, 0))
+	f := temporal.ISODateToFields(s.cal, s.date, temporal.FieldsYearMonth)
+	partial := prepareCalendarFields(cx, s.cal, bag, yearMonthFieldNames, fieldsPartial)
+	f = temporal.CalendarMergeFields(s.cal, f, partial)
+	overflow := getOverflowOption(cx, getOptionsObject(cx, arg(args, 1)))
+	return createPlainYearMonth(cx, must(temporal.CalendarYearMonthFromFields(s.cal, f, overflow)), s.cal, nil)
+}
+
+func plainYearMonthEquals(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	s := thisPlainYearMonth(cx, this, "equals")
+	other := toTemporalYearMonth(cx, arg(args, 0), engine.Undefined)
+	return engine.Bool(temporal.CompareISODate(s.date, other.date) == 0 && calendarEquals(s.cal, other.cal))
+}
+
+func plainYearMonthToString(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	s := thisPlainYearMonth(cx, this, "toString")
+	show := getShowCalendarOption(cx, getOptionsObject(cx, arg(args, 0)))
+	return cx.NewString(wtf8.String(temporal.TemporalYearMonthToString(s.date, s.cal, show)))
+}
+
+func plainYearMonthToPlainDate(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	s := thisPlainYearMonth(cx, this, "toPlainDate")
+	item := arg(args, 0)
+	if !item.IsObject() {
+		cx.ThrowTypeError("argument must be an object")
+	}
+	f := temporal.ISODateToFields(s.cal, s.date, temporal.FieldsYearMonth)
+	in := prepareCalendarFields(cx, s.cal, item.Object(), []string{"day"}, fieldsNoneRequired)
+	f = temporal.CalendarMergeFields(s.cal, f, in)
+	return createPlainDate(cx, must(temporal.CalendarDateFromFields(s.cal, f, temporal.OverflowConstrain)), s.cal, nil)
+}
+
+func initTemporalPlainMonthDay(cx *engine.ExecutionContext, ns *engine.Object) {
+	ctor, proto := temporalConstructor(cx, ns, "PlainMonthDay", 2, engine.IntrinsicTemporalPlainMonthDayPrototype, nativePlainMonthDayConstructor)
+	method(cx, ctor, "from", 1, nativePlainMonthDayFrom)
+	getter(cx, proto, cx.Intern("calendarId"), "calendarId", nativePlainMonthDayCalendarId)
+	getter(cx, proto, cx.Intern("monthCode"), "monthCode", nativePlainMonthDayMonthCode)
+	getter(cx, proto, cx.Intern("day"), "day", nativePlainMonthDayDay)
+	method(cx, proto, "with", 1, nativePlainMonthDayWith)
+	method(cx, proto, "equals", 1, nativePlainMonthDayEquals)
+	method(cx, proto, "toString", 0, nativePlainMonthDayToString)
+	method(cx, proto, "toJSON", 0, nativePlainMonthDayToJSON)
+	method(cx, proto, "toLocaleString", 0, nativePlainMonthDayToLocaleString)
+	method(cx, proto, "valueOf", 0, nativePlainMonthDayValueOf)
+	method(cx, proto, "toPlainDate", 1, nativePlainMonthDayToPlainDate)
+}
+
+// The native functions of Temporal.PlainMonthDay.
+var (
+	nativePlainMonthDayConstructor    = temporalNative(plainMonthDayConstructor)
+	nativePlainMonthDayFrom           = temporalNative(plainMonthDayFrom)
+	nativePlainMonthDayCalendarId     = calendarFieldNative("calendarId", plainMonthDayCalendarDate)
+	nativePlainMonthDayMonthCode      = calendarFieldNative("monthCode", plainMonthDayCalendarDate)
+	nativePlainMonthDayDay            = calendarFieldNative("day", plainMonthDayCalendarDate)
+	nativePlainMonthDayWith           = temporalNative(plainMonthDayWith)
+	nativePlainMonthDayEquals         = temporalNative(plainMonthDayEquals)
+	nativePlainMonthDayToString       = temporalNative(plainMonthDayToString)
+	nativePlainMonthDayToJSON         = plainMonthDayToJSONNative("toJSON")
+	nativePlainMonthDayToLocaleString = plainMonthDayToJSONNative("toLocaleString")
+	nativePlainMonthDayValueOf        = temporalValueOfNative("PlainMonthDay")
+	nativePlainMonthDayToPlainDate    = temporalNative(plainMonthDayToPlainDate)
+)
+
+// plainMonthDayCalendarDate returns the ISO date and the calendar of this for the getter name.
+func plainMonthDayCalendarDate(cx *engine.ExecutionContext, this engine.Value, name string) (temporal.ISODate, string) {
+	s := thisPlainMonthDay(cx, this, name)
+	return s.date, s.cal
+}
+
+// plainMonthDayToJSONNative returns the method name of Temporal.PlainMonthDay.prototype, which is
+// toJSON or toLocaleString.
+//
+//go:noinline
+func plainMonthDayToJSONNative(name string) engine.NativeFunc {
+	return temporalNative(func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		s := thisPlainMonthDay(cx, this, name)
+		return cx.NewString(wtf8.String(temporal.TemporalMonthDayToString(s.date, s.cal, temporal.ShowCalendarAuto)))
 	})
+}
+
+func plainMonthDayConstructor(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	nt := newTarget(cx, "Temporal.PlainMonthDay")
+	m := toIntegerWithTruncation(cx, arg(args, 0), "month")
+	d := toIntegerWithTruncation(cx, arg(args, 1), "day")
+	cal := temporal.ISO8601
+	if c := arg(args, 2); !c.IsUndefined() {
+		cal = must(temporal.CanonicalizeCalendar(requireString(cx, c, "calendar")))
+	}
+	year := 1972.0
+	if y := arg(args, 3); !y.IsUndefined() {
+		year = toIntegerWithTruncation(cx, y, "referenceISOYear")
+	}
+	date := must(temporal.CreateISODateRecord(year, m, d))
+	return createPlainMonthDay(cx, date, cal, nt)
+}
+
+func plainMonthDayFrom(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	s := toTemporalMonthDay(cx, arg(args, 0), arg(args, 1))
+	return createPlainMonthDay(cx, s.date, s.cal, nil)
+}
+
+func plainMonthDayWith(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	s := thisPlainMonthDay(cx, this, "with")
+	bag := rejectTemporalLikeObject(cx, arg(args, 0))
+	f := temporal.ISODateToFields(s.cal, s.date, temporal.FieldsMonthDay)
+	partial := prepareCalendarFields(cx, s.cal, bag, dateFieldNames, fieldsPartial)
+	f = temporal.CalendarMergeFields(s.cal, f, partial)
+	overflow := getOverflowOption(cx, getOptionsObject(cx, arg(args, 1)))
+	return createPlainMonthDay(cx, must(temporal.CalendarMonthDayFromFields(s.cal, f, overflow)), s.cal, nil)
+}
+
+func plainMonthDayEquals(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	s := thisPlainMonthDay(cx, this, "equals")
+	other := toTemporalMonthDay(cx, arg(args, 0), engine.Undefined)
+	return engine.Bool(temporal.CompareISODate(s.date, other.date) == 0 && calendarEquals(s.cal, other.cal))
+}
+
+func plainMonthDayToString(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	s := thisPlainMonthDay(cx, this, "toString")
+	show := getShowCalendarOption(cx, getOptionsObject(cx, arg(args, 0)))
+	return cx.NewString(wtf8.String(temporal.TemporalMonthDayToString(s.date, s.cal, show)))
+}
+
+func plainMonthDayToPlainDate(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	s := thisPlainMonthDay(cx, this, "toPlainDate")
+	item := arg(args, 0)
+	if !item.IsObject() {
+		cx.ThrowTypeError("argument must be an object")
+	}
+	f := temporal.ISODateToFields(s.cal, s.date, temporal.FieldsMonthDay)
+	in := prepareCalendarFields(cx, s.cal, item.Object(), []string{"year"}, fieldsNoneRequired)
+	f = temporal.CalendarMergeFields(s.cal, f, in)
+	return createPlainDate(cx, must(temporal.CalendarDateFromFields(s.cal, f, temporal.OverflowConstrain)), s.cal, nil)
 }

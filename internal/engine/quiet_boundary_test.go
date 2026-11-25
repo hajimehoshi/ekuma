@@ -46,7 +46,7 @@ func TestQuietContextBoundary(t *testing.T) {
 		enginePath + ".takeDataProperties",
 	}
 	listed := len(quiet)
-	pairSteps := 0
+	pairSteps := map[string]bool{}
 
 	// Only these diagnostics may inspect stored data without applying property operations.
 	storageLookups := map[string]map[string]bool{
@@ -58,7 +58,7 @@ func TestQuietContextBoundary(t *testing.T) {
 		},
 	}
 
-	// uses holds what a declared function mentions, by the full name of the function.
+	// uses holds what a declaration mentions, by the full name of a function or the position of another declaration.
 	uses := map[string][]string{}
 	methods := map[string][]string{}
 	interfaceUses := map[string][]string{}
@@ -143,23 +143,30 @@ func TestQuietContextBoundary(t *testing.T) {
 		}
 		for _, file := range p.files {
 			for _, decl := range file.Decls {
-				fn, ok := decl.(*ast.FuncDecl)
-				if !ok || fn.Body == nil {
-					continue
+				var name string
+				var body ast.Node
+				var inQuiet bool
+				switch decl := decl.(type) {
+				case *ast.FuncDecl:
+					if decl.Body == nil {
+						continue
+					}
+					f := info.Defs[decl.Name].(*types.Func)
+					sig := f.Type().(*types.Signature)
+					name, body, inQuiet = f.Origin().FullName(), decl.Body, hasQuiet(sig)
+					if sig.Recv() != nil {
+						methods[f.Name()] = append(methods[f.Name()], name)
+					}
+					if inQuiet {
+						quiet = append(quiet, name)
+						checkSignature(decl, sig)
+					}
+				case *ast.GenDecl:
+					name, body = p.fset.Position(decl.Pos()).String(), decl
 				}
-				f := info.Defs[fn.Name].(*types.Func)
-				sig := f.Type().(*types.Signature)
-				name := f.Origin().FullName()
-				pos[name] = p.fset.Position(fn.Pos())
-				if sig.Recv() != nil {
-					methods[f.Name()] = append(methods[f.Name()], name)
-				}
-				if hasQuiet(sig) {
-					quiet = append(quiet, name)
-					checkSignature(fn, sig)
-				}
+				pos[name] = p.fset.Position(decl.Pos())
 				if builtin {
-					checkBuiltin(fn.Body, hasQuiet(sig))
+					checkBuiltin(body, inQuiet)
 				}
 				written := map[*ast.Ident]bool{}
 				// pairStep holds the literals that are pair steps, which have no context.
@@ -188,13 +195,19 @@ func TestQuietContextBoundary(t *testing.T) {
 								if !engineType(sig.Params().At(i).Type(), "IteratorPairStepFunc") {
 									continue
 								}
-								lit, ok := ast.Unparen(n.Args[i]).(*ast.FuncLit)
-								if !ok {
-									t.Errorf("%v: pair step is not a function literal", p.fset.Position(n.Args[i].Pos()))
+								switch arg := ast.Unparen(n.Args[i]).(type) {
+								case *ast.FuncLit:
+									pairStep[arg] = true
+									pairSteps[p.fset.Position(arg.Pos()).String()] = true
 									continue
+								case *ast.Ident:
+									if f, ok := info.Uses[arg].(*types.Func); ok {
+										quiet = append(quiet, f.FullName())
+										pairSteps[f.FullName()] = true
+										continue
+									}
 								}
-								pairStep[lit] = true
-								pairSteps++
+								t.Errorf("%v: pair step is neither a function literal nor a declared function", p.fset.Position(n.Args[i].Pos()))
 							}
 						case *ast.AssignStmt:
 							for _, l := range n.Lhs {
@@ -233,7 +246,7 @@ func TestQuietContextBoundary(t *testing.T) {
 						return true
 					})
 				}
-				record(name, fn.Body)
+				record(name, body)
 			}
 		}
 	}
@@ -270,7 +283,12 @@ func TestQuietContextBoundary(t *testing.T) {
 			}
 		}
 	}
-	if pairSteps == 0 {
+	for name := range pairSteps {
+		if pos[name].Line == 0 {
+			t.Errorf("no pair step %s", name)
+		}
+	}
+	if len(pairSteps) == 0 {
 		t.Error("no pair step")
 	}
 	if len(quiet) == listed {

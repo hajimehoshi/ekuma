@@ -66,110 +66,174 @@ var maximumInstantIncrements = map[temporal.Unit]int64{
 }
 
 func initTemporalInstant(cx *engine.ExecutionContext, ns *engine.Object) {
-	ctor, proto := temporalConstructor(cx, ns, "Instant", 1, engine.IntrinsicTemporalInstantPrototype, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		nt := newTarget(cx, "Temporal.Instant")
-		return newInstant(cx, bigIntToEpochNs(cx, arg(args, 0)), nt)
-	})
-	tmethod(cx, ctor, "from", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		return newInstant(cx, toTemporalInstant(cx, arg(args, 0)), nil)
-	})
-	tmethod(cx, ctor, "fromEpochMilliseconds", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		n := cx.ToNumber(arg(args, 0))
-		if math.IsNaN(n) || math.IsInf(n, 0) || n != math.Trunc(n) {
-			cx.ThrowRangeError("epoch milliseconds must be an integer")
-		}
-		if math.Abs(n) > 8.64e15 {
-			cx.ThrowRangeError("epoch milliseconds are out of range")
-		}
-		return newInstant(cx, temporal.Mul64(int64(n), 1_000_000), nil)
-	})
-	tmethod(cx, ctor, "fromEpochNanoseconds", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		return newInstant(cx, bigIntToEpochNs(cx, arg(args, 0)), nil)
-	})
-	tmethod(cx, ctor, "compare", 2, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		one := toTemporalInstant(cx, arg(args, 0))
-		two := toTemporalInstant(cx, arg(args, 1))
-		return compareResult(one.Cmp(two))
-	})
+	ctor, proto := temporalConstructor(cx, ns, "Instant", 1, engine.IntrinsicTemporalInstantPrototype, nativeInstantConstructor)
+	method(cx, ctor, "from", 1, nativeInstantFrom)
+	method(cx, ctor, "fromEpochMilliseconds", 1, nativeInstantFromEpochMilliseconds)
+	method(cx, ctor, "fromEpochNanoseconds", 1, nativeInstantFromEpochNanoseconds)
+	method(cx, ctor, "compare", 2, nativeInstantCompare)
 
-	tgetter(cx, proto, cx.Intern("epochMilliseconds"), "epochMilliseconds", func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		return epochMilliseconds(thisInstant(cx, this, "epochMilliseconds").ns)
-	})
-	tgetter(cx, proto, cx.Intern("epochNanoseconds"), "epochNanoseconds", func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		return epochNsValue(cx, thisInstant(cx, this, "epochNanoseconds").ns)
-	})
-	for _, name := range []string{"add", "subtract"} {
-		tmethod(cx, proto, wtf8.String(name), 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-			s := thisInstant(cx, this, name)
-			d := toTemporalDuration(cx, arg(args, 0))
-			if name == "subtract" {
-				d = d.Negated()
-			}
-			if temporal.DefaultTemporalLargestUnit(&d).IsDateUnit() {
-				cx.ThrowRangeError("years, months, weeks and days cannot be added to an instant")
-			}
-			id := temporal.ToInternalDurationRecordWith24HourDays(&d)
-			return newInstant(cx, must(temporal.AddInstant(s.ns, id.Time)), nil)
-		})
-	}
-	for _, name := range []string{"until", "since"} {
-		tmethod(cx, proto, wtf8.String(name), 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-			s := thisInstant(cx, this, name)
-			other := toTemporalInstant(cx, arg(args, 0))
-			opts := getOptionsObject(cx, arg(args, 1))
-			settings := getDifferenceSettings(cx, name == "since", opts, unitGroupTime, nil, temporal.UnitNanosecond, temporal.UnitSecond)
-			id := must(temporal.DifferenceEpochNanoseconds(s.ns, other, settings.increment, settings.smallestUnit, settings.mode))
-			d := must(temporal.TemporalDurationFromInternal(id, settings.largestUnit))
-			if name == "since" {
-				d = d.Negated()
-			}
-			return newDuration(cx, d, nil)
-		})
-	}
-	tmethod(cx, proto, "round", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		s := thisInstant(cx, this, "round")
-		opts := roundToOptions(cx, arg(args, 0), "smallestUnit")
-		increment := getRoundingIncrementOption(cx, opts)
-		mode := getRoundingModeOption(cx, opts, temporal.RoundHalfExpand)
-		unit := getUnitOption(cx, opts, "smallestUnit", true)
-		validateUnit(cx, unit, unitGroupTime)
-		check(temporal.ValidateTemporalRoundingIncrement(increment, maximumInstantIncrements[unit], true))
-		return newInstant(cx, temporal.RoundTemporalInstant(s.ns, increment, unit, mode), nil)
-	})
-	tmethod(cx, proto, "equals", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		s := thisInstant(cx, this, "equals")
-		return engine.Bool(s.ns.Cmp(toTemporalInstant(cx, arg(args, 0))) == 0)
-	})
-	tmethod(cx, proto, "toString", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		s := thisInstant(cx, this, "toString")
-		opts := getOptionsObject(cx, arg(args, 0))
-		digits := getFractionalSecondDigitsOption(cx, opts)
-		mode := getRoundingModeOption(cx, opts, temporal.RoundTrunc)
-		unit := getUnitOption(cx, opts, "smallestUnit", false)
-		tzv := get(cx, opts, "timeZone")
-		validateUnit(cx, unit, unitGroupTime)
-		if unit == temporal.UnitHour {
-			cx.ThrowRangeError("smallestUnit must not be hour")
+	getter(cx, proto, cx.Intern("epochMilliseconds"), "epochMilliseconds", nativeInstantEpochMilliseconds)
+	getter(cx, proto, cx.Intern("epochNanoseconds"), "epochNanoseconds", nativeInstantEpochNanoseconds)
+	method(cx, proto, "add", 1, nativeInstantAdd)
+	method(cx, proto, "subtract", 1, nativeInstantSubtract)
+	method(cx, proto, "until", 1, nativeInstantUntil)
+	method(cx, proto, "since", 1, nativeInstantSince)
+	method(cx, proto, "round", 1, nativeInstantRound)
+	method(cx, proto, "equals", 1, nativeInstantEquals)
+	method(cx, proto, "toString", 0, nativeInstantToString)
+	method(cx, proto, "toJSON", 0, nativeInstantToJSON)
+	method(cx, proto, "toLocaleString", 0, nativeInstantToLocaleString)
+	method(cx, proto, "valueOf", 0, nativeInstantValueOf)
+	method(cx, proto, "toZonedDateTimeISO", 1, nativeInstantToZonedDateTimeISO)
+}
+
+// The native functions of Temporal.Instant.
+var (
+	nativeInstantConstructor           = temporalNative(instantConstructor)
+	nativeInstantFrom                  = temporalNative(instantFrom)
+	nativeInstantFromEpochMilliseconds = temporalNative(instantFromEpochMilliseconds)
+	nativeInstantFromEpochNanoseconds  = temporalNative(instantFromEpochNanoseconds)
+	nativeInstantCompare               = temporalNative(instantCompare)
+	nativeInstantEpochMilliseconds     = temporalNative(instantEpochMilliseconds)
+	nativeInstantEpochNanoseconds      = temporalNative(instantEpochNanoseconds)
+	nativeInstantAdd                   = instantAddNative("add")
+	nativeInstantSubtract              = instantAddNative("subtract")
+	nativeInstantUntil                 = instantUntilNative("until")
+	nativeInstantSince                 = instantUntilNative("since")
+	nativeInstantRound                 = temporalNative(instantRound)
+	nativeInstantEquals                = temporalNative(instantEquals)
+	nativeInstantToString              = temporalNative(instantToString)
+	nativeInstantToJSON                = instantToJSONNative("toJSON")
+	nativeInstantToLocaleString        = instantToJSONNative("toLocaleString")
+	nativeInstantValueOf               = temporalValueOfNative("Instant")
+	nativeInstantToZonedDateTimeISO    = temporalNative(instantToZonedDateTimeISO)
+)
+
+// instantAddNative returns the method name of Temporal.Instant.prototype, which is add or subtract.
+//
+//go:noinline
+func instantAddNative(name string) engine.NativeFunc {
+	return temporalNative(func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		s := thisInstant(cx, this, name)
+		d := toTemporalDuration(cx, arg(args, 0))
+		if name == "subtract" {
+			d = d.Negated()
 		}
-		var tz *temporal.TimeZone
-		if !tzv.IsUndefined() {
-			z := toTimeZone(cx, tzv)
-			tz = &z
+		if temporal.DefaultTemporalLargestUnit(&d).IsDateUnit() {
+			cx.ThrowRangeError("years, months, weeks and days cannot be added to an instant")
 		}
-		p := temporal.ToSecondsStringPrecisionRecord(unit, digits)
-		rounded := temporal.RoundTemporalInstant(s.ns, p.Increment, p.Unit, mode)
-		return cx.NewString(wtf8.String(temporal.TemporalInstantToString(rounded, tz, p.Precision)))
+		id := temporal.ToInternalDurationRecordWith24HourDays(&d)
+		return newInstant(cx, must(temporal.AddInstant(s.ns, id.Time)), nil)
 	})
-	for _, name := range []string{"toJSON", "toLocaleString"} {
-		tmethod(cx, proto, wtf8.String(name), 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-			s := thisInstant(cx, this, name)
-			return cx.NewString(wtf8.String(temporal.TemporalInstantToString(s.ns, nil, temporal.PrecisionAuto)))
-		})
+}
+
+// instantUntilNative returns the method name of Temporal.Instant.prototype, which is until or
+// since.
+//
+//go:noinline
+func instantUntilNative(name string) engine.NativeFunc {
+	return temporalNative(func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		s := thisInstant(cx, this, name)
+		other := toTemporalInstant(cx, arg(args, 0))
+		opts := getOptionsObject(cx, arg(args, 1))
+		settings := getDifferenceSettings(cx, name == "since", opts, unitGroupTime, nil, temporal.UnitNanosecond, temporal.UnitSecond)
+		id := must(temporal.DifferenceEpochNanoseconds(s.ns, other, settings.increment, settings.smallestUnit, settings.mode))
+		d := must(temporal.TemporalDurationFromInternal(id, settings.largestUnit))
+		if name == "since" {
+			d = d.Negated()
+		}
+		return newDuration(cx, d, nil)
+	})
+}
+
+// instantToJSONNative returns the method name of Temporal.Instant.prototype, which is toJSON or
+// toLocaleString.
+//
+//go:noinline
+func instantToJSONNative(name string) engine.NativeFunc {
+	return temporalNative(func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		s := thisInstant(cx, this, name)
+		return cx.NewString(wtf8.String(temporal.TemporalInstantToString(s.ns, nil, temporal.PrecisionAuto)))
+	})
+}
+
+func instantConstructor(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	nt := newTarget(cx, "Temporal.Instant")
+	return newInstant(cx, bigIntToEpochNs(cx, arg(args, 0)), nt)
+}
+
+func instantFrom(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return newInstant(cx, toTemporalInstant(cx, arg(args, 0)), nil)
+}
+
+func instantFromEpochMilliseconds(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	n := cx.ToNumber(arg(args, 0))
+	if math.IsNaN(n) || math.IsInf(n, 0) || n != math.Trunc(n) {
+		cx.ThrowRangeError("epoch milliseconds must be an integer")
 	}
-	valueOfThrows(cx, proto, "Instant")
-	tmethod(cx, proto, "toZonedDateTimeISO", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		s := thisInstant(cx, this, "toZonedDateTimeISO")
-		tz := toTimeZone(cx, arg(args, 0))
-		return newZonedDateTime(cx, s.ns, tz, temporal.ISO8601, nil)
-	})
+	if math.Abs(n) > 8.64e15 {
+		cx.ThrowRangeError("epoch milliseconds are out of range")
+	}
+	return newInstant(cx, temporal.Mul64(int64(n), 1_000_000), nil)
+}
+
+func instantFromEpochNanoseconds(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return newInstant(cx, bigIntToEpochNs(cx, arg(args, 0)), nil)
+}
+
+func instantCompare(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	one := toTemporalInstant(cx, arg(args, 0))
+	two := toTemporalInstant(cx, arg(args, 1))
+	return compareResult(one.Cmp(two))
+}
+
+func instantEpochMilliseconds(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return epochMilliseconds(thisInstant(cx, this, "epochMilliseconds").ns)
+}
+
+func instantEpochNanoseconds(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return epochNsValue(cx, thisInstant(cx, this, "epochNanoseconds").ns)
+}
+
+func instantRound(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	s := thisInstant(cx, this, "round")
+	opts := roundToOptions(cx, arg(args, 0), "smallestUnit")
+	increment := getRoundingIncrementOption(cx, opts)
+	mode := getRoundingModeOption(cx, opts, temporal.RoundHalfExpand)
+	unit := getUnitOption(cx, opts, "smallestUnit", true)
+	validateUnit(cx, unit, unitGroupTime)
+	check(temporal.ValidateTemporalRoundingIncrement(increment, maximumInstantIncrements[unit], true))
+	return newInstant(cx, temporal.RoundTemporalInstant(s.ns, increment, unit, mode), nil)
+}
+
+func instantEquals(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	s := thisInstant(cx, this, "equals")
+	return engine.Bool(s.ns.Cmp(toTemporalInstant(cx, arg(args, 0))) == 0)
+}
+
+func instantToString(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	s := thisInstant(cx, this, "toString")
+	opts := getOptionsObject(cx, arg(args, 0))
+	digits := getFractionalSecondDigitsOption(cx, opts)
+	mode := getRoundingModeOption(cx, opts, temporal.RoundTrunc)
+	unit := getUnitOption(cx, opts, "smallestUnit", false)
+	tzv := get(cx, opts, "timeZone")
+	validateUnit(cx, unit, unitGroupTime)
+	if unit == temporal.UnitHour {
+		cx.ThrowRangeError("smallestUnit must not be hour")
+	}
+	var tz *temporal.TimeZone
+	if !tzv.IsUndefined() {
+		z := toTimeZone(cx, tzv)
+		tz = &z
+	}
+	p := temporal.ToSecondsStringPrecisionRecord(unit, digits)
+	rounded := temporal.RoundTemporalInstant(s.ns, p.Increment, p.Unit, mode)
+	return cx.NewString(wtf8.String(temporal.TemporalInstantToString(rounded, tz, p.Precision)))
+}
+
+func instantToZonedDateTimeISO(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	s := thisInstant(cx, this, "toZonedDateTimeISO")
+	tz := toTimeZone(cx, arg(args, 0))
+	return newZonedDateTime(cx, s.ns, tz, temporal.ISO8601, nil)
 }

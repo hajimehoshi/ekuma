@@ -387,50 +387,79 @@ func escapeRegExpPattern(src wtf8.String) wtf8.String {
 
 // flagProps lists the flag accessors of RegExp.prototype in the order of the flags getter.
 var flagProps = []struct {
-	name string
-	key  engine.CommonKey
-	flag regexp.Flags
+	name   string
+	key    engine.CommonKey
+	flag   regexp.Flags
+	getter engine.NativeFunc
 }{
 	{
-		name: "hasIndices",
-		key:  engine.KeyHasIndices,
-		flag: regexp.FlagHasIndices,
+		name:   "hasIndices",
+		key:    engine.KeyHasIndices,
+		flag:   regexp.FlagHasIndices,
+		getter: regExpFlagNative("hasIndices", regexp.FlagHasIndices),
 	},
 	{
-		name: "global",
-		key:  engine.KeyGlobal,
-		flag: regexp.FlagGlobal,
+		name:   "global",
+		key:    engine.KeyGlobal,
+		flag:   regexp.FlagGlobal,
+		getter: regExpFlagNative("global", regexp.FlagGlobal),
 	},
 	{
-		name: "ignoreCase",
-		key:  engine.KeyIgnoreCase,
-		flag: regexp.FlagIgnoreCase,
+		name:   "ignoreCase",
+		key:    engine.KeyIgnoreCase,
+		flag:   regexp.FlagIgnoreCase,
+		getter: regExpFlagNative("ignoreCase", regexp.FlagIgnoreCase),
 	},
 	{
-		name: "multiline",
-		key:  engine.KeyMultiline,
-		flag: regexp.FlagMultiline,
+		name:   "multiline",
+		key:    engine.KeyMultiline,
+		flag:   regexp.FlagMultiline,
+		getter: regExpFlagNative("multiline", regexp.FlagMultiline),
 	},
 	{
-		name: "dotAll",
-		key:  engine.KeyDotAll,
-		flag: regexp.FlagDotAll,
+		name:   "dotAll",
+		key:    engine.KeyDotAll,
+		flag:   regexp.FlagDotAll,
+		getter: regExpFlagNative("dotAll", regexp.FlagDotAll),
 	},
 	{
-		name: "unicode",
-		key:  engine.KeyUnicode,
-		flag: regexp.FlagUnicode,
+		name:   "unicode",
+		key:    engine.KeyUnicode,
+		flag:   regexp.FlagUnicode,
+		getter: regExpFlagNative("unicode", regexp.FlagUnicode),
 	},
 	{
-		name: "unicodeSets",
-		key:  engine.KeyUnicodeSets,
-		flag: regexp.FlagUnicodeSets,
+		name:   "unicodeSets",
+		key:    engine.KeyUnicodeSets,
+		flag:   regexp.FlagUnicodeSets,
+		getter: regExpFlagNative("unicodeSets", regexp.FlagUnicodeSets),
 	},
 	{
-		name: "sticky",
-		key:  engine.KeySticky,
-		flag: regexp.FlagSticky,
+		name:   "sticky",
+		key:    engine.KeySticky,
+		flag:   regexp.FlagSticky,
+		getter: regExpFlagNative("sticky", regexp.FlagSticky),
 	},
+}
+
+// regExpFlagNative returns the getter of the property name of RegExp.prototype, which tells whether
+// a regular expression has flag.
+//
+//go:noinline
+func regExpFlagNative(name string, flag regexp.Flags) engine.NativeFunc {
+	return func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		if !this.IsObject() {
+			cx.ThrowTypeError("RegExp.prototype." + name + " getter called on non-object")
+		}
+		re := this.Object().RegExpMatcher()
+		if re == nil {
+			if this.Object() == cx.Intrinsic(engine.IntrinsicRegExpPrototype) {
+				return engine.Undefined
+			}
+			cx.ThrowTypeError("RegExp.prototype." + name + " getter called on non-RegExp object")
+		}
+		return engine.Bool(re.Flags()&flag != 0)
+	}
 }
 
 func thisRegExp(cx *engine.ExecutionContext, this engine.Value, what string) *engine.Object {
@@ -442,262 +471,37 @@ func thisRegExp(cx *engine.ExecutionContext, this engine.Value, what string) *en
 
 func initRegExp(cx *engine.ExecutionContext) {
 	proto := cx.Intrinsic(engine.IntrinsicRegExpPrototype)
-	ctor := constructor(cx, "RegExp", 2, engine.IntrinsicRegExpPrototype, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		pattern, flags := arg(args, 0), arg(args, 1)
-		patternIsRegExp := isRegExp(cx, pattern)
-		nt := cx.GetNewTarget()
-		if nt == nil {
-			nt = cx.Intrinsic(engine.IntrinsicRegExp)
-			if patternIsRegExp && flags.IsUndefined() {
-				pc := cx.GetV(pattern, cx.Key(engine.KeyConstructor))
-				if pc.IsObject() && pc.Object() == nt {
-					return pattern
-				}
-			}
-		}
-		var p, f engine.Value
-		switch {
-		case pattern.IsObject() && pattern.Object().IsRegExpObject():
-			src, fl := pattern.Object().RegExpOriginal()
-			p = cx.NewString(src)
-			if flags.IsUndefined() {
-				f = cx.NewString(fl)
-			} else {
-				f = flags
-			}
-		case patternIsRegExp:
-			p = cx.GetV(pattern, cx.Key(engine.KeySource))
-			if flags.IsUndefined() {
-				f = cx.GetV(pattern, cx.Key(engine.KeyFlags))
-			} else {
-				f = flags
-			}
-		default:
-			p, f = pattern, flags
-		}
-		o := cx.RegExpAlloc(nt)
-		return engine.ObjectValue(cx.RegExpInitialize(o, p, f))
-	})
+	ctor := constructor(cx, "RegExp", 2, engine.IntrinsicRegExpPrototype, regExpConstructor)
 	cx.SetIntrinsic(engine.IntrinsicRegExp, ctor)
-	cx.DefineAccessor(ctor, cx.WellKnownSymbol(engine.SymbolSpecies), cx.NewNative("get [Symbol.species]", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		return this
-	}), nil, engine.FlagConfigurable)
+	cx.DefineAccessor(ctor, cx.WellKnownSymbol(engine.SymbolSpecies), cx.NewNative("get [Symbol.species]", 0, returnThis), nil, engine.FlagConfigurable)
 
 	// exec and test borrow the RegExp object of a literal they are called on. They run no script
 	// code before the last use of it, except the conversion of an object argument.
-	exec := method(cx, proto, "exec", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		if arg(args, 0).IsObject() {
-			this = cx.OwnRegExp(this)
-		}
-		r := thisRegExp(cx, this, "exec")
-		s := cx.ToStringValue(arg(args, 0))
-		return builtinExec(cx, r, s)
-	})
+	exec := method(cx, proto, "exec", 1, regExpExecMethod)
 	cx.SetIntrinsic(engine.IntrinsicRegExpPrototypeExec, exec)
 	cx.LendRegExpLiteralReceivers(exec)
-	cx.LendRegExpLiteralReceivers(method(cx, proto, "test", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		if arg(args, 0).IsObject() {
-			this = cx.OwnRegExp(this)
-		}
-		r := thisObject(cx, this, "RegExp.prototype.test")
-		s := cx.ToStringValue(arg(args, 0))
-		caps, result := execMatch(cx, r, s)
-		return engine.Bool(caps != nil || result != nil)
-	}))
-	method(cx, proto, "toString", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		r := thisObject(cx, this, "RegExp.prototype.toString")
-		src := cx.ToString(cx.Get(r, engine.NamedKey(cx.Key(engine.KeySource))))
-		fl := cx.ToString(cx.Get(r, engine.NamedKey(cx.Key(engine.KeyFlags))))
-		checkStringLength(cx, len(src)+len(fl)+2)
-		return cx.NewString(wtf8.Concat(wtf8.Concat("/"+src, "/"), fl))
-	})
-	method(cx, proto, "compile", 2, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		o := thisRegExp(cx, this, "compile")
-		if !cx.IsRegExpOfCurrentRealm(o) {
-			cx.ThrowTypeError("RegExp.prototype.compile cannot be used on a RegExp object of another realm")
-		}
-		if !o.RegExpLegacyFeaturesEnabled() {
-			cx.ThrowTypeError("RegExp.prototype.compile cannot be used on a subclass instance")
-		}
-		pattern, flags := arg(args, 0), arg(args, 1)
-		p, f := pattern, flags
-		if pattern.IsObject() && pattern.Object().IsRegExpObject() {
-			if !flags.IsUndefined() {
-				cx.ThrowTypeError("cannot supply flags when constructing one RegExp from another")
-			}
-			src, fl := pattern.Object().RegExpOriginal()
-			p, f = cx.NewString(src), cx.NewString(fl)
-		}
-		return engine.ObjectValue(cx.RegExpInitialize(o, p, f))
-	})
+	cx.LendRegExpLiteralReceivers(method(cx, proto, "test", 1, regExpTest))
+	method(cx, proto, "toString", 0, regExpToString)
+	method(cx, proto, "compile", 2, regExpCompile)
 	for _, fp := range flagProps {
-		getter(cx, proto, cx.Key(fp.key), wtf8.String(fp.name), func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-			if !this.IsObject() {
-				cx.ThrowTypeError("RegExp.prototype." + fp.name + " getter called on non-object")
-			}
-			re := this.Object().RegExpMatcher()
-			if re == nil {
-				if this.Object() == cx.Intrinsic(engine.IntrinsicRegExpPrototype) {
-					return engine.Undefined
-				}
-				cx.ThrowTypeError("RegExp.prototype." + fp.name + " getter called on non-RegExp object")
-			}
-			return engine.Bool(re.Flags()&fp.flag != 0)
-		})
+		getter(cx, proto, cx.Key(fp.key), wtf8.String(fp.name), fp.getter)
 	}
-	getter(cx, proto, cx.Key(engine.KeyFlags), "flags", func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		r := thisObject(cx, this, "RegExp.prototype.flags getter")
-		if m := cx.Quiet().UnmodifiedRegExpMatcher(r); m != nil {
-			return cx.RegExpFlagsString(m.Flags())
-		}
-		var f regexp.Flags
-		for _, fp := range flagProps {
-			if engine.ToBoolean(cx.Get(r, engine.NamedKey(cx.Key(fp.key)))) {
-				f |= fp.flag
-			}
-		}
-		return cx.RegExpFlagsString(f)
-	})
-	getter(cx, proto, cx.Key(engine.KeySource), "source", func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		if !this.IsObject() {
-			cx.ThrowTypeError("RegExp.prototype.source getter called on non-object")
-		}
-		o := this.Object()
-		if o.RegExpMatcher() == nil {
-			if o == cx.Intrinsic(engine.IntrinsicRegExpPrototype) {
-				return cx.NewString("(?:)")
-			}
-			cx.ThrowTypeError("RegExp.prototype.source getter called on non-RegExp object")
-		}
-		src, _ := o.RegExpOriginal()
-		escaped := escapeRegExpPattern(src)
-		checkStringLength(cx, len(escaped))
-		return cx.NewString(escaped)
-	})
+	getter(cx, proto, cx.Key(engine.KeyFlags), "flags", regExpFlags)
+	getter(cx, proto, cx.Key(engine.KeySource), "source", regExpSource)
 
-	symMethod(cx, proto, cx.WellKnownSymbol(engine.SymbolMatch), "[Symbol.match]", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		rx := thisObject(cx, this, "RegExp.prototype[Symbol.match]")
-		s := cx.ToStringValue(arg(args, 0))
-		global, fullUnicode := getMatchFlags(cx, rx)
-		if !global {
-			return regExpExec(cx, rx, s)
-		}
-		setLastIndex(cx, rx, 0)
-		var out []engine.Value
-		for {
-			var matchStr engine.Value
-			caps, result := execMatch(cx, rx, s)
-			if caps != nil {
-				matchStr = capture(cx.Quiet(), s, caps, 0)
-			} else if result != nil {
-				matchStr = cx.ToStringValue(cx.Get(result, engine.IndexKey(0)))
-			} else {
-				break
-			}
-			out = append(out, matchStr)
-			if matchStr.Str() == "" {
-				i := getLastIndex(cx, rx)
-				setLastIndex(cx, rx, advanceStringIndex(s, i, fullUnicode))
-			}
-		}
-		if len(out) == 0 {
-			return engine.Null
-		}
-		return engine.ObjectValue(cx.NewArray(out))
-	})
+	symMethod(cx, proto, cx.WellKnownSymbol(engine.SymbolMatch), "[Symbol.match]", 1, regExpMatch)
 
 	iterProto := cx.NewObject(cx.Intrinsic(engine.IntrinsicIteratorPrototype))
 	cx.SetIntrinsic(engine.IntrinsicRegExpStringIteratorPrototype, iterProto)
-	iteratorNext(cx, iterProto, engine.IteratorMethodRealm, func(cx *engine.ExecutionContext, this engine.Value) (engine.Value, bool) {
-		st, ok := engine.IteratorState(this).(*regexpStringIterator)
-		if !ok {
-			cx.ThrowTypeError("%RegExpStringIteratorPrototype%.next requires that 'this' be a RegExp String Iterator")
-		}
-		if st.done {
-			return engine.Undefined, false
-		}
-		m := regExpExec(cx, st.r, st.s)
-		if m.IsNull() {
-			st.done = true
-			return engine.Undefined, false
-		}
-		if !st.global {
-			st.done = true
-			return m, true
-		}
-		if cx.ToString(cx.Get(m.Object(), engine.IndexKey(0))) == "" {
-			i := getLastIndex(cx, st.r)
-			setLastIndex(cx, st.r, advanceStringIndex(st.s, i, st.fullUnicode))
-		}
-		return m, true
-	})
+	iteratorNext(cx, iterProto, engine.IteratorMethodRealm, regExpStringIteratorStep)
 	cx.Define(iterProto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("RegExp String Iterator"), engine.FlagConfigurable)
 
-	symMethod(cx, proto, cx.WellKnownSymbol(engine.SymbolMatchAll), "[Symbol.matchAll]", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		r := thisObject(cx, this, "RegExp.prototype[Symbol.matchAll]")
-		s := cx.ToStringValue(arg(args, 0))
-		var flags engine.Value
-		var matcher *engine.Object
-		if p, ok := unmodifiedPattern(cx.Quiet(), r); ok {
-			flags = cx.RegExpFlagsString(p.matcher.Flags())
-			matcher = cloneRegExp(cx, p.source, flags)
-		} else {
-			c := speciesConstructor(cx, r, cx.Intrinsic(engine.IntrinsicRegExp))
-			flags = getFlags(cx, r)
-			matcher = cx.Construct(c, []engine.Value{engine.ObjectValue(r), flags}, c)
-		}
-		lastIndex := getLastIndex(cx, r)
-		setLastIndex(cx, matcher, lastIndex)
-		fl := flags.Str()
-		return engine.ObjectValue(cx.NewIteratorObject(cx.Intrinsic(engine.IntrinsicRegExpStringIteratorPrototype), &regexpStringIterator{
-			r:           matcher,
-			s:           s,
-			global:      strings.Contains(string(fl), "g"),
-			fullUnicode: strings.ContainsAny(string(fl), "uv"),
-		}))
-	})
+	symMethod(cx, proto, cx.WellKnownSymbol(engine.SymbolMatchAll), "[Symbol.matchAll]", 1, regExpMatchAll)
+	symMethod(cx, proto, cx.WellKnownSymbol(engine.SymbolReplace), "[Symbol.replace]", 2, regExpReplaceMethod)
+	symMethod(cx, proto, cx.WellKnownSymbol(engine.SymbolSearch), "[Symbol.search]", 1, regExpSearch)
+	symMethod(cx, proto, cx.WellKnownSymbol(engine.SymbolSplit), "[Symbol.split]", 2, regExpSplitMethod)
 
-	symMethod(cx, proto, cx.WellKnownSymbol(engine.SymbolReplace), "[Symbol.replace]", 2, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		rx := thisObject(cx, this, "RegExp.prototype[Symbol.replace]")
-		s := cx.ToStringValue(arg(args, 0))
-		return regExpReplace(cx, rx, s, arg(args, 1))
-	})
-
-	symMethod(cx, proto, cx.WellKnownSymbol(engine.SymbolSearch), "[Symbol.search]", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		rx := thisObject(cx, this, "RegExp.prototype[Symbol.search]")
-		s := cx.ToStringValue(arg(args, 0))
-		key := engine.NamedKey(cx.Key(engine.KeyLastIndex))
-		prev := cx.Get(rx, key)
-		if !engine.SameValue(prev, engine.Number(0)) {
-			cx.Set(rx, key, engine.Number(0))
-		}
-		index := engine.Number(-1)
-		caps, result := execMatch(cx, rx, s)
-		if caps != nil {
-			index = engine.Number(float64(caps[0]))
-		}
-		if cur := cx.Get(rx, key); !engine.SameValue(cur, prev) {
-			cx.Set(rx, key, prev)
-		}
-		if result != nil {
-			index = cx.Get(result, engine.NamedKey(cx.Key(engine.KeyIndex)))
-		}
-		return index
-	})
-
-	symMethod(cx, proto, cx.WellKnownSymbol(engine.SymbolSplit), "[Symbol.split]", 2, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		rx := thisObject(cx, this, "RegExp.prototype[Symbol.split]")
-		s := cx.ToStringValue(arg(args, 0))
-		return regExpSplit(cx, rx, s, arg(args, 1))
-	})
-
-	method(cx, ctor, "escape", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		v := arg(args, 0)
-		if !v.IsString() {
-			cx.ThrowTypeError("RegExp.escape requires a string")
-		}
-		return cx.NewString(regExpEscape(cx, v.Str()))
-	})
+	method(cx, ctor, "escape", 1, regExpEscapeMethod)
 
 	initLegacyStatics(cx, ctor)
 
@@ -718,6 +522,242 @@ func initRegExp(cx *engine.ExecutionContext) {
 		protoKeys = append(protoKeys, cx.Key(fp.key))
 	}
 	cx.RecordRegExpOriginals(protoKeys, []*engine.Object{cx.WellKnownSymbol(engine.SymbolSpecies)})
+}
+
+func regExpConstructor(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	pattern, flags := arg(args, 0), arg(args, 1)
+	patternIsRegExp := isRegExp(cx, pattern)
+	nt := cx.GetNewTarget()
+	if nt == nil {
+		nt = cx.Intrinsic(engine.IntrinsicRegExp)
+		if patternIsRegExp && flags.IsUndefined() {
+			pc := cx.GetV(pattern, cx.Key(engine.KeyConstructor))
+			if pc.IsObject() && pc.Object() == nt {
+				return pattern
+			}
+		}
+	}
+	var p, f engine.Value
+	switch {
+	case pattern.IsObject() && pattern.Object().IsRegExpObject():
+		src, fl := pattern.Object().RegExpOriginal()
+		p = cx.NewString(src)
+		if flags.IsUndefined() {
+			f = cx.NewString(fl)
+		} else {
+			f = flags
+		}
+	case patternIsRegExp:
+		p = cx.GetV(pattern, cx.Key(engine.KeySource))
+		if flags.IsUndefined() {
+			f = cx.GetV(pattern, cx.Key(engine.KeyFlags))
+		} else {
+			f = flags
+		}
+	default:
+		p, f = pattern, flags
+	}
+	o := cx.RegExpAlloc(nt)
+	return engine.ObjectValue(cx.RegExpInitialize(o, p, f))
+}
+
+func regExpExecMethod(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	if arg(args, 0).IsObject() {
+		this = cx.OwnRegExp(this)
+	}
+	r := thisRegExp(cx, this, "exec")
+	s := cx.ToStringValue(arg(args, 0))
+	return builtinExec(cx, r, s)
+}
+
+func regExpTest(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	if arg(args, 0).IsObject() {
+		this = cx.OwnRegExp(this)
+	}
+	r := thisObject(cx, this, "RegExp.prototype.test")
+	s := cx.ToStringValue(arg(args, 0))
+	caps, result := execMatch(cx, r, s)
+	return engine.Bool(caps != nil || result != nil)
+}
+
+func regExpToString(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	r := thisObject(cx, this, "RegExp.prototype.toString")
+	src := cx.ToString(cx.Get(r, engine.NamedKey(cx.Key(engine.KeySource))))
+	fl := cx.ToString(cx.Get(r, engine.NamedKey(cx.Key(engine.KeyFlags))))
+	checkStringLength(cx, len(src)+len(fl)+2)
+	return cx.NewString(wtf8.Concat(wtf8.Concat("/"+src, "/"), fl))
+}
+
+func regExpCompile(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	o := thisRegExp(cx, this, "compile")
+	if !cx.IsRegExpOfCurrentRealm(o) {
+		cx.ThrowTypeError("RegExp.prototype.compile cannot be used on a RegExp object of another realm")
+	}
+	if !o.RegExpLegacyFeaturesEnabled() {
+		cx.ThrowTypeError("RegExp.prototype.compile cannot be used on a subclass instance")
+	}
+	pattern, flags := arg(args, 0), arg(args, 1)
+	p, f := pattern, flags
+	if pattern.IsObject() && pattern.Object().IsRegExpObject() {
+		if !flags.IsUndefined() {
+			cx.ThrowTypeError("cannot supply flags when constructing one RegExp from another")
+		}
+		src, fl := pattern.Object().RegExpOriginal()
+		p, f = cx.NewString(src), cx.NewString(fl)
+	}
+	return engine.ObjectValue(cx.RegExpInitialize(o, p, f))
+}
+
+func regExpFlags(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	r := thisObject(cx, this, "RegExp.prototype.flags getter")
+	if m := cx.Quiet().UnmodifiedRegExpMatcher(r); m != nil {
+		return cx.RegExpFlagsString(m.Flags())
+	}
+	var f regexp.Flags
+	for _, fp := range flagProps {
+		if engine.ToBoolean(cx.Get(r, engine.NamedKey(cx.Key(fp.key)))) {
+			f |= fp.flag
+		}
+	}
+	return cx.RegExpFlagsString(f)
+}
+
+func regExpSource(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	if !this.IsObject() {
+		cx.ThrowTypeError("RegExp.prototype.source getter called on non-object")
+	}
+	o := this.Object()
+	if o.RegExpMatcher() == nil {
+		if o == cx.Intrinsic(engine.IntrinsicRegExpPrototype) {
+			return cx.NewString("(?:)")
+		}
+		cx.ThrowTypeError("RegExp.prototype.source getter called on non-RegExp object")
+	}
+	src, _ := o.RegExpOriginal()
+	escaped := escapeRegExpPattern(src)
+	checkStringLength(cx, len(escaped))
+	return cx.NewString(escaped)
+}
+
+func regExpMatch(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	rx := thisObject(cx, this, "RegExp.prototype[Symbol.match]")
+	s := cx.ToStringValue(arg(args, 0))
+	global, fullUnicode := getMatchFlags(cx, rx)
+	if !global {
+		return regExpExec(cx, rx, s)
+	}
+	setLastIndex(cx, rx, 0)
+	var out []engine.Value
+	for {
+		var matchStr engine.Value
+		caps, result := execMatch(cx, rx, s)
+		if caps != nil {
+			matchStr = capture(cx.Quiet(), s, caps, 0)
+		} else if result != nil {
+			matchStr = cx.ToStringValue(cx.Get(result, engine.IndexKey(0)))
+		} else {
+			break
+		}
+		out = append(out, matchStr)
+		if matchStr.Str() == "" {
+			i := getLastIndex(cx, rx)
+			setLastIndex(cx, rx, advanceStringIndex(s, i, fullUnicode))
+		}
+	}
+	if len(out) == 0 {
+		return engine.Null
+	}
+	return engine.ObjectValue(cx.NewArray(out))
+}
+
+func regExpStringIteratorStep(cx *engine.ExecutionContext, this engine.Value) (engine.Value, bool) {
+	st, ok := engine.IteratorState(this).(*regexpStringIterator)
+	if !ok {
+		cx.ThrowTypeError("%RegExpStringIteratorPrototype%.next requires that 'this' be a RegExp String Iterator")
+	}
+	if st.done {
+		return engine.Undefined, false
+	}
+	m := regExpExec(cx, st.r, st.s)
+	if m.IsNull() {
+		st.done = true
+		return engine.Undefined, false
+	}
+	if !st.global {
+		st.done = true
+		return m, true
+	}
+	if cx.ToString(cx.Get(m.Object(), engine.IndexKey(0))) == "" {
+		i := getLastIndex(cx, st.r)
+		setLastIndex(cx, st.r, advanceStringIndex(st.s, i, st.fullUnicode))
+	}
+	return m, true
+}
+
+func regExpMatchAll(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	r := thisObject(cx, this, "RegExp.prototype[Symbol.matchAll]")
+	s := cx.ToStringValue(arg(args, 0))
+	var flags engine.Value
+	var matcher *engine.Object
+	if p, ok := unmodifiedPattern(cx.Quiet(), r); ok {
+		flags = cx.RegExpFlagsString(p.matcher.Flags())
+		matcher = cloneRegExp(cx, p.source, flags)
+	} else {
+		c := speciesConstructor(cx, r, cx.Intrinsic(engine.IntrinsicRegExp))
+		flags = getFlags(cx, r)
+		matcher = cx.Construct(c, []engine.Value{engine.ObjectValue(r), flags}, c)
+	}
+	lastIndex := getLastIndex(cx, r)
+	setLastIndex(cx, matcher, lastIndex)
+	fl := flags.Str()
+	return engine.ObjectValue(cx.NewIteratorObject(cx.Intrinsic(engine.IntrinsicRegExpStringIteratorPrototype), &regexpStringIterator{
+		r:           matcher,
+		s:           s,
+		global:      strings.Contains(string(fl), "g"),
+		fullUnicode: strings.ContainsAny(string(fl), "uv"),
+	}))
+}
+
+func regExpReplaceMethod(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	rx := thisObject(cx, this, "RegExp.prototype[Symbol.replace]")
+	s := cx.ToStringValue(arg(args, 0))
+	return regExpReplace(cx, rx, s, arg(args, 1))
+}
+
+func regExpSearch(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	rx := thisObject(cx, this, "RegExp.prototype[Symbol.search]")
+	s := cx.ToStringValue(arg(args, 0))
+	key := engine.NamedKey(cx.Key(engine.KeyLastIndex))
+	prev := cx.Get(rx, key)
+	if !engine.SameValue(prev, engine.Number(0)) {
+		cx.Set(rx, key, engine.Number(0))
+	}
+	index := engine.Number(-1)
+	caps, result := execMatch(cx, rx, s)
+	if caps != nil {
+		index = engine.Number(float64(caps[0]))
+	}
+	if cur := cx.Get(rx, key); !engine.SameValue(cur, prev) {
+		cx.Set(rx, key, prev)
+	}
+	if result != nil {
+		index = cx.Get(result, engine.NamedKey(cx.Key(engine.KeyIndex)))
+	}
+	return index
+}
+
+func regExpSplitMethod(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	rx := thisObject(cx, this, "RegExp.prototype[Symbol.split]")
+	s := cx.ToStringValue(arg(args, 0))
+	return regExpSplit(cx, rx, s, arg(args, 1))
+}
+
+func regExpEscapeMethod(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	v := arg(args, 0)
+	if !v.IsString() {
+		cx.ThrowTypeError("RegExp.escape requires a string")
+	}
+	return cx.NewString(regExpEscape(cx, v.Str()))
 }
 
 type regexpStringIterator struct {

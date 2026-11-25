@@ -208,95 +208,138 @@ func initLocale(cx *engine.ExecutionContext, ns *engine.Object) {
 	_, proto := constructor(cx, ns, "Locale", 1, engine.IntrinsicIntlLocalePrototype, newLocale)
 	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Intl.Locale"), engine.FlagConfigurable)
 
-	method(cx, proto, "maximize", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		t := thisLocale(cx, this, "maximize").tag
-		if max, ok := locale.AddLikelySubtags(t.LanguageID); ok {
-			t.LanguageID = max
-		}
-		return localeFromTag(cx, t)
-	})
-	method(cx, proto, "minimize", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		t := thisLocale(cx, this, "minimize").tag
-		if min, ok := locale.RemoveLikelySubtags(t.LanguageID); ok {
-			t.LanguageID = min
-		}
-		return localeFromTag(cx, t)
-	})
-	method(cx, proto, "toString", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		return cx.NewString(wtf8.String(thisLocale(cx, this, "toString").String()))
-	})
-	getter(cx, proto, "baseName", func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		return cx.NewString(wtf8.String(thisLocale(cx, this, "baseName").tag.BaseName()))
-	})
-	for _, k := range []struct {
-		name, key string
-	}{
-		{"calendar", "ca"},
-		{"caseFirst", "kf"},
-		{"collation", "co"},
-		{"firstDayOfWeek", "fw"},
-		{"hourCycle", "hc"},
-		{"numberingSystem", "nu"},
-	} {
-		getter(cx, proto, k.name, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-			v, ok := thisLocale(cx, this, k.name).tag.Keyword(k.key)
-			return stringOrUndefined(cx, v, ok)
-		})
+	method(cx, proto, "maximize", 0, localeMaximize)
+	method(cx, proto, "minimize", 0, localeMinimize)
+	method(cx, proto, "toString", 0, localeToString)
+	getter(cx, proto, "baseName", localeBaseName)
+	getter(cx, proto, "calendar", localeCalendar)
+	getter(cx, proto, "caseFirst", localeCaseFirst)
+	getter(cx, proto, "collation", localeCollation)
+	getter(cx, proto, "firstDayOfWeek", localeFirstDayOfWeek)
+	getter(cx, proto, "hourCycle", localeHourCycle)
+	getter(cx, proto, "numberingSystem", localeNumberingSystem)
+	getter(cx, proto, "numeric", localeNumeric)
+	getter(cx, proto, "language", localeLanguage)
+	getter(cx, proto, "script", localeScript)
+	getter(cx, proto, "region", localeRegion)
+	getter(cx, proto, "variants", localeVariants)
+	method(cx, proto, "getCalendars", 0, localeGetCalendars)
+	method(cx, proto, "getCollations", 0, localeGetCollations)
+	method(cx, proto, "getHourCycles", 0, localeGetHourCycles)
+	method(cx, proto, "getNumberingSystems", 0, localeGetNumberingSystems)
+	method(cx, proto, "getTimeZones", 0, localeGetTimeZones)
+	method(cx, proto, "getTextInfo", 0, localeGetTextInfo)
+	method(cx, proto, "getWeekInfo", 0, localeGetWeekInfo)
+}
+
+func localeMaximize(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	t := thisLocale(cx, this, "maximize").tag
+	if max, ok := locale.AddLikelySubtags(t.LanguageID); ok {
+		t.LanguageID = max
 	}
-	getter(cx, proto, "numeric", func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		v, ok := thisLocale(cx, this, "numeric").tag.Keyword("kn")
-		return engine.Bool(ok && (v == "" || v == "true"))
-	})
-	getter(cx, proto, "language", func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		return cx.NewString(wtf8.String(thisLocale(cx, this, "language").tag.Language))
-	})
-	getter(cx, proto, "script", func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		s := thisLocale(cx, this, "script").tag.Script
-		return stringOrUndefined(cx, s, s != "")
-	})
-	getter(cx, proto, "region", func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		s := thisLocale(cx, this, "region").tag.Region
-		return stringOrUndefined(cx, s, s != "")
-	})
-	getter(cx, proto, "variants", func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		vs := thisLocale(cx, this, "variants").tag.Variants
-		return stringOrUndefined(cx, strings.Join(vs, "-"), len(vs) > 0)
-	})
-	for _, m := range []struct {
-		name string
-		f    func(locale.Tag) []string
-	}{
-		{"getCalendars", locale.CalendarsOf},
-		{"getCollations", locale.CollationsOf},
-		{"getHourCycles", locale.HourCyclesOf},
-		{"getNumberingSystems", locale.NumberingSystemsOf},
-	} {
-		method(cx, proto, m.name, 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-			return stringArray(cx, m.f(thisLocale(cx, this, m.name).tag))
-		})
+	return localeFromTag(cx, t)
+}
+
+func localeMinimize(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	t := thisLocale(cx, this, "minimize").tag
+	if min, ok := locale.RemoveLikelySubtags(t.LanguageID); ok {
+		t.LanguageID = min
 	}
-	method(cx, proto, "getTimeZones", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		zones, ok := locale.TimeZonesOf(thisLocale(cx, this, "getTimeZones").tag)
-		if !ok {
-			return engine.Undefined
-		}
-		return stringArray(cx, zones)
-	})
-	method(cx, proto, "getTextInfo", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		d := locale.TextDirectionOf(thisLocale(cx, this, "getTextInfo").tag)
-		info := cx.NewObject(cx.Intrinsic(engine.IntrinsicObjectPrototype))
-		cx.CreateDataPropertyOrThrow(info, engine.NamedKey(cx.Intern("direction")), stringOrUndefined(cx, d, d != ""))
-		return engine.ObjectValue(info)
-	})
-	method(cx, proto, "getWeekInfo", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		firstDay, weekend := locale.WeekInfoOf(thisLocale(cx, this, "getWeekInfo").tag)
-		days := make([]engine.Value, len(weekend))
-		for i, d := range weekend {
-			days[i] = engine.Number(float64(d))
-		}
-		info := cx.NewObject(cx.Intrinsic(engine.IntrinsicObjectPrototype))
-		cx.CreateDataPropertyOrThrow(info, engine.NamedKey(cx.Intern("firstDay")), engine.Number(float64(firstDay)))
-		cx.CreateDataPropertyOrThrow(info, engine.NamedKey(cx.Intern("weekend")), cx.NewArrayOf(days))
-		return engine.ObjectValue(info)
-	})
+	return localeFromTag(cx, t)
+}
+
+func localeToString(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return cx.NewString(wtf8.String(thisLocale(cx, this, "toString").String()))
+}
+
+func localeBaseName(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return cx.NewString(wtf8.String(thisLocale(cx, this, "baseName").tag.BaseName()))
+}
+
+var (
+	localeCalendar        = localeKeywordNative("calendar", "ca")
+	localeCaseFirst       = localeKeywordNative("caseFirst", "kf")
+	localeCollation       = localeKeywordNative("collation", "co")
+	localeFirstDayOfWeek  = localeKeywordNative("firstDayOfWeek", "fw")
+	localeHourCycle       = localeKeywordNative("hourCycle", "hc")
+	localeNumberingSystem = localeKeywordNative("numberingSystem", "nu")
+)
+
+// localeKeywordNative returns the getter of the property name of Intl.Locale.prototype, which
+// returns the value of the keyword key.
+//
+//go:noinline
+func localeKeywordNative(name, key string) engine.NativeFunc {
+	return func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		v, ok := thisLocale(cx, this, name).tag.Keyword(key)
+		return stringOrUndefined(cx, v, ok)
+	}
+}
+
+func localeNumeric(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	v, ok := thisLocale(cx, this, "numeric").tag.Keyword("kn")
+	return engine.Bool(ok && (v == "" || v == "true"))
+}
+
+func localeLanguage(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return cx.NewString(wtf8.String(thisLocale(cx, this, "language").tag.Language))
+}
+
+func localeScript(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	s := thisLocale(cx, this, "script").tag.Script
+	return stringOrUndefined(cx, s, s != "")
+}
+
+func localeRegion(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	s := thisLocale(cx, this, "region").tag.Region
+	return stringOrUndefined(cx, s, s != "")
+}
+
+func localeVariants(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	vs := thisLocale(cx, this, "variants").tag.Variants
+	return stringOrUndefined(cx, strings.Join(vs, "-"), len(vs) > 0)
+}
+
+var (
+	localeGetCalendars        = localeListNative("getCalendars", locale.CalendarsOf)
+	localeGetCollations       = localeListNative("getCollations", locale.CollationsOf)
+	localeGetHourCycles       = localeListNative("getHourCycles", locale.HourCyclesOf)
+	localeGetNumberingSystems = localeListNative("getNumberingSystems", locale.NumberingSystemsOf)
+)
+
+// localeListNative returns the method name of Intl.Locale.prototype, which returns the array of the
+// strings that f returns for a locale.
+//
+//go:noinline
+func localeListNative(name string, f func(locale.Tag) []string) engine.NativeFunc {
+	return func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		return stringArray(cx, f(thisLocale(cx, this, name).tag))
+	}
+}
+
+func localeGetTimeZones(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	zones, ok := locale.TimeZonesOf(thisLocale(cx, this, "getTimeZones").tag)
+	if !ok {
+		return engine.Undefined
+	}
+	return stringArray(cx, zones)
+}
+
+func localeGetTextInfo(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	d := locale.TextDirectionOf(thisLocale(cx, this, "getTextInfo").tag)
+	info := cx.NewObject(cx.Intrinsic(engine.IntrinsicObjectPrototype))
+	cx.CreateDataPropertyOrThrow(info, engine.NamedKey(cx.Intern("direction")), stringOrUndefined(cx, d, d != ""))
+	return engine.ObjectValue(info)
+}
+
+func localeGetWeekInfo(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	firstDay, weekend := locale.WeekInfoOf(thisLocale(cx, this, "getWeekInfo").tag)
+	days := make([]engine.Value, len(weekend))
+	for i, d := range weekend {
+		days[i] = engine.Number(float64(d))
+	}
+	info := cx.NewObject(cx.Intrinsic(engine.IntrinsicObjectPrototype))
+	cx.CreateDataPropertyOrThrow(info, engine.NamedKey(cx.Intern("firstDay")), engine.Number(float64(firstDay)))
+	cx.CreateDataPropertyOrThrow(info, engine.NamedKey(cx.Intern("weekend")), cx.NewArrayOf(days))
+	return engine.ObjectValue(info)
 }

@@ -9,12 +9,10 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
-// functionKindConstructor creates the constructor name of the functions of kind whose prototype
-// object is proto, such as GeneratorFunction. It is not a global.
-func functionKindConstructor(cx *engine.ExecutionContext, name wtf8.String, kind engine.FunctionKind, proto *engine.Object) {
-	c := cx.NewNativeConstructor(name, 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		return cx.CreateDynamicFunction(kind, args)
-	})
+// functionKindConstructor creates the constructor name, which calls f, of the functions whose
+// prototype object is proto, such as GeneratorFunction. It is not a global.
+func functionKindConstructor(cx *engine.ExecutionContext, name wtf8.String, f engine.NativeFunc, proto *engine.Object) {
+	c := cx.NewNativeConstructor(name, 1, f)
 	cx.SetPrototypeOf(c, cx.Intrinsic(engine.IntrinsicFunction))
 	cx.Define(c, cx.Key(engine.KeyPrototype), engine.ObjectValue(proto), 0)
 	cx.Define(proto, cx.Key(engine.KeyConstructor), engine.ObjectValue(c), engine.FlagConfigurable)
@@ -22,24 +20,39 @@ func functionKindConstructor(cx *engine.ExecutionContext, name wtf8.String, kind
 }
 
 func initAsync(cx *engine.ExecutionContext) {
-	functionKindConstructor(cx, "AsyncFunction", engine.AsyncFunction, cx.Intrinsic(engine.IntrinsicAsyncFunctionPrototype))
-	functionKindConstructor(cx, "AsyncGeneratorFunction", engine.AsyncGeneratorFunction, cx.Intrinsic(engine.IntrinsicAsyncGeneratorFunctionPrototype))
+	functionKindConstructor(cx, "AsyncFunction", asyncFunctionConstructor, cx.Intrinsic(engine.IntrinsicAsyncFunctionPrototype))
+	functionKindConstructor(cx, "AsyncGeneratorFunction", asyncGeneratorFunctionConstructor, cx.Intrinsic(engine.IntrinsicAsyncGeneratorFunctionPrototype))
 
 	gp := cx.Intrinsic(engine.IntrinsicAsyncGeneratorPrototype)
-	resume := func(name string, mode engine.ResumeMode) {
-		method(cx, gp, wtf8.String(name), 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-			return cx.ResumeAsyncGenerator(this, mode, arg(args, 0))
-		})
-	}
-	resume("next", engine.ResumeNext)
-	resume("return", engine.ResumeReturn)
-	resume("throw", engine.ResumeThrow)
+	method(cx, gp, "next", 1, asyncGeneratorNext)
+	method(cx, gp, "return", 1, asyncGeneratorReturn)
+	method(cx, gp, "throw", 1, asyncGeneratorThrow)
 	cx.Define(gp, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("AsyncGenerator"), engine.FlagConfigurable)
 	gf := cx.Intrinsic(engine.IntrinsicAsyncGeneratorFunctionPrototype)
 	cx.Define(gf, cx.Key(engine.KeyPrototype), engine.ObjectValue(gp), engine.FlagConfigurable)
 	cx.Define(gp, cx.Key(engine.KeyConstructor), engine.ObjectValue(gf), engine.FlagConfigurable)
 
 	method(cx, cx.Intrinsic(engine.IntrinsicArray), "fromAsync", 1, arrayFromAsync)
+}
+
+func asyncFunctionConstructor(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return cx.CreateDynamicFunction(engine.AsyncFunction, args)
+}
+
+func asyncGeneratorFunctionConstructor(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return cx.CreateDynamicFunction(engine.AsyncGeneratorFunction, args)
+}
+
+func asyncGeneratorNext(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return cx.ResumeAsyncGenerator(this, engine.ResumeNext, arg(args, 0))
+}
+
+func asyncGeneratorReturn(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return cx.ResumeAsyncGenerator(this, engine.ResumeReturn, arg(args, 0))
+}
+
+func asyncGeneratorThrow(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return cx.ResumeAsyncGenerator(this, engine.ResumeThrow, arg(args, 0))
 }
 
 // getIteratorFromMethod implements GetIteratorFromMethod.

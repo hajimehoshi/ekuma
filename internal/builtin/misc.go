@@ -47,23 +47,7 @@ func thisBoolean(cx *engine.ExecutionContext, this engine.Value, what string) bo
 // parseFloat and parseInt are the functions to define as properties of Number.
 func initNumber(cx *engine.ExecutionContext, parseFloat, parseInt *engine.Object) {
 	proto := cx.Intrinsic(engine.IntrinsicNumberPrototype)
-	ctor := constructor(cx, "Number", 1, engine.IntrinsicNumberPrototype, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		n := 0.0
-		if len(args) > 0 {
-			v := cx.ToNumeric(args[0])
-			if v.IsNumber() {
-				n = v.Number()
-			} else if i, ok := v.BigInt64(); ok {
-				n = float64(i)
-			} else {
-				n, _ = new(big.Float).SetInt(v.BigInt()).Float64()
-			}
-		}
-		if nt := cx.GetNewTarget(); nt != nil {
-			return engine.ObjectValue(cx.NewNumberObject(n, cx.GetPrototypeFromConstructor(nt, engine.IntrinsicNumberPrototype)))
-		}
-		return engine.Number(n)
-	})
+	ctor := constructor(cx, "Number", 1, engine.IntrinsicNumberPrototype, numberConstructor)
 	constant(cx, ctor, "MAX_SAFE_INTEGER", engine.Number(numconv.MaxSafeInteger))
 	constant(cx, ctor, "MIN_SAFE_INTEGER", engine.Number(-numconv.MaxSafeInteger))
 	constant(cx, ctor, "MAX_VALUE", engine.Number(math.MaxFloat64))
@@ -72,131 +56,175 @@ func initNumber(cx *engine.ExecutionContext, parseFloat, parseInt *engine.Object
 	constant(cx, ctor, "POSITIVE_INFINITY", engine.Number(math.Inf(1)))
 	constant(cx, ctor, "NEGATIVE_INFINITY", engine.Number(math.Inf(-1)))
 	constant(cx, ctor, "NaN", engine.Number(math.NaN()))
-	method(cx, ctor, "isInteger", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		return engine.Bool(isIntegralNumber(arg(args, 0)))
-	})
-	method(cx, ctor, "isSafeInteger", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		v := arg(args, 0)
-		return engine.Bool(isIntegralNumber(v) && math.Abs(v.Number()) <= numconv.MaxSafeInteger)
-	})
-	method(cx, ctor, "isFinite", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		v := arg(args, 0)
-		return engine.Bool(v.IsNumber() && v.Number() == v.Number() && !math.IsInf(v.Number(), 0))
-	})
-	method(cx, ctor, "isNaN", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		v := arg(args, 0)
-		return engine.Bool(v.IsNumber() && v.Number() != v.Number())
-	})
+	method(cx, ctor, "isInteger", 1, numberIsInteger)
+	method(cx, ctor, "isSafeInteger", 1, numberIsSafeInteger)
+	method(cx, ctor, "isFinite", 1, numberIsFinite)
+	method(cx, ctor, "isNaN", 1, numberIsNaN)
 	cx.Define(ctor, cx.Intern("parseFloat"), engine.ObjectValue(parseFloat), engine.FlagsHidden)
 	cx.Define(ctor, cx.Intern("parseInt"), engine.ObjectValue(parseInt), engine.FlagsHidden)
 
-	method(cx, proto, "valueOf", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		return engine.Number(thisNumber(cx, this, "valueOf"))
-	})
-	method(cx, proto, "toString", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		n := thisNumber(cx, this, "toString")
-		radix := 10.0
-		if r := arg(args, 0); !r.IsUndefined() {
-			radix = cx.ToIntegerOrInfinity(r)
-		}
-		if radix < 2 || radix > 36 {
-			cx.ThrowRangeError("toString() radix must be between 2 and 36")
-		}
-		if radix == 10 {
-			return cx.ToStringValue(engine.Number(n))
-		}
-		return cx.NewString(numconv.NumberToRadixString(n, int(radix)))
-	})
-	method(cx, proto, "toLocaleString", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		return cx.ToStringValue(engine.Number(thisNumber(cx, this, "toLocaleString")))
-	})
-	method(cx, proto, "toFixed", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		n := thisNumber(cx, this, "toFixed")
-		d := cx.ToIntegerOrInfinity(arg(args, 0))
-		if d < 0 || d > 100 {
-			cx.ThrowRangeError("toFixed() digits argument must be between 0 and 100")
-		}
-		if n != n || math.IsInf(n, 0) || math.Abs(n) >= 1e21 {
-			return cx.ToStringValue(engine.Number(n))
-		}
-		var buf [numberBufSize]byte
-		s := appendHalfUp(buf[:0], n, 'f', int(d))
-		if n == 0 && s[0] == '-' {
-			// -0 is formatted as 0.
-			s = s[1:]
-		}
-		return cx.NewStringBytes(s)
-	})
-	method(cx, proto, "toPrecision", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		n := thisNumber(cx, this, "toPrecision")
-		if arg(args, 0).IsUndefined() {
-			return cx.ToStringValue(engine.Number(n))
-		}
-		p := cx.ToIntegerOrInfinity(args[0])
-		if n != n || math.IsInf(n, 0) {
-			return cx.ToStringValue(engine.Number(n))
-		}
-		if p < 1 || p > 100 {
-			cx.ThrowRangeError("toPrecision() argument must be between 1 and 100")
-		}
-		if n == 0 {
-			// -0 is formatted as 0.
-			n = 0
-		}
-		var buf [numberBufSize]byte
-		if n != 0 {
-			if s, ok := appendPrecision(buf[:0], n, int(p)); ok {
-				return cx.NewStringBytes(s)
-			}
-			es := appendHalfUp(buf[:0], n, 'e', int(p)-1)
-			e := exponent(es)
-			if e < -6 || e >= int(p) {
-				return cx.NewStringBytes(fixExponent(es))
-			}
-			return cx.NewStringBytes(precisionFixed(es, int(p), e))
-		}
-		return cx.NewStringBytes(appendHalfUp(buf[:0], n, 'f', int(p)-1))
-	})
-	method(cx, proto, "toExponential", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		n := thisNumber(cx, this, "toExponential")
-		d := cx.ToIntegerOrInfinity(arg(args, 0))
-		if n != n || math.IsInf(n, 0) {
-			return cx.ToStringValue(engine.Number(n))
-		}
-		if d < 0 || d > 100 {
-			cx.ThrowRangeError("toExponential() argument must be between 0 and 100")
-		}
-		if n == 0 {
-			// -0 is formatted as 0.
-			n = 0
-		}
-		var buf [numberBufSize]byte
-		if arg(args, 0).IsUndefined() {
-			return cx.NewStringBytes(fixExponent(strconv.AppendFloat(buf[:0], n, 'e', -1, 64)))
-		}
-		if s, ok := appendExponential(buf[:0], n, int(d)); ok {
-			return cx.NewStringBytes(s)
-		}
-		return cx.NewStringBytes(fixExponent(appendHalfUp(buf[:0], n, 'e', int(d))))
-	})
+	method(cx, proto, "valueOf", 0, numberValueOf)
+	method(cx, proto, "toString", 1, numberToString)
+	method(cx, proto, "toLocaleString", 0, numberToLocaleString)
+	method(cx, proto, "toFixed", 1, numberToFixed)
+	method(cx, proto, "toPrecision", 1, numberToPrecision)
+	method(cx, proto, "toExponential", 1, numberToExponential)
 
 	bproto := cx.Intrinsic(engine.IntrinsicBooleanPrototype)
-	constructor(cx, "Boolean", 1, engine.IntrinsicBooleanPrototype, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		b := engine.ToBoolean(arg(args, 0))
-		if nt := cx.GetNewTarget(); nt != nil {
-			return engine.ObjectValue(cx.NewBooleanObject(b, cx.GetPrototypeFromConstructor(nt, engine.IntrinsicBooleanPrototype)))
+	constructor(cx, "Boolean", 1, engine.IntrinsicBooleanPrototype, booleanConstructor)
+	method(cx, bproto, "valueOf", 0, booleanValueOf)
+	method(cx, bproto, "toString", 0, booleanToString)
+}
+
+func numberConstructor(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	n := 0.0
+	if len(args) > 0 {
+		v := cx.ToNumeric(args[0])
+		if v.IsNumber() {
+			n = v.Number()
+		} else if i, ok := v.BigInt64(); ok {
+			n = float64(i)
+		} else {
+			n, _ = new(big.Float).SetInt(v.BigInt()).Float64()
 		}
-		return engine.Bool(b)
-	})
-	method(cx, bproto, "valueOf", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		return engine.Bool(thisBoolean(cx, this, "valueOf"))
-	})
-	method(cx, bproto, "toString", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		if thisBoolean(cx, this, "toString") {
-			return cx.NewString("true")
+	}
+	if nt := cx.GetNewTarget(); nt != nil {
+		return engine.ObjectValue(cx.NewNumberObject(n, cx.GetPrototypeFromConstructor(nt, engine.IntrinsicNumberPrototype)))
+	}
+	return engine.Number(n)
+}
+
+func numberIsInteger(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return engine.Bool(isIntegralNumber(arg(args, 0)))
+}
+
+func numberIsSafeInteger(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	v := arg(args, 0)
+	return engine.Bool(isIntegralNumber(v) && math.Abs(v.Number()) <= numconv.MaxSafeInteger)
+}
+
+func numberIsFinite(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	v := arg(args, 0)
+	return engine.Bool(v.IsNumber() && v.Number() == v.Number() && !math.IsInf(v.Number(), 0))
+}
+
+func numberIsNaN(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	v := arg(args, 0)
+	return engine.Bool(v.IsNumber() && v.Number() != v.Number())
+}
+
+func numberValueOf(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return engine.Number(thisNumber(cx, this, "valueOf"))
+}
+
+func numberToString(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	n := thisNumber(cx, this, "toString")
+	radix := 10.0
+	if r := arg(args, 0); !r.IsUndefined() {
+		radix = cx.ToIntegerOrInfinity(r)
+	}
+	if radix < 2 || radix > 36 {
+		cx.ThrowRangeError("toString() radix must be between 2 and 36")
+	}
+	if radix == 10 {
+		return cx.ToStringValue(engine.Number(n))
+	}
+	return cx.NewString(numconv.NumberToRadixString(n, int(radix)))
+}
+
+func numberToLocaleString(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return cx.ToStringValue(engine.Number(thisNumber(cx, this, "toLocaleString")))
+}
+
+func numberToFixed(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	n := thisNumber(cx, this, "toFixed")
+	d := cx.ToIntegerOrInfinity(arg(args, 0))
+	if d < 0 || d > 100 {
+		cx.ThrowRangeError("toFixed() digits argument must be between 0 and 100")
+	}
+	if n != n || math.IsInf(n, 0) || math.Abs(n) >= 1e21 {
+		return cx.ToStringValue(engine.Number(n))
+	}
+	var buf [numberBufSize]byte
+	s := appendHalfUp(buf[:0], n, 'f', int(d))
+	if n == 0 && s[0] == '-' {
+		// -0 is formatted as 0.
+		s = s[1:]
+	}
+	return cx.NewStringBytes(s)
+}
+
+func numberToPrecision(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	n := thisNumber(cx, this, "toPrecision")
+	if arg(args, 0).IsUndefined() {
+		return cx.ToStringValue(engine.Number(n))
+	}
+	p := cx.ToIntegerOrInfinity(args[0])
+	if n != n || math.IsInf(n, 0) {
+		return cx.ToStringValue(engine.Number(n))
+	}
+	if p < 1 || p > 100 {
+		cx.ThrowRangeError("toPrecision() argument must be between 1 and 100")
+	}
+	if n == 0 {
+		// -0 is formatted as 0.
+		n = 0
+	}
+	var buf [numberBufSize]byte
+	if n != 0 {
+		if s, ok := appendPrecision(buf[:0], n, int(p)); ok {
+			return cx.NewStringBytes(s)
 		}
-		return cx.NewString("false")
-	})
+		es := appendHalfUp(buf[:0], n, 'e', int(p)-1)
+		e := exponent(es)
+		if e < -6 || e >= int(p) {
+			return cx.NewStringBytes(fixExponent(es))
+		}
+		return cx.NewStringBytes(precisionFixed(es, int(p), e))
+	}
+	return cx.NewStringBytes(appendHalfUp(buf[:0], n, 'f', int(p)-1))
+}
+
+func numberToExponential(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	n := thisNumber(cx, this, "toExponential")
+	d := cx.ToIntegerOrInfinity(arg(args, 0))
+	if n != n || math.IsInf(n, 0) {
+		return cx.ToStringValue(engine.Number(n))
+	}
+	if d < 0 || d > 100 {
+		cx.ThrowRangeError("toExponential() argument must be between 0 and 100")
+	}
+	if n == 0 {
+		// -0 is formatted as 0.
+		n = 0
+	}
+	var buf [numberBufSize]byte
+	if arg(args, 0).IsUndefined() {
+		return cx.NewStringBytes(fixExponent(strconv.AppendFloat(buf[:0], n, 'e', -1, 64)))
+	}
+	if s, ok := appendExponential(buf[:0], n, int(d)); ok {
+		return cx.NewStringBytes(s)
+	}
+	return cx.NewStringBytes(fixExponent(appendHalfUp(buf[:0], n, 'e', int(d))))
+}
+
+func booleanConstructor(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	b := engine.ToBoolean(arg(args, 0))
+	if nt := cx.GetNewTarget(); nt != nil {
+		return engine.ObjectValue(cx.NewBooleanObject(b, cx.GetPrototypeFromConstructor(nt, engine.IntrinsicBooleanPrototype)))
+	}
+	return engine.Bool(b)
+}
+
+func booleanValueOf(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return engine.Bool(thisBoolean(cx, this, "valueOf"))
+}
+
+func booleanToString(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	if thisBoolean(cx, this, "toString") {
+		return cx.NewString("true")
+	}
+	return cx.NewString("false")
 }
 
 // numberBufSize is the size of a buffer that holds most results of formatting a number with a precision.
@@ -626,16 +654,7 @@ func thisSymbol(cx *engine.ExecutionContext, this engine.Value, what string) *en
 
 func initSymbol(cx *engine.ExecutionContext) {
 	proto := cx.Intrinsic(engine.IntrinsicSymbolPrototype)
-	ctor := constructor(cx, "Symbol", 0, engine.IntrinsicSymbolPrototype, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		if cx.GetNewTarget() != nil {
-			cx.ThrowTypeError("Symbol is not a constructor")
-		}
-		d := arg(args, 0)
-		if d.IsUndefined() {
-			return engine.ObjectValue(cx.NewSymbol("", false))
-		}
-		return engine.ObjectValue(cx.NewSymbol(cx.ToString(d), true))
-	})
+	ctor := constructor(cx, "Symbol", 0, engine.IntrinsicSymbolPrototype, symbolConstructor)
 	for sym, name := range [...]string{
 		engine.SymbolIterator: "iterator", engine.SymbolAsyncIterator: "asyncIterator", engine.SymbolHasInstance: "hasInstance",
 		engine.SymbolToPrimitive: "toPrimitive", engine.SymbolToStringTag: "toStringTag", engine.SymbolSpecies: "species",
@@ -647,40 +666,63 @@ func initSymbol(cx *engine.ExecutionContext) {
 	} {
 		constant(cx, ctor, wtf8.String(name), engine.ObjectValue(cx.WellKnownSymbol(engine.WellKnownSymbol(sym))))
 	}
-	method(cx, ctor, "for", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		return engine.ObjectValue(cx.RegisteredSymbol(cx.ToString(arg(args, 0))))
-	})
-	method(cx, ctor, "keyFor", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		s := arg(args, 0)
-		if !s.IsSymbol() {
-			cx.ThrowTypeError(cx.DisplayString(s) + " is not a symbol")
-		}
-		key, ok := cx.KeyForSymbol(s.Object())
-		if !ok {
-			return engine.Undefined
-		}
-		return cx.NewString(key)
-	})
-	method(cx, proto, "toString", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		desc, _ := engine.SymbolDescription(thisSymbol(cx, this, "toString"))
-		checkStringLength(cx, len(desc)+8)
-		return cx.NewString("Symbol(" + desc + ")")
-	})
-	method(cx, proto, "valueOf", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		return engine.ObjectValue(thisSymbol(cx, this, "valueOf"))
-	})
-	getter(cx, proto, cx.Intern("description"), "description", func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		desc, ok := engine.SymbolDescription(thisSymbol(cx, this, "description"))
-		if !ok {
-			return engine.Undefined
-		}
-		return cx.NewString(desc)
-	})
+	method(cx, ctor, "for", 1, symbolFor)
+	method(cx, ctor, "keyFor", 1, symbolKeyFor)
+	method(cx, proto, "toString", 0, symbolToString)
+	method(cx, proto, "valueOf", 0, symbolValueOf)
+	getter(cx, proto, cx.Intern("description"), "description", symbolDescription)
 	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Symbol"), engine.FlagConfigurable)
-	fn := cx.NewNative("[Symbol.toPrimitive]", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		return engine.ObjectValue(thisSymbol(cx, this, "[Symbol.toPrimitive]"))
-	})
+	fn := cx.NewNative("[Symbol.toPrimitive]", 1, symbolToPrimitive)
 	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToPrimitive), engine.ObjectValue(fn), engine.FlagConfigurable)
+}
+
+func symbolConstructor(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	if cx.GetNewTarget() != nil {
+		cx.ThrowTypeError("Symbol is not a constructor")
+	}
+	d := arg(args, 0)
+	if d.IsUndefined() {
+		return engine.ObjectValue(cx.NewSymbol("", false))
+	}
+	return engine.ObjectValue(cx.NewSymbol(cx.ToString(d), true))
+}
+
+func symbolFor(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return engine.ObjectValue(cx.RegisteredSymbol(cx.ToString(arg(args, 0))))
+}
+
+func symbolKeyFor(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	s := arg(args, 0)
+	if !s.IsSymbol() {
+		cx.ThrowTypeError(cx.DisplayString(s) + " is not a symbol")
+	}
+	key, ok := cx.KeyForSymbol(s.Object())
+	if !ok {
+		return engine.Undefined
+	}
+	return cx.NewString(key)
+}
+
+func symbolToString(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	desc, _ := engine.SymbolDescription(thisSymbol(cx, this, "toString"))
+	checkStringLength(cx, len(desc)+8)
+	return cx.NewString("Symbol(" + desc + ")")
+}
+
+func symbolValueOf(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return engine.ObjectValue(thisSymbol(cx, this, "valueOf"))
+}
+
+func symbolDescription(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	desc, ok := engine.SymbolDescription(thisSymbol(cx, this, "description"))
+	if !ok {
+		return engine.Undefined
+	}
+	return cx.NewString(desc)
+}
+
+func symbolToPrimitive(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return engine.ObjectValue(thisSymbol(cx, this, "[Symbol.toPrimitive]"))
 }
 
 func initMath(cx *engine.ExecutionContext) {
@@ -702,190 +744,273 @@ func initMath(cx *engine.ExecutionContext) {
 	} {
 		constant(cx, m, wtf8.String(c.name), engine.Number(c.value))
 	}
-	// unary and binary define the functions of numbers f, which also serve as their kernels.
-	unary := func(name string, f func(float64) float64) {
-		fn := method(cx, m, wtf8.String(name), 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-			if len(args) > 0 && args[0].IsNumber() {
-				return engine.Number(f(args[0].Number()))
-			}
-			return engine.Number(f(cx.ToNumber(arg(args, 0))))
-		})
-		cx.SetNumberKernels(fn, shortContract, f, nil)
+	// unary and binary define the functions f of numbers, whose kernels do the same.
+	unary := func(name string, f engine.NativeFunc, kernel func(x float64) float64) {
+		cx.SetNumberKernels(method(cx, m, wtf8.String(name), 1, f), shortContract, kernel, nil)
 	}
-	binary := func(name string, f func(x, y float64) float64) {
-		fn := method(cx, m, wtf8.String(name), 2, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-			x := cx.ToNumber(arg(args, 0))
-			return engine.Number(f(x, cx.ToNumber(arg(args, 1))))
-		})
-		cx.SetNumberKernels(fn, shortContract, nil, f)
+	binary := func(name string, f engine.NativeFunc, kernel func(x, y float64) float64) {
+		cx.SetNumberKernels(method(cx, m, wtf8.String(name), 2, f), shortContract, nil, kernel)
 	}
-	unary("abs", math.Abs)
-	unary("acos", math.Acos)
-	unary("acosh", math.Acosh)
-	unary("asin", math.Asin)
-	unary("asinh", math.Asinh)
-	unary("atan", math.Atan)
-	unary("atanh", math.Atanh)
-	unary("cbrt", math.Cbrt)
-	unary("ceil", math.Ceil)
-	unary("cos", math.Cos)
-	unary("cosh", cosh)
-	unary("exp", exp)
-	unary("expm1", expm1)
-	unary("floor", math.Floor)
-	unary("fround", func(x float64) float64 {
-		return float64(float32(x))
-	})
-	unary("f16round", numconv.RoundFloat16)
-	unary("log", math.Log)
-	unary("log1p", math.Log1p)
-	unary("log10", log10)
-	unary("log2", log2)
-	unary("round", func(x float64) float64 {
-		if x != x || math.IsInf(x, 0) || x == 0 {
-			return x
-		}
-		if x < 0 && x >= -0.5 {
-			return math.Copysign(0, -1)
-		}
-		r := math.Floor(x)
-		if x-r >= 0.5 {
-			r++
-		}
-		return r
-	})
-	unary("sign", func(x float64) float64 {
-		switch {
-		case x > 0:
-			return 1
-		case x < 0:
-			return -1
-		}
-		return x
-	})
-	unary("sin", math.Sin)
-	unary("sinh", sinh)
-	unary("sqrt", math.Sqrt)
-	unary("tan", math.Tan)
-	unary("tanh", math.Tanh)
-	unary("trunc", math.Trunc)
-	unary("clz32", func(x float64) float64 {
-		return float64(bits.LeadingZeros32(numconv.ToUint32(x)))
-	})
-	binary("atan2", atan2)
-	binary("pow", numconv.NumberPow)
-	binary("imul", func(x, y float64) float64 {
-		return float64(numconv.ToInt32(x) * numconv.ToInt32(y))
-	})
-	method(cx, m, "random", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		return engine.Number(cx.RandomNumber())
-	})
+	unary("abs", mathAbs, math.Abs)
+	unary("acos", mathAcos, math.Acos)
+	unary("acosh", mathAcosh, math.Acosh)
+	unary("asin", mathAsin, math.Asin)
+	unary("asinh", mathAsinh, math.Asinh)
+	unary("atan", mathAtan, math.Atan)
+	unary("atanh", mathAtanh, math.Atanh)
+	unary("cbrt", mathCbrt, math.Cbrt)
+	unary("ceil", mathCeil, math.Ceil)
+	unary("cos", mathCos, math.Cos)
+	unary("cosh", mathCosh, cosh)
+	unary("exp", mathExp, exp)
+	unary("expm1", mathExpm1, expm1)
+	unary("floor", mathFloor, math.Floor)
+	unary("fround", mathFround, mathFroundKernel)
+	unary("f16round", mathF16round, numconv.RoundFloat16)
+	unary("log", mathLog, math.Log)
+	unary("log1p", mathLog1p, math.Log1p)
+	unary("log10", mathLog10, log10)
+	unary("log2", mathLog2, log2)
+	unary("round", mathRound, mathRoundKernel)
+	unary("sign", mathSign, mathSignKernel)
+	unary("sin", mathSin, math.Sin)
+	unary("sinh", mathSinh, sinh)
+	unary("sqrt", mathSqrt, math.Sqrt)
+	unary("tan", mathTan, math.Tan)
+	unary("tanh", mathTanh, math.Tanh)
+	unary("trunc", mathTrunc, math.Trunc)
+	unary("clz32", mathClz32, mathClz32Kernel)
+	binary("atan2", mathAtan2, atan2)
+	binary("pow", mathPow, numconv.NumberPow)
+	binary("imul", mathImul, mathImulKernel)
+	method(cx, m, "random", 0, mathRandom)
 	// Go's min and max of floats give NaN when an argument is NaN and order -0 below +0, as the
 	// specification does.
-	maxFn := method(cx, m, "max", 2, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		r := math.Inf(-1)
-		for _, a := range args {
-			r = max(r, cx.ToNumber(a))
-		}
-		return engine.Number(r)
-	})
-	cx.SetNumberKernels(maxFn, shortContract, nil, func(x, y float64) float64 {
-		return max(x, y)
-	})
+	maxFn := method(cx, m, "max", 2, mathMax)
+	cx.SetNumberKernels(maxFn, shortContract, nil, mathMaxKernel)
 	cx.SetExtremum(maxFn, engine.ExtremumMax)
-	minFn := method(cx, m, "min", 2, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		r := math.Inf(1)
-		for _, a := range args {
-			r = min(r, cx.ToNumber(a))
-		}
-		return engine.Number(r)
-	})
-	cx.SetNumberKernels(minFn, shortContract, nil, func(x, y float64) float64 {
-		return min(x, y)
-	})
+	minFn := method(cx, m, "min", 2, mathMin)
+	cx.SetNumberKernels(minFn, shortContract, nil, mathMinKernel)
 	cx.SetExtremum(minFn, engine.ExtremumMin)
-	method(cx, m, "sumPrecise", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		return engine.Number(sumPrecise(cx, arg(args, 0)))
-	})
-	method(cx, m, "hypot", 2, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		var scale, sum, correction float64
-		var inf, nan bool
-		for _, a := range args {
-			n := math.Abs(cx.ToNumber(a))
-			switch {
-			case math.IsInf(n, 0):
-				inf = true
-			case math.IsNaN(n):
-				nan = true
-			case n != 0:
-				// The sum and its rounding correction are in units of scale².
-				if n > scale {
-					ratio := scale / n
-					sum = sum * ratio * ratio
-					correction = correction * ratio * ratio
-					scale = n
-				}
-				scaled := n / scale
-				term := scaled*scaled - correction
-				next := sum + term
-				correction = (next - sum) - term
-				sum = next
+	method(cx, m, "sumPrecise", 1, mathSumPrecise)
+	method(cx, m, "hypot", 2, mathHypot)
+}
+
+var (
+	mathAbs      = mathUnaryNative(math.Abs)
+	mathAcos     = mathUnaryNative(math.Acos)
+	mathAcosh    = mathUnaryNative(math.Acosh)
+	mathAsin     = mathUnaryNative(math.Asin)
+	mathAsinh    = mathUnaryNative(math.Asinh)
+	mathAtan     = mathUnaryNative(math.Atan)
+	mathAtanh    = mathUnaryNative(math.Atanh)
+	mathCbrt     = mathUnaryNative(math.Cbrt)
+	mathCeil     = mathUnaryNative(math.Ceil)
+	mathCos      = mathUnaryNative(math.Cos)
+	mathCosh     = mathUnaryNative(cosh)
+	mathExp      = mathUnaryNative(exp)
+	mathExpm1    = mathUnaryNative(expm1)
+	mathFloor    = mathUnaryNative(math.Floor)
+	mathFround   = mathUnaryNative(mathFroundKernel)
+	mathF16round = mathUnaryNative(numconv.RoundFloat16)
+	mathLog      = mathUnaryNative(math.Log)
+	mathLog1p    = mathUnaryNative(math.Log1p)
+	mathLog10    = mathUnaryNative(log10)
+	mathLog2     = mathUnaryNative(log2)
+	mathRound    = mathUnaryNative(mathRoundKernel)
+	mathSign     = mathUnaryNative(mathSignKernel)
+	mathSin      = mathUnaryNative(math.Sin)
+	mathSinh     = mathUnaryNative(sinh)
+	mathSqrt     = mathUnaryNative(math.Sqrt)
+	mathTan      = mathUnaryNative(math.Tan)
+	mathTanh     = mathUnaryNative(math.Tanh)
+	mathTrunc    = mathUnaryNative(math.Trunc)
+	mathClz32    = mathUnaryNative(mathClz32Kernel)
+	mathAtan2    = mathBinaryNative(atan2)
+	mathPow      = mathBinaryNative(numconv.NumberPow)
+	mathImul     = mathBinaryNative(mathImulKernel)
+)
+
+// mathUnaryNative returns the function of Math that f is the kernel of.
+//
+//go:noinline
+func mathUnaryNative(f func(x float64) float64) engine.NativeFunc {
+	return func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		if len(args) > 0 && args[0].IsNumber() {
+			return engine.Number(f(args[0].Number()))
+		}
+		return engine.Number(f(cx.ToNumber(arg(args, 0))))
+	}
+}
+
+// mathBinaryNative returns the function of Math that f is the kernel of.
+//
+//go:noinline
+func mathBinaryNative(f func(x, y float64) float64) engine.NativeFunc {
+	return func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		x := cx.ToNumber(arg(args, 0))
+		return engine.Number(f(x, cx.ToNumber(arg(args, 1))))
+	}
+}
+
+func mathFroundKernel(x float64) float64 {
+	return float64(float32(x))
+}
+
+func mathRoundKernel(x float64) float64 {
+	if x != x || math.IsInf(x, 0) || x == 0 {
+		return x
+	}
+	if x < 0 && x >= -0.5 {
+		return math.Copysign(0, -1)
+	}
+	r := math.Floor(x)
+	if x-r >= 0.5 {
+		r++
+	}
+	return r
+}
+
+func mathSignKernel(x float64) float64 {
+	switch {
+	case x > 0:
+		return 1
+	case x < 0:
+		return -1
+	}
+	return x
+}
+
+func mathClz32Kernel(x float64) float64 {
+	return float64(bits.LeadingZeros32(numconv.ToUint32(x)))
+}
+
+func mathImulKernel(x, y float64) float64 {
+	return float64(numconv.ToInt32(x) * numconv.ToInt32(y))
+}
+
+func mathRandom(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return engine.Number(cx.RandomNumber())
+}
+
+func mathMax(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	r := math.Inf(-1)
+	for _, a := range args {
+		r = max(r, cx.ToNumber(a))
+	}
+	return engine.Number(r)
+}
+
+func mathMaxKernel(x, y float64) float64 {
+	return max(x, y)
+}
+
+func mathMin(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	r := math.Inf(1)
+	for _, a := range args {
+		r = min(r, cx.ToNumber(a))
+	}
+	return engine.Number(r)
+}
+
+func mathMinKernel(x, y float64) float64 {
+	return min(x, y)
+}
+
+func mathSumPrecise(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return engine.Number(sumPrecise(cx, arg(args, 0)))
+}
+
+func mathHypot(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	var scale, sum, correction float64
+	var inf, nan bool
+	for _, a := range args {
+		n := math.Abs(cx.ToNumber(a))
+		switch {
+		case math.IsInf(n, 0):
+			inf = true
+		case math.IsNaN(n):
+			nan = true
+		case n != 0:
+			// The sum and its rounding correction are in units of scale².
+			if n > scale {
+				ratio := scale / n
+				sum = sum * ratio * ratio
+				correction = correction * ratio * ratio
+				scale = n
 			}
+			scaled := n / scale
+			term := scaled*scaled - correction
+			next := sum + term
+			correction = (next - sum) - term
+			sum = next
 		}
-		if inf {
-			return engine.Number(math.Inf(1))
-		}
-		if nan {
-			return engine.Number(math.NaN())
-		}
-		return engine.Number(scale * math.Sqrt(sum))
-	})
+	}
+	if inf {
+		return engine.Number(math.Inf(1))
+	}
+	if nan {
+		return engine.Number(math.NaN())
+	}
+	return engine.Number(scale * math.Sqrt(sum))
 }
 
 func initIterators(cx *engine.ExecutionContext) {
-	symMethod(cx, cx.Intrinsic(engine.IntrinsicIteratorPrototype), cx.WellKnownSymbol(engine.SymbolIterator), "[Symbol.iterator]", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		return this
-	})
-	symMethod(cx, cx.Intrinsic(engine.IntrinsicAsyncIteratorPrototype), cx.WellKnownSymbol(engine.SymbolAsyncIterator), "[Symbol.asyncIterator]", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		return this
-	})
+	symMethod(cx, cx.Intrinsic(engine.IntrinsicIteratorPrototype), cx.WellKnownSymbol(engine.SymbolIterator), "[Symbol.iterator]", 0, returnThis)
+	symMethod(cx, cx.Intrinsic(engine.IntrinsicAsyncIteratorPrototype), cx.WellKnownSymbol(engine.SymbolAsyncIterator), "[Symbol.asyncIterator]", 0, returnThis)
 
 	arrayIterNext := cx.NewArrayIteratorNext()
 	cx.Define(cx.Intrinsic(engine.IntrinsicArrayIteratorPrototype), cx.Intern("next"), engine.ObjectValue(arrayIterNext), engine.FlagsHidden)
 	cx.SetIntrinsic(engine.IntrinsicArrayIteratorPrototypeNext, arrayIterNext)
 	cx.Define(cx.Intrinsic(engine.IntrinsicArrayIteratorPrototype), cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Array Iterator"), engine.FlagConfigurable)
 
-	plainIteratorNext(cx, cx.Intrinsic(engine.IntrinsicStringIteratorPrototype), engine.IteratorClosureRealm, "next method called on an object that is not a string iterator", func(q engine.QuietContext, _ *engine.Object, it *stringIterator) (engine.Value, bool) {
-		if it.pos >= len(it.str) {
-			return engine.Undefined, false
-		}
-		_, size := wtf8.DecodeRune(it.str[it.pos:])
-		s := it.str[it.pos : it.pos+size]
-		it.pos += size
-		return q.NewString(s), true
-	})
+	plainIteratorNext(cx, cx.Intrinsic(engine.IntrinsicStringIteratorPrototype), engine.IteratorClosureRealm, "next method called on an object that is not a string iterator", stringIteratorStep)
 	cx.Define(cx.Intrinsic(engine.IntrinsicStringIteratorPrototype), cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("String Iterator"), engine.FlagConfigurable)
 
 	gp := cx.Intrinsic(engine.IntrinsicGeneratorPrototype)
-	resume := func(name string, mode engine.ResumeMode) *engine.Object {
-		return method(cx, gp, wtf8.String(name), 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-			r, ok := cx.ResumeGenerator(this, mode, arg(args, 0))
-			if !ok {
-				cx.ThrowTypeError(name + " method called on an object that is not a generator")
-			}
-			return r
-		})
-	}
-	cx.SetIntrinsic(engine.IntrinsicGeneratorPrototypeNext, resume("next", engine.ResumeNext))
-	resume("return", engine.ResumeReturn)
-	resume("throw", engine.ResumeThrow)
+	cx.SetIntrinsic(engine.IntrinsicGeneratorPrototypeNext, method(cx, gp, "next", 1, generatorNext))
+	method(cx, gp, "return", 1, generatorReturn)
+	method(cx, gp, "throw", 1, generatorThrow)
 	cx.Define(gp, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Generator"), engine.FlagConfigurable)
 
 	// The prototype chain of generator functions.
 	gf := cx.Intrinsic(engine.IntrinsicGeneratorFunctionPrototype)
 	cx.Define(gf, cx.Key(engine.KeyPrototype), engine.ObjectValue(gp), engine.FlagConfigurable)
 	cx.Define(gp, cx.Key(engine.KeyConstructor), engine.ObjectValue(gf), engine.FlagConfigurable)
-	functionKindConstructor(cx, "GeneratorFunction", engine.GeneratorFunction, gf)
+	functionKindConstructor(cx, "GeneratorFunction", generatorFunctionConstructor, gf)
+}
+
+func stringIteratorStep(q engine.QuietContext, _ *engine.Object, it *stringIterator) (engine.Value, bool) {
+	if it.pos >= len(it.str) {
+		return engine.Undefined, false
+	}
+	_, size := wtf8.DecodeRune(it.str[it.pos:])
+	s := it.str[it.pos : it.pos+size]
+	it.pos += size
+	return q.NewString(s), true
+}
+
+var (
+	generatorNext   = generatorNative("next", engine.ResumeNext)
+	generatorReturn = generatorNative("return", engine.ResumeReturn)
+	generatorThrow  = generatorNative("throw", engine.ResumeThrow)
+)
+
+// generatorNative returns the method name of generators, which resumes a generator in mode.
+//
+//go:noinline
+func generatorNative(name string, mode engine.ResumeMode) engine.NativeFunc {
+	return func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		r, ok := cx.ResumeGenerator(this, mode, arg(args, 0))
+		if !ok {
+			cx.ThrowTypeError(name + " method called on an object that is not a generator")
+		}
+		return r
+	}
+}
+
+func generatorFunctionConstructor(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return cx.CreateDynamicFunction(engine.GeneratorFunction, args)
 }
 
 // expOverflow is the largest argument for which e**x is finite.

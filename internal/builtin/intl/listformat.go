@@ -85,46 +85,50 @@ func stringListFromIterable(cx *engine.ExecutionContext, v engine.Value) []strin
 func initListFormat(cx *engine.ExecutionContext, ns *engine.Object) {
 	ctor, proto := constructor(cx, ns, "ListFormat", 0, engine.IntrinsicIntlListFormatPrototype, newListFormat)
 
-	method(cx, ctor, "supportedLocalesOf", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		return supportedLocalesOf(cx, args)
-	})
-	method(cx, proto, "format", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		lf := thisListFormat(cx, this, "format")
-		parts := lf.f.Format(stringListFromIterable(cx, arg(args, 0)))
-		var n int
-		var previous wtf8.String
-		for _, p := range parts {
-			v := wtf8.String(p.Value)
-			if v == "" {
-				continue
-			}
-			n += len(v)
-			if wtf8.JoinsPair(previous, v) {
-				// Two three-byte surrogates form a four-byte code point.
-				n -= 2
-			}
-			checkStringLength(cx, n)
-			previous = v
-		}
-		var b wtf8.Builder
-		b.Grow(n)
-		for _, p := range parts {
-			b.WriteString(wtf8.String(p.Value))
-		}
-		return cx.NewString(b.String())
-	})
-	method(cx, proto, "formatToParts", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		lf := thisListFormat(cx, this, "formatToParts")
-		parts := lf.f.Format(stringListFromIterable(cx, arg(args, 0)))
-		return partsArray(cx, len(parts), func(i int) (string, string, string) {
-			return parts[i].Type, parts[i].Value, ""
-		})
-	})
-	method(cx, proto, "resolvedOptions", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		lf := thisListFormat(cx, this, "resolvedOptions")
-		return resolvedOptions(cx, "locale", lf.locale, "type", lf.typ, "style", lf.style)
-	})
+	method(cx, ctor, "supportedLocalesOf", 1, supportedLocalesOf)
+	method(cx, proto, "format", 1, listFormatFormat)
+	method(cx, proto, "formatToParts", 1, listFormatFormatToParts)
+	method(cx, proto, "resolvedOptions", 0, listFormatResolvedOptions)
 	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Intl.ListFormat"), engine.FlagConfigurable)
+}
+
+func listFormatFormat(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	lf := thisListFormat(cx, this, "format")
+	parts := lf.f.Format(stringListFromIterable(cx, arg(args, 0)))
+	var n int
+	var previous wtf8.String
+	for _, p := range parts {
+		v := wtf8.String(p.Value)
+		if v == "" {
+			continue
+		}
+		n += len(v)
+		if wtf8.JoinsPair(previous, v) {
+			// Two three-byte surrogates form a four-byte code point.
+			n -= 2
+		}
+		checkStringLength(cx, n)
+		previous = v
+	}
+	var b wtf8.Builder
+	b.Grow(n)
+	for _, p := range parts {
+		b.WriteString(wtf8.String(p.Value))
+	}
+	return cx.NewString(b.String())
+}
+
+func listFormatFormatToParts(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	lf := thisListFormat(cx, this, "formatToParts")
+	parts := lf.f.Format(stringListFromIterable(cx, arg(args, 0)))
+	return partsArray(cx, len(parts), func(i int) (string, string, string) {
+		return parts[i].Type, parts[i].Value, ""
+	})
+}
+
+func listFormatResolvedOptions(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	lf := thisListFormat(cx, this, "resolvedOptions")
+	return resolvedOptions(cx, "locale", lf.locale, "type", lf.typ, "style", lf.style)
 }
 
 // resolvedOptions returns a new object with the string properties of the pairs of names and

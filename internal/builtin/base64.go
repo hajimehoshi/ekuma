@@ -356,56 +356,68 @@ func initUint8ArrayBase64(cx *engine.ExecutionContext) {
 	ctor := cx.Intrinsic(engine.IntrinsicUint8Array)
 	proto := cx.Intrinsic(engine.IntrinsicUint8ArrayPrototype)
 
-	method(cx, ctor, "fromBase64", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		s := encodedStringArg(cx, args)
-		url, last := base64DecodeOptions(cx, arg(args, 1))
-		r := fromBase64(cx, s, url, last, math.MaxInt)
-		if r.err != "" {
-			cx.ThrowSyntaxError(r.err)
-		}
-		return newUint8Array(cx, r.bytes)
-	})
-	method(cx, ctor, "fromHex", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		r := fromHex(cx, encodedStringArg(cx, args), math.MaxInt)
-		if r.err != "" {
-			cx.ThrowSyntaxError(r.err)
-		}
-		return newUint8Array(cx, r.bytes)
-	})
-	method(cx, proto, "setFromBase64", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		t := thisUint8Array(cx, this, true, "setFromBase64")
-		s := encodedStringArg(cx, args)
-		url, last := base64DecodeOptions(cx, arg(args, 1))
-		n := uint8ArrayLength(cx, t, "setFromBase64")
-		return storeDecodeResult(cx, t, fromBase64(cx, s, url, last, n))
-	})
-	method(cx, proto, "setFromHex", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		t := thisUint8Array(cx, this, true, "setFromHex")
-		s := encodedStringArg(cx, args)
-		n := uint8ArrayLength(cx, t, "setFromHex")
-		return storeDecodeResult(cx, t, fromHex(cx, s, n))
-	})
-	method(cx, proto, "toBase64", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		t := thisUint8Array(cx, this, false, "toBase64")
-		opts := optionsObject(cx, arg(args, 0))
-		alphabet := stringOption(cx, opts, "alphabet", "base64", "base64url")
-		omitPadding := engine.ToBoolean(cx.GetV(opts, cx.Intern("omitPadding")))
-		b := uint8ArrayBytes(cx, t, "toBase64")
-		enc := base64.StdEncoding
-		if alphabet == "base64url" {
-			enc = base64.URLEncoding
-		}
-		if omitPadding {
-			enc = enc.WithPadding(base64.NoPadding)
-		}
-		// Every chunk but the last is a whole number of 3-byte groups, which encode without
-		// padding.
-		return cx.NewString(wtf8.String(encodeInChunks(cx, b, 3, enc.EncodedLen, enc.AppendEncode)))
-	})
-	method(cx, proto, "toHex", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		t := thisUint8Array(cx, this, false, "toHex")
-		return cx.NewString(wtf8.String(encodeInChunks(cx, uint8ArrayBytes(cx, t, "toHex"), 1, hex.EncodedLen, hex.AppendEncode)))
-	})
+	method(cx, ctor, "fromBase64", 1, uint8ArrayFromBase64)
+	method(cx, ctor, "fromHex", 1, uint8ArrayFromHex)
+	method(cx, proto, "setFromBase64", 1, uint8ArraySetFromBase64)
+	method(cx, proto, "setFromHex", 1, uint8ArraySetFromHex)
+	method(cx, proto, "toBase64", 0, uint8ArrayToBase64)
+	method(cx, proto, "toHex", 0, uint8ArrayToHex)
+}
+
+func uint8ArrayFromBase64(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	s := encodedStringArg(cx, args)
+	url, last := base64DecodeOptions(cx, arg(args, 1))
+	r := fromBase64(cx, s, url, last, math.MaxInt)
+	if r.err != "" {
+		cx.ThrowSyntaxError(r.err)
+	}
+	return newUint8Array(cx, r.bytes)
+}
+
+func uint8ArrayFromHex(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	r := fromHex(cx, encodedStringArg(cx, args), math.MaxInt)
+	if r.err != "" {
+		cx.ThrowSyntaxError(r.err)
+	}
+	return newUint8Array(cx, r.bytes)
+}
+
+func uint8ArraySetFromBase64(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	t := thisUint8Array(cx, this, true, "setFromBase64")
+	s := encodedStringArg(cx, args)
+	url, last := base64DecodeOptions(cx, arg(args, 1))
+	n := uint8ArrayLength(cx, t, "setFromBase64")
+	return storeDecodeResult(cx, t, fromBase64(cx, s, url, last, n))
+}
+
+func uint8ArraySetFromHex(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	t := thisUint8Array(cx, this, true, "setFromHex")
+	s := encodedStringArg(cx, args)
+	n := uint8ArrayLength(cx, t, "setFromHex")
+	return storeDecodeResult(cx, t, fromHex(cx, s, n))
+}
+
+func uint8ArrayToBase64(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	t := thisUint8Array(cx, this, false, "toBase64")
+	opts := optionsObject(cx, arg(args, 0))
+	alphabet := stringOption(cx, opts, "alphabet", "base64", "base64url")
+	omitPadding := engine.ToBoolean(cx.GetV(opts, cx.Intern("omitPadding")))
+	b := uint8ArrayBytes(cx, t, "toBase64")
+	enc := base64.StdEncoding
+	if alphabet == "base64url" {
+		enc = base64.URLEncoding
+	}
+	if omitPadding {
+		enc = enc.WithPadding(base64.NoPadding)
+	}
+	// Every chunk but the last is a whole number of 3-byte groups, which encode without
+	// padding.
+	return cx.NewString(wtf8.String(encodeInChunks(cx, b, 3, enc.EncodedLen, enc.AppendEncode)))
+}
+
+func uint8ArrayToHex(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	t := thisUint8Array(cx, this, false, "toHex")
+	return cx.NewString(wtf8.String(encodeInChunks(cx, uint8ArrayBytes(cx, t, "toHex"), 1, hex.EncodedLen, hex.AppendEncode)))
 }
 
 // encodeChunk is the number of bytes that encodeInChunks encodes between two checks for an

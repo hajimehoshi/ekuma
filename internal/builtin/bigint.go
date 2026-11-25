@@ -48,110 +48,124 @@ func thisBigIntObject(cx *engine.ExecutionContext, this engine.Value, what strin
 // initBigInt defines BigInt.
 func initBigInt(cx *engine.ExecutionContext) {
 	proto := cx.Intrinsic(engine.IntrinsicBigIntPrototype)
-	ctor := constructor(cx, "BigInt", 1, engine.IntrinsicBigIntPrototype, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		if cx.GetNewTarget() != nil {
-			cx.ThrowTypeError("BigInt is not a constructor")
-		}
-		p := cx.ToPrimitive(arg(args, 0), engine.HintNumber)
-		if p.IsNumber() {
-			return numberToBigInt(cx, p.Number())
-		}
-		return cx.ToBigInt(p)
-	})
+	ctor := constructor(cx, "BigInt", 1, engine.IntrinsicBigIntPrototype, bigIntConstructor)
 	// The kernel converts an integer that fits in an int64, which cannot throw.
-	cx.SetMethodKernels(ctor, shortContract, nil, func(q engine.QuietContext, this, x engine.Value) (engine.Value, bool) {
-		if x.IsNumber() {
-			if n := x.Number(); n == math.Trunc(n) && n >= -1<<63 && n < 1<<63 {
-				return engine.BigIntFromInt64(int64(n)), true
-			}
-		}
-		return engine.Undefined, false
-	}, nil)
-	method(cx, ctor, "asIntN", 2, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		bits := toIndex(cx, arg(args, 0))
-		x := cx.ToBigInt(arg(args, 1))
-		if bits == 0 {
-			return engine.BigIntFromInt64(0)
-		}
-		if n, ok := x.BigInt64(); ok {
-			if bits >= 64 {
-				return x
-			}
-			// Keep the low bits and extend the sign bit among them.
-			s := 64 - bits
-			return engine.BigIntFromInt64(n << s >> s)
-		}
-		i := x.BigInt()
-		// i already lies in [-2^(bits-1), 2^(bits-1)).
-		if int64(i.BitLen()) < bits {
-			return x
-		}
-		if bits <= 64 {
-			s := 64 - bits
-			return engine.BigIntFromInt64(int64(low64(i)) << s >> s)
-		}
-		// The low bits of the two's complement of i.
-		m := new(big.Int).Lsh(big.NewInt(1), uint(bits))
-		r := new(big.Int).And(i, new(big.Int).Sub(m, big.NewInt(1)))
-		if r.Bit(int(bits-1)) != 0 {
-			r.Sub(r, m)
-		}
-		return cx.NewBigInt(r)
-	})
-	method(cx, ctor, "asUintN", 2, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		bits := toIndex(cx, arg(args, 0))
-		x := cx.ToBigInt(arg(args, 1))
-		if n, ok := x.BigInt64(); ok && bits <= 64 {
-			u := uint64(n)
-			if bits < 64 {
-				u &= 1<<bits - 1
-			}
-			if u <= math.MaxInt64 {
-				return engine.BigIntFromInt64(int64(u))
-			}
-			return cx.NewBigInt(new(big.Int).SetUint64(u))
-		}
-		i := x.BigInt()
-		if i.Sign() >= 0 && int64(i.BitLen()) <= bits {
-			return x
-		}
-		if bits <= 64 {
-			u := low64(i)
-			if bits < 64 {
-				u &= 1<<bits - 1
-			}
-			if u <= math.MaxInt64 {
-				return engine.BigIntFromInt64(int64(u))
-			}
-			return cx.NewBigInt(new(big.Int).SetUint64(u))
-		}
-		if bits > engine.MaxBigIntBits {
-			cx.ThrowRangeError("maximum BigInt size exceeded")
-		}
-		// The low bits of the two's complement of i.
-		m := new(big.Int).Lsh(big.NewInt(1), uint(bits))
-		return cx.NewBigInt(new(big.Int).And(i, m.Sub(m, big.NewInt(1))))
-	})
+	cx.SetMethodKernels(ctor, shortContract, nil, bigIntConstructorKernel, nil)
+	method(cx, ctor, "asIntN", 2, bigIntAsIntN)
+	method(cx, ctor, "asUintN", 2, bigIntAsUintN)
 
-	method(cx, proto, "toString", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		x := thisBigInt(cx, this, "toString")
-		radix := 10.0
-		if r := arg(args, 0); !r.IsUndefined() {
-			radix = cx.ToIntegerOrInfinity(r)
-		}
-		if radix < 2 || radix > 36 {
-			cx.ThrowRangeError("toString() radix must be between 2 and 36")
-		}
-		return cx.NewString(cx.BigIntToString(x, int(radix)))
-	})
-	method(cx, proto, "toLocaleString", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		x := thisBigInt(cx, this, "toLocaleString")
-		return cx.NewString(cx.ToString(x))
-	})
-	method(cx, proto, "valueOf", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		return thisBigInt(cx, this, "valueOf")
-	})
+	method(cx, proto, "toString", 0, bigIntToString)
+	method(cx, proto, "toLocaleString", 0, bigIntToLocaleString)
+	method(cx, proto, "valueOf", 0, bigIntValueOf)
 	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("BigInt"), engine.FlagConfigurable)
+}
+
+func bigIntConstructor(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	if cx.GetNewTarget() != nil {
+		cx.ThrowTypeError("BigInt is not a constructor")
+	}
+	p := cx.ToPrimitive(arg(args, 0), engine.HintNumber)
+	if p.IsNumber() {
+		return numberToBigInt(cx, p.Number())
+	}
+	return cx.ToBigInt(p)
+}
+
+func bigIntConstructorKernel(q engine.QuietContext, this, x engine.Value) (engine.Value, bool) {
+	if x.IsNumber() {
+		if n := x.Number(); n == math.Trunc(n) && n >= -1<<63 && n < 1<<63 {
+			return engine.BigIntFromInt64(int64(n)), true
+		}
+	}
+	return engine.Undefined, false
+}
+
+func bigIntAsIntN(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	bits := toIndex(cx, arg(args, 0))
+	x := cx.ToBigInt(arg(args, 1))
+	if bits == 0 {
+		return engine.BigIntFromInt64(0)
+	}
+	if n, ok := x.BigInt64(); ok {
+		if bits >= 64 {
+			return x
+		}
+		// Keep the low bits and extend the sign bit among them.
+		s := 64 - bits
+		return engine.BigIntFromInt64(n << s >> s)
+	}
+	i := x.BigInt()
+	// i already lies in [-2^(bits-1), 2^(bits-1)).
+	if int64(i.BitLen()) < bits {
+		return x
+	}
+	if bits <= 64 {
+		s := 64 - bits
+		return engine.BigIntFromInt64(int64(low64(i)) << s >> s)
+	}
+	// The low bits of the two's complement of i.
+	m := new(big.Int).Lsh(big.NewInt(1), uint(bits))
+	r := new(big.Int).And(i, new(big.Int).Sub(m, big.NewInt(1)))
+	if r.Bit(int(bits-1)) != 0 {
+		r.Sub(r, m)
+	}
+	return cx.NewBigInt(r)
+}
+
+func bigIntAsUintN(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	bits := toIndex(cx, arg(args, 0))
+	x := cx.ToBigInt(arg(args, 1))
+	if n, ok := x.BigInt64(); ok && bits <= 64 {
+		u := uint64(n)
+		if bits < 64 {
+			u &= 1<<bits - 1
+		}
+		if u <= math.MaxInt64 {
+			return engine.BigIntFromInt64(int64(u))
+		}
+		return cx.NewBigInt(new(big.Int).SetUint64(u))
+	}
+	i := x.BigInt()
+	if i.Sign() >= 0 && int64(i.BitLen()) <= bits {
+		return x
+	}
+	if bits <= 64 {
+		u := low64(i)
+		if bits < 64 {
+			u &= 1<<bits - 1
+		}
+		if u <= math.MaxInt64 {
+			return engine.BigIntFromInt64(int64(u))
+		}
+		return cx.NewBigInt(new(big.Int).SetUint64(u))
+	}
+	if bits > engine.MaxBigIntBits {
+		cx.ThrowRangeError("maximum BigInt size exceeded")
+	}
+	// The low bits of the two's complement of i.
+	m := new(big.Int).Lsh(big.NewInt(1), uint(bits))
+	return cx.NewBigInt(new(big.Int).And(i, m.Sub(m, big.NewInt(1))))
+}
+
+func bigIntToString(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	x := thisBigInt(cx, this, "toString")
+	radix := 10.0
+	if r := arg(args, 0); !r.IsUndefined() {
+		radix = cx.ToIntegerOrInfinity(r)
+	}
+	if radix < 2 || radix > 36 {
+		cx.ThrowRangeError("toString() radix must be between 2 and 36")
+	}
+	return cx.NewString(cx.BigIntToString(x, int(radix)))
+}
+
+func bigIntToLocaleString(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	x := thisBigInt(cx, this, "toLocaleString")
+	return cx.NewString(cx.ToString(x))
+}
+
+func bigIntValueOf(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	return thisBigInt(cx, this, "valueOf")
 }
 
 // numberToBigInt implements NumberToBigInt.

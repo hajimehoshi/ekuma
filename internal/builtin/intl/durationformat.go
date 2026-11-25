@@ -188,39 +188,43 @@ func (df *durationFormatData) format(d duration.Duration) string {
 func initDurationFormat(cx *engine.ExecutionContext, ns *engine.Object) {
 	ctor, proto := constructor(cx, ns, "DurationFormat", 0, engine.IntrinsicIntlDurationFormatPrototype, newDurationFormat)
 
-	method(cx, ctor, "supportedLocalesOf", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		return supportedLocalesOf(cx, args)
-	})
-	method(cx, proto, "resolvedOptions", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		df := thisDurationFormat(cx, this, "resolvedOptions")
-		o := &df.opts
-		kv := []string{"locale", df.locale, "numberingSystem", o.NumberingSystem, "style", o.Style}
-		for i, unit := range duration.Units {
-			style := o.Units[i].Style
-			if style == "fractional" {
-				style = "numeric"
-			}
-			kv = append(kv, unit, style, unit+"Display", o.Units[i].Display)
-		}
-		out := resolvedOptions(cx, kv...)
-		if o.FractionalDigits >= 0 {
-			cx.CreateDataPropertyOrThrow(out.Object(), engine.NamedKey(cx.Intern("fractionalDigits")), engine.Number(float64(o.FractionalDigits)))
-		}
-		return out
-	})
-	method(cx, proto, "format", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		df := thisDurationFormat(cx, this, "format")
-		return cx.NewString(wtf8.String(df.format(toDurationRecord(cx, arg(args, 0)))))
-	})
-	method(cx, proto, "formatToParts", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		df := thisDurationFormat(cx, this, "formatToParts")
-		d := toDurationRecord(cx, arg(args, 0))
-		parts := df.opts.Format(&d)
-		return unitPartsArray(cx, len(parts), func(i int) (string, string, string) {
-			return parts[i].Type, parts[i].Value, parts[i].Unit
-		})
-	})
+	method(cx, ctor, "supportedLocalesOf", 1, supportedLocalesOf)
+	method(cx, proto, "resolvedOptions", 0, durationFormatResolvedOptions)
+	method(cx, proto, "format", 1, durationFormatFormat)
+	method(cx, proto, "formatToParts", 1, durationFormatFormatToParts)
 	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Intl.DurationFormat"), engine.FlagConfigurable)
+}
+
+func durationFormatResolvedOptions(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	df := thisDurationFormat(cx, this, "resolvedOptions")
+	o := &df.opts
+	kv := []string{"locale", df.locale, "numberingSystem", o.NumberingSystem, "style", o.Style}
+	for i, unit := range duration.Units {
+		style := o.Units[i].Style
+		if style == "fractional" {
+			style = "numeric"
+		}
+		kv = append(kv, unit, style, unit+"Display", o.Units[i].Display)
+	}
+	out := resolvedOptions(cx, kv...)
+	if o.FractionalDigits >= 0 {
+		cx.CreateDataPropertyOrThrow(out.Object(), engine.NamedKey(cx.Intern("fractionalDigits")), engine.Number(float64(o.FractionalDigits)))
+	}
+	return out
+}
+
+func durationFormatFormat(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	df := thisDurationFormat(cx, this, "format")
+	return cx.NewString(wtf8.String(df.format(toDurationRecord(cx, arg(args, 0)))))
+}
+
+func durationFormatFormatToParts(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	df := thisDurationFormat(cx, this, "formatToParts")
+	d := toDurationRecord(cx, arg(args, 0))
+	parts := df.opts.Format(&d)
+	return unitPartsArray(cx, len(parts), func(i int) (string, string, string) {
+		return parts[i].Type, parts[i].Value, parts[i].Unit
+	})
 }
 
 // durationToLocaleString implements Temporal.Duration.prototype.toLocaleString.

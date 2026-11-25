@@ -75,71 +75,75 @@ func thisPluralRules(cx *engine.ExecutionContext, this engine.Value, name string
 func initPluralRules(cx *engine.ExecutionContext, ns *engine.Object) {
 	ctor, proto := constructor(cx, ns, "PluralRules", 0, engine.IntrinsicIntlPluralRulesPrototype, newPluralRules)
 
-	method(cx, ctor, "supportedLocalesOf", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		return supportedLocalesOf(cx, args)
-	})
-	method(cx, proto, "resolvedOptions", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		pr := thisPluralRules(cx, this, "resolvedOptions")
-		out := cx.NewObject(cx.Intrinsic(engine.IntrinsicObjectPrototype))
-		set := func(name string, v engine.Value) {
-			cx.CreateDataPropertyOrThrow(out, engine.NamedKey(cx.Intern(wtf8.String(name))), v)
-		}
-		num := func(name string, v int) {
-			set(name, engine.Number(float64(v)))
-		}
-		set("locale", cx.NewString(wtf8.String(pr.locale)))
-		typ := "cardinal"
-		if pr.ordinal {
-			typ = "ordinal"
-		}
-		set("type", cx.NewString(wtf8.String(typ)))
-		set("notation", cx.NewString(wtf8.String(pr.notation)))
-		if pr.compactDisplay != "" {
-			set("compactDisplay", cx.NewString(wtf8.String(pr.compactDisplay)))
-		}
-		d := &pr.digits
-		num("minimumIntegerDigits", d.MinimumIntegerDigits)
-		if pr.slots.hasFraction {
-			num("minimumFractionDigits", d.MinimumFractionDigits)
-			num("maximumFractionDigits", d.MaximumFractionDigits)
-		}
-		if pr.slots.hasSignificant {
-			num("minimumSignificantDigits", d.MinimumSignificantDigits)
-			num("maximumSignificantDigits", d.MaximumSignificantDigits)
-		}
-		set("pluralCategories", stringArray(cx, plural.Categories(pr.dataLocale, pr.ordinal)))
-		num("roundingIncrement", d.RoundingIncrement)
-		set("roundingMode", cx.NewString(wtf8.String(d.RoundingMode)))
-		set("roundingPriority", cx.NewString(wtf8.String(pr.slots.priority)))
-		tzd := "auto"
-		if d.StripIfInteger {
-			tzd = "stripIfInteger"
-		}
-		set("trailingZeroDisplay", cx.NewString(wtf8.String(tzd)))
-		return engine.ObjectValue(out)
-	})
-	method(cx, proto, "select", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		pr := thisPluralRules(cx, this, "select")
-		c, _ := pr.resolvePlural(toIntlMathematicalValue(cx, arg(args, 0)))
-		return cx.NewString(wtf8.String(c))
-	})
-	method(cx, proto, "selectRange", 2, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		pr := thisPluralRules(cx, this, "selectRange")
-		start, end := arg(args, 0), arg(args, 1)
-		if start.IsUndefined() || end.IsUndefined() {
-			cx.ThrowTypeError("selectRange requires a start and an end")
-		}
-		x := toIntlMathematicalValue(cx, start)
-		y := toIntlMathematicalValue(cx, end)
-		if x.IsNaN() || y.IsNaN() {
-			cx.ThrowRangeError("the start or the end of a range is NaN")
-		}
-		xc, xs := pr.resolvePlural(x)
-		yc, ys := pr.resolvePlural(y)
-		if xs == ys && !x.IsInf() && !y.IsInf() {
-			return cx.NewString(wtf8.String(xc))
-		}
-		return cx.NewString(wtf8.String(plural.SelectRange(pr.dataLocale, xc, yc)))
-	})
+	method(cx, ctor, "supportedLocalesOf", 1, supportedLocalesOf)
+	method(cx, proto, "resolvedOptions", 0, pluralRulesResolvedOptions)
+	method(cx, proto, "select", 1, pluralRulesSelect)
+	method(cx, proto, "selectRange", 2, pluralRulesSelectRange)
 	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Intl.PluralRules"), engine.FlagConfigurable)
+}
+
+func pluralRulesResolvedOptions(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	pr := thisPluralRules(cx, this, "resolvedOptions")
+	out := cx.NewObject(cx.Intrinsic(engine.IntrinsicObjectPrototype))
+	set := func(name string, v engine.Value) {
+		cx.CreateDataPropertyOrThrow(out, engine.NamedKey(cx.Intern(wtf8.String(name))), v)
+	}
+	num := func(name string, v int) {
+		set(name, engine.Number(float64(v)))
+	}
+	set("locale", cx.NewString(wtf8.String(pr.locale)))
+	typ := "cardinal"
+	if pr.ordinal {
+		typ = "ordinal"
+	}
+	set("type", cx.NewString(wtf8.String(typ)))
+	set("notation", cx.NewString(wtf8.String(pr.notation)))
+	if pr.compactDisplay != "" {
+		set("compactDisplay", cx.NewString(wtf8.String(pr.compactDisplay)))
+	}
+	d := &pr.digits
+	num("minimumIntegerDigits", d.MinimumIntegerDigits)
+	if pr.slots.hasFraction {
+		num("minimumFractionDigits", d.MinimumFractionDigits)
+		num("maximumFractionDigits", d.MaximumFractionDigits)
+	}
+	if pr.slots.hasSignificant {
+		num("minimumSignificantDigits", d.MinimumSignificantDigits)
+		num("maximumSignificantDigits", d.MaximumSignificantDigits)
+	}
+	set("pluralCategories", stringArray(cx, plural.Categories(pr.dataLocale, pr.ordinal)))
+	num("roundingIncrement", d.RoundingIncrement)
+	set("roundingMode", cx.NewString(wtf8.String(d.RoundingMode)))
+	set("roundingPriority", cx.NewString(wtf8.String(pr.slots.priority)))
+	tzd := "auto"
+	if d.StripIfInteger {
+		tzd = "stripIfInteger"
+	}
+	set("trailingZeroDisplay", cx.NewString(wtf8.String(tzd)))
+	return engine.ObjectValue(out)
+}
+
+func pluralRulesSelect(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	pr := thisPluralRules(cx, this, "select")
+	c, _ := pr.resolvePlural(toIntlMathematicalValue(cx, arg(args, 0)))
+	return cx.NewString(wtf8.String(c))
+}
+
+func pluralRulesSelectRange(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	pr := thisPluralRules(cx, this, "selectRange")
+	start, end := arg(args, 0), arg(args, 1)
+	if start.IsUndefined() || end.IsUndefined() {
+		cx.ThrowTypeError("selectRange requires a start and an end")
+	}
+	x := toIntlMathematicalValue(cx, start)
+	y := toIntlMathematicalValue(cx, end)
+	if x.IsNaN() || y.IsNaN() {
+		cx.ThrowRangeError("the start or the end of a range is NaN")
+	}
+	xc, xs := pr.resolvePlural(x)
+	yc, ys := pr.resolvePlural(y)
+	if xs == ys && !x.IsInf() && !y.IsInf() {
+		return cx.NewString(wtf8.String(xc))
+	}
+	return cx.NewString(wtf8.String(plural.SelectRange(pr.dataLocale, xc, yc)))
 }

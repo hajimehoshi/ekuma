@@ -167,32 +167,34 @@ func collatorCompare(cx *engine.ExecutionContext, this engine.Value, args []engi
 func initCollator(cx *engine.ExecutionContext, ns *engine.Object) {
 	ctor, proto := constructor(cx, ns, "Collator", 0, engine.IntrinsicIntlCollatorPrototype, newCollator)
 
-	method(cx, ctor, "supportedLocalesOf", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		return supportedLocalesOf(cx, args)
-	})
-	getter(cx, proto, "compare", func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		cd := thisCollator(cx, this, "compare")
-		if cd.boundCompare == nil {
-			cd.boundCompare = cx.NewNativeWithState("", 2, collatorCompare, cd)
-		}
-		return engine.ObjectValue(cd.boundCompare)
-	})
-	method(cx, proto, "resolvedOptions", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		cd := thisCollator(cx, this, "resolvedOptions")
-		out := cx.NewObject(cx.Intrinsic(engine.IntrinsicObjectPrototype))
-		set := func(name string, v engine.Value) {
-			cx.CreateDataPropertyOrThrow(out, engine.NamedKey(cx.Intern(wtf8.String(name))), v)
-		}
-		set("locale", cx.NewString(wtf8.String(cd.locale)))
-		set("usage", cx.NewString(wtf8.String(cd.usage)))
-		set("sensitivity", cx.NewString(wtf8.String(cd.sensitivity)))
-		set("ignorePunctuation", engine.Bool(cd.ignorePunctuation))
-		set("collation", cx.NewString(wtf8.String(cd.collation)))
-		set("numeric", engine.Bool(cd.numeric))
-		set("caseFirst", cx.NewString(wtf8.String(cd.caseFirst)))
-		return engine.ObjectValue(out)
-	})
+	method(cx, ctor, "supportedLocalesOf", 1, supportedLocalesOf)
+	getter(cx, proto, "compare", collatorCompareGetter)
+	method(cx, proto, "resolvedOptions", 0, collatorResolvedOptions)
 	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Intl.Collator"), engine.FlagConfigurable)
+}
+
+func collatorCompareGetter(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	cd := thisCollator(cx, this, "compare")
+	if cd.boundCompare == nil {
+		cd.boundCompare = cx.NewNativeWithState("", 2, collatorCompare, cd)
+	}
+	return engine.ObjectValue(cd.boundCompare)
+}
+
+func collatorResolvedOptions(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	cd := thisCollator(cx, this, "resolvedOptions")
+	out := cx.NewObject(cx.Intrinsic(engine.IntrinsicObjectPrototype))
+	set := func(name string, v engine.Value) {
+		cx.CreateDataPropertyOrThrow(out, engine.NamedKey(cx.Intern(wtf8.String(name))), v)
+	}
+	set("locale", cx.NewString(wtf8.String(cd.locale)))
+	set("usage", cx.NewString(wtf8.String(cd.usage)))
+	set("sensitivity", cx.NewString(wtf8.String(cd.sensitivity)))
+	set("ignorePunctuation", engine.Bool(cd.ignorePunctuation))
+	set("collation", cx.NewString(wtf8.String(cd.collation)))
+	set("numeric", engine.Bool(cd.numeric))
+	set("caseFirst", cx.NewString(wtf8.String(cd.caseFirst)))
+	return engine.ObjectValue(out)
 }
 
 // localeCompareState is the state of String.prototype.localeCompare.
@@ -213,22 +215,24 @@ func (st *localeCompareState) defaultCollator(cx *engine.ExecutionContext) *coll
 
 // initLocaleCompare replaces String.prototype.localeCompare with the version of ECMA-402.
 func initLocaleCompare(cx *engine.ExecutionContext) {
-	f := cx.NewNativeWithState("localeCompare", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		if this.IsNullish() {
-			cx.ThrowTypeError("String.prototype.localeCompare called on null or undefined")
-		}
-		s := cx.ToString(this)
-		that := cx.ToString(arg(args, 0))
-		locales, options := arg(args, 1), arg(args, 2)
-		var cd *collatorData
-		if locales.IsUndefined() && options.IsUndefined() {
-			cd = cx.ActiveNativeState().(*localeCompareState).defaultCollator(cx)
-		} else {
-			cd = createCollator(cx, locales, options)
-		}
-		return engine.Number(float64(cd.compare(cx, s, that)))
-	}, &localeCompareState{})
+	f := cx.NewNativeWithState("localeCompare", 1, stringLocaleCompare, &localeCompareState{})
 	cx.Define(cx.Intrinsic(engine.IntrinsicStringPrototype), cx.Intern("localeCompare"), engine.ObjectValue(f), engine.FlagsHidden)
+}
+
+func stringLocaleCompare(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	if this.IsNullish() {
+		cx.ThrowTypeError("String.prototype.localeCompare called on null or undefined")
+	}
+	s := cx.ToString(this)
+	that := cx.ToString(arg(args, 0))
+	locales, options := arg(args, 1), arg(args, 2)
+	var cd *collatorData
+	if locales.IsUndefined() && options.IsUndefined() {
+		cd = cx.ActiveNativeState().(*localeCompareState).defaultCollator(cx)
+	} else {
+		cd = createCollator(cx, locales, options)
+	}
+	return engine.Number(float64(cd.compare(cx, s, that)))
 }
 
 // caseLocales are the languages that have language-sensitive case mappings.
@@ -238,68 +242,77 @@ var caseLocales = []string{"az", "el", "hy", "lt", "tr"}
 // versions of ECMA-402.
 func initLocaleCase(cx *engine.ExecutionContext) {
 	proto := cx.Intrinsic(engine.IntrinsicStringPrototype)
-	for _, m := range []struct {
-		name  string
-		upper bool
-	}{
-		{"toLocaleUpperCase", true},
-		{"toLocaleLowerCase", false},
-	} {
-		key := cx.Intern(wtf8.String(m.name))
+	define := func(name string, f engine.NativeFunc) {
+		key := cx.Intern(wtf8.String(name))
 		// The state of the method is that of the base, which maps the case without a language.
-		f := cx.NewNativeWithState(wtf8.String(m.name), 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-			if this.IsNullish() {
-				cx.ThrowTypeError("String.prototype." + m.name + " called on null or undefined")
+		fn := cx.NewNativeWithState(wtf8.String(name), 0, f, cx.Get(proto, engine.NamedKey(key)).Object())
+		cx.Define(proto, key, engine.ObjectValue(fn), engine.FlagsHidden)
+	}
+	define("toLocaleUpperCase", stringToLocaleUpperCase)
+	define("toLocaleLowerCase", stringToLocaleLowerCase)
+}
+
+var (
+	stringToLocaleUpperCase = stringLocaleCaseNative("toLocaleUpperCase", true)
+	stringToLocaleLowerCase = stringLocaleCaseNative("toLocaleLowerCase", false)
+)
+
+// stringLocaleCaseNative returns the method name of String.prototype, which maps a string to
+// uppercase with upper and to lowercase otherwise.
+//
+//go:noinline
+func stringLocaleCaseNative(name string, upper bool) engine.NativeFunc {
+	return func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		if this.IsNullish() {
+			cx.ThrowTypeError("String.prototype." + name + " called on null or undefined")
+		}
+		value := cx.ToStringValue(this)
+		// TransformCase.
+		requested := canonicalizeLocaleList(cx, arg(args, 0))
+		var tag string
+		if len(requested) > 0 {
+			tag = requested[0]
+		} else {
+			tag = defaultLocale(cx)
+		}
+		lang := ""
+		if t, ok := locale.Parse(tag); ok {
+			// LookupMatchingLocaleByPrefix over the languages, which have no other
+			// subtags.
+			if slices.Contains(caseLocales, t.Language) {
+				lang = t.Language
 			}
-			value := cx.ToStringValue(this)
-			// TransformCase.
-			requested := canonicalizeLocaleList(cx, arg(args, 0))
-			var tag string
-			if len(requested) > 0 {
-				tag = requested[0]
-			} else {
-				tag = defaultLocale(cx)
+		}
+		if lang == "" || !upper && (lang == "el" || lang == "hy") {
+			if mapped, ok := cx.MapASCII(value, upper); ok {
+				return mapped
 			}
-			lang := ""
-			if t, ok := locale.Parse(tag); ok {
-				// LookupMatchingLocaleByPrefix over the languages, which have no other
-				// subtags.
-				if slices.Contains(caseLocales, t.Language) {
-					lang = t.Language
-				}
-			}
-			if lang == "" || !m.upper && (lang == "el" || lang == "hy") {
-				if mapped, ok := cx.MapASCII(value, m.upper); ok {
-					return mapped
-				}
-				return cx.Call(baseCaseMethod(cx), value)
-			}
-			s := value.Str()
-			// Apply the language-specific rules before the default case mapping.
-			switch {
-			case lang == "el" && m.upper:
-				s = wtf8.MapWellFormed(s, func(s string) string {
-					return greekUpper(s, cx.Poll)
-				})
-			case lang == "hy" && m.upper:
-				s = mapAtStarters(cx, s, func(s string, poll func()) string {
-					return strings.ReplaceAll(s, "և", "ԵՎ")
-				})
-			case lang == "lt" && m.upper:
-				s = mapAtStarters(cx, s, lithuanianUndot)
-			case lang == "lt":
-				s = mapAtStarters(cx, s, lithuanianDots)
-			case (lang == "tr" || lang == "az") && m.upper:
-				s = mapAtStarters(cx, s, func(s string, poll func()) string {
-					return strings.ReplaceAll(s, "i", "\u0130")
-				})
-			case lang == "tr" || lang == "az":
-				s = mapAtStarters(cx, s, turkicLowerI)
-			}
-			checkStringLength(cx, len(s))
-			return cx.Call(baseCaseMethod(cx), cx.NewString(s))
-		}, cx.Get(proto, engine.NamedKey(key)).Object())
-		cx.Define(proto, key, engine.ObjectValue(f), engine.FlagsHidden)
+			return cx.Call(baseCaseMethod(cx), value)
+		}
+		s := value.Str()
+		// Apply the language-specific rules before the default case mapping.
+		switch {
+		case lang == "el" && upper:
+			s = wtf8.MapWellFormed(s, func(s string) string {
+				return greekUpper(s, cx.Poll)
+			})
+		case lang == "hy" && upper:
+			s = mapAtStarters(cx, s, func(s string, poll func()) string {
+				return strings.ReplaceAll(s, "և", "ԵՎ")
+			})
+		case lang == "lt" && upper:
+			s = mapAtStarters(cx, s, lithuanianUndot)
+		case lang == "lt":
+			s = mapAtStarters(cx, s, lithuanianDots)
+		case (lang == "tr" || lang == "az") && upper:
+			s = mapAtStarters(cx, s, func(s string, poll func()) string {
+				return strings.ReplaceAll(s, "i", "\u0130")
+			})
+		case lang == "tr" || lang == "az":
+			s = mapAtStarters(cx, s, turkicLowerI)
+		}
+		checkStringLength(cx, len(s))
+		return cx.Call(baseCaseMethod(cx), cx.NewString(s))
 	}
 }
 
@@ -518,21 +531,25 @@ func joinLocaleStrings(cx *engine.ExecutionContext, o *engine.Object, n int64, a
 // %TypedArray%.prototype.toLocaleString with the versions of ECMA-402, which pass the locales
 // and the options to the elements.
 func initArrayToLocaleString(cx *engine.ExecutionContext) {
-	method(cx, cx.Intrinsic(engine.IntrinsicArrayPrototype), "toLocaleString", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		o := cx.ToObject(this)
-		return joinLocaleStrings(cx, o, cx.LengthOfArrayLike(o), args)
-	})
+	method(cx, cx.Intrinsic(engine.IntrinsicArrayPrototype), "toLocaleString", 0, arrayToLocaleString)
 	typedArrayProto := cx.ProtoOf(cx.Intrinsic(engine.IntrinsicInt8ArrayPrototype))
-	method(cx, typedArrayProto, "toLocaleString", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		// ValidateTypedArray.
-		t := engine.TypedArrayData(this)
-		if t == nil {
-			cx.ThrowTypeError("%TypedArray%.prototype.toLocaleString: this is not a typed array")
-		}
-		n, ok := t.Length()
-		if !ok {
-			cx.ThrowTypeError("%TypedArray%.prototype.toLocaleString: the typed array is detached or out of bounds")
-		}
-		return joinLocaleStrings(cx, this.Object(), int64(n), args)
-	})
+	method(cx, typedArrayProto, "toLocaleString", 0, typedArrayToLocaleString)
+}
+
+func arrayToLocaleString(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	o := cx.ToObject(this)
+	return joinLocaleStrings(cx, o, cx.LengthOfArrayLike(o), args)
+}
+
+func typedArrayToLocaleString(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	// ValidateTypedArray.
+	t := engine.TypedArrayData(this)
+	if t == nil {
+		cx.ThrowTypeError("%TypedArray%.prototype.toLocaleString: this is not a typed array")
+	}
+	n, ok := t.Length()
+	if !ok {
+		cx.ThrowTypeError("%TypedArray%.prototype.toLocaleString: the typed array is detached or out of bounds")
+	}
+	return joinLocaleStrings(cx, this.Object(), int64(n), args)
 }
