@@ -3,6 +3,10 @@
 
 package engine
 
+import (
+	"github.com/hajimehoshi/ekuma/internal/storage"
+)
+
 // nativeTableSize is the number of entries of the table of the native functions. It is a power of
 // two, so that masking an index keeps it in range.
 const nativeTableSize = 1 << 10
@@ -10,21 +14,13 @@ const nativeTableSize = 1 << 10
 // maxNativeFasts is the number of entries of the table of the fast forms. Every uint8 is in range.
 const maxNativeFasts = 1 << 8
 
-// Native identifies a registered native function. The zero value identifies none.
-type Native struct {
-	index uint16
-
-	// fastIndex is the index of what callers use instead of calling the function, or 0.
-	fastIndex uint8
-}
-
 // nativeTable holds the registered native functions. It does not change after the initialization
 // of the packages.
 var nativeTable struct {
 	// codes holds the code of the functions by the index of their [Native].
 	codes [nativeTableSize]NativeFunc
 
-	// fasts holds what callers use instead of calling the functions by the fastIndex of their
+	// fasts holds what callers use instead of calling the functions by the FastIndex of their
 	// [Native]. The entry at index 0 is nil.
 	fasts [maxNativeFasts]*nativeFast
 
@@ -59,8 +55,8 @@ func registerNative(f NativeFunc, fast *nativeFast) Native {
 	nativeTable.codes[i] = f
 	nativeTable.count = i
 	return Native{
-		index:     uint16(i),
-		fastIndex: addNativeFast(fast),
+		Index:     uint16(i),
+		FastIndex: addNativeFast(fast),
 	}
 }
 
@@ -80,18 +76,12 @@ func addNativeFast(fast *nativeFast) uint8 {
 
 // nativeCodeOf returns the code of n.
 func nativeCodeOf(n Native) NativeFunc {
-	return nativeTable.codes[n.index%nativeTableSize]
-}
-
-// hasFast reports whether fast returns something.
-func (n Native) hasFast() bool {
-	// Widening the index as nativeFastOf does lets the compiler share its register.
-	return uint(n.fastIndex) != 0
+	return nativeTable.codes[n.Index%nativeTableSize]
 }
 
 // nativeFastOf returns what the callers of n use instead of calling it, or nil.
 func nativeFastOf(n Native) *nativeFast {
-	return nativeTable.fasts[uint(n.fastIndex)]
+	return nativeTable.fasts[uint(n.FastIndex)]
 }
 
 // Kernels are the kernels of a native function. Any of them may be nil.
@@ -129,7 +119,7 @@ func RegisterIteratorNext(yieldRealm IteratorYieldRealm, step IteratorStepFunc) 
 	code := func(cx *ExecutionContext, this Value, args []Value) Value {
 		v, ok := step(cx, this)
 		if !ok {
-			return cx.CreateIterResultObject(Undefined, true)
+			return cx.CreateIterResultObject(storage.Undefined, true)
 		}
 		return newIteratorResult(cx, yieldRealm, this, v)
 	}
@@ -148,23 +138,23 @@ func RegisterIteratorNext(yieldRealm IteratorYieldRealm, step IteratorStepFunc) 
 // called only in the initialization of a package.
 func RegisterPlainIteratorNext[T any](yieldRealm IteratorYieldRealm, receiverError string, step func(QuietContext, *Object, T) (Value, bool), pairStep IteratorPairStepFunc) Native {
 	code := func(cx *ExecutionContext, this Value, args []Value) Value {
-		state, ok := IteratorState(this).(T)
+		state, ok := storage.IteratorState(this).(T)
 		if !ok {
 			cx.ThrowTypeError(receiverError)
 		}
-		v, ok := step(cx.Quiet(), this.o, state)
+		v, ok := step(cx.Quiet(), this.O, state)
 		if !ok {
-			return cx.CreateIterResultObject(Undefined, true)
+			return cx.CreateIterResultObject(storage.Undefined, true)
 		}
 		return newIteratorResult(cx, yieldRealm, this, v)
 	}
 	return registerNative(code, &nativeFast{
 		step: func(cx *ExecutionContext, this Value) (Value, bool) {
-			if state, ok := IteratorState(this).(T); ok {
-				return step(cx.Quiet(), this.o, state)
+			if state, ok := storage.IteratorState(this).(T); ok {
+				return step(cx.Quiet(), this.O, state)
 			}
 			// The receiver error belongs to the native next call.
-			return Value{o: stepDeclined}, false
+			return Value{O: stepDeclined}, false
 		},
 		pairStep: pairStep,
 		contract: ShortcutContract{
@@ -177,7 +167,7 @@ func RegisterPlainIteratorNext[T any](yieldRealm IteratorYieldRealm, receiverErr
 // newIteratorResult returns the result of the next method of the built-in iterator this that yields v.
 func newIteratorResult(cx *ExecutionContext, yieldRealm IteratorYieldRealm, this, v Value) Value {
 	if yieldRealm == IteratorClosureRealm {
-		return CreationContext(this.o).CreateIterResultObject(v, false)
+		return CreationContext(this.O).CreateIterResultObject(v, false)
 	}
 	return cx.CreateIterResultObject(v, false)
 }

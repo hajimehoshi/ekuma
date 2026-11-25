@@ -10,6 +10,7 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/bytecode"
 	"github.com/hajimehoshi/ekuma/internal/compiler"
 	"github.com/hajimehoshi/ekuma/internal/parser"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
@@ -60,19 +61,19 @@ func evalArg(args []Value, argc int) Value {
 	case argc > 0:
 		return args[0]
 	case argc < 0:
-		if elems := args[0].o.elems; len(elems) > 0 {
+		if elems := args[0].O.Elems; len(elems) > 0 {
 			return elems[0]
 		}
 	}
-	return Undefined
+	return storage.Undefined
 }
 
 // callEval performs the call instruction i of a function named eval as a direct eval with the
 // call site site, when the callee is the eval function, and reports whether it did. argc is as
 // for evalArg. The registers may move when it returns.
 func (cx *ExecutionContext) callEval(regs []Value, i *bytecode.Instr, site, argc int) (Value, bool) {
-	if regs[i.B].o != cx.Intrinsic(IntrinsicEval) {
-		return Undefined, false
+	if regs[i.B].O != cx.Intrinsic(IntrinsicEval) {
+		return storage.Undefined, false
 	}
 	return cx.directEval(evalArg(regs[i.B+2:], argc), site), true
 }
@@ -80,7 +81,7 @@ func (cx *ExecutionContext) callEval(regs []Value, i *bytecode.Instr, site, argc
 // directEval implements PerformEval for a direct eval of x by the running function at its
 // call site site.
 func (cx *ExecutionContext) directEval(x Value, site int) Value {
-	if cx.interrupt.Load() {
+	if cx.InterruptFlag.Load() {
 		cx.Poll()
 	}
 	if !x.IsString() {
@@ -93,19 +94,19 @@ func (cx *ExecutionContext) directEval(x Value, site int) Value {
 	}
 
 	// The eval code is a closure of the calling function, made at the call.
-	fn := &function{code: p}
+	fn := &function{Code: p}
 	if n := len(p.Upvals); n > 0 {
-		fn.upvals = make([]*upvalue, n)
+		fn.Upvals = make([]*upvalue, n)
 		for j, d := range p.Upvals {
 			if d.Local {
-				fn.upvals[j] = cx.captureRegister(fr, int(d.Index))
+				fn.Upvals[j] = cx.captureRegister(fr, int(d.Index))
 			} else {
-				fn.upvals[j] = fr.cl.fn.upvals[d.Index]
+				fn.Upvals[j] = fr.cl.Fn.Upvals[d.Index]
 			}
 		}
 	}
-	fn.scopes = cx.openScopes(fr.cl)
-	return cx.Call(newFunctionObject(cx.realm.shapes.function, fn), Undefined)
+	fn.Scopes = cx.openScopes(fr.cl)
+	return cx.Call(storage.NewFunctionObject(cx.realm.Shapes.Function, fn), storage.Undefined)
 }
 
 // PerformEval implements PerformEval for an indirect eval.
@@ -113,7 +114,7 @@ func (cx *ExecutionContext) PerformEval(x Value) Value {
 	if !x.IsString() {
 		return x
 	}
-	return cx.Call(cx.newScriptFunction(cx.evalCode(nil, 0, x.Str())), Value{o: cx.realm.globalThis})
+	return cx.Call(cx.newScriptFunction(cx.evalCode(nil, 0, x.Str())), Value{O: cx.realm.GlobalThis})
 }
 
 // createLazyArguments creates the arguments object of the frame fr, whose direct eval at the
@@ -131,8 +132,8 @@ func (cx *ExecutionContext) createLazyArguments(fr *frame, es *bytecode.EvalScop
 			continue
 		}
 		regs := cx.frameRegs(fr)
-		if regs[reg].o == tdzObject {
-			regs[reg] = Value{o: cx.newArguments(fr, true)}
+		if regs[reg].O == tdzObject {
+			regs[reg] = Value{O: cx.newArguments(fr, true)}
 		}
 		return
 	}
@@ -211,15 +212,15 @@ func hasTemplates(f *bytecode.Func) bool {
 
 // pushEvalScope opens a new scope for the variables that direct evals declare in the running function.
 func (cx *ExecutionContext) pushEvalScope() {
-	o := newObjectWithState(cx.shapeFor(nil), classEvalScope, nil)
+	o := storage.NewObjectWithState(cx.ShapeFor(nil), classEvalScope, nil)
 	cur := &cx.frames[len(cx.frames)-1]
 	cur.scopes = append(cur.scopes, o)
 }
 
 // scopeThis returns the this value of a call of a function found in the dynamic scope s.
 func scopeThis(s Value) Value {
-	if s.o.class == classEvalScope {
-		return Undefined
+	if s.O.Class == classEvalScope {
+		return storage.Undefined
 	}
 	return s
 }
@@ -229,23 +230,23 @@ func scopeThis(s Value) Value {
 // register fn of regs holds.
 func (cx *ExecutionContext) declareEvalVar(cl *Object, key *Object, depth int, regs []Value, fn int) {
 	var o *Object
-	for _, scopes := range [...][]*Object{cx.frames[len(cx.frames)-1].scopes, cl.fn.capturedScopes()} {
+	for _, scopes := range [...][]*Object{cx.frames[len(cx.frames)-1].scopes, cl.Fn.CapturedScopes()} {
 		if depth <= len(scopes) {
 			o = scopes[len(scopes)-depth]
 			break
 		}
 		depth -= len(scopes)
 	}
-	k := NamedKey(key)
+	k := storage.NamedKey(key)
 	switch {
 	case !cx.HasOwnProperty(o, k):
-		v := Undefined
+		v := storage.Undefined
 		if fn >= 0 {
 			v = regs[fn]
 		}
-		cx.DefinePropertyOrThrow(o, k, dataDesc(v, FlagsData))
+		cx.DefinePropertyOrThrow(o, k, storage.DataDesc(v, FlagsData))
 	case fn >= 0:
-		cx.setProp(o, k, regs[fn], Value{o: o})
+		cx.setProp(o, k, regs[fn], Value{O: o})
 	}
 }
 
@@ -301,9 +302,9 @@ func (cx *ExecutionContext) CreateDynamicFunction(kind FunctionKind, args []Valu
 		cx.throwCompileError("<anonymous>", err)
 	}
 	proto := cx.GetPrototypeFromConstructor(newTarget, fallback)
-	f := cx.Call(cx.newScriptFunction(fp), Value{o: cx.realm.globalThis})
+	f := cx.Call(cx.newScriptFunction(fp), Value{O: cx.realm.GlobalThis})
 	if proto != cx.Intrinsic(fallback) {
-		cx.SetPrototypeOf(f.o, proto)
+		cx.SetPrototypeOf(f.O, proto)
 	}
 	return f
 }

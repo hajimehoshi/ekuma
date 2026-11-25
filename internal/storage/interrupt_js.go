@@ -1,15 +1,12 @@
 // SPDX-License-Identifier: 0BSD
 // SPDX-FileCopyrightText: 2026 Hajime Hoshi
 
-package engine
+package storage
 
 import (
 	"runtime"
 	"sync/atomic"
 )
-
-// js/wasm runs one goroutine at a time and switches only when the running one yields.
-// A busy script yields now and then, so that the goroutine that calls [agent.Interrupt] can run.
 
 // yieldTicks is the number of ticks between two yields.
 const yieldTicks = 1 << 12
@@ -41,8 +38,8 @@ func (f *interruptFlag) yield() {
 	runtime.Gosched()
 }
 
-// pollYield yields at each call of [agent.Poll], as its callers call it only between runs of many
+// PollYield yields at each call of agent.Poll, as its callers call it only between runs of many
 // steps. The goroutines that request an interruption may need more than one yield to run.
-func (p *poller) pollYield() {
-	p.interrupt.yield()
+func (p *Poller) PollYield() {
+	p.InterruptFlag.yield()
 }

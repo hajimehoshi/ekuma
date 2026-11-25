@@ -6,6 +6,7 @@ package engine
 import (
 	"slices"
 
+	"github.com/hajimehoshi/ekuma/internal/storage"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
@@ -135,20 +136,20 @@ func (cx *ExecutionContext) NewArrayIteratorNext() *Object {
 
 // arrayIteratorNext is the code of the next method of array iterators.
 func arrayIteratorNext(cx *ExecutionContext, this Value, args []Value) Value {
-	it, _ := IteratorState(this).(*arrayIterator)
+	it, _ := storage.IteratorState(this).(*arrayIterator)
 	key, value, st := it.stepPlain(cx.Quiet())
 	if st == PairDeclined {
 		key, value, st = it.step(cx)
 	}
 	if st != PairYielded {
-		return cx.CreateIterResultObject(Undefined, true)
+		return cx.CreateIterResultObject(storage.Undefined, true)
 	}
 	return cx.CreateIterResultObject(it.result(cx.Quiet(), key, value), false)
 }
 
 // arrayIteratorFastStep is the step of the next method of array iterators of the running realm.
 func arrayIteratorFastStep(cx *ExecutionContext, this Value) (Value, bool) {
-	it, _ := IteratorState(this).(*arrayIterator)
+	it, _ := storage.IteratorState(this).(*arrayIterator)
 	key, value, st := it.stepPlain(cx.Quiet())
 	if st == PairDeclined {
 		cx.pushNative(cx.Intrinsic(IntrinsicArrayIteratorPrototypeNext), this, nil)
@@ -156,7 +157,7 @@ func arrayIteratorFastStep(cx *ExecutionContext, this Value) (Value, bool) {
 		cx.popNative()
 	}
 	if st != PairYielded {
-		return Undefined, false
+		return storage.Undefined, false
 	}
 	return it.result(cx.Quiet(), key, value), true
 }
@@ -167,21 +168,21 @@ func arrayIteratorIndex(cx *ExecutionContext, o *Object, i uint32) Value {
 	// Only the receiver's type name is visible on a native frame. The
 	// unmaterialized iterator inherits that name from its prototype.
 	proto := cx.Intrinsic(IntrinsicArrayIteratorPrototype)
-	cx.pushNative(cx.Intrinsic(IntrinsicArrayIteratorPrototypeNext), Value{o: proto}, nil)
+	cx.pushNative(cx.Intrinsic(IntrinsicArrayIteratorPrototypeNext), Value{O: proto}, nil)
 	cx.Poll()
-	v := cx.Index(Value{o: o}, i)
+	v := cx.Index(Value{O: o}, i)
 	cx.popNative()
 	return v
 }
 
 func (cx *ExecutionContext) arrayIteratorPairStep(it, next Value) (Value, Value, PairStep) {
-	state, _ := IteratorState(it).(*arrayIterator)
+	state, _ := storage.IteratorState(it).(*arrayIterator)
 	if state == nil || state.kind != IterateEntries {
-		return Undefined, Undefined, PairDeclined
+		return storage.Undefined, storage.Undefined, PairDeclined
 	}
 	key, value, st := state.stepPlain(cx.Quiet())
 	if st == PairDeclined {
-		cx.pushNative(next.o, it, nil)
+		cx.pushNative(next.O, it, nil)
 		key, value, st = state.step(cx)
 		cx.popNative()
 	}
@@ -196,7 +197,7 @@ func (it *arrayIterator) result(q QuietContext, key, value Value) Value {
 	case IterateValues:
 		return value
 	default:
-		return Value{o: q.NewArrayPair(key, value)}
+		return Value{O: q.NewArrayPair(key, value)}
 	}
 }
 
@@ -204,52 +205,52 @@ func (it *arrayIterator) result(q QuietContext, key, value Value) Value {
 // otherwise.
 func (it *arrayIterator) stepPlain(q QuietContext) (key, value Value, st PairStep) {
 	if it == nil {
-		return Undefined, Undefined, PairDeclined
+		return storage.Undefined, storage.Undefined, PairDeclined
 	}
 	r := q.realm
 	o := it.object
 	if o == nil {
-		return Undefined, Undefined, PairDone
+		return storage.Undefined, storage.Undefined, PairDone
 	}
 	i := it.nextIndex
 	var length int64
 	switch {
-	case o.kind == kindArray:
-		length = int64(o.length)
-	case o.class == classTypedArray:
-		t := o.extState().(*TypedArray)
+	case o.Kind == kindArray:
+		length = int64(o.Length)
+	case o.Class == classTypedArray:
+		t := o.ExtState().(*TypedArray)
 		if it.kind != IterateKeys && i <= MaxArrayIndex {
 			if b, ok := t.element(uint32(i)); ok {
 				value = loadElement(t.typ, b)
 				it.nextIndex = i + 1
-				r.pollAt(i)
-				return Number(float64(i)), value, PairYielded
+				r.PollAtIndex(i)
+				return storage.Number(float64(i)), value, PairYielded
 			}
 		}
 		n, ok := t.Length()
 		if !ok {
-			return Undefined, Undefined, PairDeclined
+			return storage.Undefined, storage.Undefined, PairDeclined
 		}
 		length = int64(n)
 	default:
-		return Undefined, Undefined, PairDeclined
+		return storage.Undefined, storage.Undefined, PairDeclined
 	}
 	if i >= length {
 		it.object = nil
-		return Undefined, Undefined, PairDone
+		return storage.Undefined, storage.Undefined, PairDone
 	}
-	key = Number(float64(i))
+	key = storage.Number(float64(i))
 	if it.kind == IterateKeys {
 		it.nextIndex = i + 1
-		return key, Undefined, PairYielded
+		return key, storage.Undefined, PairYielded
 	}
-	if i < int64(len(o.elems)) && !o.elems[i].isHole() {
-		value = o.elems[i]
+	if i < int64(len(o.Elems)) && !o.Elems[i].IsHole() {
+		value = o.Elems[i]
 		it.nextIndex = i + 1
-		r.pollAt(i)
+		r.PollAtIndex(i)
 		return key, value, PairYielded
 	}
-	return Undefined, Undefined, PairDeclined
+	return storage.Undefined, storage.Undefined, PairDeclined
 }
 
 // step advances the iterator.
@@ -259,13 +260,13 @@ func (it *arrayIterator) step(cx *ExecutionContext) (key, value Value, st PairSt
 	}
 	o := it.object
 	if o == nil {
-		return Undefined, Undefined, PairDone
+		return storage.Undefined, storage.Undefined, PairDone
 	}
 	// Reading length can call next on this iterator again.
 	i := it.nextIndex
 	var length int64
-	if o.class == classTypedArray {
-		n, ok := o.extState().(*TypedArray).Length()
+	if o.Class == classTypedArray {
+		n, ok := o.ExtState().(*TypedArray).Length()
 		if !ok {
 			cx.ThrowTypeError("cannot iterate a detached or out of bounds typed array")
 		}
@@ -275,15 +276,15 @@ func (it *arrayIterator) step(cx *ExecutionContext) (key, value Value, st PairSt
 	}
 	if i >= length {
 		it.object = nil
-		return Undefined, Undefined, PairDone
+		return storage.Undefined, storage.Undefined, PairDone
 	}
-	key = Number(float64(i))
+	key = storage.Number(float64(i))
 	it.nextIndex = i + 1
 	if it.kind == IterateKeys {
-		return key, Undefined, PairYielded
+		return key, storage.Undefined, PairYielded
 	}
-	if i < int64(len(o.elems)) && !o.elems[i].isHole() {
-		value = o.elems[i]
+	if i < int64(len(o.Elems)) && !o.Elems[i].IsHole() {
+		value = o.Elems[i]
 		cx.PollAt(i)
 		return key, value, PairYielded
 	}
@@ -299,7 +300,7 @@ const (
 )
 
 // stepDeclined is the value of a step that declines. No iterator yields it.
-var stepDeclined = newMarker(nil)
+var stepDeclined = storage.NewMarker(nil)
 
 // iterNext calls the next method next of the iterator it, as for-of and destructuring do.
 // It returns the value with iterValue, or iterDone when the iterator is done. When the result
@@ -309,23 +310,23 @@ var stepDeclined = newMarker(nil)
 // The next methods of the built-in iterators and of generators run without creating
 // the iterator result, whose reading would have no observable effect.
 func (cx *ExecutionContext) iterNext(it, next Value) (Value, int) {
-	f := next.o
-	if f != nil && f.fn != nil && cx.hasIteratorFast(f.fn) {
-		if fast := nativeFastOf(f.fn.info.native); fast.step != nil {
-			if cx.interrupt.Load() {
+	f := next.O
+	if f != nil && f.Fn != nil && cx.hasIteratorFast(f.Fn) {
+		if fast := nativeFastOf(f.Fn.Info.Native); fast.step != nil {
+			if cx.InterruptFlag.Load() {
 				cx.Poll()
 			}
 			v, ok := fast.step(cx, it)
 			if ok {
 				return v, iterValue
 			}
-			if v.o != stepDeclined {
-				return Undefined, iterDone
+			if v.O != stepDeclined {
+				return storage.Undefined, iterDone
 			}
 		} else if fast.framedStep != nil {
 			v, ok := cx.stepFramed(f, fast.framedStep, it)
 			if !ok {
-				return Undefined, iterDone
+				return storage.Undefined, iterDone
 			}
 			return v, iterValue
 		}
@@ -333,15 +334,15 @@ func (cx *ExecutionContext) iterNext(it, next Value) (Value, int) {
 	var r Value
 	switch {
 	case f != nil && f == cx.Intrinsic(IntrinsicGeneratorPrototypeNext) && isSyncGenerator(it):
-		if cx.interrupt.Load() {
+		if cx.InterruptFlag.Load() {
 			cx.Poll()
 		}
-		g := it.o.extState().(*generator)
+		g := it.O.ExtState().(*generator)
 		cx.pushNative(f, it, nil)
-		v, done := cx.resume(g, ResumeNext, Undefined)
+		v, done := cx.resume(g, ResumeNext, storage.Undefined)
 		cx.popNative()
 		if done {
-			return Undefined, iterDone
+			return storage.Undefined, iterDone
 		}
 		if !g.delegating {
 			return v, iterValue
@@ -357,22 +358,22 @@ func (cx *ExecutionContext) iterNext(it, next Value) (Value, int) {
 		if !r.IsObject() {
 			cx.ThrowTypeError("iterator result " + cx.DisplayString(r) + " is not an object")
 		}
-		done = ToBoolean(cx.GetV(r, cx.Key(keyDone)))
+		done = storage.ToBoolean(cx.GetV(r, cx.Key(keyDone)))
 		if !done {
 			v = cx.GetV(r, cx.Key(KeyValue))
 		}
 	}) {
-		return Undefined, iterFailed
+		return storage.Undefined, iterFailed
 	}
 	if done {
-		return Undefined, iterDone
+		return storage.Undefined, iterDone
 	}
 	return v, iterValue
 }
 
 // stepFramed steps the iterator it with step in the frame of its next method next.
 func (cx *ExecutionContext) stepFramed(next *Object, step IteratorStepFunc, it Value) (Value, bool) {
-	if cx.interrupt.Load() {
+	if cx.InterruptFlag.Load() {
 		cx.Poll()
 	}
 	cx.pushNative(next, it, nil)
@@ -390,12 +391,12 @@ func (cx *ExecutionContext) IteratorStepValue(it, next Value) (Value, bool) {
 // IteratorStep implements IteratorStep for the iterator it and its next method next,
 // without the result: it reports false when the iterator is done.
 func (cx *ExecutionContext) IteratorStep(it, next Value) bool {
-	if f := next.o; f != nil && f.fn != nil && cx.hasIteratorFast(f.fn) {
-		if fast := nativeFastOf(f.fn.info.native); fast.step != nil {
-			if cx.interrupt.Load() {
+	if f := next.O; f != nil && f.Fn != nil && cx.hasIteratorFast(f.Fn) {
+		if fast := nativeFastOf(f.Fn.Info.Native); fast.step != nil {
+			if cx.InterruptFlag.Load() {
 				cx.Poll()
 			}
-			if v, ok := fast.step(cx, it); ok || v.o != stepDeclined {
+			if v, ok := fast.step(cx, it); ok || v.O != stepDeclined {
 				return ok
 			}
 		} else if fast.framedStep != nil {
@@ -407,7 +408,7 @@ func (cx *ExecutionContext) IteratorStep(it, next Value) bool {
 	if !r.IsObject() {
 		cx.ThrowTypeError("iterator result " + cx.DisplayString(r) + " is not an object")
 	}
-	return !ToBoolean(cx.GetV(r, cx.Key(keyDone)))
+	return !storage.ToBoolean(cx.GetV(r, cx.Key(keyDone)))
 }
 
 // iteratorStep calls next and returns the value of the result, or false when the iterator is done.
@@ -493,24 +494,24 @@ func (cx *ExecutionContext) iteratorCloseAll(its []Value, pending bool) {
 // closePlainArrayIterator materializes an array iterator at nextIndex if looking up return
 // can expose it to JavaScript.
 func (cx *ExecutionContext) closePlainArrayIterator(o *Object, nextIndex uint32, pending bool) {
-	if c := &cx.realm.arrayIter; c.epoch == cx.protoEpoch && c.noReturn {
+	if c := &cx.realm.ArrayIter; c.Epoch == cx.ProtoEpoch && c.NoReturn {
 		if validateExec {
-			cx.checkNoIteratorReturn()
+			cx.CheckNoIteratorReturn()
 		}
 		return
 	}
-	if cx.noArrayIteratorReturn(cx.Intrinsic(IntrinsicArrayIteratorPrototype)) {
+	if cx.NoArrayIteratorReturn(cx.Intrinsic(IntrinsicArrayIteratorPrototype)) {
 		return
 	}
 	it := cx.newArrayIterator(o, IterateValues, int64(nextIndex))
-	cx.iteratorClose(Value{o: it}, pending)
+	cx.iteratorClose(Value{O: it}, pending)
 }
 
 // Iterate calls f for every value that iterating v yields. When f returns false,
 // the iteration stops and the iterator is closed.
 func (cx *ExecutionContext) Iterate(v Value, f func(Value) bool) {
-	if v.o != nil && v.o.kind == kindArray && cx.arrayIterationPlain(v.o) {
-		cx.iteratePlainArray(v.o, f)
+	if v.O != nil && v.O.Kind == kindArray && cx.ArrayIterationPlain(v.O) {
+		cx.iteratePlainArray(v.O, f)
 		return
 	}
 	it, next := cx.getIterator(v, false)
@@ -520,8 +521,8 @@ func (cx *ExecutionContext) Iterate(v Value, f func(Value) bool) {
 // IterateFromMethod is [ExecutionContext.Iterate] for the iterator that GetIteratorFromMethod(v, method)
 // returns.
 func (cx *ExecutionContext) IterateFromMethod(v Value, method *Object, f func(Value) bool) {
-	if method == cx.Intrinsic(IntrinsicArrayPrototypeValues) && v.o != nil && v.o.kind == kindArray && cx.arrayIterationPlain(v.o) {
-		cx.iteratePlainArray(v.o, f)
+	if method == cx.Intrinsic(IntrinsicArrayPrototypeValues) && v.O != nil && v.O.Kind == kindArray && cx.ArrayIterationPlain(v.O) {
+		cx.iteratePlainArray(v.O, f)
 		return
 	}
 	it := cx.Call(method, v)
@@ -536,15 +537,15 @@ func (cx *ExecutionContext) iteratePlainArray(o *Object, f func(Value) bool) {
 	var nextIndex uint32
 	cx.iterate(func() (Value, bool) {
 		i := nextIndex
-		if i >= o.length {
-			return Undefined, false
+		if i >= o.Length {
+			return storage.Undefined, false
 		}
-		if cx.interrupt.Load() {
+		if cx.InterruptFlag.Load() {
 			cx.Poll()
 		}
 		nextIndex++
-		if uint(i) < uint(len(o.elems)) && !o.elems[i].isHole() {
-			return o.elems[i], true
+		if uint(i) < uint(len(o.Elems)) && !o.Elems[i].IsHole() {
+			return o.Elems[i], true
 		}
 		return cx.plainArrayIteratorIndex(o, i), true
 	}, func(pending bool) {
@@ -555,15 +556,15 @@ func (cx *ExecutionContext) iteratePlainArray(o *Object, f func(Value) bool) {
 // plainArrayIteratorIndex reads an element outside dense storage with the native next frame
 // that a getter or proxy can observe.
 func (cx *ExecutionContext) plainArrayIteratorIndex(o *Object, i uint32) Value {
-	if o.flags&objSparse == 0 && o.holesAreAbsent() {
-		return Undefined
+	if o.Flags&objSparse == 0 && o.HolesAreAbsent() {
+		return storage.Undefined
 	}
-	// arrayIterationPlain proved this method was selected when iteration started.
+	// ArrayIterationPlain proved this method was selected when iteration started.
 	next := cx.Intrinsic(IntrinsicArrayIteratorPrototypeNext)
-	if cx.interrupt.Load() {
+	if cx.InterruptFlag.Load() {
 		cx.Poll()
 	}
-	return nativeFastOf(next.fn.info.native).arrayIndex(cx, o, i)
+	return nativeFastOf(next.Fn.Info.Native).arrayIndex(cx, o, i)
 }
 
 // IterateRecord is [ExecutionContext.Iterate] for the iterator record of the iterator it and its next method
@@ -604,8 +605,8 @@ func (cx *ExecutionContext) iterate(step func() (Value, bool), closeIterator fun
 // copies them before running any JavaScript. The array is v itself when iterating v reads its
 // elements without running JavaScript.
 func (cx *ExecutionContext) spreadArgs(v Value) *Object {
-	if s := v.o; s != nil && s.kind == kindArray && cx.arrayIterationPlain(s) {
-		if _, ok := s.plainElems(); ok {
+	if s := v.O; s != nil && s.Kind == kindArray && cx.ArrayIterationPlain(s) {
+		if _, ok := s.PlainElems(); ok {
 			return s
 		}
 	}
@@ -616,12 +617,12 @@ func (cx *ExecutionContext) spreadArgs(v Value) *Object {
 
 // appendIterable appends the values that iterating v yields to the array o.
 func (cx *ExecutionContext) appendIterable(o *Object, v Value) {
-	if s := v.o; s != nil && s.kind == kindArray {
-		o.reserveElems(len(s.elems))
+	if s := v.O; s != nil && s.Kind == kindArray {
+		o.ReserveElems(len(s.Elems))
 	}
 	cx.Iterate(v, func(e Value) bool {
-		o.appendElem(e)
-		o.length = uint32(len(o.elems))
+		o.AppendElem(e)
+		o.Length = uint32(len(o.Elems))
 		return true
 	})
 }
@@ -652,43 +653,43 @@ type forIn struct {
 // newForIn returns the iterator of a for-in loop over v.
 func (cx *ExecutionContext) newForIn(v Value) Value {
 	it := &forIn{}
-	o := it.initWithState(nil, classForIn, it)
+	o := it.InitWithState(nil, classForIn, it)
 	if !v.IsNullish() {
 		it.obj = cx.ToObject(v)
 		it.indices, it.length, it.keys = cx.forInOwnKeys(it.obj)
 	}
-	return Value{o: o}
+	return Value{O: o}
 }
 
 // forInOwnKeys returns the own property keys of the receiver o of a for-in loop in the order of
 // [ExecutionContext.OwnKeys], where symbols may be left out: the indices below indices, then the key length
 // if length is set, then keys.
 func (cx *ExecutionContext) forInOwnKeys(o *Object) (indices uint32, length bool, keys []PropKey) {
-	if o.class == classProxy || o.class == classModuleNamespace {
+	if o.Class == classProxy || o.Class == classModuleNamespace {
 		return 0, false, cx.OwnKeys(o)
 	}
-	if o.flags&objExotic != 0 {
+	if o.Flags&objExotic != 0 {
 		cx.resolve(o)
 	}
 	// The own keys of any other object are its elements, the length of an array, and the
 	// keys of its shape.
-	if o.flags&(objExotic|objSparse) != 0 || o.class == classString || containsHole(o.elems) {
+	if o.Flags&(objExotic|objSparse) != 0 || o.Class == classString || storage.ContainsHole(o.Elems) {
 		return 0, false, cx.OwnKeys(o)
 	}
-	return uint32(len(o.elems)), o.kind == kindArray, o.shape.stringKeys()
+	return uint32(len(o.Elems)), o.Kind == kindArray, o.Shape.StringKeys()
 }
 
 // forInNext returns the next key of the for-in iterator o.
 func (cx *ExecutionContext) forInNext(o *Object) (Value, bool) {
-	it := o.extState().(*forIn)
+	it := o.ExtState().(*forIn)
 	for it.obj != nil {
 		for it.index < it.indices {
 			i := it.index
 			it.index++
-			if obj := it.obj; int64(i) < int64(len(obj.elems)) && !obj.elems[i].isHole() {
+			if obj := it.obj; int64(i) < int64(len(obj.Elems)) && !obj.Elems[i].IsHole() {
 				return cx.indexString(i), true
 			}
-			k := IndexKey(i)
+			k := storage.IndexKey(i)
 			d, ok := cx.GetOwnProperty(it.obj, k)
 			if !ok {
 				it.missing = append(it.missing, k)
@@ -728,7 +729,7 @@ func (cx *ExecutionContext) forInNext(o *Object) (Value, bool) {
 		}
 		cx.forInNextObject(it)
 	}
-	return Undefined, false
+	return storage.Undefined, false
 }
 
 // forInNextObject moves the for-in iterator it from the object whose keys it visited to the
@@ -751,23 +752,23 @@ func (cx *ExecutionContext) forInNextObject(it *forIn) {
 // forInMayVisit reports whether a for-in loop might visit a key of o or of its prototypes. When
 // it reports false, visiting the keys of those objects would have no observable effect.
 func (cx *ExecutionContext) forInMayVisit(o *Object) bool {
-	for ; o != nil; o = o.shape.proto {
-		if o.class == classProxy || o.class == classModuleNamespace {
+	for ; o != nil; o = o.Shape.Proto {
+		if o.Class == classProxy || o.Class == classModuleNamespace {
 			return true
 		}
-		if o.flags&objExotic != 0 {
+		if o.Flags&objExotic != 0 {
 			cx.resolve(o)
-			if o.flags&objExotic != 0 {
+			if o.Flags&objExotic != 0 {
 				return true
 			}
 		}
-		if o.class == classString && o.extState().(*Object).StringLength() > 0 {
+		if o.Class == classString && o.ExtState().(*Object).StringLength() > 0 {
 			return true
 		}
-		if slices.ContainsFunc(o.elems, func(e Value) bool { return !e.isHole() }) {
+		if slices.ContainsFunc(o.Elems, func(e Value) bool { return !e.IsHole() }) {
 			return true
 		}
-		if o.shape.hasEnumerableString() {
+		if o.Shape.HasEnumerableString() {
 			return true
 		}
 	}
@@ -779,10 +780,10 @@ func (cx *ExecutionContext) forInMayVisit(o *Object) bool {
 func (ag *agent) forInVisitReceiver(it *forIn) {
 	it.visited = make(map[PropKey]struct{}, int(it.indices)+len(it.keys)+1)
 	for i := range it.indices {
-		it.visited[IndexKey(i)] = struct{}{}
+		it.visited[storage.IndexKey(i)] = struct{}{}
 	}
 	if it.length {
-		it.visited[NamedKey(ag.Key(KeyLength))] = struct{}{}
+		it.visited[storage.NamedKey(ag.Key(KeyLength))] = struct{}{}
 	}
 	for _, k := range it.keys {
 		if !k.IsSymbol() {
@@ -797,15 +798,15 @@ func (ag *agent) forInVisitReceiver(it *forIn) {
 
 // templateObject returns the template object of a tagged template, creating it on first use.
 func (cx *ExecutionContext) templateObject(t *templateSite) *Object {
-	if t.object != nil {
-		return t.object
+	if t.Object != nil {
+		return t.Object
 	}
-	raw := cx.newTemplateArray(t.raw)
-	raw.makePrivate()
-	o := cx.newTemplateArray(t.cooked)
-	cx.add(o, cx.Key(KeyRaw), Value{o: raw}, 0)
-	o.makePrivate()
-	t.object = o
+	raw := cx.NewTemplateArray(t.Raw)
+	raw.MakePrivate()
+	o := cx.NewTemplateArray(t.Cooked)
+	cx.Add(o, cx.Key(KeyRaw), Value{O: raw}, 0)
+	o.MakePrivate()
+	t.Object = o
 	return o
 }
 
@@ -819,11 +820,11 @@ func (cx *ExecutionContext) StringFromGo(s string) Value {
 // or has no return method.
 func (cx *ExecutionContext) iterReturn(it Value) (Value, bool) {
 	if it.IsUndefined() {
-		return Undefined, false
+		return storage.Undefined, false
 	}
 	m := cx.GetMethod(it, cx.Key(KeyReturn))
 	if m == nil {
-		return Undefined, false
+		return storage.Undefined, false
 	}
 	return cx.Call(m, it), true
 }
@@ -837,21 +838,21 @@ func (cx *ExecutionContext) iterResultValue(r Value) (Value, bool) {
 	if !r.IsObject() {
 		cx.throwNotIterResult(r)
 	}
-	if ToBoolean(cx.GetV(r, cx.Key(keyDone))) {
-		return Undefined, true
+	if storage.ToBoolean(cx.GetV(r, cx.Key(keyDone))) {
+		return storage.Undefined, true
 	}
 	return cx.GetV(r, cx.Key(KeyValue)), false
 }
 
 // IteratorToList implements IteratorToList(GetIteratorFromMethod(v, method)).
 func (cx *ExecutionContext) IteratorToList(v Value, method *Object) []Value {
-	if method == cx.Intrinsic(IntrinsicArrayPrototypeValues) && v.o != nil && v.o.kind == kindArray && cx.arrayIterationPlain(v.o) {
-		if n := v.o.length; uint64(n) <= uint64(len(v.o.elems)) && !containsHole(v.o.elems[:n]) {
-			return appendPolled(&cx.poller, nil, v.o.elems[:n])
+	if method == cx.Intrinsic(IntrinsicArrayPrototypeValues) && v.O != nil && v.O.Kind == kindArray && cx.ArrayIterationPlain(v.O) {
+		if n := v.O.Length; uint64(n) <= uint64(len(v.O.Elems)) && !storage.ContainsHole(v.O.Elems[:n]) {
+			return storage.AppendPolled(&cx.Poller, nil, v.O.Elems[:n])
 		}
 		// The length of a sparse array says nothing about the memory it holds.
-		vals := make([]Value, 0, len(v.o.elems))
-		cx.iteratePlainArray(v.o, func(e Value) bool {
+		vals := make([]Value, 0, len(v.O.Elems))
+		cx.iteratePlainArray(v.O, func(e Value) bool {
 			vals = append(vals, e)
 			return true
 		})

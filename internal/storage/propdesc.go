@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: 0BSD
 // SPDX-FileCopyrightText: 2026 Hajime Hoshi
 
-package engine
+package storage
 
-import "math/bits"
+import (
+	"math/bits"
+)
 
 // Fields of a property descriptor that are present.
 const (
@@ -109,7 +111,7 @@ func (d *PropDesc) IsData() bool {
 	return d.has&(HasValue|HasWritable) != 0
 }
 
-func dataDesc(v Value, flags uint8) PropDesc {
+func DataDesc(v Value, flags uint8) PropDesc {
 	return PropDesc{
 		value: v,
 		flags: flags,
@@ -117,48 +119,48 @@ func dataDesc(v Value, flags uint8) PropDesc {
 	}
 }
 
-// valueDesc returns a descriptor with the [[Value]] field v and no others.
-func valueDesc(v Value) PropDesc {
+// ValueDesc returns a descriptor with the [[Value]] field v and no others.
+func ValueDesc(v Value) PropDesc {
 	return PropDesc{
 		value: v,
 		has:   HasValue,
 	}
 }
 
-// accessorDesc returns the descriptor of an accessor property with the content a of its slot and
+// AccessorDesc returns the descriptor of an accessor property with the content a of its slot and
 // the attributes flags, which include [FlagAccessor].
-func accessorDesc(a *accessorPair, flags uint8) PropDesc {
+func AccessorDesc(a *accessorPair, flags uint8) PropDesc {
 	return PropDesc{
-		getter: a.getter,
-		setter: a.setter,
+		getter: a.Getter,
+		setter: a.Setter,
 		flags:  flags,
 		has:    HasGet | HasSet | HasEnumerable | HasConfigurable,
 	}
 }
 
-// hasField reports whether the field has of d is present.
-func (d *PropDesc) hasField(has uint8) bool {
+// HasField reports whether the field has of d is present.
+func (d *PropDesc) HasField(has uint8) bool {
 	return d.has&has != 0
 }
 
-// hasTrue reports whether the field has of d, for the attribute flag, is present and true.
-func (d *PropDesc) hasTrue(has, flag uint8) bool {
+// HasTrue reports whether the field has of d, for the attribute flag, is present and true.
+func (d *PropDesc) HasTrue(has, flag uint8) bool {
 	return d.has&has != 0 && d.flags&flag != 0
 }
 
-// hasFalse reports whether the field has of d, for the attribute flag, is present and false.
-func (d *PropDesc) hasFalse(has, flag uint8) bool {
+// HasFalse reports whether the field has of d, for the attribute flag, is present and false.
+func (d *PropDesc) HasFalse(has, flag uint8) bool {
 	return d.has&has != 0 && d.flags&flag == 0
 }
 
-// fieldCount returns the number of fields of d that are present.
-func (d *PropDesc) fieldCount() int {
+// FieldCount returns the number of fields of d that are present.
+func (d *PropDesc) FieldCount() int {
 	return bits.OnesCount8(d.has)
 }
 
-// newData returns the value and the attributes of the new data property that d, which is no
+// NewData returns the value and the attributes of the new data property that d, which is no
 // accessor descriptor, defines.
-func (d *PropDesc) newData() (Value, uint8) {
+func (d *PropDesc) NewData() (Value, uint8) {
 	val := d.value
 	if d.has&HasValue == 0 {
 		val = Undefined
@@ -166,20 +168,20 @@ func (d *PropDesc) newData() (Value, uint8) {
 	return val, d.flags & d.attrMask()
 }
 
-// newAccessorProperty returns the content of the slot and the attributes of the new accessor
+// NewAccessorProperty returns the content of the slot and the attributes of the new accessor
 // property that d, which is an accessor descriptor, defines.
-func (d *PropDesc) newAccessorProperty() (Value, uint8) {
-	return newAccessor(d.getter, d.setter), d.flags&d.attrMask()&^FlagWritable | FlagAccessor
+func (d *PropDesc) NewAccessorProperty() (Value, uint8) {
+	return NewAccessor(d.getter, d.setter), d.flags&d.attrMask()&^FlagWritable | FlagAccessor
 }
 
-// keepsData reports whether d redefines the existing data property described by cur as a data property.
-func (d *PropDesc) keepsData(cur *PropDesc) bool {
+// KeepsData reports whether d redefines the existing data property described by cur as a data property.
+func (d *PropDesc) KeepsData(cur *PropDesc) bool {
 	return d.has&(HasGet|HasSet) == 0 && cur.flags&FlagAccessor == 0
 }
 
-// redefinedData returns the value and the attributes that the existing data property described by
-// cur has once d, for which keepsData holds, redefined it.
-func (d *PropDesc) redefinedData(cur *PropDesc) (Value, uint8) {
+// RedefinedData returns the value and the attributes that the existing data property described by
+// cur has once d, for which KeepsData holds, redefined it.
+func (d *PropDesc) RedefinedData(cur *PropDesc) (Value, uint8) {
 	val := cur.value
 	if d.has&HasValue != 0 {
 		val = d.value
@@ -188,9 +190,9 @@ func (d *PropDesc) redefinedData(cur *PropDesc) (Value, uint8) {
 	return val, cur.flags&^m | d.flags&m
 }
 
-// redefinedProperty returns the content of the slot and the attributes that the existing property
-// described by cur has once d, for which keepsData does not hold, redefined it.
-func (d *PropDesc) redefinedProperty(cur *PropDesc) (Value, uint8) {
+// RedefinedProperty returns the content of the slot and the attributes that the existing property
+// described by cur has once d, for which KeepsData does not hold, redefined it.
+func (d *PropDesc) RedefinedProperty(cur *PropDesc) (Value, uint8) {
 	m := d.attrMask()
 	flags := cur.flags&^m | d.flags&m
 	switch {
@@ -205,9 +207,9 @@ func (d *PropDesc) redefinedProperty(cur *PropDesc) (Value, uint8) {
 		if d.has&HasSet != 0 {
 			s = d.setter
 		}
-		return newAccessor(g, s), flags&^FlagWritable | FlagAccessor
+		return NewAccessor(g, s), flags&^FlagWritable | FlagAccessor
 	case !d.IsData():
-		return newAccessor(cur.getter, cur.setter), flags
+		return NewAccessor(cur.getter, cur.setter), flags
 	}
 	// A data property takes the place of an accessor property.
 	val := Undefined
@@ -232,18 +234,18 @@ func (d *PropDesc) attrMask() uint8 {
 	return m
 }
 
-// isCompatiblePropertyDescriptor implements IsCompatiblePropertyDescriptor. hasCur reports whether
+// IsCompatiblePropertyDescriptor implements IsCompatiblePropertyDescriptor. hasCur reports whether
 // the property described by cur exists.
-func isCompatiblePropertyDescriptor(extensible bool, d, cur *PropDesc, hasCur bool) bool {
+func IsCompatiblePropertyDescriptor(extensible bool, d, cur *PropDesc, hasCur bool) bool {
 	if !hasCur {
 		return extensible
 	}
-	return cur.flags&FlagConfigurable != 0 || nonConfigurableCompatible(cur, d)
+	return cur.flags&FlagConfigurable != 0 || NonConfigurableCompatible(cur, d)
 }
 
-// nonConfigurableCompatible reports whether ValidateAndApplyPropertyDescriptor accepts d for the
+// NonConfigurableCompatible reports whether ValidateAndApplyPropertyDescriptor accepts d for the
 // existing property described by cur, which is not configurable.
-func nonConfigurableCompatible(cur, d *PropDesc) bool {
+func NonConfigurableCompatible(cur, d *PropDesc) bool {
 	if d.has&HasConfigurable != 0 && d.flags&FlagConfigurable != 0 {
 		return false
 	}
@@ -272,9 +274,9 @@ func nonConfigurableCompatible(cur, d *PropDesc) bool {
 	return true
 }
 
-// complete implements CompletePropertyDescriptor. It also marks an accessor descriptor with
+// Complete implements CompletePropertyDescriptor. It also marks an accessor descriptor with
 // [FlagAccessor], as the descriptors of existing properties are.
-func (d *PropDesc) complete() {
+func (d *PropDesc) Complete() {
 	if d.IsAccessor() {
 		d.has |= HasGet | HasSet
 		d.flags = d.flags&^FlagWritable | FlagAccessor
@@ -296,43 +298,43 @@ func (d *PropDesc) complete() {
 	d.has |= HasEnumerable | HasConfigurable
 }
 
-// newAccessor returns the content of the slot of an accessor property with the given getter
+// NewAccessor returns the content of the slot of an accessor property with the given getter
 // and setter.
-func newAccessor(getter, setter *Object) Value {
+func NewAccessor(getter, setter *Object) Value {
 	return Value{
-		o: &Object{
-			kind: kindAccessor,
-			ext: &accessorPair{
-				getter: getter,
-				setter: setter,
+		O: &Object{
+			Kind: KindAccessor,
+			Ext: &accessorPair{
+				Getter: getter,
+				Setter: setter,
 			},
 		},
 	}
 }
 
 type accessorPair struct {
-	getter *Object
-	setter *Object
+	Getter *Object
+	Setter *Object
 }
 
-func (v Value) accessor() *accessorPair {
-	return v.o.ext.(*accessorPair)
+func (v Value) Accessor() *accessorPair {
+	return v.O.Ext.(*accessorPair)
 }
 
-// addGetter makes f the getter of a, and reports false when a has a getter.
-func (a *accessorPair) addGetter(f *Object) bool {
-	if a.getter != nil {
+// AddGetter makes f the getter of a, and reports false when a has a getter.
+func (a *accessorPair) AddGetter(f *Object) bool {
+	if a.Getter != nil {
 		return false
 	}
-	a.getter = f
+	a.Getter = f
 	return true
 }
 
-// addSetter makes f the setter of a, and reports false when a has a setter.
-func (a *accessorPair) addSetter(f *Object) bool {
-	if a.setter != nil {
+// AddSetter makes f the setter of a, and reports false when a has a setter.
+func (a *accessorPair) AddSetter(f *Object) bool {
+	if a.Setter != nil {
 		return false
 	}
-	a.setter = f
+	a.Setter = f
 	return true
 }

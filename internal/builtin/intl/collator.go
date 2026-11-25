@@ -12,6 +12,7 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/engine"
 	"github.com/hajimehoshi/ekuma/internal/intl/collate"
 	"github.com/hajimehoshi/ekuma/internal/intl/locale"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 	"github.com/hajimehoshi/ekuma/internal/unorm"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
@@ -53,9 +54,9 @@ func createCollator(cx *engine.ExecutionContext, locales, opts engine.Value) *co
 	co, hasCo := typeOption(cx, options, "collation")
 	var kn string
 	hasKn := false
-	if v := cx.Get(options, engine.NamedKey(cx.Intern("numeric"))); !v.IsUndefined() {
+	if v := cx.Get(options, storage.NamedKey(cx.Intern("numeric"))); !v.IsUndefined() {
 		kn, hasKn = "false", true
-		if engine.ToBoolean(v) {
+		if storage.ToBoolean(v) {
 			kn = "true"
 		}
 	}
@@ -111,8 +112,8 @@ func createCollator(cx *engine.ExecutionContext, locales, opts engine.Value) *co
 	cd.sensitivity = getStringOption(cx, options, "sensitivity", "variant", "base", "accent", "case", "variant")
 	_, defaultIgnore := collate.Defaults(dataLocale, typ)
 	cd.ignorePunctuation = defaultIgnore
-	if v := cx.Get(options, engine.NamedKey(cx.Intern("ignorePunctuation"))); !v.IsUndefined() {
-		cd.ignorePunctuation = engine.ToBoolean(v)
+	if v := cx.Get(options, storage.NamedKey(cx.Intern("ignorePunctuation"))); !v.IsUndefined() {
+		cd.ignorePunctuation = storage.ToBoolean(v)
 	}
 
 	o := collate.Options{
@@ -143,12 +144,12 @@ func newCollator(cx *engine.ExecutionContext, this engine.Value, args []engine.V
 	nt := cx.GetNewTarget()
 	proto := cx.GetPrototypeFromConstructor(nt, engine.IntrinsicIntlCollatorPrototype)
 	cd := createCollator(cx, arg(args, 0), arg(args, 1))
-	return engine.ObjectValue(cx.NewIntlObject(proto, cd))
+	return storage.ObjectValue(cx.NewIntlObject(proto, cd))
 }
 
 // thisCollator implements RequireInternalSlot for an Intl.Collator.
 func thisCollator(cx *engine.ExecutionContext, this engine.Value, name string) *collatorData {
-	cd, ok := engine.IntlData(this).(*collatorData)
+	cd, ok := storage.IntlData(this).(*collatorData)
 	if !ok {
 		cx.ThrowTypeError("Intl.Collator.prototype." + name + " called on an object that is not an Intl.Collator")
 	}
@@ -160,7 +161,7 @@ func collatorCompare(cx *engine.ExecutionContext, this engine.Value, args []engi
 	cd := cx.ActiveNativeState().(*collatorData)
 	x := cx.ToString(arg(args, 0))
 	y := cx.ToString(arg(args, 1))
-	return engine.Number(float64(cd.compare(cx, x, y)))
+	return storage.Number(float64(cd.compare(cx, x, y)))
 }
 
 var (
@@ -187,23 +188,23 @@ func collatorCompareGetter(cx *engine.ExecutionContext, this engine.Value, args 
 	if cd.boundCompare == nil {
 		cd.boundCompare = cx.NewNativeWithState("", 2, nativeCollatorCompare, cd)
 	}
-	return engine.ObjectValue(cd.boundCompare)
+	return storage.ObjectValue(cd.boundCompare)
 }
 
 func collatorResolvedOptions(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	cd := thisCollator(cx, this, "resolvedOptions")
 	out := cx.NewObject(cx.Intrinsic(engine.IntrinsicObjectPrototype))
 	set := func(name string, v engine.Value) {
-		cx.CreateDataPropertyOrThrow(out, engine.NamedKey(cx.Intern(wtf8.String(name))), v)
+		cx.CreateDataPropertyOrThrow(out, storage.NamedKey(cx.Intern(wtf8.String(name))), v)
 	}
 	set("locale", cx.NewString(wtf8.String(cd.locale)))
 	set("usage", cx.NewString(wtf8.String(cd.usage)))
 	set("sensitivity", cx.NewString(wtf8.String(cd.sensitivity)))
-	set("ignorePunctuation", engine.Bool(cd.ignorePunctuation))
+	set("ignorePunctuation", storage.Bool(cd.ignorePunctuation))
 	set("collation", cx.NewString(wtf8.String(cd.collation)))
-	set("numeric", engine.Bool(cd.numeric))
+	set("numeric", storage.Bool(cd.numeric))
 	set("caseFirst", cx.NewString(wtf8.String(cd.caseFirst)))
-	return engine.ObjectValue(out)
+	return storage.ObjectValue(out)
 }
 
 // localeCompareState is the state of String.prototype.localeCompare.
@@ -216,7 +217,7 @@ type localeCompareState struct {
 // defaultCollator returns the collator for calls without locales and options.
 func (st *localeCompareState) defaultCollator(cx *engine.ExecutionContext) *collatorData {
 	if l := defaultLocale(cx); st.collator == nil || st.locale != l {
-		st.collator = createCollator(cx, engine.Undefined, engine.Undefined)
+		st.collator = createCollator(cx, storage.Undefined, storage.Undefined)
 		st.locale = l
 	}
 	return st.collator
@@ -227,7 +228,7 @@ var nativeStringLocaleCompare = engine.RegisterNative(stringLocaleCompare)
 // initLocaleCompare replaces String.prototype.localeCompare with the version of ECMA-402.
 func initLocaleCompare(cx *engine.ExecutionContext) {
 	f := cx.NewNativeWithState("localeCompare", 1, nativeStringLocaleCompare, &localeCompareState{})
-	cx.Define(cx.Intrinsic(engine.IntrinsicStringPrototype), cx.Intern("localeCompare"), engine.ObjectValue(f), engine.FlagsHidden)
+	cx.Define(cx.Intrinsic(engine.IntrinsicStringPrototype), cx.Intern("localeCompare"), storage.ObjectValue(f), engine.FlagsHidden)
 }
 
 func stringLocaleCompare(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -243,7 +244,7 @@ func stringLocaleCompare(cx *engine.ExecutionContext, this engine.Value, args []
 	} else {
 		cd = createCollator(cx, locales, options)
 	}
-	return engine.Number(float64(cd.compare(cx, s, that)))
+	return storage.Number(float64(cd.compare(cx, s, that)))
 }
 
 // caseLocales are the languages that have language-sensitive case mappings.
@@ -256,8 +257,8 @@ func initLocaleCase(cx *engine.ExecutionContext) {
 	define := func(name string, f engine.Native) {
 		key := cx.Intern(wtf8.String(name))
 		// The state of the method is that of the base, which maps the case without a language.
-		fn := cx.NewNativeWithState(wtf8.String(name), 0, f, cx.Get(proto, engine.NamedKey(key)).Object())
-		cx.Define(proto, key, engine.ObjectValue(fn), engine.FlagsHidden)
+		fn := cx.NewNativeWithState(wtf8.String(name), 0, f, cx.Get(proto, storage.NamedKey(key)).Object())
+		cx.Define(proto, key, storage.ObjectValue(fn), engine.FlagsHidden)
 	}
 	define("toLocaleUpperCase", nativeStringToLocaleUpperCase)
 	define("toLocaleLowerCase", nativeStringToLocaleLowerCase)
@@ -527,7 +528,7 @@ func joinLocaleStrings(cx *engine.ExecutionContext, o *engine.Object, n int64, a
 		if k > 0 {
 			b.WriteString(",")
 		}
-		e := cx.Get(o, cx.ToPropertyKey(engine.Number(float64(k))))
+		e := cx.Get(o, cx.ToPropertyKey(storage.Number(float64(k))))
 		if !e.IsNullish() {
 			b.WriteString(cx.ToString(cx.CallValue(cx.GetV(e, cx.Key(engine.KeyToLocaleString)), e, locales, options)))
 		}

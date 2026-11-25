@@ -7,6 +7,7 @@ import (
 	"math"
 
 	"github.com/hajimehoshi/ekuma/internal/engine"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 	"github.com/hajimehoshi/ekuma/internal/temporal"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
@@ -14,13 +15,13 @@ import (
 // newInstant implements CreateTemporalInstant for valid epoch nanoseconds.
 func newInstant(cx *engine.ExecutionContext, ns temporal.Int128, nt *engine.Object) engine.Value {
 	proto := cx.GetPrototypeFromConstructor(nt, engine.IntrinsicTemporalInstantPrototype)
-	return engine.ObjectValue(cx.NewTemporalObject(proto, &instantSlots{
+	return storage.ObjectValue(cx.NewTemporalObject(proto, &instantSlots{
 		ns: ns,
 	}))
 }
 
 func thisInstant(cx *engine.ExecutionContext, this engine.Value, name string) *instantSlots {
-	s, ok := engine.TemporalData(this).(*instantSlots)
+	s, ok := storage.TemporalData(this).(*instantSlots)
 	if !ok {
 		incompatible(cx, "Temporal.Instant.prototype."+name, this)
 	}
@@ -30,7 +31,7 @@ func thisInstant(cx *engine.ExecutionContext, this engine.Value, name string) *i
 // toTemporalInstant implements ToTemporalInstant, returning the epoch nanoseconds.
 func toTemporalInstant(cx *engine.ExecutionContext, item engine.Value) temporal.Int128 {
 	if item.IsObject() {
-		switch s := engine.TemporalData(item).(type) {
+		switch s := storage.TemporalData(item).(type) {
 		case *instantSlots:
 			return s.ns
 		case *zonedDateTimeSlots:
@@ -208,7 +209,7 @@ func instantRound(cx *engine.ExecutionContext, this engine.Value, args []engine.
 
 func instantEquals(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	s := thisInstant(cx, this, "equals")
-	return engine.Bool(s.ns.Cmp(toTemporalInstant(cx, arg(args, 0))) == 0)
+	return storage.Bool(s.ns.Cmp(toTemporalInstant(cx, arg(args, 0))) == 0)
 }
 
 func instantToString(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {

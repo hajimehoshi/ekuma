@@ -8,19 +8,18 @@ import (
 	"math/big"
 	"slices"
 	"strconv"
-	"strings"
 
 	"github.com/hajimehoshi/ekuma/internal/bytecode"
 	"github.com/hajimehoshi/ekuma/internal/numconv"
-	"github.com/hajimehoshi/ekuma/internal/parser"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 func (cx *ExecutionContext) throwTDZ(name *Object) {
-	if name.str == "this" {
+	if name.Text == "this" {
 		cx.ThrowReferenceError("must call super constructor in derived class before accessing 'this' or returning from derived constructor")
 	}
-	cx.ThrowReferenceError("cannot access '" + wtf8.ToValidUTF8(name.str) + "' before initialization")
+	cx.ThrowReferenceError("cannot access '" + wtf8.ToValidUTF8(name.Text) + "' before initialization")
 }
 
 func (cx *ExecutionContext) throwReadOnly(v Value, k PropKey) {
@@ -30,7 +29,7 @@ func (cx *ExecutionContext) throwReadOnly(v Value, k PropKey) {
 // callAt returns the index of the call instruction of fp that ends before pc, past its extra.
 func callAt(fp *funcProto, pc int) int {
 	pc--
-	for fp.code[pc].Op == bytecode.OpExtra {
+	for fp.Code[pc].Op == bytecode.OpExtra {
 		pc--
 	}
 	return pc
@@ -38,17 +37,17 @@ func callAt(fp *funcProto, pc int) int {
 
 // calleeName names the function that the call instruction at pc calls, for an error message.
 func (ag *agent) calleeName(fp *funcProto, pc int) wtf8.String {
-	target := fp.code[pc].B
+	target := fp.Code[pc].B
 	for j := pc - 1; j >= 0 && j >= pc-64; j-- {
-		in := fp.code[j]
+		in := fp.Code[j]
 		if in.Op == bytecode.OpExtra || in.A != target {
 			continue
 		}
 		switch in.Op {
 		case bytecode.OpGetProp, bytecode.OpGetPropChain, bytecode.OpGetMethod:
-			return fp.keys[in.C].str
+			return fp.Keys[in.C].Text
 		case bytecode.OpGetGlobal, bytecode.OpGetGlobalStrict:
-			return fp.keys[in.B].str
+			return fp.Keys[in.B].Text
 		}
 		break
 	}
@@ -61,7 +60,7 @@ func (cx *ExecutionContext) throwNotCallable(fp *funcProto, pc int, regs []Value
 	pc = callAt(fp, pc)
 	name := wtf8.ToValidUTF8(cx.calleeName(fp, pc))
 	if name == "" {
-		name = cx.DisplayString(regs[fp.code[pc].B])
+		name = cx.DisplayString(regs[fp.Code[pc].B])
 	}
 	cx.ThrowTypeError(name + " is not a function")
 }
@@ -72,7 +71,7 @@ func (cx *ExecutionContext) throwNotConstructor(fp *funcProto, pc int, regs []Va
 	pc = callAt(fp, pc)
 	name := wtf8.ToValidUTF8(cx.calleeName(fp, pc))
 	if name == "" {
-		name = cx.DisplayString(regs[fp.code[pc].B])
+		name = cx.DisplayString(regs[fp.Code[pc].B])
 	}
 	cx.ThrowTypeError(name + " is not a constructor")
 }
@@ -81,35 +80,35 @@ func (cx *ExecutionContext) throwNotConstructor(fp *funcProto, pc int, regs []Va
 // not exist, it throws a ReferenceError unless orUndef is set.
 func (cx *ExecutionContext) getGlobal(key *Object, c *globalCache, orUndef, strict bool) Value {
 	r := cx.realmPart
-	g := r.global
+	g := r.Global
 	if v, ok := cx.getGlobalLexical(key, c); ok {
 		return v
 	}
-	if p, ok := g.shape.lookup(key); ok && p.flags&FlagAccessor == 0 {
-		c.holder = g
-		c.shape = g.shape
-		c.ref = &g.slots[p.slot]
-		return g.slots[p.slot]
+	if p, ok := g.Shape.Lookup(key); ok && p.Flags&FlagAccessor == 0 {
+		c.Holder = g
+		c.Shape = g.Shape
+		c.Ref = &g.Slots[p.Slot]
+		return g.Slots[p.Slot]
 	}
-	switch l := r.quiet().lookupNamed(g, key); l.kind {
+	switch l := quietContextOf(r).lookupNamed(g, key); l.Kind {
 	case lookupAbsent, lookupNumericMiss:
 		if orUndef {
-			return Undefined
+			return storage.Undefined
 		}
-		cx.ThrowReferenceError(wtf8.ToValidUTF8(key.str) + " is not defined")
+		cx.ThrowReferenceError(wtf8.ToValidUTF8(key.Text) + " is not defined")
 	case lookupSlot:
-		v, getter := cx.readNamedSlot(g, l.holder, l.prop, nil)
+		v, getter := cx.ReadNamedSlot(g, l.Holder, l.Prop, nil)
 		if getter != nil {
-			return cx.Call(getter, Value{o: r.globalThis})
+			return cx.Call(getter, Value{O: r.GlobalThis})
 		}
 		return v
 	}
-	k := NamedKey(key)
+	k := storage.NamedKey(key)
 	if !cx.HasProperty(g, k) {
 		if orUndef {
-			return Undefined
+			return storage.Undefined
 		}
-		cx.ThrowReferenceError(wtf8.ToValidUTF8(key.str) + " is not defined")
+		cx.ThrowReferenceError(wtf8.ToValidUTF8(key.Text) + " is not defined")
 	}
 	// HasBinding can create a lexical binding or remove the property or its prototype.
 	// GetBindingValue selects the binding again in the same global environment.
@@ -118,80 +117,80 @@ func (cx *ExecutionContext) getGlobal(key *Object, c *globalCache, orUndef, stri
 	}
 	if !cx.HasProperty(g, k) {
 		if strict {
-			cx.ThrowReferenceError(wtf8.ToValidUTF8(key.str) + " is not defined")
+			cx.ThrowReferenceError(wtf8.ToValidUTF8(key.Text) + " is not defined")
 		}
-		return Undefined
+		return storage.Undefined
 	}
-	return cx.getProp(g, k, Value{o: r.globalThis})
+	return cx.getProp(g, k, Value{O: r.GlobalThis})
 }
 
 func (cx *ExecutionContext) getGlobalLexical(key *Object, c *globalCache) (Value, bool) {
 	r := cx.realmPart
-	p, ok := r.globalLex.shape.lookup(key)
+	p, ok := r.GlobalLex.Shape.Lookup(key)
 	if !ok {
-		return Undefined, false
+		return storage.Undefined, false
 	}
-	slot := &r.globalLex.slots[p.slot]
-	if slot.o == tdzObject {
+	slot := &r.GlobalLex.Slots[p.Slot]
+	if slot.O == tdzObject {
 		cx.throwTDZ(key)
 	}
 	// Only initialized bindings enter the cache, and they stay initialized.
-	c.holder = r.global
-	c.shape = r.global.shape
-	c.ref = slot
+	c.Holder = r.Global
+	c.Shape = r.Global.Shape
+	c.Ref = slot
 	return *slot, true
 }
 
 // resolveGlobal returns undefined for a global binding and null for an unresolvable name.
 func (cx *ExecutionContext) resolveGlobal(key *Object, c *globalCache) Value {
-	g := cx.realm.global
-	_, lex := cx.realm.globalLex.shape.lookup(key)
-	if _, own := g.shape.lookup(key); lex || own {
+	g := cx.realm.Global
+	_, lex := cx.realm.GlobalLex.Shape.Lookup(key)
+	if _, own := g.Shape.Lookup(key); lex || own {
 		if c != nil {
-			c.holder = g
-			c.shape = g.shape
+			c.Holder = g
+			c.Shape = g.Shape
 		}
-		return Undefined
+		return storage.Undefined
 	}
-	if cx.HasProperty(g, NamedKey(key)) {
-		return Undefined
+	if cx.HasProperty(g, storage.NamedKey(key)) {
+		return storage.Undefined
 	}
-	return Null
+	return storage.Null
 }
 
 // setGlobal writes a resolved binding in the global environment.
 func (cx *ExecutionContext) setGlobal(key *Object, val Value, c *globalCache, strict bool) {
 	r := cx.realm
-	g := r.global
-	if p, ok := r.globalLex.shape.lookup(key); ok {
-		if r.globalLex.slots[p.slot].o == tdzObject {
+	g := r.Global
+	if p, ok := r.GlobalLex.Shape.Lookup(key); ok {
+		if r.GlobalLex.Slots[p.Slot].O == tdzObject {
 			cx.throwTDZ(key)
 		}
-		if p.flags&FlagWritable == 0 {
-			cx.ThrowTypeError("assignment to constant variable '" + wtf8.ToValidUTF8(key.str) + "'")
+		if p.Flags&FlagWritable == 0 {
+			cx.ThrowTypeError("assignment to constant variable '" + wtf8.ToValidUTF8(key.Text) + "'")
 		}
-		r.globalLex.slots[p.slot] = val
+		r.GlobalLex.Slots[p.Slot] = val
 		// As in getGlobal, c refers only to initialized bindings.
-		c.holder = g
-		c.shape = g.shape
-		c.ref = &r.globalLex.slots[p.slot]
+		c.Holder = g
+		c.Shape = g.Shape
+		c.Ref = &r.GlobalLex.Slots[p.Slot]
 		return
 	}
-	if p, ok := g.shape.lookup(key); ok && p.flags&(FlagAccessor|FlagWritable) == FlagWritable {
-		g.slots[p.slot] = val
-		c.holder = g
-		c.shape = g.shape
-		c.ref = &g.slots[p.slot]
+	if p, ok := g.Shape.Lookup(key); ok && p.Flags&(FlagAccessor|FlagWritable) == FlagWritable {
+		g.Slots[p.Slot] = val
+		c.Holder = g
+		c.Shape = g.Shape
+		c.Ref = &g.Slots[p.Slot]
 		return
 	}
-	k := NamedKey(key)
+	k := storage.NamedKey(key)
 	// SetMutableBinding checks whether the binding still exists. A proxy can observe
 	// the check even in sloppy code.
 	if !cx.HasProperty(g, k) && strict {
-		cx.ThrowReferenceError(wtf8.ToValidUTF8(key.str) + " is not defined")
+		cx.ThrowReferenceError(wtf8.ToValidUTF8(key.Text) + " is not defined")
 	}
-	if !cx.setProp(g, k, val, Value{o: r.globalThis}) && strict {
-		cx.throwReadOnly(Value{o: g}, k)
+	if !cx.setProp(g, k, val, Value{O: r.GlobalThis}) && strict {
+		cx.throwReadOnly(Value{O: g}, k)
 	}
 }
 
@@ -199,36 +198,36 @@ func (cx *ExecutionContext) setGlobal(key *Object, val Value, c *globalCache, st
 // with an existing declaration. what is a bytecode Decl kind.
 func (cx *ExecutionContext) checkGlobalDecl(key *Object, what int) {
 	r := cx.realm
-	_, lex := r.globalLex.shape.lookup(key)
+	_, lex := r.GlobalLex.Shape.Lookup(key)
 	switch what {
 	case bytecode.DeclVar:
 		if lex {
-			cx.ThrowSyntaxError("identifier '" + wtf8.ToValidUTF8(key.str) + "' has already been declared")
+			cx.ThrowSyntaxError("identifier '" + wtf8.ToValidUTF8(key.Text) + "' has already been declared")
 		}
-		if !cx.HasOwnProperty(r.global, NamedKey(key)) && !cx.IsExtensible(r.global) {
-			cx.ThrowTypeError("cannot declare global variable '" + wtf8.ToValidUTF8(key.str) + "'")
+		if !cx.HasOwnProperty(r.Global, storage.NamedKey(key)) && !cx.IsExtensible(r.Global) {
+			cx.ThrowTypeError("cannot declare global variable '" + wtf8.ToValidUTF8(key.Text) + "'")
 		}
 	case bytecode.DeclLexical:
 		if lex {
-			cx.ThrowSyntaxError("identifier '" + wtf8.ToValidUTF8(key.str) + "' has already been declared")
+			cx.ThrowSyntaxError("identifier '" + wtf8.ToValidUTF8(key.Text) + "' has already been declared")
 		}
 		// A lexical declaration may not hide a global property that cannot be reconfigured.
-		if d, ok := cx.GetOwnProperty(r.global, NamedKey(key)); ok && !d.Configurable() {
-			cx.ThrowSyntaxError("identifier '" + wtf8.ToValidUTF8(key.str) + "' has already been declared")
+		if d, ok := cx.GetOwnProperty(r.Global, storage.NamedKey(key)); ok && !d.Configurable() {
+			cx.ThrowSyntaxError("identifier '" + wtf8.ToValidUTF8(key.Text) + "' has already been declared")
 		}
 	case bytecode.DeclFunction:
 		if lex {
-			cx.ThrowSyntaxError("identifier '" + wtf8.ToValidUTF8(key.str) + "' has already been declared")
+			cx.ThrowSyntaxError("identifier '" + wtf8.ToValidUTF8(key.Text) + "' has already been declared")
 		}
-		d, ok := cx.GetOwnProperty(r.global, NamedKey(key))
+		d, ok := cx.GetOwnProperty(r.Global, storage.NamedKey(key))
 		switch {
 		case !ok:
-			if !cx.IsExtensible(r.global) {
-				cx.ThrowTypeError("cannot declare global function '" + wtf8.ToValidUTF8(key.str) + "'")
+			if !cx.IsExtensible(r.Global) {
+				cx.ThrowTypeError("cannot declare global function '" + wtf8.ToValidUTF8(key.Text) + "'")
 			}
 		case d.Configurable():
 		case d.IsAccessor() || !d.Writable() || !d.Enumerable():
-			cx.ThrowTypeError("cannot declare global function '" + wtf8.ToValidUTF8(key.str) + "'")
+			cx.ThrowTypeError("cannot declare global function '" + wtf8.ToValidUTF8(key.Text) + "'")
 		}
 	}
 }
@@ -236,8 +235,8 @@ func (cx *ExecutionContext) checkGlobalDecl(key *Object, what int) {
 // declareGlobalVar implements CreateGlobalVarBinding, and CreateGlobalFunctionBinding when
 // flags has [bytecode.GlobalVarFunc]. flags is a set of the bytecode GlobalVar flags.
 func (cx *ExecutionContext) declareGlobalVar(key *Object, flags int, fn Value) {
-	g := cx.realm.global
-	k := NamedKey(key)
+	g := cx.realm.Global
+	k := storage.NamedKey(key)
 	d, ok := cx.GetOwnProperty(g, k)
 	attrs := FlagEnumerable | FlagWritable
 	if flags&bytecode.GlobalVarDeletable != 0 {
@@ -245,15 +244,15 @@ func (cx *ExecutionContext) declareGlobalVar(key *Object, flags int, fn Value) {
 	}
 	if flags&bytecode.GlobalVarFunc == 0 {
 		if !ok {
-			cx.DefinePropertyOrThrow(g, k, dataDesc(Undefined, attrs))
+			cx.DefinePropertyOrThrow(g, k, storage.DataDesc(storage.Undefined, attrs))
 		}
 		return
 	}
 	if !ok || d.Configurable() {
-		cx.DefinePropertyOrThrow(g, k, dataDesc(fn, attrs))
+		cx.DefinePropertyOrThrow(g, k, storage.DataDesc(fn, attrs))
 		return
 	}
-	cx.DefinePropertyOrThrow(g, k, valueDesc(fn))
+	cx.DefinePropertyOrThrow(g, k, storage.ValueDesc(fn))
 }
 
 // declareGlobalAnnexB declares the global variable key of a block-level function of sloppy
@@ -262,13 +261,13 @@ func (cx *ExecutionContext) declareGlobalVar(key *Object, flags int, fn Value) {
 // flags is a set of the bytecode GlobalVar flags.
 func (cx *ExecutionContext) declareGlobalAnnexB(key *Object, flags int) bool {
 	r := cx.realm
-	if _, lex := r.globalLex.shape.lookup(key); lex {
+	if _, lex := r.GlobalLex.Shape.Lookup(key); lex {
 		return false
 	}
-	if !cx.HasOwnProperty(r.global, NamedKey(key)) && !cx.IsExtensible(r.global) {
+	if !cx.HasOwnProperty(r.Global, storage.NamedKey(key)) && !cx.IsExtensible(r.Global) {
 		return false
 	}
-	cx.declareGlobalVar(key, flags&^bytecode.GlobalVarFunc, Undefined)
+	cx.declareGlobalVar(key, flags&^bytecode.GlobalVarFunc, storage.Undefined)
 	return true
 }
 
@@ -279,32 +278,32 @@ func (cx *ExecutionContext) declareGlobalLex(key *Object, isConst bool) {
 	if isConst {
 		flags = FlagEnumerable | FlagConfigurable
 	}
-	cx.add(r.globalLex, key, tdz, flags)
+	cx.Add(r.GlobalLex, key, tdz, flags)
 	// The binding may hide a property of the global object, and the bindings may have moved,
 	// so the global variable caches must not apply any longer.
-	r.global.renewShape()
+	r.Global.RenewShape()
 }
 
 func (cx *ExecutionContext) initGlobalLex(key *Object, val Value) {
 	r := cx.realm
-	p, _ := r.globalLex.shape.lookup(key)
-	r.globalLex.slots[p.slot] = val
+	p, _ := r.GlobalLex.Shape.Lookup(key)
+	r.GlobalLex.Slots[p.Slot] = val
 }
 
 // getValue returns v[k], or the getter to call.
 func (cx *ExecutionContext) getValue(v, k Value) (Value, *Object) {
-	if ko := k.o; ko == numberObject {
-		if i, ok := numberIndex(k.n); ok {
-			if o := v.o; o != nil && o.class == classTypedArray {
+	if ko := k.O; ko == storage.NumberObject {
+		if i, ok := storage.NumberIndex(k.N); ok {
+			if o := v.O; o != nil && o.Class == classTypedArray {
 				return cx.typedArrayGet(o, i), nil
 			}
 			return cx.getIndex(v, i)
 		}
-	} else if ko != nil && ko.kind == kindString {
+	} else if ko != nil && ko.Kind == kindString {
 		// An element in elems is an own data property, whatever object v is.
-		if i, ok := ko.knownArrayIndex(); ok {
-			if o := v.o; o != nil && o.objectProperties != nil && int64(i) < int64(len(o.elems)) {
-				if e := o.elems[i]; !e.isHole() {
+		if i, ok := ko.KnownArrayIndex(); ok {
+			if o := v.O; o != nil && o.ObjectProperties != nil && int64(i) < int64(len(o.Elems)) {
+				if e := o.Elems[i]; !e.IsHole() {
 					return e, nil
 				}
 			}
@@ -315,13 +314,13 @@ func (cx *ExecutionContext) getValue(v, k Value) (Value, *Object) {
 		cx.ThrowTypeError("cannot read properties of " + cx.DisplayString(v) + " (reading '" + cx.DisplayString(k) + "')")
 	}
 	key := cx.QueryKey(k)
-	if key.key == nil {
-		return cx.getIndex(v, key.idx)
+	if key.Key == nil {
+		return cx.getIndex(v, key.Idx)
 	}
-	if key.idx == missingKey {
+	if key.Idx == missingKey {
 		return cx.getMissing(v, key)
 	}
-	return cx.getNamed(v, key.key, nil)
+	return cx.getNamed(v, key.Key, nil)
 }
 
 // setValue stores v[k] = val and returns the setter to call, if any. A store that fails throws
@@ -337,19 +336,19 @@ func (cx *ExecutionContext) setValue(v, k, val Value, strict bool) *Object {
 // storeValue stores v[k] = val. The first two results are those of setNamed, and the last is k
 // converted to a property key when the store fails.
 func (cx *ExecutionContext) storeValue(v, k, val Value) (*Object, bool, PropKey) {
-	if ko := k.o; ko == numberObject {
-		if i, ok := numberIndex(k.n); ok {
-			if o := v.o; o != nil && o.class == classTypedArray {
-				return nil, cx.typedArraySet(o, i, val), IndexKey(i)
+	if ko := k.O; ko == storage.NumberObject {
+		if i, ok := storage.NumberIndex(k.N); ok {
+			if o := v.O; o != nil && o.Class == classTypedArray {
+				return nil, cx.typedArraySet(o, i, val), storage.IndexKey(i)
 			}
 			setter, ok := cx.setIndex(v, i, val)
-			return setter, ok, IndexKey(i)
+			return setter, ok, storage.IndexKey(i)
 		}
-	} else if ko != nil && ko.kind == kindString {
+	} else if ko != nil && ko.Kind == kindString {
 		// An element in elems is a writable own data property, whatever object v is.
-		if i, ok := ko.knownArrayIndex(); ok {
-			if o := v.o; o != nil && o.objectProperties != nil && int64(i) < int64(len(o.elems)) && !o.elems[i].isHole() {
-				o.elems[i] = val
+		if i, ok := ko.KnownArrayIndex(); ok {
+			if o := v.O; o != nil && o.ObjectProperties != nil && int64(i) < int64(len(o.Elems)) && !o.Elems[i].IsHole() {
+				o.Elems[i] = val
 				return nil, true, PropKey{}
 			}
 		}
@@ -358,11 +357,11 @@ func (cx *ExecutionContext) storeValue(v, k, val Value) (*Object, bool, PropKey)
 		cx.ThrowTypeError("cannot set properties of " + cx.DisplayString(v) + " (setting '" + cx.DisplayString(k) + "')")
 	}
 	key := cx.ToPropertyKey(k)
-	if key.key == nil {
-		setter, ok := cx.setIndex(v, key.idx, val)
+	if key.Key == nil {
+		setter, ok := cx.setIndex(v, key.Idx, val)
 		return setter, ok, key
 	}
-	setter, ok := cx.setNamed(v, key.key, val, nil)
+	setter, ok := cx.setNamed(v, key.Key, val, nil)
 	return setter, ok, key
 }
 
@@ -377,7 +376,7 @@ func (cx *ExecutionContext) deleteValue(v, k Value, strict bool) Value {
 	if !ok && strict {
 		cx.ThrowTypeError("cannot delete property '" + wtf8.ToValidUTF8(cx.KeyString(key)) + "' of " + cx.DisplayString(v))
 	}
-	return Bool(ok)
+	return storage.Bool(ok)
 }
 
 // superBase implements GetSuperBase for the home object home.
@@ -385,10 +384,10 @@ func (cx *ExecutionContext) superBase(home Value) Value {
 	if !home.IsObject() {
 		cx.ThrowSyntaxError("'super' keyword unexpected here")
 	}
-	if p := cx.ProtoOf(home.o); p != nil {
-		return ObjectValue(p)
+	if p := cx.ProtoOf(home.O); p != nil {
+		return storage.ObjectValue(p)
 	}
-	return Null
+	return storage.Null
 }
 
 // superObject returns the object that a super property access with the super base base starts from.
@@ -396,7 +395,7 @@ func (cx *ExecutionContext) superObject(base Value) *Object {
 	if base.IsNull() {
 		cx.ThrowTypeError("cannot access a property of a null prototype through 'super'")
 	}
-	return base.o
+	return base.O
 }
 
 // getSuper reads the property k of the super base base with the this value this,
@@ -424,7 +423,7 @@ func (cx *ExecutionContext) instanceOf(v, c Value, site *propCache) bool {
 	defaultMethod := cx.Intrinsic(IntrinsicFunctionPrototypeHasInstance)
 	for {
 		method := defaultMethod
-		if !cx.inheritsHasInstance(c.o) {
+		if !cx.InheritsHasInstance(c.O) {
 			site = nil
 			method = cx.GetMethod(c, cx.WellKnownSymbol(SymbolHasInstance))
 		}
@@ -433,20 +432,20 @@ func (cx *ExecutionContext) instanceOf(v, c Value, site *propCache) bool {
 				cx.ThrowTypeError("right-hand side of 'instanceof' is not callable")
 			}
 			// OrdinaryHasInstance of a bound function is InstanceofOperator of its target.
-			if b := c.o.fn.bound; b != nil {
-				c = Value{o: b.target}
+			if b := c.O.Fn.Bound; b != nil {
+				c = Value{O: b.Target}
 				continue
 			}
 			return cx.OrdinaryHasInstance(c, v)
 		}
-		if method == defaultMethod && !cx.interrupt.Load() {
+		if method == defaultMethod && !cx.InterruptFlag.Load() {
 			call := defaultHasInstanceCall{
 				method:   method,
-				receiver: c.o,
+				receiver: c.O,
 			}
 			return call.run(cx, v, site)
 		}
-		return ToBoolean(cx.Call(method, c, v))
+		return storage.ToBoolean(cx.Call(method, c, v))
 	}
 }
 
@@ -460,8 +459,8 @@ type defaultHasInstanceCall struct {
 // bound target was proved to inherit the same method before any observable operation.
 func (call defaultHasInstanceCall) enterThrough(cx *ExecutionContext, last *Object) int {
 	depth := len(cx.natives)
-	for ctor := call.receiver; ; ctor = ctor.fn.bound.target {
-		cx.pushNative(call.method, Value{o: ctor}, nil)
+	for ctor := call.receiver; ; ctor = ctor.Fn.Bound.Target {
+		cx.pushNative(call.method, Value{O: ctor}, nil)
 		if ctor == last {
 			return depth
 		}
@@ -470,26 +469,26 @@ func (call defaultHasInstanceCall) enterThrough(cx *ExecutionContext, last *Obje
 
 func (call defaultHasInstanceCall) run(cx *ExecutionContext, v Value, site *propCache) bool {
 	ctor := call.receiver
-	for ctor.fn != nil && ctor.fn.bound != nil {
-		target := ctor.fn.bound.target
-		if cx.interrupt.Load() || !cx.inheritsHasInstance(target) {
+	for ctor.Fn != nil && ctor.Fn.Bound != nil {
+		target := ctor.Fn.Bound.Target
+		if cx.InterruptFlag.Load() || !cx.InheritsHasInstance(target) {
 			// Looking up the target's method can observe the enclosing calls.
 			depth := call.enterThrough(cx, ctor)
-			result := cx.instanceOf(v, Value{o: target}, nil)
+			result := cx.instanceOf(v, Value{O: target}, nil)
 			cx.truncateNatives(depth)
 			return result
 		}
 		ctor, site = target, nil
 	}
-	if ctor.fn == nil || !v.IsObject() {
+	if ctor.Fn == nil || !v.IsObject() {
 		return false
 	}
-	slot := cx.ownFunctionPrototypeSlot(ctor, site)
-	h := v.o
+	slot := cx.OwnFunctionPrototypeSlot(ctor, site)
+	h := v.O
 	if slot != nil && slot.IsObject() {
-		for h.class != classProxy {
-			h = h.shape.proto
-			if h == slot.o {
+		for h.Class != classProxy {
+			h = h.Shape.Proto
+			if h == slot.O {
 				return true
 			}
 			if h == nil {
@@ -508,36 +507,36 @@ func (cx *ExecutionContext) OrdinaryHasInstance(c, v Value) bool {
 	if !c.IsCallable() {
 		return false
 	}
-	if b := c.o.fn.bound; b != nil {
+	if b := c.O.Fn.Bound; b != nil {
 		var result bool
 		cx.Run(func() {
-			result = cx.instanceOf(v, Value{o: b.target}, nil)
+			result = cx.instanceOf(v, Value{O: b.Target}, nil)
 		})
 		return result
 	}
 	if !v.IsObject() {
 		return false
 	}
-	slot := cx.ownFunctionPrototypeSlot(c.o, nil)
-	return cx.hasPrototype(v.o, cx.readInstancePrototype(c.o, slot))
+	slot := cx.OwnFunctionPrototypeSlot(c.O, nil)
+	return cx.hasPrototype(v.O, cx.readInstancePrototype(c.O, slot))
 }
 
 func (cx *ExecutionContext) readInstancePrototype(ctor *Object, slot *Value) *Object {
 	var p Value
 	if slot == nil {
-		p = cx.GetV(Value{o: ctor}, cx.Key(KeyPrototype))
+		p = cx.GetV(Value{O: ctor}, cx.Key(KeyPrototype))
 	} else {
 		p = *slot
-		if p.o != nil && p.o.kind == kindAccessor {
-			if getter := p.accessor().getter; getter != nil {
-				p = cx.Call(getter, Value{o: ctor})
+		if p.O != nil && p.O.Kind == kindAccessor {
+			if getter := p.Accessor().Getter; getter != nil {
+				p = cx.Call(getter, Value{O: ctor})
 			}
 		}
 	}
 	if !p.IsObject() {
 		cx.ThrowTypeError("function has non-object prototype in instanceof check")
 	}
-	return p.o
+	return p.O
 }
 
 func (cx *ExecutionContext) hasPrototype(o, proto *Object) bool {
@@ -551,13 +550,13 @@ func (cx *ExecutionContext) hasPrototype(o, proto *Object) bool {
 
 // privateStorage returns the object holding o's private elements.
 func (cx *ExecutionContext) privateStorage(o *Object) *Object {
-	if o.class == classProxy {
-		st := o.extState().(*proxyState)
-		if st.isGlobal() {
-			if !st.allowsGlobalAccess(cx.realm.globalProxyHandler) {
+	if o.Class == classProxy {
+		st := o.ExtState().(*proxyState)
+		if st.IsGlobal() {
+			if !st.AllowsGlobalAccess(cx.realm.globalProxyHandler) {
 				cx.ThrowTypeError("no access")
 			}
-			return st.target
+			return st.Target
 		}
 	}
 	return o
@@ -566,43 +565,43 @@ func (cx *ExecutionContext) privateStorage(o *Object) *Object {
 // getPrivate returns the private element name of v, or the getter to call.
 func (cx *ExecutionContext) getPrivate(v Value, name *Object) (Value, *Object) {
 	if v.IsObject() {
-		o := cx.privateStorage(v.o)
-		if p, ok := o.shape.lookup(name); ok {
-			val := o.slots[p.slot]
-			if p.flags&FlagAccessor != 0 {
-				g := val.accessor().getter
+		o := cx.privateStorage(v.O)
+		if p, ok := o.Shape.Lookup(name); ok {
+			val := o.Slots[p.Slot]
+			if p.Flags&FlagAccessor != 0 {
+				g := val.Accessor().Getter
 				if g == nil {
-					cx.ThrowTypeError("'#" + wtf8.ToValidUTF8(name.str) + "' was defined without a getter")
+					cx.ThrowTypeError("'#" + wtf8.ToValidUTF8(name.Text) + "' was defined without a getter")
 				}
-				return Undefined, g
+				return storage.Undefined, g
 			}
 			return val, nil
 		}
 	}
-	cx.ThrowTypeError("cannot read private member #" + wtf8.ToValidUTF8(name.str) + " from an object whose class did not declare it")
-	return Undefined, nil
+	cx.ThrowTypeError("cannot read private member #" + wtf8.ToValidUTF8(name.Text) + " from an object whose class did not declare it")
+	return storage.Undefined, nil
 }
 
 // setPrivate stores val as the private element name of v, or returns the setter to call.
 func (cx *ExecutionContext) setPrivate(v Value, name *Object, val Value) *Object {
 	if v.IsObject() {
-		o := cx.privateStorage(v.o)
-		if p, ok := o.shape.lookup(name); ok {
-			if p.flags&FlagAccessor != 0 {
-				s := o.slots[p.slot].accessor().setter
+		o := cx.privateStorage(v.O)
+		if p, ok := o.Shape.Lookup(name); ok {
+			if p.Flags&FlagAccessor != 0 {
+				s := o.Slots[p.Slot].Accessor().Setter
 				if s == nil {
-					cx.ThrowTypeError("'#" + wtf8.ToValidUTF8(name.str) + "' was defined without a setter")
+					cx.ThrowTypeError("'#" + wtf8.ToValidUTF8(name.Text) + "' was defined without a setter")
 				}
 				return s
 			}
-			if p.flags&FlagWritable == 0 {
-				cx.ThrowTypeError("private method '#" + wtf8.ToValidUTF8(name.str) + "' is not writable")
+			if p.Flags&FlagWritable == 0 {
+				cx.ThrowTypeError("private method '#" + wtf8.ToValidUTF8(name.Text) + "' is not writable")
 			}
-			o.slots[p.slot] = val
+			o.Slots[p.Slot] = val
 			return nil
 		}
 	}
-	cx.ThrowTypeError("cannot write private member #" + wtf8.ToValidUTF8(name.str) + " to an object whose class did not declare it")
+	cx.ThrowTypeError("cannot write private member #" + wtf8.ToValidUTF8(name.Text) + " to an object whose class did not declare it")
 	return nil
 }
 
@@ -611,26 +610,26 @@ func (cx *ExecutionContext) definePrivate(v Value, name *Object, val Value) {
 	if !v.IsObject() {
 		cx.ThrowTypeError("cannot define a private member on a non-object")
 	}
-	o := cx.privateStorage(v.o)
-	if _, ok := o.shape.lookup(name); ok {
-		cx.ThrowTypeError("cannot initialize #" + wtf8.ToValidUTF8(name.str) + " twice on the same object")
+	o := cx.privateStorage(v.O)
+	if _, ok := o.Shape.Lookup(name); ok {
+		cx.ThrowTypeError("cannot initialize #" + wtf8.ToValidUTF8(name.Text) + " twice on the same object")
 	}
 	flags := FlagWritable
 	switch {
-	case val.o != nil && val.o.kind == kindAccessor:
+	case val.O != nil && val.O.Kind == kindAccessor:
 		flags = FlagAccessor
-	case name.flags&objFrozenLength != 0:
+	case name.Flags&objFrozenLength != 0:
 		// The name stands for a method, which cannot be assigned to.
 		flags = 0
 	}
-	cx.add(o, name, val, flags)
+	cx.Add(o, name, val, flags)
 }
 
 // ensureCanAddPrivate throws a TypeError if the private element name cannot be added to v
 // because v is not extensible.
 func (cx *ExecutionContext) ensureCanAddPrivate(v Value, name *Object) {
-	if v.IsObject() && !cx.IsExtensible(cx.privateStorage(v.o)) {
-		cx.ThrowTypeError("cannot define private member #" + wtf8.ToValidUTF8(name.str) + " on an object that is not extensible")
+	if v.IsObject() && !cx.IsExtensible(cx.privateStorage(v.O)) {
+		cx.ThrowTypeError("cannot define private member #" + wtf8.ToValidUTF8(name.Text) + " on an object that is not extensible")
 	}
 }
 
@@ -638,47 +637,47 @@ func (cx *ExecutionContext) ensureCanAddPrivate(v Value, name *Object) {
 func (cx *ExecutionContext) arith(op bytecode.Opcode, x, y Value) Value {
 	if xi, ok := x.BigInt64(); ok {
 		if yi, ok := y.BigInt64(); ok {
-			if r, ok := arithBigInt64(op, xi, yi); ok {
+			if r, ok := storage.ArithBigInt64(op, xi, yi); ok {
 				return r
 			}
 		}
 	}
 	x = cx.ToNumeric(x)
 	y = cx.ToNumeric(y)
-	if x.o == numberObject && y.o == numberObject {
-		a, b := x.n, y.n
+	if x.O == storage.NumberObject && y.O == storage.NumberObject {
+		a, b := x.N, y.N
 		switch op {
 		case bytecode.OpSub:
-			return Number(a - b)
+			return storage.Number(a - b)
 		case bytecode.OpMul:
-			return Number(a * b)
+			return storage.Number(a * b)
 		case bytecode.OpDiv:
-			return Number(a / b)
+			return storage.Number(a / b)
 		case bytecode.OpMod:
-			return Number(math.Mod(a, b))
+			return storage.Number(math.Mod(a, b))
 		case bytecode.OpExp:
-			return Number(numconv.NumberPow(a, b))
+			return storage.Number(numconv.NumberPow(a, b))
 		case bytecode.OpBitOr:
-			return Number(float64(numconv.ToInt32(a) | numconv.ToInt32(b)))
+			return storage.Number(float64(numconv.ToInt32(a) | numconv.ToInt32(b)))
 		case bytecode.OpBitAnd:
-			return Number(float64(numconv.ToInt32(a) & numconv.ToInt32(b)))
+			return storage.Number(float64(numconv.ToInt32(a) & numconv.ToInt32(b)))
 		case bytecode.OpBitXor:
-			return Number(float64(numconv.ToInt32(a) ^ numconv.ToInt32(b)))
+			return storage.Number(float64(numconv.ToInt32(a) ^ numconv.ToInt32(b)))
 		case bytecode.OpShl:
-			return Number(float64(numconv.ToInt32(a) << (numconv.ToUint32(b) & 31)))
+			return storage.Number(float64(numconv.ToInt32(a) << (numconv.ToUint32(b) & 31)))
 		case bytecode.OpShr:
-			return Number(float64(numconv.ToInt32(a) >> (numconv.ToUint32(b) & 31)))
+			return storage.Number(float64(numconv.ToInt32(a) >> (numconv.ToUint32(b) & 31)))
 		case bytecode.OpUShr:
-			return Number(float64(numconv.ToUint32(a) >> (numconv.ToUint32(b) & 31)))
+			return storage.Number(float64(numconv.ToUint32(a) >> (numconv.ToUint32(b) & 31)))
 		}
 		panic("ekuma: not an arithmetic bytecode.Opcode")
 	}
-	if x.o == numberObject || y.o == numberObject {
+	if x.O == storage.NumberObject || y.O == storage.NumberObject {
 		cx.ThrowTypeError("cannot mix BigInt and other types, use explicit conversions")
 	}
 	// Subtraction, the bitwise operations and the shifts on huge BigInts cannot stop once they
 	// start, so a pending interruption is taken before them.
-	if cx.interrupt.Load() {
+	if cx.InterruptFlag.Load() {
 		cx.Poll()
 	}
 	a, b := x.BigInt(), y.BigInt()
@@ -759,61 +758,45 @@ func (cx *ExecutionContext) arith(op bytecode.Opcode, x, y Value) Value {
 	default:
 		panic("ekuma: not an arithmetic bytecode.Opcode")
 	}
-	return NewBigInt(r)
+	return storage.NewBigInt(r)
 }
 
 func (cx *ExecutionContext) negate(x Value) Value {
 	if i, ok := x.BigInt64(); ok && i != math.MinInt64 {
-		return BigIntFromInt64(-i)
+		return storage.BigIntFromInt64(-i)
 	}
 	x = cx.ToNumeric(x)
-	if x.o == numberObject {
-		return Number(-x.n)
+	if x.O == storage.NumberObject {
+		return storage.Number(-x.N)
 	}
-	return NewBigInt(new(big.Int).Neg(x.BigInt()))
+	return storage.NewBigInt(new(big.Int).Neg(x.BigInt()))
 }
 
 func (cx *ExecutionContext) bitNot(x Value) Value {
 	if i, ok := x.BigInt64(); ok {
-		return BigIntFromInt64(^i)
+		return storage.BigIntFromInt64(^i)
 	}
 	x = cx.ToNumeric(x)
-	if x.o == numberObject {
-		return Number(float64(^numconv.ToInt32(x.n)))
+	if x.O == storage.NumberObject {
+		return storage.Number(float64(^numconv.ToInt32(x.N)))
 	}
 	r := new(big.Int).Not(x.BigInt())
 	cx.checkBigIntBits(int64(r.BitLen()))
-	return NewBigInt(r)
+	return storage.NewBigInt(r)
 }
 
 // step implements ++ and -- for an operand that is not a number: it adds d to x.
 func (cx *ExecutionContext) step(x Value, d int64) Value {
 	if i, ok := x.BigInt64(); ok {
-		if s, ok := add64(i, d); ok {
-			return BigIntFromInt64(s)
+		if s, ok := storage.Add64(i, d); ok {
+			return storage.BigIntFromInt64(s)
 		}
 	}
 	x = cx.ToNumeric(x)
-	if x.o == numberObject {
-		return Number(x.n + float64(d))
+	if x.O == storage.NumberObject {
+		return storage.Number(x.N + float64(d))
 	}
-	return cx.addBigInts(x, BigIntFromInt64(d))
-}
-
-// classElement is an element that the constructor of a class adds to every instance.
-type classElement struct {
-	kind int
-	key  Value
-	val  *Object
-
-	// init is the initial value of a field without an initializer function.
-	init Value
-
-	// dec is what the decorators of a field add to it, or nil.
-	dec *fieldDecoration
-
-	// cache is the shape transition that defining a public field takes.
-	cache propCache
+	return cx.addBigInts(x, storage.BigIntFromInt64(d))
 }
 
 // addClassElement registers an instance element of the class ctor, or defines a static element at once.
@@ -821,97 +804,93 @@ type classElement struct {
 // in kind, the initial value itself.
 func (cx *ExecutionContext) addClassElement(ctor *Object, key Value, v Value, kind int) {
 	e := classElement{
-		kind: kind &^ (bytecode.ElemStatic | bytecode.ElemValue),
-		key:  key,
+		Kind: kind &^ (bytecode.ElemStatic | bytecode.ElemValue),
+		Key:  key,
 	}
 	if kind&bytecode.ElemValue != 0 {
-		e.init = v
+		e.Init = v
 	} else {
-		e.val = v.o
+		e.Val = v.O
 	}
 	if kind&bytecode.ElemStatic != 0 {
-		cx.defineClassElement(Value{o: ctor}, &e)
+		cx.defineClassElement(Value{O: ctor}, &e)
 		return
 	}
-	if ctor.fn.fields == nil {
-		ctor.ownFunction().fields = &[]classElement{}
+	if ctor.Fn.Fields == nil {
+		ctor.OwnFunction().Fields = &[]classElement{}
 	}
-	*ctor.fn.fields = append(*ctor.fn.fields, e)
+	*ctor.Fn.Fields = append(*ctor.Fn.Fields, e)
 }
 
 // initFields defines the instance elements of the class ctor on this.
 func (cx *ExecutionContext) initFields(ctor *Object, this Value) {
-	fields := *ctor.fn.fields
+	fields := *ctor.Fn.Fields
 	// Private methods and accessors exist before any field initializer runs.
 	checked := false
 	for i := range fields {
-		if e := &fields[i]; e.kind != bytecode.ElemField && e.kind != elemInitializer {
+		if e := &fields[i]; e.Kind != bytecode.ElemField && e.Kind != elemInitializer {
 			if !checked {
-				cx.ensureCanAddPrivate(this, e.key.o)
+				cx.ensureCanAddPrivate(this, e.Key.O)
 				checked = true
 			}
 			cx.defineClassElement(this, e)
 		}
 	}
 	for i := range fields {
-		switch e := &fields[i]; e.kind {
+		switch e := &fields[i]; e.Kind {
 		case bytecode.ElemField:
 			cx.defineClassElement(this, e)
 		case elemInitializer:
-			cx.Call(e.val, this)
+			cx.Call(e.Val, this)
 		}
 	}
 }
 
 func (cx *ExecutionContext) defineClassElement(this Value, e *classElement) {
-	private := e.key.o != nil && e.key.o.class == classPrivateName
-	switch e.kind {
+	private := e.Key.O != nil && e.Key.O.Class == classPrivateName
+	switch e.Kind {
 	case bytecode.ElemField:
-		v := e.init
-		if e.val != nil {
-			v = cx.Call(e.val, this)
+		v := e.Init
+		if e.Val != nil {
+			v = cx.Call(e.Val, this)
 		}
-		if e.dec != nil {
-			for _, init := range e.dec.initializers {
+		if e.Dec != nil {
+			for _, init := range e.Dec.Initializers {
 				v = cx.Call(init, this, v)
 			}
 		}
 		if private {
-			cx.ensureCanAddPrivate(this, e.key.o)
-			cx.definePrivate(this, e.key.o, v)
+			cx.ensureCanAddPrivate(this, e.Key.O)
+			cx.definePrivate(this, e.Key.O, v)
 		} else {
-			cx.definePublicField(this.o, e.key, v, &e.cache)
+			cx.definePublicField(this.O, e.Key, v, &e.Cache)
 		}
-		if e.dec != nil {
-			for _, init := range e.dec.extra {
+		if e.Dec != nil {
+			for _, init := range e.Dec.Extra {
 				cx.Call(init, this)
 			}
 		}
 	case bytecode.ElemMethod:
-		cx.definePrivate(this, e.key.o, Value{o: e.val})
+		cx.definePrivate(this, e.Key.O, Value{O: e.Val})
 	case bytecode.ElemGetter, bytecode.ElemSetter:
 		if this.IsObject() {
-			o := cx.privateStorage(this.o)
-			if p, ok := o.shape.lookup(e.key.o); ok && p.flags&FlagAccessor != 0 {
-				a := o.slots[p.slot].accessor()
-				if e.kind == bytecode.ElemGetter && a.addGetter(e.val) {
+			o := cx.privateStorage(this.O)
+			if p, ok := o.Shape.Lookup(e.Key.O); ok && p.Flags&FlagAccessor != 0 {
+				a := o.Slots[p.Slot].Accessor()
+				if e.Kind == bytecode.ElemGetter && a.AddGetter(e.Val) {
 					return
 				}
-				if e.kind == bytecode.ElemSetter && a.addSetter(e.val) {
+				if e.Kind == bytecode.ElemSetter && a.AddSetter(e.Val) {
 					return
 				}
 			}
 		}
-		if e.kind == bytecode.ElemGetter {
-			cx.definePrivate(this, e.key.o, newAccessor(e.val, nil))
+		if e.Kind == bytecode.ElemGetter {
+			cx.definePrivate(this, e.Key.O, storage.NewAccessor(e.Val, nil))
 		} else {
-			cx.definePrivate(this, e.key.o, newAccessor(nil, e.val))
+			cx.definePrivate(this, e.Key.O, storage.NewAccessor(nil, e.Val))
 		}
 	}
-}
-
-func (sp *space) typeofValue(v Value) Value {
-	return sp.typeofs[typeOf(v)]
 }
 
 // defineField implements CreateDataPropertyOrThrow for a computed key, as object literals
@@ -922,34 +901,34 @@ func (cx *ExecutionContext) defineField(o *Object, k, val Value) {
 
 // defineFieldK defines the enumerable data property key of o.
 func (cx *ExecutionContext) defineFieldK(o *Object, key *Object, val Value, c *propCache) {
-	if o.class == classObject && o.flags&(objNotExtensible|objIsProto|objExotic) == 0 {
-		if _, ok := o.shape.lookup(key); !ok {
-			old := o.shape
-			cx.add(o, key, val, FlagsData)
-			if !old.private && !o.shape.private {
-				c.shape = old
-				c.kind = cacheAdd
-				c.next = o.shape
+	if o.Class == classObject && o.Flags&(objNotExtensible|objIsProto|objExotic) == 0 {
+		if _, ok := o.Shape.Lookup(key); !ok {
+			old := o.Shape
+			cx.Add(o, key, val, FlagsData)
+			if !old.Private && !o.Shape.Private {
+				c.Shape = old
+				c.Kind = cacheAdd
+				c.Next = o.Shape
 			}
 			return
 		}
 	}
-	cx.CreateDataPropertyOrThrow(o, NamedKey(key), val)
+	cx.CreateDataPropertyOrThrow(o, storage.NamedKey(key), val)
 }
 
 // definePublicField implements CreateDataPropertyOrThrow for the public class field k of o.
 // c caches the shape transition of the field, whose key is always k.
 func (cx *ExecutionContext) definePublicField(o *Object, k, val Value, c *propCache) {
-	if o.class == classObject && o.flags&(objNotExtensible|objIsProto|objExotic) == 0 && o.shape == c.shape && c.kind == cacheAdd {
+	if o.Class == classObject && o.Flags&(objNotExtensible|objIsProto|objExotic) == 0 && o.Shape == c.Shape && c.Kind == cacheAdd {
 		if validateExec {
-			cx.checkDefineHit(nil, 0, o, cx.ToPropertyKey(k).key, c.next)
+			cx.checkDefineHit(nil, 0, o, cx.ToPropertyKey(k).Key, c.Next)
 		}
-		o.shape = c.next
-		o.appendSlot(val)
+		o.Shape = c.Next
+		o.AppendSlot(val)
 		return
 	}
-	if pk := cx.ToPropertyKey(k); pk.key != nil {
-		cx.defineFieldK(o, pk.key, val, c)
+	if pk := cx.ToPropertyKey(k); pk.Key != nil {
+		cx.defineFieldK(o, pk.Key, val, c)
 		return
 	}
 	cx.defineField(o, k, val)
@@ -957,13 +936,13 @@ func (cx *ExecutionContext) definePublicField(o *Object, k, val Value, c *propCa
 
 // defineMethod defines the method f under the key k of o.
 func (cx *ExecutionContext) defineMethod(o *Object, k, f Value) {
-	f.o.ownFunction().home = o
-	cx.DefinePropertyOrThrow(o, cx.ToPropertyKey(k), dataDesc(f, FlagsHidden))
+	f.O.OwnFunction().Home = o
+	cx.DefinePropertyOrThrow(o, cx.ToPropertyKey(k), storage.DataDesc(f, FlagsHidden))
 }
 
 // defineAccessor defines the getter or setter f under the key k of o.
 func (cx *ExecutionContext) defineAccessor(o *Object, k Value, f *Object, isSetter, enumerable bool) {
-	f.ownFunction().home = o
+	f.OwnFunction().Home = o
 	var d PropDesc
 	d.SetEnumerable(enumerable)
 	d.SetConfigurable(true)
@@ -979,14 +958,14 @@ func (cx *ExecutionContext) defineAccessor(o *Object, k Value, f *Object, isSett
 func (cx *ExecutionContext) funcNameOfKey(k Value) wtf8.String {
 	switch {
 	case k.IsSymbol():
-		if k.o.class == classPrivateName {
-			return "#" + k.o.str
+		if k.O.Class == classPrivateName {
+			return "#" + k.O.Text
 		}
-		if k.o.extState() != nil {
-			if len(k.o.str)+2 > MaxStringLength {
+		if k.O.ExtState() != nil {
+			if len(k.O.Text)+2 > MaxStringLength {
 				cx.ThrowRangeError("invalid string length")
 			}
-			return "[" + k.o.str + "]"
+			return "[" + k.O.Text + "]"
 		}
 		return ""
 	case k.IsString():
@@ -1010,19 +989,19 @@ func (cx *ExecutionContext) setFuncName(f, k Value, prefix int) {
 	if len(name) > MaxStringLength {
 		cx.ThrowRangeError("invalid string length")
 	}
-	o := f.o
-	if o.fn.materialized {
-		if _, ok := o.shape.lookup(cx.Key(KeyName)); ok {
-			if d, _ := cx.GetOwnProperty(o, NamedKey(cx.Key(KeyName))); d.IsAccessor() || !d.Value().IsString() || d.Value().rawString() != "" {
+	o := f.O
+	if o.Fn.Materialized {
+		if _, ok := o.Shape.Lookup(cx.Key(KeyName)); ok {
+			if d, _ := cx.GetOwnProperty(o, storage.NamedKey(cx.Key(KeyName))); d.IsAccessor() || !d.Value().IsString() || d.Value().RawString() != "" {
 				return
 			}
 		}
-		cx.defineOwnProperty(o, NamedKey(cx.Key(KeyName)), dataDesc(cx.NewString(name), FlagConfigurable))
+		cx.defineOwnProperty(o, storage.NamedKey(cx.Key(KeyName)), storage.DataDesc(cx.NewString(name), FlagConfigurable))
 		return
 	}
 	// The name is part of the code of an unmaterialized function, which closures share,
 	// so give this one its properties now.
-	cx.materialize(o)
+	cx.Materialize(o)
 	cx.Define(o, cx.Key(KeyName), cx.NewString(name), FlagConfigurable)
 }
 
@@ -1032,7 +1011,7 @@ func (cx *ExecutionContext) copyDataProperties(dst *Object, src Value, excluded 
 		return
 	}
 	from := cx.ToObject(src)
-	if len(excluded) == 0 && dst.takeDataProperties(from) {
+	if len(excluded) == 0 && dst.TakeDataProperties(from) {
 		return
 	}
 	var skip []PropKey
@@ -1040,13 +1019,13 @@ func (cx *ExecutionContext) copyDataProperties(dst *Object, src Value, excluded 
 		skip = append(skip, cx.ToPropertyKey(e))
 	}
 	ks := cx.OwnKeys(from)
-	if dst.flags&objExotic == 0 {
+	if dst.Flags&objExotic == 0 {
 		// The keys of the elements come first, and the other keys usually get slots.
 		elems := 0
-		for elems < len(ks) && ks[elems].isIndex() {
+		for elems < len(ks) && ks[elems].IsIndex() {
 			elems++
 		}
-		dst.reserveSlots(len(ks) - elems)
+		dst.ReserveSlots(len(ks) - elems)
 	}
 	var pacer Pacer
 keys:
@@ -1062,8 +1041,8 @@ keys:
 			continue
 		}
 		val := d.Value()
-		if d.IsAccessor() || from.class == classProxy {
-			val = cx.getProp(from, k, Value{o: from})
+		if d.IsAccessor() || from.Class == classProxy {
+			val = cx.getProp(from, k, Value{O: from})
 		}
 		cx.CreateDataPropertyOrThrow(dst, k, val)
 	}
@@ -1074,64 +1053,45 @@ keys:
 func (cx *ExecutionContext) setupClass(ctor *Object, parent Value) *Object {
 	protoParent := cx.Intrinsic(IntrinsicObjectPrototype)
 	ctorParent := cx.Intrinsic(IntrinsicFunctionPrototype)
-	if !parent.isHole() {
+	if !parent.IsHole() {
 		switch {
 		case parent.IsNull():
 			protoParent = nil
-		case !parent.IsCallable() || !cx.IsConstructor(parent.o):
+		case !parent.IsCallable() || !cx.IsConstructor(parent.O):
 			cx.ThrowTypeError("class extends value " + cx.DisplayString(parent) + " is not a constructor or null")
 		default:
 			p := cx.GetV(parent, cx.Key(KeyPrototype))
 			switch {
 			case p.IsObject():
-				protoParent = p.o
+				protoParent = p.O
 			case p.IsNull():
 				protoParent = nil
 			default:
 				cx.ThrowTypeError("class extends value does not have valid prototype property")
 			}
-			ctorParent = parent.o
+			ctorParent = parent.O
 		}
 	}
 	proto := cx.NewObject(protoParent)
-	fn := ctor.startMaterialized(cx.shapeFor(ctorParent))
-	fn.home = proto
-	cx.add(ctor, cx.Key(KeyLength), Number(float64(fn.code.length)), FlagConfigurable)
-	cx.add(ctor, cx.Key(KeyName), cx.NewString(fn.code.name), FlagConfigurable)
-	cx.add(ctor, cx.Key(KeyPrototype), Value{o: proto}, 0)
-	cx.add(proto, cx.Key(KeyConstructor), Value{o: ctor}, FlagsHidden)
+	fn := ctor.StartMaterialized(cx.ShapeFor(ctorParent))
+	fn.Home = proto
+	cx.Add(ctor, cx.Key(KeyLength), storage.Number(float64(fn.Code.Length)), FlagConfigurable)
+	cx.Add(ctor, cx.Key(KeyName), cx.NewString(fn.Code.Name), FlagConfigurable)
+	cx.Add(ctor, cx.Key(KeyPrototype), Value{O: proto}, 0)
+	cx.Add(proto, cx.Key(KeyConstructor), Value{O: ctor}, FlagsHidden)
 	return proto
 }
 
 // IsConstructor implements IsConstructor.
 func (cx *ExecutionContext) IsConstructor(f *Object) bool {
-	fn := f.fn
+	fn := f.Fn
 	if fn == nil {
 		return false
 	}
-	if fn.bound != nil {
-		return cx.IsConstructor(fn.bound.target)
+	if fn.Bound != nil {
+		return cx.IsConstructor(fn.Bound.Target)
 	}
-	return fn.constructor
-}
-
-// closurePrototype returns the prototype of the closures of p, which is a generator or async function.
-func (p *funcProto) closurePrototype() *Object {
-	switch {
-	case p.isGenerator && p.isAsync:
-		return p.realm.intrinsics[IntrinsicAsyncGeneratorFunctionPrototype]
-	case p.isGenerator:
-		return p.realm.intrinsics[IntrinsicGeneratorFunctionPrototype]
-	case p.isAsync:
-		return p.realm.intrinsics[IntrinsicAsyncFunctionPrototype]
-	}
-	return p.realm.intrinsics[IntrinsicFunctionPrototype]
-}
-
-// pairDestructuringPlain reports whether destructuring a new array of two elements into two
-// bindings runs nothing that JavaScript could observe.
-func (sp *space) pairDestructuringPlain(r *realmPart) bool {
-	return sp.arrayIterationUnmodified(r) && r.arrayIter.noReturn
+	return fn.Constructor
 }
 
 // Call calls the callable object f.
@@ -1144,17 +1104,17 @@ func (cx *ExecutionContext) CallValue(f, this Value, args ...Value) Value {
 	if !f.IsCallable() {
 		cx.ThrowTypeError(cx.DisplayString(f) + " is not a function")
 	}
-	return cx.callOnStack(f.o, this, args)
+	return cx.callOnStack(f.O, this, args)
 }
 
 // callOnStack calls f with a copy of args on the agent stack, so that args does not escape.
 func (cx *ExecutionContext) callOnStack(f *Object, this Value, args []Value) Value {
 	base := cx.sp
 	n := len(args)
-	if fn := f.fn; fn != nil && fn.bound == nil && fn.info == nil && !fn.classConstructor &&
-		!fn.code.isGenerator && !fn.code.isAsync && !cx.interrupt.Load() && len(cx.frames) < maxFrames {
+	if fn := f.Fn; fn != nil && fn.Bound == nil && fn.Info == nil && !fn.ClassConstructor &&
+		!fn.Code.IsGenerator && !fn.Code.IsAsync && !cx.InterruptFlag.Load() && len(cx.frames) < maxFrames {
 		// A plain closure gets its arguments written once, where its frame starts.
-		cx.ensureStack(base + n + fn.code.nregs + 1)
+		cx.ensureStack(base + n + fn.Code.Nregs + 1)
 		copy(cx.stack[base:], args)
 		cx.pushFrame(f, this, base, n, 0, false, nil)
 		r := cx.run(len(cx.frames) - 1)
@@ -1165,7 +1125,7 @@ func (cx *ExecutionContext) callOnStack(f *Object, this Value, args []Value) Val
 	copy(cx.stack[base:], args)
 	cx.sp = base + n
 	var r Value
-	if fn := f.fn; fn != nil && fn.info != nil && !cx.interrupt.Load() {
+	if fn := f.Fn; fn != nil && fn.Info != nil && !cx.InterruptFlag.Load() {
 		// A native function needs none of the other checks of callSlow.
 		r = cx.callNative(f, this, cx.stack[base:base+n:base+n], nil)
 	} else {
@@ -1180,31 +1140,31 @@ func (cx *ExecutionContext) callSlow(f *Object, this Value, args []Value, isNew 
 	if validateExec {
 		defer cx.releaseArgs(cx.holdArgs(args))
 	}
-	if cx.interrupt.Load() {
+	if cx.InterruptFlag.Load() {
 		cx.Poll()
 	}
-	fn := f.fn
+	fn := f.Fn
 	if fn == nil {
-		cx.ThrowTypeError(cx.DisplayString(Value{o: f}) + " is not a function")
+		cx.ThrowTypeError(cx.DisplayString(Value{O: f}) + " is not a function")
 	}
-	if fn.bound != nil {
+	if fn.Bound != nil {
 		return cx.callBound(f, args)
 	}
-	if fn.info != nil {
+	if fn.Info != nil {
 		return cx.callNative(f, this, args, nil)
 	}
-	c := fn.code
-	if fn.classConstructor && !isNew && newTarget == nil {
-		executionContextOf(c.realm).ThrowTypeError("class constructor " + wtf8.ToValidUTF8(c.name) + " cannot be invoked without 'new'")
+	c := fn.Code
+	if fn.ClassConstructor && !isNew && newTarget == nil {
+		executionContextOf(c.Realm).ThrowTypeError("class constructor " + wtf8.ToValidUTF8(c.Name) + " cannot be invoked without 'new'")
 	}
-	if c.isGenerator || c.isAsync {
+	if c.IsGenerator || c.IsAsync {
 		return cx.callCoroutine(f, this, args)
 	}
 	if len(cx.frames) >= maxFrames {
 		cx.ThrowRangeError("maximum call stack size exceeded")
 	}
 	base := cx.sp
-	cx.ensureStack(base + len(args) + c.nregs + 1)
+	cx.ensureStack(base + len(args) + c.Nregs + 1)
 	copy(cx.stack[base:], args)
 	cx.pushFrame(f, this, base, len(args), 0, isNew, newTarget)
 	r := cx.run(len(cx.frames) - 1)
@@ -1216,8 +1176,8 @@ func (cx *ExecutionContext) callSlow(f *Object, this Value, args []Value, isNew 
 func (cx *ExecutionContext) callBound(f *Object, args []Value) Value {
 	var this Value
 	base := cx.sp
-	for b := f.fn.bound; b != nil; b = f.fn.bound {
-		if k := len(b.args); k > 0 {
+	for b := f.Fn.Bound; b != nil; b = f.Fn.Bound {
+		if k := len(b.Args); k > 0 {
 			// The combined arguments go on the stack above its top. args may start at the top,
 			// so it moves up before the bound arguments are written.
 			top := cx.sp
@@ -1225,14 +1185,14 @@ func (cx *ExecutionContext) callBound(f *Object, args []Value) Value {
 			cx.ensureStack(top + n)
 			s := cx.stack[top : top+n : top+n]
 			copy(s[k:], args)
-			copy(s, b.args)
+			copy(s, b.Args)
 			cx.sp = top + n
 			args = s
 			if validateExec {
 				defer cx.releaseArgs(cx.holdArgs(args))
 			}
 		}
-		f, this = b.target, b.this
+		f, this = b.Target, b.This
 	}
 	r := cx.callSlow(f, this, args, false, nil)
 	cx.sp = base
@@ -1244,37 +1204,37 @@ func (cx *ExecutionContext) Construct(f *Object, args []Value, newTarget *Object
 	if validateExec {
 		defer cx.releaseArgs(cx.holdArgs(args))
 	}
-	if cx.interrupt.Load() {
+	if cx.InterruptFlag.Load() {
 		cx.Poll()
 	}
-	fn := f.fn
-	for b := fn.bound; b != nil; b = fn.bound {
-		if len(b.args) > 0 {
-			args = append(append(make([]Value, 0, len(b.args)+len(args)), b.args...), args...)
+	fn := f.Fn
+	for b := fn.Bound; b != nil; b = fn.Bound {
+		if len(b.Args) > 0 {
+			args = append(append(make([]Value, 0, len(b.Args)+len(args)), b.Args...), args...)
 		}
 		if newTarget == f {
-			newTarget = b.target
+			newTarget = b.Target
 		}
-		f = b.target
-		fn = f.fn
+		f = b.Target
+		fn = f.Fn
 	}
-	if fn.info != nil {
-		r := cx.callNative(f, Undefined, args, newTarget)
+	if fn.Info != nil {
+		r := cx.callNative(f, storage.Undefined, args, newTarget)
 		if !r.IsObject() {
 			cx.ThrowTypeError("constructor did not return an object")
 		}
-		return r.o
+		return r.O
 	}
 	this := tdz
-	if !fn.derived {
+	if !fn.Derived {
 		proto := cx.GetPrototypeFromConstructor(newTarget, IntrinsicObjectPrototype)
-		this = Value{o: newInstance(cx.shapeForRealm(proto, fn.code.realm))}
+		this = Value{O: storage.NewInstance(cx.ShapeForRealm(proto, fn.Code.Realm))}
 	}
-	r := cx.callSlow(f, this, args, !fn.derived, newTarget)
+	r := cx.callSlow(f, this, args, !fn.Derived, newTarget)
 	if !r.IsObject() {
 		cx.ThrowTypeError("constructor did not return an object")
 	}
-	return r.o
+	return r.O
 }
 
 // GetPrototypeFromConstructor implements GetPrototypeFromConstructor.
@@ -1282,24 +1242,24 @@ func (cx *ExecutionContext) Construct(f *Object, args []Value, newTarget *Object
 func (cx *ExecutionContext) GetPrototypeFromConstructor(ctor *Object, defaultProto Intrinsic) *Object {
 	r := cx.realm
 	if ctor != nil {
-		if f := ctor.fn; f != nil && f.info != nil && f.info.fixedPrototype {
-			return f.info.realm.intrinsics[f.info.prototype]
+		if f := ctor.Fn; f != nil && f.Info != nil && f.Info.FixedPrototype {
+			return f.Info.Realm.Intrinsics[f.Info.Prototype]
 		}
-		if p := cx.GetV(Value{o: ctor}, cx.Key(KeyPrototype)); p.IsObject() {
-			return p.o
+		if p := cx.GetV(Value{O: ctor}, cx.Key(KeyPrototype)); p.IsObject() {
+			return p.O
 		}
 		r = cx.FunctionContext(ctor).realm
 	}
 	if IntrinsicTemporalInstantPrototype <= defaultProto && defaultProto <= IntrinsicIntlSegmenterPrototype {
-		ns := r.intrinsics[IntrinsicTemporal]
+		ns := r.Intrinsics[IntrinsicTemporal]
 		if defaultProto >= IntrinsicIntlCollatorPrototype {
-			ns = r.intrinsics[IntrinsicIntl]
+			ns = r.Intrinsics[IntrinsicIntl]
 		}
 		if ns != nil {
 			cx.InitLazyObject(ns)
 		}
 	}
-	if proto := r.intrinsics[defaultProto]; proto != nil {
+	if proto := r.Intrinsics[defaultProto]; proto != nil {
 		return proto
 	}
 	panic("engine: uninitialized intrinsic prototype " + strconv.Itoa(int(defaultProto)))
@@ -1315,14 +1275,14 @@ func (cx *ExecutionContext) NewNative(name wtf8.String, length int, f Native) *O
 func (cx *ExecutionContext) NewNativeWithState(name wtf8.String, length int, f Native, state any) *Object {
 	n := &nativeObject{
 		info: nativeInfo{
-			native: f,
-			name:   name,
-			length: int32(length),
-			realm:  cx.realmPart,
+			Native: f,
+			Name:   name,
+			Length: int32(length),
+			Realm:  cx.realmPart,
 		},
 	}
-	n.state.info = &n.info
-	return n.initFunction(cx.realm.shapes.function, &n.state, state)
+	n.state.Info = &n.info
+	return n.InitFunction(cx.realm.Shapes.Function, &n.state, state)
 }
 
 // ShortcutFrame states how a shortcut accounts for the frame that calls of its function show.
@@ -1370,9 +1330,6 @@ type (
 	NumberKernel2 func(x, y float64) float64
 )
 
-// Extremum identifies Math.min or Math.max for [agent.SetExtremum].
-type Extremum uint8
-
 const (
 	ExtremumNone Extremum = iota
 	ExtremumMin
@@ -1382,13 +1339,13 @@ const (
 // SetExtremum says that the native function f is Math.min or Math.max, as e names. The contract of
 // its number kernels holds for what the interpreter computes.
 func (ag *agent) SetExtremum(f *Object, e Extremum) {
-	f.fn.changeableInfo().extremum = e
+	f.Fn.ChangeableInfo().Extremum = e
 }
 
 // SetFrameless makes calls of the native function f show no frame: stack traces leave them out,
 // and the caller of a function that f calls is the one that called f.
 func (ag *agent) SetFrameless(f *Object) {
-	f.fn.changeableInfo().frameless = true
+	f.Fn.ChangeableInfo().Frameless = true
 }
 
 // MethodKernel0, MethodKernel1 and MethodKernel2 compute a function for its this value and no,
@@ -1412,7 +1369,7 @@ type nativeObject struct {
 // f learns the constructor it is constructing for from [agent.GetNewTarget].
 func (cx *ExecutionContext) NewNativeConstructor(name wtf8.String, length int, f Native) *Object {
 	o := cx.NewNative(name, length, f)
-	o.fn.constructor = true
+	o.Fn.Constructor = true
 	return o
 }
 
@@ -1420,9 +1377,9 @@ func (cx *ExecutionContext) NewNativeConstructor(name wtf8.String, length int, f
 // NewNativeConstructor returned in the current realm, as the intrinsic id, which the property
 // then holds for good.
 func (cx *ExecutionContext) DefineConstructorPrototype(c *Object, id Intrinsic) {
-	cx.Define(c, cx.Key(KeyPrototype), Value{o: cx.Intrinsic(id)}, 0)
-	info := c.fn.changeableInfo()
-	info.prototype, info.fixedPrototype = id, true
+	cx.Define(c, cx.Key(KeyPrototype), Value{O: cx.Intrinsic(id)}, 0)
+	info := c.Fn.ChangeableInfo()
+	info.Prototype, info.FixedPrototype = id, true
 }
 
 // GetNewTarget implements GetNewTarget for the running native function: it returns the
@@ -1442,14 +1399,14 @@ func (ag *agent) activeNative() *Object {
 
 // ActiveNativeState returns the internal slots of the active native function.
 func (ag *agent) ActiveNativeState() any {
-	return ag.activeNative().extState()
+	return ag.activeNative().ExtState()
 }
 
 // findScope returns the innermost of the depth innermost dynamic scopes of the running
 // function cl that has the variable key, or nil.
 func (cx *ExecutionContext) findScope(cl *Object, key *Object, depth int) *Object {
-	k := NamedKey(key)
-	for _, scopes := range [...][]*Object{cx.frames[len(cx.frames)-1].scopes, cl.fn.capturedScopes()} {
+	k := storage.NamedKey(key)
+	for _, scopes := range [...][]*Object{cx.frames[len(cx.frames)-1].scopes, cl.Fn.CapturedScopes()} {
 		for _, o := range slices.Backward(scopes) {
 			if depth == 0 {
 				return nil
@@ -1458,11 +1415,11 @@ func (cx *ExecutionContext) findScope(cl *Object, key *Object, depth int) *Objec
 			if !cx.HasProperty(o, k) {
 				continue
 			}
-			if o.class == classEvalScope {
+			if o.Class == classEvalScope {
 				return o
 			}
-			if u := cx.getProp(o, NamedKey(cx.WellKnownSymbol(SymbolUnscopables)), Value{o: o}); u.IsObject() {
-				if ToBoolean(cx.getProp(u.o, k, u)) {
+			if u := cx.getProp(o, storage.NamedKey(cx.WellKnownSymbol(SymbolUnscopables)), Value{O: o}); u.IsObject() {
+				if storage.ToBoolean(cx.getProp(u.O, k, u)) {
 					continue
 				}
 			}
@@ -1472,18 +1429,10 @@ func (cx *ExecutionContext) findScope(cl *Object, key *Object, depth int) *Objec
 	return nil
 }
 
-// capturedScopes returns the dynamic scopes that were open where f was created, innermost last.
-func (f *function) capturedScopes() []*Object {
-	if f.scopes == nil {
-		return nil
-	}
-	return *f.scopes
-}
-
 // openScopes returns a copy of the dynamic scopes that are open in the running function cl,
 // innermost last, or nil when none are.
 func (ag *agent) openScopes(cl *Object) *[]*Object {
-	scopes := slices.Concat(cl.fn.capturedScopes(), ag.frames[len(ag.frames)-1].scopes)
+	scopes := slices.Concat(cl.Fn.CapturedScopes(), ag.frames[len(ag.frames)-1].scopes)
 	if len(scopes) == 0 {
 		return nil
 	}
@@ -1492,51 +1441,51 @@ func (ag *agent) openScopes(cl *Object) *[]*Object {
 
 // getScoped implements GetBindingValue of the object environment record of the dynamic scope o.
 func (cx *ExecutionContext) getScoped(o *Object, key *Object, strict bool) Value {
-	k := NamedKey(key)
+	k := storage.NamedKey(key)
 	if !cx.HasProperty(o, k) {
 		if strict {
-			cx.ThrowReferenceError(wtf8.ToValidUTF8(key.str) + " is not defined")
+			cx.ThrowReferenceError(wtf8.ToValidUTF8(key.Text) + " is not defined")
 		}
-		return Undefined
+		return storage.Undefined
 	}
-	return cx.getProp(o, k, Value{o: o})
+	return cx.getProp(o, k, Value{O: o})
 }
 
 // setScoped writes to a dynamic scope or performs PutValue on an unresolvable reference.
 func (cx *ExecutionContext) setScoped(o *Object, key *Object, val Value, strict bool) {
-	k := NamedKey(key)
-	if o == nullObject {
+	k := storage.NamedKey(key)
+	if o == storage.NullObject {
 		if strict {
-			cx.ThrowReferenceError(wtf8.ToValidUTF8(key.str) + " is not defined")
+			cx.ThrowReferenceError(wtf8.ToValidUTF8(key.Text) + " is not defined")
 		}
 		r := cx.realm
-		cx.setProp(r.global, k, val, Value{o: r.globalThis})
+		cx.setProp(r.Global, k, val, Value{O: r.GlobalThis})
 		return
 	}
 	if !cx.HasProperty(o, k) && strict {
-		cx.ThrowReferenceError(wtf8.ToValidUTF8(key.str) + " is not defined")
+		cx.ThrowReferenceError(wtf8.ToValidUTF8(key.Text) + " is not defined")
 	}
-	if !cx.setProp(o, k, val, Value{o: o}) && strict {
-		cx.throwReadOnly(Value{o: o}, k)
+	if !cx.setProp(o, k, val, Value{O: o}) && strict {
+		cx.throwReadOnly(Value{O: o}, k)
 	}
 }
 
 // deleteName deletes the global variable key.
 func (cx *ExecutionContext) deleteName(key *Object) bool {
 	r := cx.realm
-	if _, ok := r.globalLex.shape.lookup(key); ok {
+	if _, ok := r.GlobalLex.Shape.Lookup(key); ok {
 		return false
 	}
-	g := r.global
-	if p, ok := g.shape.lookup(key); ok {
+	g := r.Global
+	if p, ok := g.Shape.Lookup(key); ok {
 		return cx.deleteOwnSlot(g, key, p)
 	}
 	// An inherited HasBinding check can create a lexical binding or an own global property.
-	k := NamedKey(key)
+	k := storage.NamedKey(key)
 	if !cx.Quiet().delegates(g) || !cx.HasProperty(g, k) {
 		return true
 	}
-	if _, ok := r.globalLex.shape.lookup(key); ok {
+	if _, ok := r.GlobalLex.Shape.Lookup(key); ok {
 		return false
 	}
 	return cx.DeleteProp(g, k)
@@ -1544,21 +1493,21 @@ func (cx *ExecutionContext) deleteName(key *Object) bool {
 
 // BoundFunctionCreate implements BoundFunctionCreate. It copies args.
 func (cx *ExecutionContext) BoundFunctionCreate(target *Object, this Value, args []Value) *Object {
-	s := cx.shapeForRealm(cx.ProtoOf(target), target.shape.realm)
+	s := cx.ShapeForRealm(cx.ProtoOf(target), target.Shape.Realm)
 	b := &boundObject{
 		bound: boundFunc{
-			target: target,
-			this:   this,
-			args:   append([]Value(nil), args...),
+			Target: target,
+			This:   this,
+			Args:   append([]Value(nil), args...),
 		},
 	}
 	b.state = function{
-		bound:        &b.bound,
-		materialized: true,
+		Bound:        &b.bound,
+		Materialized: true,
 		// The state of a bound target already says whether its own target is a constructor.
-		constructor: target.fn.constructor,
+		Constructor: target.Fn.Constructor,
 	}
-	return b.initMaterializedFunction(s, &b.state, b.props[:])
+	return b.InitMaterializedFunction(s, &b.state, b.props[:])
 }
 
 // boundObject is a bound function object together with its state and the storage of its
@@ -1568,22 +1517,4 @@ type boundObject struct {
 	state function
 	bound boundFunc
 	props [2]Value
-}
-
-// SourceText returns the result of Function.prototype.toString for the function f.
-func (f *Object) SourceText() wtf8.String {
-	fn := f.fn
-	if fn.code != nil && fn.code.Source != "" {
-		return fn.code.Source
-	}
-	name := fn.nativeName()
-	if fn.code != nil {
-		name = fn.code.name
-	}
-	// The name is a PropertyName after an optional accessor word, and is left out when it is not.
-	n := strings.TrimPrefix(strings.TrimPrefix(string(name), "get "), "set ")
-	if !parser.IsIdentifierName(n) && !strings.HasPrefix(n, "[") {
-		name = ""
-	}
-	return "function " + name + "() { [native code] }"
 }

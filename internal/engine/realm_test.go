@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/hajimehoshi/ekuma/internal/engine"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 )
 
 func TestRealmIntrinsic(t *testing.T) {
@@ -34,13 +35,13 @@ func TestCreateRealmThrow(t *testing.T) {
 		}()
 		cx.CreateRealm(func(cx *engine.ExecutionContext) {
 			created = cx
-			cx.Throw(engine.ObjectValue(created.Intrinsic(engine.IntrinsicObjectPrototype)))
+			cx.Throw(storage.ObjectValue(created.Intrinsic(engine.IntrinsicObjectPrototype)))
 		})
 	})
 	if ok {
 		t.Fatal("CreateRealm returned normally")
 	}
-	result := created.CreateIterResultObject(engine.Undefined, true)
+	result := created.CreateIterResultObject(storage.Undefined, true)
 	if got := cx.ProtoOf(result.Object()); got != thrown.Object() {
 		t.Error("the saved realm produced an iterator result with the wrong prototype after the throw")
 	}

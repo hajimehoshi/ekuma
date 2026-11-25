@@ -13,6 +13,7 @@ import (
 
 	"github.com/hajimehoshi/ekuma/internal/element"
 	"github.com/hajimehoshi/ekuma/internal/numconv"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 	"github.com/hajimehoshi/ekuma/internal/waiterlist"
 )
 
@@ -267,7 +268,7 @@ func (cx *ExecutionContext) NewArrayBufferObject(proto *Object, byteLength, maxB
 // NewSharedArrayBufferObject returns a SharedArrayBuffer with the prototype proto over the data
 // block blk, which may come from another agent.
 func (cx *ExecutionContext) NewSharedArrayBufferObject(proto *Object, blk *SharedDataBlock) *Object {
-	return newObjectWithState(cx.shapeFor(proto), classArrayBuffer, &ArrayBuffer{
+	return storage.NewObjectWithState(cx.ShapeFor(proto), classArrayBuffer, &ArrayBuffer{
 		block:      blk,
 		max:        blk.max,
 		state:      bufferShared,
@@ -285,7 +286,7 @@ func (cx *ExecutionContext) newArrayBufferFromBytes(proto *Object, b []byte, max
 			max:  maxByteLength,
 		},
 	}
-	return w.initWithState(cx.shapeFor(proto), classArrayBuffer, &w.state)
+	return w.InitWithState(cx.ShapeFor(proto), classArrayBuffer, &w.state)
 }
 
 // arrayBufferObject is an ArrayBuffer object together with its state, so that creating one is
@@ -298,8 +299,8 @@ type arrayBufferObject struct {
 // ArrayBufferData returns the [[ArrayBufferData]] of v, or nil when v is neither an ArrayBuffer
 // nor a SharedArrayBuffer object.
 func ArrayBufferData(v Value) *ArrayBuffer {
-	if v.IsObject() && v.o.class == classArrayBuffer {
-		return v.o.extState().(*ArrayBuffer)
+	if v.IsObject() && v.O.Class == classArrayBuffer {
+		return v.O.ExtState().(*ArrayBuffer)
 	}
 	return nil
 }
@@ -308,7 +309,7 @@ func ArrayBufferData(v Value) *ArrayBuffer {
 // whose data is b, which it keeps. b must not be modified afterwards.
 func (cx *ExecutionContext) NewImmutableArrayBufferFromBytes(proto *Object, b []byte) *Object {
 	o := cx.newArrayBufferFromBytes(proto, b, -1)
-	o.extState().(*ArrayBuffer).immutable = true
+	o.ExtState().(*ArrayBuffer).immutable = true
 	return o
 }
 
@@ -318,7 +319,7 @@ func (cx *ExecutionContext) NewImmutableArrayBufferFromBytes(proto *Object, b []
 func (cx *ExecutionContext) NewHostArrayBufferObject(proto *Object, b []byte) *Object {
 	// The capacity is cut, so that no operation reaches the bytes of the host beyond len(b).
 	o := cx.newArrayBufferFromBytes(proto, b[:len(b):len(b)], -1)
-	o.extState().(*ArrayBuffer).hasDetachKey = true
+	o.ExtState().(*ArrayBuffer).hasDetachKey = true
 	return o
 }
 
@@ -338,7 +339,7 @@ func (b *ArrayBuffer) Detach() {
 func (cx *ExecutionContext) TransferArrayBuffer(o *Object, proto *Object, newByteLength, maxByteLength int64, immutable bool) *Object {
 	cx.checkBufferLength(newByteLength)
 	cx.checkBufferLength(maxByteLength)
-	b := o.extState().(*ArrayBuffer)
+	b := o.ExtState().(*ArrayBuffer)
 	n := int(newByteLength)
 	var data []byte
 	if old := len(b.data); n <= cap(b.data) && n >= cap(b.data)/2 {
@@ -353,7 +354,7 @@ func (cx *ExecutionContext) TransferArrayBuffer(o *Object, proto *Object, newByt
 	}
 	b.Detach()
 	r := cx.newArrayBufferFromBytes(proto, data, int(maxByteLength))
-	r.extState().(*ArrayBuffer).immutable = immutable
+	r.ExtState().(*ArrayBuffer).immutable = immutable
 	return r
 }
 
@@ -366,21 +367,21 @@ func ElementBits(t element.Type, v Value) uint64 {
 		}
 		return element.EncodeBigInt(v.BigInt())
 	}
-	return element.EncodeNumber(t, v.n)
+	return element.EncodeNumber(t, v.N)
 }
 
 // ElementFromBits returns the value that the encoding x of an element of the type t stands for.
 func ElementFromBits(t element.Type, x uint64) Value {
 	switch t {
 	case element.BigInt64:
-		return BigIntFromInt64(int64(x))
+		return storage.BigIntFromInt64(int64(x))
 	case element.BigUint64:
 		if x <= math.MaxInt64 {
-			return BigIntFromInt64(int64(x))
+			return storage.BigIntFromInt64(int64(x))
 		}
-		return NewBigInt(new(big.Int).SetUint64(x))
+		return storage.NewBigInt(new(big.Int).SetUint64(x))
 	}
-	return Number(element.DecodeNumber(t, x))
+	return storage.Number(element.DecodeNumber(t, x))
 }
 
 // GetValueFromBuffer implements GetValueFromBuffer for the bytes b, which hold at least one element of the type t.
@@ -400,10 +401,10 @@ func (cx *ExecutionContext) ToElementValue(t element.Type, v Value) Value {
 	if t.IsBigInt() {
 		return cx.ToBigInt(v)
 	}
-	if v.o == numberObject {
+	if v.O == storage.NumberObject {
 		return v
 	}
-	return Number(cx.ToNumber(v))
+	return storage.Number(cx.ToNumber(v))
 }
 
 // TypedArray is the state of a typed array object.
@@ -429,7 +430,7 @@ type TypedArray struct {
 // are stored in the buffer object buffer from byteOffset on. length is the number of elements, or -1
 // for a typed array whose length tracks the length of the buffer.
 func (cx *ExecutionContext) NewTypedArrayObject(proto *Object, t element.Type, buffer *Object, byteOffset, length int) *Object {
-	data := buffer.extState().(*ArrayBuffer)
+	data := buffer.ExtState().(*ArrayBuffer)
 	w := &typedArrayObject{
 		state: TypedArray{
 			buffer:      buffer,
@@ -441,7 +442,7 @@ func (cx *ExecutionContext) NewTypedArrayObject(proto *Object, t element.Type, b
 			numberStore: !t.IsBigInt() && !data.immutable && data.block == nil,
 		},
 	}
-	return w.initExotic(cx.rootShape(proto, cx.realmPart, typedArrayRoot), classTypedArray, &w.state)
+	return w.InitExotic(cx.RootShape(proto, cx.realmPart, typedArrayRoot), classTypedArray, &w.state)
 }
 
 // typedArrayObject is a typed array object together with its state, so that creating one is
@@ -453,8 +454,8 @@ type typedArrayObject struct {
 
 // TypedArrayData returns the state of the typed array v, or nil when v is not a typed array.
 func TypedArrayData(v Value) *TypedArray {
-	if v.IsObject() && v.o.class == classTypedArray {
-		return v.o.extState().(*TypedArray)
+	if v.IsObject() && v.O.Class == classTypedArray {
+		return v.O.ExtState().(*TypedArray)
 	}
 	return nil
 }
@@ -577,43 +578,43 @@ func (t *TypedArray) element(i uint32) ([]byte, bool) {
 func loadElement(t element.Type, b []byte) Value {
 	switch t {
 	case element.Int8:
-		return Number(float64(int8(b[0])))
+		return storage.Number(float64(int8(b[0])))
 	case element.Uint8, element.Uint8Clamped:
-		return Number(float64(b[0]))
+		return storage.Number(float64(b[0]))
 	case element.Int16:
-		return Number(float64(int16(binary.LittleEndian.Uint16(b))))
+		return storage.Number(float64(int16(binary.LittleEndian.Uint16(b))))
 	case element.Uint16:
-		return Number(float64(binary.LittleEndian.Uint16(b)))
+		return storage.Number(float64(binary.LittleEndian.Uint16(b)))
 	case element.Int32:
-		return Number(float64(int32(binary.LittleEndian.Uint32(b))))
+		return storage.Number(float64(int32(binary.LittleEndian.Uint32(b))))
 	case element.Uint32:
-		return Number(float64(binary.LittleEndian.Uint32(b)))
+		return storage.Number(float64(binary.LittleEndian.Uint32(b)))
 	case element.Float16:
-		return Number(numconv.Float16FromBits(binary.LittleEndian.Uint16(b)))
+		return storage.Number(numconv.Float16FromBits(binary.LittleEndian.Uint16(b)))
 	case element.Float32:
-		return Number(float64(math.Float32frombits(binary.LittleEndian.Uint32(b))))
+		return storage.Number(float64(math.Float32frombits(binary.LittleEndian.Uint32(b))))
 	case element.Float64:
-		return Number(math.Float64frombits(binary.LittleEndian.Uint64(b)))
+		return storage.Number(math.Float64frombits(binary.LittleEndian.Uint64(b)))
 	}
 	return ElementFromBits(t, binary.LittleEndian.Uint64(b))
 }
 
 // typedArrayGet implements TypedArrayGetElement. It returns undefined when i is not a valid integer index.
 func (ag *agent) typedArrayGet(o *Object, i uint32) Value {
-	t := o.extState().(*TypedArray)
+	t := o.ExtState().(*TypedArray)
 	if data := t.data.data; !t.tracking && uint(i) < uint(t.length) {
 		switch t.typ {
 		case element.Int32:
 			if p := t.offset + int(i)*4; t.offset+t.length*4 <= len(data) {
-				return Number(float64(int32(binary.LittleEndian.Uint32(data[p:]))))
+				return storage.Number(float64(int32(binary.LittleEndian.Uint32(data[p:]))))
 			}
 		case element.Float64:
 			if p := t.offset + int(i)*8; t.offset+t.length*8 <= len(data) {
-				return Number(math.Float64frombits(binary.LittleEndian.Uint64(data[p:])))
+				return storage.Number(math.Float64frombits(binary.LittleEndian.Uint64(data[p:])))
 			}
 		case element.Uint8, element.Uint8Clamped:
 			if p := t.offset + int(i); t.offset+t.length <= len(data) {
-				return Number(float64(data[p]))
+				return storage.Number(float64(data[p]))
 			}
 		}
 	}
@@ -628,13 +629,13 @@ func (ag *agent) typedArrayGet(o *Object, i uint32) Value {
 // element i are not in the data of its buffer: when the buffer is shared or i is not a valid
 // integer index.
 func (ag *agent) typedArrayGetSlow(o *Object, i uint32) Value {
-	t := o.extState().(*TypedArray)
+	t := o.ExtState().(*TypedArray)
 	if t.data.block == nil {
-		return Undefined
+		return storage.Undefined
 	}
 	x, ok := t.LoadElement(int(i))
 	if !ok {
-		return Undefined
+		return storage.Undefined
 	}
 	return ElementFromBits(t.typ, x)
 }
@@ -642,9 +643,9 @@ func (ag *agent) typedArrayGetSlow(o *Object, i uint32) Value {
 // typedArraySet implements [[Set]] of the typed array o for an array index and the receiver o.
 // It reports false when the buffer is immutable.
 func (cx *ExecutionContext) typedArraySet(o *Object, i uint32, val Value) bool {
-	t := o.extState().(*TypedArray)
-	if val.o == numberObject && t.numberStore {
-		if data, f := t.data.data, val.n; !t.tracking && uint(i) < uint(t.length) {
+	t := o.ExtState().(*TypedArray)
+	if val.O == storage.NumberObject && t.numberStore {
+		if data, f := t.data.data, val.N; !t.tracking && uint(i) < uint(t.length) {
 			switch t.typ {
 			case element.Int32:
 				if p := t.offset + int(i)*4; t.offset+t.length*4 <= len(data) && f >= -2147483648 && f <= 2147483647 {
@@ -664,7 +665,7 @@ func (cx *ExecutionContext) typedArraySet(o *Object, i uint32, val Value) bool {
 			}
 		}
 		if b, ok := t.element(i); ok {
-			element.StoreNumber(b, t.typ, val.n)
+			element.StoreNumber(b, t.typ, val.N)
 		}
 		return true
 	}
@@ -690,7 +691,7 @@ func (cx *ExecutionContext) typedArraySetElement(t *TypedArray, i uint32, val Va
 
 // typedArrayImmutable reports whether the buffer of the typed array o is immutable.
 func typedArrayImmutable(o *Object) bool {
-	return o.extState().(*TypedArray).data.immutable
+	return o.ExtState().(*TypedArray).data.immutable
 }
 
 // typedArrayFlags returns the attributes of the elements of the typed array o.
@@ -703,7 +704,7 @@ func typedArrayFlags(o *Object) uint8 {
 
 // typedArrayHas implements IsValidIntegerIndex for an array index.
 func typedArrayHas(o *Object, i uint32) bool {
-	t := o.extState().(*TypedArray)
+	t := o.ExtState().(*TypedArray)
 	if _, ok := t.element(i); ok {
 		return true
 	}
@@ -716,7 +717,7 @@ func typedArrayHas(o *Object, i uint32) bool {
 
 // typedArrayLength returns the length of o, or 0 when o is out of bounds.
 func (ag *agent) typedArrayLength(o *Object) int {
-	n, _ := o.extState().(*TypedArray).Length()
+	n, _ := o.ExtState().(*TypedArray).Length()
 	return n
 }
 
@@ -727,34 +728,34 @@ func (cx *ExecutionContext) typedArrayDefine(o *Object, i uint32, d PropDesc) bo
 	}
 	if typedArrayImmutable(o) {
 		// ValidateAndApplyPropertyDescriptor against a non-configurable, non-writable element.
-		if d.hasTrue(HasConfigurable, FlagConfigurable) {
+		if d.HasTrue(HasConfigurable, FlagConfigurable) {
 			return false
 		}
-		if d.hasFalse(HasEnumerable, FlagEnumerable) {
+		if d.HasFalse(HasEnumerable, FlagEnumerable) {
 			return false
 		}
 		if d.IsAccessor() {
 			return false
 		}
-		if d.hasTrue(HasWritable, FlagWritable) {
+		if d.HasTrue(HasWritable, FlagWritable) {
 			return false
 		}
-		return !d.hasField(HasValue) || SameValue(d.Value(), cx.typedArrayGet(o, i))
+		return !d.HasField(HasValue) || storage.SameValue(d.Value(), cx.typedArrayGet(o, i))
 	}
-	if d.hasFalse(HasConfigurable, FlagConfigurable) {
+	if d.HasFalse(HasConfigurable, FlagConfigurable) {
 		return false
 	}
-	if d.hasFalse(HasEnumerable, FlagEnumerable) {
+	if d.HasFalse(HasEnumerable, FlagEnumerable) {
 		return false
 	}
 	if d.IsAccessor() {
 		return false
 	}
-	if d.hasFalse(HasWritable, FlagWritable) {
+	if d.HasFalse(HasWritable, FlagWritable) {
 		return false
 	}
-	if d.hasField(HasValue) {
-		cx.typedArraySetElement(o.extState().(*TypedArray), i, d.Value())
+	if d.HasField(HasValue) {
+		cx.typedArraySetElement(o.ExtState().(*TypedArray), i, d.Value())
 	}
 	return true
 }
@@ -762,50 +763,23 @@ func (cx *ExecutionContext) typedArrayDefine(o *Object, i uint32, d PropDesc) bo
 // typedArraySetNamed implements [[Set]] of the typed array o for a canonical numeric string that is
 // not an array index, which is never a valid integer index.
 func (cx *ExecutionContext) typedArraySetNamed(o *Object, val Value, receiver Value) {
-	if receiver.o == o {
-		cx.ToElementValue(o.extState().(*TypedArray).typ, val)
+	if receiver.O == o {
+		cx.ToElementValue(o.ExtState().(*TypedArray).typ, val)
 	}
-}
-
-// maxNumberStringLen bounds the length of the string of a number, such as
-// "-1.2345678901234567e-308".
-const maxNumberStringLen = 32
-
-// isCanonicalNumericString reports whether CanonicalNumericIndexString returns a number for the string key.
-// The array indices are not named keys, so they are not considered.
-func isCanonicalNumericString(key *Object) bool {
-	if key.kind != kindString {
-		return false
-	}
-	s := key.str
-	if len(s) == 0 {
-		return false
-	}
-	if c := s[0]; c != '-' && c != 'I' && c != 'N' && (c < '0' || c > '9') {
-		return false
-	}
-	if s == "-0" {
-		return true
-	}
-	// The string of a number is short.
-	if len(s) > maxNumberStringLen {
-		return false
-	}
-	return numconv.NumberToString(numconv.StringToNumber(s, nil)) == s
 }
 
 // isNumericKey reports whether k is an array index or a canonical numeric string,
 // which a typed array handles without looking at its properties.
 func isNumericKey(k PropKey) bool {
-	return k.key == nil || isCanonicalNumericString(k.key)
+	return k.Key == nil || storage.IsCanonicalNumericString(k.Key)
 }
 
 // NewDataViewObject returns a DataView with the prototype proto on the buffer object buffer
 // from byteOffset on. byteLength is -1 for a view whose length tracks the length of the buffer.
 func (cx *ExecutionContext) NewDataViewObject(proto *Object, buffer *Object, byteOffset, byteLength int) *Object {
-	return newObjectWithState(cx.shapeFor(proto), classDataView, &DataView{
+	return storage.NewObjectWithState(cx.ShapeFor(proto), classDataView, &DataView{
 		buffer:   buffer,
-		data:     buffer.extState().(*ArrayBuffer),
+		data:     buffer.ExtState().(*ArrayBuffer),
 		offset:   byteOffset,
 		length:   max(byteLength, 0),
 		tracking: byteLength < 0,
@@ -823,8 +797,8 @@ type DataView struct {
 
 // DataViewData returns the state of the DataView v, or nil when v is not a DataView.
 func DataViewData(v Value) *DataView {
-	if v.IsObject() && v.o.class == classDataView {
-		return v.o.extState().(*DataView)
+	if v.IsObject() && v.O.Class == classDataView {
+		return v.O.ExtState().(*DataView)
 	}
 	return nil
 }
@@ -885,13 +859,13 @@ func (d *DataView) Unlock() {
 // Element returns the own property of o with the integer index i when reading it
 // cannot run any JavaScript. It reports false when that is not known.
 func Element(o *Object, i int64) (Value, bool) {
-	if o.objectProperties != nil && i >= 0 && i < int64(len(o.elems)) {
-		if e := o.elems[i]; !e.isHole() {
+	if o.ObjectProperties != nil && i >= 0 && i < int64(len(o.Elems)) {
+		if e := o.Elems[i]; !e.IsHole() {
 			return e, true
 		}
 	}
-	if o.class == classTypedArray && i >= 0 && i <= MaxArrayIndex {
-		t := o.extState().(*TypedArray)
+	if o.Class == classTypedArray && i >= 0 && i <= MaxArrayIndex {
+		t := o.ExtState().(*TypedArray)
 		if b, ok := t.element(uint32(i)); ok {
 			return loadElement(t.typ, b), true
 		}

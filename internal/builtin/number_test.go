@@ -13,6 +13,7 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/builtin"
 	"github.com/hajimehoshi/ekuma/internal/engine"
 	"github.com/hajimehoshi/ekuma/internal/numconv"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
@@ -83,7 +84,7 @@ func FuzzNumberWithPrecision(f *testing.F) {
 			var got string
 			cx.Run(func() {
 				m := cx.Get(proto, cx.KeyOfString(wtf8.FromValidUTF8(method)))
-				got = string(cx.Call(m.Object(), engine.Number(n), engine.Number(float64(arg))).Str())
+				got = string(cx.Call(m.Object(), storage.Number(n), storage.Number(float64(arg))).Str())
 			})
 			if got != want {
 				t.Errorf("(%v).%s(%d) = %q, want %q", n, method, arg, got, want)

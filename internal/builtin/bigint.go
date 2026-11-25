@@ -10,6 +10,7 @@ import (
 
 	"github.com/hajimehoshi/ekuma/internal/engine"
 	"github.com/hajimehoshi/ekuma/internal/numconv"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
@@ -38,7 +39,7 @@ func thisBigInt(cx *engine.ExecutionContext, this engine.Value, what string) eng
 
 // thisBigIntObject is thisBigInt for a receiver that is not a BigInt.
 func thisBigIntObject(cx *engine.ExecutionContext, this engine.Value, what string) engine.Value {
-	v, ok := engine.ThisBigIntValue(this)
+	v, ok := storage.ThisBigIntValue(this)
 	if !ok {
 		cx.ThrowTypeError("BigInt.prototype." + what + " requires that 'this' be a BigInt")
 	}
@@ -85,17 +86,17 @@ func bigIntConstructor(cx *engine.ExecutionContext, this engine.Value, args []en
 func bigIntConstructorKernel(q engine.QuietContext, this, x engine.Value) (engine.Value, bool) {
 	if x.IsNumber() {
 		if n := x.Number(); n == math.Trunc(n) && n >= -1<<63 && n < 1<<63 {
-			return engine.BigIntFromInt64(int64(n)), true
+			return storage.BigIntFromInt64(int64(n)), true
 		}
 	}
-	return engine.Undefined, false
+	return storage.Undefined, false
 }
 
 func bigIntAsIntN(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	bits := toIndex(cx, arg(args, 0))
 	x := cx.ToBigInt(arg(args, 1))
 	if bits == 0 {
-		return engine.BigIntFromInt64(0)
+		return storage.BigIntFromInt64(0)
 	}
 	if n, ok := x.BigInt64(); ok {
 		if bits >= 64 {
@@ -103,7 +104,7 @@ func bigIntAsIntN(cx *engine.ExecutionContext, this engine.Value, args []engine.
 		}
 		// Keep the low bits and extend the sign bit among them.
 		s := 64 - bits
-		return engine.BigIntFromInt64(n << s >> s)
+		return storage.BigIntFromInt64(n << s >> s)
 	}
 	i := x.BigInt()
 	// i already lies in [-2^(bits-1), 2^(bits-1)).
@@ -112,7 +113,7 @@ func bigIntAsIntN(cx *engine.ExecutionContext, this engine.Value, args []engine.
 	}
 	if bits <= 64 {
 		s := 64 - bits
-		return engine.BigIntFromInt64(int64(low64(i)) << s >> s)
+		return storage.BigIntFromInt64(int64(low64(i)) << s >> s)
 	}
 	// The low bits of the two's complement of i.
 	m := new(big.Int).Lsh(big.NewInt(1), uint(bits))
@@ -120,7 +121,7 @@ func bigIntAsIntN(cx *engine.ExecutionContext, this engine.Value, args []engine.
 	if r.Bit(int(bits-1)) != 0 {
 		r.Sub(r, m)
 	}
-	return engine.NewBigInt(r)
+	return storage.NewBigInt(r)
 }
 
 func bigIntAsUintN(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -132,9 +133,9 @@ func bigIntAsUintN(cx *engine.ExecutionContext, this engine.Value, args []engine
 			u &= 1<<bits - 1
 		}
 		if u <= math.MaxInt64 {
-			return engine.BigIntFromInt64(int64(u))
+			return storage.BigIntFromInt64(int64(u))
 		}
-		return engine.NewBigInt(new(big.Int).SetUint64(u))
+		return storage.NewBigInt(new(big.Int).SetUint64(u))
 	}
 	i := x.BigInt()
 	if i.Sign() >= 0 && int64(i.BitLen()) <= bits {
@@ -146,16 +147,16 @@ func bigIntAsUintN(cx *engine.ExecutionContext, this engine.Value, args []engine
 			u &= 1<<bits - 1
 		}
 		if u <= math.MaxInt64 {
-			return engine.BigIntFromInt64(int64(u))
+			return storage.BigIntFromInt64(int64(u))
 		}
-		return engine.NewBigInt(new(big.Int).SetUint64(u))
+		return storage.NewBigInt(new(big.Int).SetUint64(u))
 	}
 	if bits > engine.MaxBigIntBits {
 		cx.ThrowRangeError("maximum BigInt size exceeded")
 	}
 	// The low bits of the two's complement of i.
 	m := new(big.Int).Lsh(big.NewInt(1), uint(bits))
-	return engine.NewBigInt(new(big.Int).And(i, m.Sub(m, big.NewInt(1))))
+	return storage.NewBigInt(new(big.Int).And(i, m.Sub(m, big.NewInt(1))))
 }
 
 func bigIntToString(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -185,10 +186,10 @@ func numberToBigInt(cx *engine.ExecutionContext, n float64) engine.Value {
 		cx.ThrowRangeError("the number " + wtf8.ToValidUTF8(numconv.NumberToString(n)) + " cannot be converted to a BigInt because it is not an integer")
 	}
 	if n >= -1<<63 && n < 1<<63 {
-		return engine.BigIntFromInt64(int64(n))
+		return storage.BigIntFromInt64(int64(n))
 	}
 	i, _ := big.NewFloat(n).Int(nil)
-	return engine.NewBigInt(i)
+	return storage.NewBigInt(i)
 }
 
 // toIndex implements ToIndex.

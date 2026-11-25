@@ -5,6 +5,7 @@ package builtin
 
 import (
 	"github.com/hajimehoshi/ekuma/internal/engine"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 )
 
 func requireReflectTarget(cx *engine.ExecutionContext, v engine.Value, name string) {
@@ -49,7 +50,7 @@ var (
 
 func initReflect(cx *engine.ExecutionContext) {
 	r := cx.NewOrdinaryObject()
-	cx.Define(cx.GlobalObject().Object(), cx.Intern("Reflect"), engine.ObjectValue(r), engine.FlagsHidden)
+	cx.Define(cx.GlobalObject().Object(), cx.Intern("Reflect"), storage.ObjectValue(r), engine.FlagsHidden)
 	cx.Define(r, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Reflect"), engine.FlagConfigurable)
 
 	// Reflect.apply and Reflect.construct show no frame, as Function.prototype.call and apply.
@@ -93,20 +94,20 @@ func reflectConstruct(cx *engine.ExecutionContext, this engine.Value, args []eng
 	}
 	requireReflectArgumentList(cx, arg(args, 1), "construct")
 	list := listFromArrayLike(cx, args[1])
-	return engine.ObjectValue(cx.Construct(f.Object(), list, nt.Object()))
+	return storage.ObjectValue(cx.Construct(f.Object(), list, nt.Object()))
 }
 
 func reflectDefineProperty(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	requireReflectTarget(cx, arg(args, 0), "defineProperty")
 	o := args[0].Object()
 	k := cx.ToPropertyKey(arg(args, 1))
-	return engine.Bool(cx.DefineOwnProperty(o, k, cx.ToPropertyDescriptor(arg(args, 2))))
+	return storage.Bool(cx.DefineOwnProperty(o, k, cx.ToPropertyDescriptor(arg(args, 2))))
 }
 
 func reflectDeleteProperty(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	requireReflectTarget(cx, arg(args, 0), "deleteProperty")
 	o := args[0].Object()
-	return engine.Bool(cx.DeleteProp(o, cx.ToPropertyKey(arg(args, 1))))
+	return storage.Bool(cx.DeleteProp(o, cx.ToPropertyKey(arg(args, 1))))
 }
 
 func reflectGet(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -125,7 +126,7 @@ func reflectGetOwnPropertyDescriptor(cx *engine.ExecutionContext, this engine.Va
 	o := args[0].Object()
 	d, ok := cx.GetOwnProperty(o, cx.ToPropertyKey(arg(args, 1)))
 	if !ok {
-		return engine.Undefined
+		return storage.Undefined
 	}
 	return cx.FromPropertyDescriptor(d)
 }
@@ -133,20 +134,20 @@ func reflectGetOwnPropertyDescriptor(cx *engine.ExecutionContext, this engine.Va
 func reflectGetPrototypeOf(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	requireReflectTarget(cx, arg(args, 0), "getPrototypeOf")
 	if p := cx.ProtoOf(args[0].Object()); p != nil {
-		return engine.ObjectValue(p)
+		return storage.ObjectValue(p)
 	}
-	return engine.Null
+	return storage.Null
 }
 
 func reflectHas(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	requireReflectTarget(cx, arg(args, 0), "has")
 	o := args[0].Object()
-	return engine.Bool(cx.QueryProperty(o, cx.QueryKey(arg(args, 1))))
+	return storage.Bool(cx.QueryProperty(o, cx.QueryKey(arg(args, 1))))
 }
 
 func reflectIsExtensible(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	requireReflectTarget(cx, arg(args, 0), "isExtensible")
-	return engine.Bool(cx.IsExtensible(args[0].Object()))
+	return storage.Bool(cx.IsExtensible(args[0].Object()))
 }
 
 func reflectOwnKeys(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -158,12 +159,12 @@ func reflectOwnKeys(cx *engine.ExecutionContext, this engine.Value, args []engin
 		pacer.Step(cx)
 		out[i] = cx.KeyValue(k)
 	}
-	return engine.ObjectValue(cx.NewArray(out))
+	return storage.ObjectValue(cx.NewArray(out))
 }
 
 func reflectPreventExtensions(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	requireReflectTarget(cx, arg(args, 0), "preventExtensions")
-	return engine.Bool(cx.PreventExtensions(args[0].Object()))
+	return storage.Bool(cx.PreventExtensions(args[0].Object()))
 }
 
 func reflectSet(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -174,7 +175,7 @@ func reflectSet(cx *engine.ExecutionContext, this engine.Value, args []engine.Va
 	if len(args) > 3 {
 		receiver = args[3]
 	}
-	return engine.Bool(cx.SetWithReceiver(o, k, arg(args, 2), receiver))
+	return storage.Bool(cx.SetWithReceiver(o, k, arg(args, 2), receiver))
 }
 
 func reflectSetPrototypeOf(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -188,5 +189,5 @@ func reflectSetPrototypeOf(cx *engine.ExecutionContext, this engine.Value, args 
 	if p.IsObject() {
 		po = p.Object()
 	}
-	return engine.Bool(cx.SetPrototypeOf(o, po))
+	return storage.Bool(cx.SetPrototypeOf(o, po))
 }

@@ -7,6 +7,7 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/engine"
 	"github.com/hajimehoshi/ekuma/internal/intl/list"
 	"github.com/hajimehoshi/ekuma/internal/intl/locale"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
@@ -47,12 +48,12 @@ func newListFormat(cx *engine.ExecutionContext, this engine.Value, args []engine
 		style:  getStringOption(cx, options, "style", "long", "long", "short", "narrow"),
 	}
 	lf.f = list.NewFormatter(res.DataLocale, lf.typ, lf.style)
-	return engine.ObjectValue(cx.NewIntlObject(proto, lf))
+	return storage.ObjectValue(cx.NewIntlObject(proto, lf))
 }
 
 // thisListFormat implements RequireInternalSlot for an Intl.ListFormat.
 func thisListFormat(cx *engine.ExecutionContext, this engine.Value, name string) *listFormatData {
-	lf, ok := engine.IntlData(this).(*listFormatData)
+	lf, ok := storage.IntlData(this).(*listFormatData)
 	if !ok {
 		cx.ThrowTypeError("Intl.ListFormat.prototype." + name + " called on an object that is not an Intl.ListFormat")
 	}
@@ -147,9 +148,9 @@ func resolvedOptions(cx *engine.ExecutionContext, kv ...string) engine.Value {
 	vals := valueStorage[:0]
 	for i := 0; i < len(kv); i += 2 {
 		if kv[i+1] != "" {
-			keys = append(keys, engine.NamedKey(cx.Intern(wtf8.String(kv[i]))))
+			keys = append(keys, storage.NamedKey(cx.Intern(wtf8.String(kv[i]))))
 			vals = append(vals, cx.NewString(wtf8.String(kv[i+1])))
 		}
 	}
-	return engine.ObjectValue(cx.NewObjectFromProperties(keys, vals))
+	return storage.ObjectValue(cx.NewObjectFromProperties(keys, vals))
 }

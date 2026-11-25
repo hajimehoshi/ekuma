@@ -11,6 +11,7 @@ import (
 
 	"github.com/hajimehoshi/ekuma/internal/builtin"
 	"github.com/hajimehoshi/ekuma/internal/engine"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 )
 
 // bigIntFromBytes returns the integer of the big-endian two's complement b.
@@ -197,7 +198,7 @@ func FuzzBigIntOperators(f *testing.F) {
 		for i, op := range bigIntOperators {
 			var got engine.Value
 			cx.Run(func() {
-				got = cx.Call(fns[i].Object(), engine.Undefined, engine.NewBigInt(new(big.Int).Set(x)), engine.NewBigInt(new(big.Int).Set(y)))
+				got = cx.Call(fns[i].Object(), storage.Undefined, storage.NewBigInt(new(big.Int).Set(x)), storage.NewBigInt(new(big.Int).Set(y)))
 			})
 			want := op.want(x, y)
 			if want != nil && want.BitLen() > maxFuzzBigIntBits {
@@ -247,19 +248,19 @@ func FuzzBigIntConversions(f *testing.F) {
 		x, n := bigIntFromBytes(xb), math.Float64frombits(nBits)
 		var result *engine.Object
 		cx.Run(func() {
-			result = cx.Call(fn.Object(), engine.Undefined, engine.NewBigInt(new(big.Int).Set(x)), engine.Number(n), engine.Number(float64(bits))).Object()
+			result = cx.Call(fn.Object(), storage.Undefined, storage.NewBigInt(new(big.Int).Set(x)), storage.Number(n), storage.Number(float64(bits))).Object()
 		})
 		element := func(i int) engine.Value {
 			var v engine.Value
 			cx.Run(func() {
-				v = cx.Get(result, cx.ToPropertyKey(engine.Number(float64(i))))
+				v = cx.Get(result, cx.ToPropertyKey(storage.Number(float64(i))))
 			})
 			return v
 		}
 
 		exact := new(big.Rat).SetInt(x)
 		want, _ := exact.Float64()
-		if got := element(0); !engine.SameValue(got, engine.Number(want)) {
+		if got := element(0); !storage.SameValue(got, storage.Number(want)) {
 			t.Errorf("Number(%v) = %s, want %v", x, cx.DisplayString(got), want)
 		}
 
@@ -276,7 +277,7 @@ func FuzzBigIntConversions(f *testing.F) {
 			less, less || equal, greater, greater || equal, equal,
 			greater, greater || equal, less, less || equal, equal,
 		} {
-			if got := element(1 + i); !got.IsBool() || engine.ToBoolean(got) != want {
+			if got := element(1 + i); !got.IsBool() || storage.ToBoolean(got) != want {
 				t.Errorf("comparison %d of %v and %v: got %s, want %t", i, x, n, cx.DisplayString(got), want)
 			}
 		}

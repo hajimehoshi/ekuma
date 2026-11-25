@@ -27,12 +27,12 @@ func (ag *agent) SetDefaultTimeZone(tz datetime.TimeZone) {
 
 // SetClock sets now as the clock of [agent.Now]. A nil now restores [time.Now].
 func (ag *agent) SetClock(now func() time.Time) {
-	ag.clock = now
+	ag.Clock = now
 }
 
 // HasCustomClock reports whether reading the clock calls a host function.
 func (ag *agent) HasCustomClock() bool {
-	return ag.clock != nil
+	return ag.Clock != nil
 }
 
 // The limits of the current time: the limits of time values, and of epoch nanoseconds of
@@ -46,10 +46,10 @@ var (
 // implements HostSystemUTCEpochNanoseconds.
 func (ag *agent) Now() time.Time {
 	var t time.Time
-	if ag.clock == nil {
+	if ag.Clock == nil {
 		t = time.Now()
 	} else {
-		t = ag.clock()
+		t = ag.Clock()
 	}
 	return clampSystemTime(t)
 }
@@ -73,7 +73,7 @@ func (ag *agent) SystemUTCEpochMilliseconds() float64 {
 // SystemUTCEpochMilliseconds is [agent.SystemUTCEpochMilliseconds] without a host clock. It
 // reports false with one.
 func (q QuietContext) SystemUTCEpochMilliseconds() (float64, bool) {
-	if q.realm.clock != nil {
+	if q.realm.Clock != nil {
 		return 0, false
 	}
 	return epochMilliseconds(clampSystemTime(time.Now())), true

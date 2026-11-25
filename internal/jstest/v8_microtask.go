@@ -8,13 +8,14 @@ import (
 	"testing/fstest"
 
 	"github.com/hajimehoshi/ekuma/internal/engine"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 )
 
 var nativeQueueMicrotask = engine.RegisterNative(queueMicrotask)
 
 func installV8QueueMicrotask(cx *engine.ExecutionContext) {
 	f := cx.NewNative("queueMicrotask", 1, nativeQueueMicrotask)
-	cx.Define(cx.GlobalObject().Object(), cx.Intern("queueMicrotask"), engine.ObjectValue(f), engine.FlagsHidden)
+	cx.Define(cx.GlobalObject().Object(), cx.Intern("queueMicrotask"), storage.ObjectValue(f), engine.FlagsHidden)
 }
 
 func queueMicrotask(cx *engine.ExecutionContext, _ engine.Value, args []engine.Value) engine.Value {
@@ -23,7 +24,7 @@ func queueMicrotask(cx *engine.ExecutionContext, _ engine.Value, args []engine.V
 		callback = args[0]
 	}
 	cx.QueueMicrotask(callback)
-	return engine.Undefined
+	return storage.Undefined
 }
 
 // CheckQueueMicrotask checks the d8 binding and its microtask checkpoint.

@@ -6,7 +6,7 @@ package collection
 import (
 	"fmt"
 
-	"github.com/hajimehoshi/ekuma/internal/engine"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 )
 
 // EntryStorage returns the number of entries that the storage of t has room for.
@@ -160,7 +160,7 @@ func (t *Table) checkIndex() error {
 			}
 			continue
 		}
-		if e.key.IsNumber() && e.key.Number() == 0 && !engine.SameValue(e.key, engine.Number(0)) {
+		if e.key.IsNumber() && e.key.Number() == 0 && !storage.SameValue(e.key, storage.Number(0)) {
 			return fmt.Errorf("the entry %d has the key -0", i)
 		}
 		s := slotOfEntry[i]

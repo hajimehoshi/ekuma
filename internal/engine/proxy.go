@@ -6,34 +6,20 @@ package engine
 import (
 	"strconv"
 
+	"github.com/hajimehoshi/ekuma/internal/storage"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
-
-// proxyState holds the internal slots of a proxy object.
-// A detached global proxy has a nil target. A revoked proxy has both slots nil.
-type proxyState struct {
-	target  *Object
-	handler *Object
-}
-
-func (s *proxyState) isGlobal() bool {
-	return s.handler != nil && s.handler.class == classGlobalProxyHandler
-}
-
-func (s *proxyState) allowsGlobalAccess(group *Object) bool {
-	return s.target != nil && s.handler == group
-}
 
 // CanAccessReceiver reports whether a non-strict host call may use receiver in the current realm.
 func (cx *ExecutionContext) CanAccessReceiver(receiver Value) bool {
 	if receiver.IsNullish() {
-		receiver = ObjectValue(cx.realm.globalThis)
+		receiver = storage.ObjectValue(cx.realm.GlobalThis)
 	}
-	if !receiver.IsObject() || receiver.o.class != classProxy {
+	if !receiver.IsObject() || receiver.O.Class != classProxy {
 		return true
 	}
-	st := receiver.o.extState().(*proxyState)
-	return !st.isGlobal() || st.allowsGlobalAccess(cx.realm.globalProxyHandler)
+	st := receiver.O.ExtState().(*proxyState)
+	return !st.IsGlobal() || st.AllowsGlobalAccess(cx.realm.globalProxyHandler)
 }
 
 // ProxyCreate implements ProxyCreate.
@@ -42,18 +28,18 @@ func (cx *ExecutionContext) ProxyCreate(target, handler Value) *Object {
 		cx.ThrowTypeError("cannot create proxy with a non-object as target or handler")
 	}
 	var fn *function
-	if target.o.fn != nil {
+	if target.O.Fn != nil {
 		// The native function is the [[Call]] and [[Construct]] of the proxy, so that every way
 		// of calling a function reaches them.
 		fn = &function{
-			info:         &proxyInfo,
-			materialized: true,
-			constructor:  cx.IsConstructor(target.o),
+			Info:         &storage.ProxyInfo,
+			Materialized: true,
+			Constructor:  cx.IsConstructor(target.O),
 		}
 	}
-	return newProxyObject(cx.realm.shapes.proxy, &proxyState{
-		target:  target.o,
-		handler: handler.o,
+	return storage.NewProxyObject(cx.realm.Shapes.Proxy, &proxyState{
+		Target:  target.O,
+		Handler: handler.O,
 	}, fn)
 }
 
@@ -67,7 +53,7 @@ func (cx *ExecutionContext) InstallGlobalProxy(foreignView *Object, previous *Ex
 	if previous != nil {
 		previous.Run(func() {
 			previous.DetachGlobalProxy()
-			proxy = previous.realm.globalThis
+			proxy = previous.realm.GlobalThis
 			if shareAccess {
 				handler = previous.realm.globalProxyHandler
 			}
@@ -83,68 +69,68 @@ func (cx *ExecutionContext) InstallGlobalProxy(foreignView *Object, previous *Ex
 	cx.realm.foreignGlobalView = foreignView
 	if proxy == nil {
 		// A global proxy can outlive its first realm and acquire a new target on navigation.
-		proxy = newProxyObject(cx.rootShape(nil, nil, delegatedRoot), &proxyState{
-			target:  cx.realm.global,
-			handler: handler,
+		proxy = storage.NewProxyObject(cx.RootShape(nil, nil, delegatedRoot), &proxyState{
+			Target:  cx.realm.Global,
+			Handler: handler,
 		}, nil)
 	} else {
-		state := proxy.extState().(*proxyState)
-		state.target = cx.realm.global
-		state.handler = handler
+		state := proxy.ExtState().(*proxyState)
+		state.Target = cx.realm.Global
+		state.Handler = handler
 	}
-	cx.realm.globalThis = proxy
-	cx.Define(cx.realm.global, cx.Intern("globalThis"), ObjectValue(proxy), FlagsHidden)
-	return ObjectValue(proxy)
+	cx.realm.GlobalThis = proxy
+	cx.Define(cx.realm.Global, cx.Intern("globalThis"), storage.ObjectValue(proxy), FlagsHidden)
+	return storage.ObjectValue(proxy)
 }
 
 func (cx *ExecutionContext) defaultGlobalHandler() *Object {
 	if cx.realm.defaultGlobalProxyHandler == nil {
-		cx.realm.defaultGlobalProxyHandler = newObjectWithState(cx.shapeFor(nil), classGlobalProxyHandler, nil)
+		cx.realm.defaultGlobalProxyHandler = storage.NewObjectWithState(cx.ShapeFor(nil), classGlobalProxyHandler, nil)
 	}
 	return cx.realm.defaultGlobalProxyHandler
 }
 
 // DetachGlobalProxy disconnects the current realm's installed global proxy.
 func (cx *ExecutionContext) DetachGlobalProxy() {
-	st := cx.realm.globalThis.extState().(*proxyState)
-	if st.target != cx.realm.global {
+	st := cx.realm.GlobalThis.ExtState().(*proxyState)
+	if st.Target != cx.realm.Global {
 		return
 	}
-	st.target = nil
+	st.Target = nil
 	cx.realm.globalProxyHandler = cx.defaultGlobalHandler()
 }
 
 func (ag *agent) hasDetachedGlobal(r *realm) bool {
-	return r != nil && r.globalProxyHandler != nil && r.globalThis.extState().(*proxyState).target != r.global
+	return r != nil && r.globalProxyHandler != nil && r.GlobalThis.ExtState().(*proxyState).Target != r.Global
 }
 
 // RevokeProxy revokes the proxy p: every internal method of p throws a TypeError from then on.
 func RevokeProxy(p *Object) {
-	st := p.extState().(*proxyState)
-	st.target = nil
-	st.handler = nil
+	st := p.ExtState().(*proxyState)
+	st.Target = nil
+	st.Handler = nil
 }
 
 // IsArray implements IsArray.
 func (cx *ExecutionContext) IsArray(v Value) bool {
-	o := v.o
-	for o != nil && o.class == classProxy {
-		st := o.extState().(*proxyState)
-		if st.handler == nil {
+	o := v.O
+	for o != nil && o.Class == classProxy {
+		st := o.ExtState().(*proxyState)
+		if st.Handler == nil {
 			cx.throwRevoked("IsArray")
 		}
-		o = st.target
+		o = st.Target
 	}
-	return o != nil && o.kind == kindArray
+	return o != nil && o.Kind == kindArray
 }
 
 // IsArrayPlain is IsArray of v when v is not a proxy. It reports false as ok for a proxy.
 func (q QuietContext) IsArrayPlain(v Value) (is, ok bool) {
-	o := v.o
-	if o != nil && o.class == classProxy {
+	o := v.O
+	if o != nil && o.Class == classProxy {
 		return false, false
 	}
-	return o != nil && o.kind == kindArray, true
+	return o != nil && o.Kind == kindArray, true
 }
 
 // FunctionContext returns the context of GetFunctionRealm(f).
@@ -160,18 +146,18 @@ func (cx *ExecutionContext) FunctionContext(f *Object) *ExecutionContext {
 func (cx *ExecutionContext) functionRealmOrNil(f *Object) *realmPart {
 	for {
 		switch {
-		case f.fn != nil && f.fn.bound != nil:
-			f = f.fn.bound.target
-		case f.class == classProxy:
-			st := f.extState().(*proxyState)
-			if st.handler == nil {
+		case f.Fn != nil && f.Fn.Bound != nil:
+			f = f.Fn.Bound.Target
+		case f.Class == classProxy:
+			st := f.ExtState().(*proxyState)
+			if st.Handler == nil {
 				return nil
 			}
-			f = st.target
-		case f.fn != nil && f.fn.code != nil:
-			return f.fn.code.realm
-		case f.fn != nil && f.fn.info != nil:
-			return f.fn.info.realm
+			f = st.Target
+		case f.Fn != nil && f.Fn.Code != nil:
+			return f.Fn.Code.Realm
+		case f.Fn != nil && f.Fn.Info != nil:
+			return f.Fn.Info.Realm
 		default:
 			return cx.realmPart
 		}
@@ -189,25 +175,25 @@ func (cx *ExecutionContext) throwRevoked(op string) {
 // The internal methods of a proxy whose target is a proxy call each other without running
 // any JavaScript, so they count as nested interpreter loops and poll for interruptions.
 func (cx *ExecutionContext) proxyEnter(o *Object, op string) (target, handler *Object) {
-	st := o.extState().(*proxyState)
-	if st.handler == nil {
+	st := o.ExtState().(*proxyState)
+	if st.Handler == nil {
 		cx.throwRevoked(op)
 	}
-	if cx.interrupt.Load() {
+	if cx.InterruptFlag.Load() {
 		cx.Poll()
 	}
 	if cx.depth >= maxDepth {
 		cx.ThrowRangeError("maximum call stack size exceeded")
 	}
-	target = st.target
-	if st.isGlobal() && !st.allowsGlobalAccess(cx.realm.globalProxyHandler) {
+	target = st.Target
+	if st.IsGlobal() && !st.AllowsGlobalAccess(cx.realm.globalProxyHandler) {
 		target = cx.realm.foreignGlobalView
 		if target == nil {
 			cx.ThrowTypeError("no access")
 		}
 	}
 	cx.depth++
-	return target, st.handler
+	return target, st.Handler
 }
 
 func (ag *agent) proxyLeave() {
@@ -216,12 +202,12 @@ func (ag *agent) proxyLeave() {
 
 // proxyTrap returns the trap key of handler, or nil when the operation forwards to the target.
 func (cx *ExecutionContext) proxyTrap(handler *Object, key CommonKey) *Object {
-	return cx.GetMethod(Value{o: handler}, cx.Key(key))
+	return cx.GetMethod(Value{O: handler}, cx.Key(key))
 }
 
 // callTrap calls trap with handler as this.
 func (cx *ExecutionContext) callTrap(trap, handler *Object, args ...Value) Value {
-	return cx.callOnStack(trap, Value{o: handler}, args)
+	return cx.callOnStack(trap, Value{O: handler}, args)
 }
 
 func (cx *ExecutionContext) throwTrapError(trap, msg string) {
@@ -236,13 +222,13 @@ func (cx *ExecutionContext) proxyGetPrototypeOf(o *Object) *Object {
 	if trap == nil {
 		return cx.ProtoOf(target)
 	}
-	r := cx.callTrap(trap, handler, Value{o: target})
+	r := cx.callTrap(trap, handler, Value{O: target})
 	if !r.IsObject() && !r.IsNull() {
 		cx.throwTrapError("getPrototypeOf", "trap returned neither object nor null")
 	}
 	var proto *Object
 	if r.IsObject() {
-		proto = r.o
+		proto = r.O
 	}
 	if cx.IsExtensible(target) {
 		return proto
@@ -261,11 +247,11 @@ func (cx *ExecutionContext) proxySetPrototypeOf(o *Object, proto *Object) bool {
 	if trap == nil {
 		return cx.SetPrototypeOf(target, proto)
 	}
-	v := Null
+	v := storage.Null
 	if proto != nil {
-		v = Value{o: proto}
+		v = Value{O: proto}
 	}
-	if !ToBoolean(cx.callTrap(trap, handler, Value{o: target}, v)) {
+	if !storage.ToBoolean(cx.callTrap(trap, handler, Value{O: target}, v)) {
 		return false
 	}
 	if cx.IsExtensible(target) {
@@ -285,7 +271,7 @@ func (cx *ExecutionContext) proxyIsExtensible(o *Object) bool {
 	if trap == nil {
 		return cx.IsExtensible(target)
 	}
-	r := ToBoolean(cx.callTrap(trap, handler, Value{o: target}))
+	r := storage.ToBoolean(cx.callTrap(trap, handler, Value{O: target}))
 	if r != cx.IsExtensible(target) {
 		cx.throwTrapError("isExtensible", "trap result does not reflect extensibility of proxy target")
 	}
@@ -300,7 +286,7 @@ func (cx *ExecutionContext) proxyPreventExtensions(o *Object) bool {
 	if trap == nil {
 		return cx.PreventExtensions(target)
 	}
-	r := ToBoolean(cx.callTrap(trap, handler, Value{o: target}))
+	r := storage.ToBoolean(cx.callTrap(trap, handler, Value{O: target}))
 	if r && cx.IsExtensible(target) {
 		cx.throwTrapError("preventExtensions", "trap returned truish but the proxy target is extensible")
 	}
@@ -316,7 +302,7 @@ func (cx *ExecutionContext) proxyGetOwnProperty(o *Object, k PropKey) (PropDesc,
 		return cx.GetOwnProperty(target, k)
 	}
 	const name = "getOwnPropertyDescriptor"
-	r := cx.callTrap(trap, handler, Value{o: target}, cx.KeyValue(k))
+	r := cx.callTrap(trap, handler, Value{O: target}, cx.KeyValue(k))
 	if !r.IsObject() && !r.IsUndefined() {
 		cx.throwTrapError(name, "trap returned neither object nor undefined for property '"+wtf8.ToValidUTF8(cx.KeyString(k))+"'")
 	}
@@ -335,15 +321,15 @@ func (cx *ExecutionContext) proxyGetOwnProperty(o *Object, k PropKey) (PropDesc,
 	}
 	extensible := cx.IsExtensible(target)
 	d := cx.ToPropertyDescriptor(r)
-	d.complete()
-	if !isCompatiblePropertyDescriptor(extensible, &d, &targetDesc, targetHas) {
+	d.Complete()
+	if !storage.IsCompatiblePropertyDescriptor(extensible, &d, &targetDesc, targetHas) {
 		cx.throwTrapError(name, "trap returned descriptor for property '"+wtf8.ToValidUTF8(cx.KeyString(k))+"' that is incompatible with the existing property in the proxy target")
 	}
 	if !d.Configurable() {
 		if !targetHas || targetDesc.Configurable() {
 			cx.throwTrapError(name, "trap reported non-configurability for property '"+wtf8.ToValidUTF8(cx.KeyString(k))+"' which is either non-existent or configurable in the proxy target")
 		}
-		if d.hasFalse(HasWritable, FlagWritable) && targetDesc.Writable() {
+		if d.HasFalse(HasWritable, FlagWritable) && targetDesc.Writable() {
 			cx.throwTrapError(name, "trap reported non-configurable and non-writable for property '"+wtf8.ToValidUTF8(cx.KeyString(k))+"' which is non-configurable, writable in the proxy target")
 		}
 	}
@@ -359,12 +345,12 @@ func (cx *ExecutionContext) proxyDefineOwnProperty(o *Object, k PropKey, d PropD
 		return cx.defineOwnProperty(target, k, d)
 	}
 	const name = "defineProperty"
-	if !ToBoolean(cx.callTrap(trap, handler, Value{o: target}, cx.KeyValue(k), cx.FromPropertyDescriptor(d))) {
+	if !storage.ToBoolean(cx.callTrap(trap, handler, Value{O: target}, cx.KeyValue(k), cx.FromPropertyDescriptor(d))) {
 		return false
 	}
 	targetDesc, targetHas := cx.GetOwnProperty(target, k)
 	extensible := cx.IsExtensible(target)
-	settingConfigFalse := d.hasFalse(HasConfigurable, FlagConfigurable)
+	settingConfigFalse := d.HasFalse(HasConfigurable, FlagConfigurable)
 	if !targetHas {
 		if !extensible {
 			cx.throwTrapError(name, "trap returned truish for adding property '"+wtf8.ToValidUTF8(cx.KeyString(k))+"' to the non-extensible proxy target")
@@ -374,13 +360,13 @@ func (cx *ExecutionContext) proxyDefineOwnProperty(o *Object, k PropKey, d PropD
 		}
 		return true
 	}
-	if !isCompatiblePropertyDescriptor(extensible, &d, &targetDesc, true) {
+	if !storage.IsCompatiblePropertyDescriptor(extensible, &d, &targetDesc, true) {
 		cx.throwTrapError(name, "trap returned truish for adding property '"+wtf8.ToValidUTF8(cx.KeyString(k))+"' that is incompatible with the existing property in the proxy target")
 	}
 	if settingConfigFalse && targetDesc.Configurable() {
 		cx.throwTrapError(name, "trap returned truish for defining non-configurable property '"+wtf8.ToValidUTF8(cx.KeyString(k))+"' which is configurable in the proxy target")
 	}
-	if !targetDesc.IsAccessor() && !targetDesc.Configurable() && targetDesc.Writable() && d.hasFalse(HasWritable, FlagWritable) {
+	if !targetDesc.IsAccessor() && !targetDesc.Configurable() && targetDesc.Writable() && d.HasFalse(HasWritable, FlagWritable) {
 		cx.throwTrapError(name, "trap returned truish for defining non-configurable property '"+wtf8.ToValidUTF8(cx.KeyString(k))+"' which cannot be non-writable, unless there exists a corresponding non-configurable, non-writable own property of the target object")
 	}
 	return true
@@ -394,7 +380,7 @@ func (cx *ExecutionContext) proxyHas(o *Object, k PropKey) bool {
 	if trap == nil {
 		return cx.HasProperty(target, k)
 	}
-	if ToBoolean(cx.callTrap(trap, handler, Value{o: target}, cx.KeyValue(k))) {
+	if storage.ToBoolean(cx.callTrap(trap, handler, Value{O: target}, cx.KeyValue(k))) {
 		return true
 	}
 	if targetDesc, ok := cx.GetOwnProperty(target, k); ok {
@@ -416,9 +402,9 @@ func (cx *ExecutionContext) proxyGet(o *Object, k PropKey, receiver Value) Value
 	if trap == nil {
 		return cx.getProp(target, k, receiver)
 	}
-	r := cx.callTrap(trap, handler, Value{o: target}, cx.KeyValue(k), receiver)
+	r := cx.callTrap(trap, handler, Value{O: target}, cx.KeyValue(k), receiver)
 	if targetDesc, ok := cx.GetOwnProperty(target, k); ok && !targetDesc.Configurable() {
-		if !targetDesc.IsAccessor() && !targetDesc.Writable() && !SameValue(r, targetDesc.Value()) {
+		if !targetDesc.IsAccessor() && !targetDesc.Writable() && !storage.SameValue(r, targetDesc.Value()) {
 			cx.throwTrapError("get", "property '"+wtf8.ToValidUTF8(cx.KeyString(k))+"' is a read-only and non-configurable data property on the proxy target but the proxy did not return its actual value")
 		}
 		if targetDesc.IsAccessor() && targetDesc.Getter() == nil && !r.IsUndefined() {
@@ -436,11 +422,11 @@ func (cx *ExecutionContext) proxySet(o *Object, k PropKey, val, receiver Value) 
 	if trap == nil {
 		return cx.setProp(target, k, val, receiver)
 	}
-	if !ToBoolean(cx.callTrap(trap, handler, Value{o: target}, cx.KeyValue(k), val, receiver)) {
+	if !storage.ToBoolean(cx.callTrap(trap, handler, Value{O: target}, cx.KeyValue(k), val, receiver)) {
 		return false
 	}
 	if targetDesc, ok := cx.GetOwnProperty(target, k); ok && !targetDesc.Configurable() {
-		if !targetDesc.IsAccessor() && !targetDesc.Writable() && !SameValue(val, targetDesc.Value()) {
+		if !targetDesc.IsAccessor() && !targetDesc.Writable() && !storage.SameValue(val, targetDesc.Value()) {
 			cx.throwTrapError("set", "trap returned truish for property '"+wtf8.ToValidUTF8(cx.KeyString(k))+"' which exists in the proxy target as a non-configurable and non-writable data property with a different value")
 		}
 		if targetDesc.IsAccessor() && targetDesc.Setter() == nil {
@@ -458,7 +444,7 @@ func (cx *ExecutionContext) proxyDelete(o *Object, k PropKey) bool {
 	if trap == nil {
 		return cx.DeleteProp(target, k)
 	}
-	if !ToBoolean(cx.callTrap(trap, handler, Value{o: target}, cx.KeyValue(k))) {
+	if !storage.ToBoolean(cx.callTrap(trap, handler, Value{O: target}, cx.KeyValue(k))) {
 		return false
 	}
 	targetDesc, ok := cx.GetOwnProperty(target, k)
@@ -483,7 +469,7 @@ func (cx *ExecutionContext) proxyOwnKeys(o *Object) []PropKey {
 		return cx.OwnKeys(target)
 	}
 	const name = "ownKeys"
-	keys := cx.propertyKeyList(cx.callTrap(trap, handler, Value{o: target}))
+	keys := cx.propertyKeyList(cx.callTrap(trap, handler, Value{O: target}))
 	var p Pacer
 	unchecked := make(map[PropKey]struct{}, len(keys))
 	for _, k := range keys {
@@ -534,15 +520,15 @@ func (cx *ExecutionContext) propertyKeyList(v Value) []PropKey {
 	if !v.IsObject() {
 		cx.ThrowTypeError("CreateListFromArrayLike called on non-object")
 	}
-	n := cx.LengthOfArrayLike(v.o)
+	n := cx.LengthOfArrayLike(v.O)
 	var keys []PropKey
 	for i := range n {
 		cx.PollAt(i)
-		k := IndexKey(uint32(i))
+		k := storage.IndexKey(uint32(i))
 		if i > MaxArrayIndex {
 			k = cx.KeyOfString(wtf8.String(strconv.FormatInt(i, 10)))
 		}
-		e := cx.getProp(v.o, k, v)
+		e := cx.getProp(v.O, k, v)
 		if !e.IsString() && !e.IsSymbol() {
 			cx.ThrowTypeError(cx.DisplayString(e) + " is not a valid property name")
 		}
@@ -555,7 +541,7 @@ func (cx *ExecutionContext) propertyKeyList(v Value) []PropKey {
 func proxyFunction(cx *ExecutionContext, this Value, args []Value) Value {
 	p := cx.activeNative()
 	if nt := cx.GetNewTarget(); nt != nil {
-		return Value{o: cx.proxyConstruct(p, args, nt)}
+		return Value{O: cx.proxyConstruct(p, args, nt)}
 	}
 	return cx.proxyCall(p, this, args)
 }
@@ -569,7 +555,7 @@ func (cx *ExecutionContext) proxyCall(o *Object, this Value, args []Value) Value
 		return cx.Call(target, this, args...)
 	}
 	argArray := cx.NewArray(append([]Value(nil), args...))
-	return cx.callTrap(trap, handler, Value{o: target}, this, Value{o: argArray})
+	return cx.callTrap(trap, handler, Value{O: target}, this, Value{O: argArray})
 }
 
 // proxyConstruct implements [[Construct]] of a proxy.
@@ -581,11 +567,11 @@ func (cx *ExecutionContext) proxyConstruct(o *Object, args []Value, newTarget *O
 		return cx.Construct(target, args, newTarget)
 	}
 	argArray := cx.NewArray(append([]Value(nil), args...))
-	r := cx.callTrap(trap, handler, Value{o: target}, Value{o: argArray}, Value{o: newTarget})
+	r := cx.callTrap(trap, handler, Value{O: target}, Value{O: argArray}, Value{O: newTarget})
 	if !r.IsObject() {
 		cx.throwTrapError("construct", "trap returned non-object ('"+cx.DisplayString(r)+"')")
 	}
-	return r.o
+	return r.O
 }
 
 // ToPropertyDescriptor implements ToPropertyDescriptor.
@@ -593,26 +579,26 @@ func (cx *ExecutionContext) ToPropertyDescriptor(v Value) PropDesc {
 	if !v.IsObject() {
 		cx.ThrowTypeError("property description must be an object: " + cx.DisplayString(v))
 	}
-	o := v.o
+	o := v.O
 	var d PropDesc
 	field := func(key CommonKey) (Value, bool) {
-		k := NamedKey(cx.Key(key))
+		k := storage.NamedKey(cx.Key(key))
 		if !cx.HasProperty(o, k) {
-			return Undefined, false
+			return storage.Undefined, false
 		}
 		return cx.getProp(o, k, v), true
 	}
 	if x, ok := field(KeyEnumerable); ok {
-		d.SetEnumerable(ToBoolean(x))
+		d.SetEnumerable(storage.ToBoolean(x))
 	}
 	if x, ok := field(KeyConfigurable); ok {
-		d.SetConfigurable(ToBoolean(x))
+		d.SetConfigurable(storage.ToBoolean(x))
 	}
 	if x, ok := field(KeyValue); ok {
 		d.SetValue(x)
 	}
 	if x, ok := field(KeyWritable); ok {
-		d.SetWritable(ToBoolean(x))
+		d.SetWritable(storage.ToBoolean(x))
 	}
 	if x, ok := field(KeyGet); ok {
 		if !x.IsUndefined() && !x.IsCallable() {
@@ -620,7 +606,7 @@ func (cx *ExecutionContext) ToPropertyDescriptor(v Value) PropDesc {
 		}
 		var f *Object
 		if x.IsObject() {
-			f = x.o
+			f = x.O
 		}
 		d.SetGetter(f)
 	}
@@ -630,7 +616,7 @@ func (cx *ExecutionContext) ToPropertyDescriptor(v Value) PropDesc {
 		}
 		var f *Object
 		if x.IsObject() {
-			f = x.o
+			f = x.O
 		}
 		d.SetSetter(f)
 	}
@@ -642,30 +628,30 @@ func (cx *ExecutionContext) ToPropertyDescriptor(v Value) PropDesc {
 
 // FromPropertyDescriptor implements FromPropertyDescriptor for a descriptor that is not undefined.
 func (cx *ExecutionContext) FromPropertyDescriptor(d PropDesc) Value {
-	o := cx.newEmptyObjectWithRoom(d.fieldCount())
+	o := cx.NewEmptyObjectWithRoom(d.FieldCount())
 	fn := func(f *Object) Value {
 		if f == nil {
-			return Undefined
+			return storage.Undefined
 		}
-		return Value{o: f}
+		return Value{O: f}
 	}
-	if d.hasField(HasValue) {
-		cx.add(o, cx.Key(KeyValue), d.Value(), FlagsData)
+	if d.HasField(HasValue) {
+		cx.Add(o, cx.Key(KeyValue), d.Value(), FlagsData)
 	}
-	if d.hasField(HasWritable) {
-		cx.add(o, cx.Key(KeyWritable), Bool(d.Writable()), FlagsData)
+	if d.HasField(HasWritable) {
+		cx.Add(o, cx.Key(KeyWritable), storage.Bool(d.Writable()), FlagsData)
 	}
-	if d.hasField(HasGet) {
-		cx.add(o, cx.Key(KeyGet), fn(d.Getter()), FlagsData)
+	if d.HasField(HasGet) {
+		cx.Add(o, cx.Key(KeyGet), fn(d.Getter()), FlagsData)
 	}
-	if d.hasField(HasSet) {
-		cx.add(o, cx.Key(KeySet), fn(d.Setter()), FlagsData)
+	if d.HasField(HasSet) {
+		cx.Add(o, cx.Key(KeySet), fn(d.Setter()), FlagsData)
 	}
-	if d.hasField(HasEnumerable) {
-		cx.add(o, cx.Key(KeyEnumerable), Bool(d.Enumerable()), FlagsData)
+	if d.HasField(HasEnumerable) {
+		cx.Add(o, cx.Key(KeyEnumerable), storage.Bool(d.Enumerable()), FlagsData)
 	}
-	if d.hasField(HasConfigurable) {
-		cx.add(o, cx.Key(KeyConfigurable), Bool(d.Configurable()), FlagsData)
+	if d.HasField(HasConfigurable) {
+		cx.Add(o, cx.Key(KeyConfigurable), storage.Bool(d.Configurable()), FlagsData)
 	}
-	return Value{o: o}
+	return Value{O: o}
 }

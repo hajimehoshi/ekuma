@@ -9,6 +9,7 @@ import (
 	"testing/fstest"
 
 	"github.com/hajimehoshi/ekuma/internal/engine"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 )
 
 // An unsupported call ends the test even if its script catches exceptions.
@@ -21,7 +22,7 @@ func installV8GC(cx *engine.ExecutionContext) {
 			panic(v8GCWithArguments{})
 		}
 		runtime.GC()
-		return engine.Undefined
+		return storage.Undefined
 	})
 	// The V8 extension declares gc as a global var.
 	cx.Define(cx.GlobalObject().Object(), cx.Intern("gc"), gc, engine.FlagWritable|engine.FlagEnumerable)

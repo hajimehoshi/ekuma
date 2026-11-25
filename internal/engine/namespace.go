@@ -7,6 +7,7 @@ import (
 	"slices"
 
 	"github.com/hajimehoshi/ekuma/internal/modulegraph"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
@@ -59,22 +60,22 @@ func (cx *ExecutionContext) newModuleNamespace(m *Module, deferred bool) *Object
 		deferred: deferred,
 	}
 	for i, e := range exports {
-		k := cx.ToPropertyKey(ObjectValue(cx.Intern(wtf8.String(e.Name))))
+		k := cx.ToPropertyKey(storage.ObjectValue(cx.Intern(wtf8.String(e.Name))))
 		ns.keys[i] = k
 		ns.targets[i] = e.Resolution
 		ns.index[k] = i
 	}
-	o := newNamespaceObject(cx.rootShape(nil, cx.realmPart, delegatedRoot), ns)
+	o := storage.NewNamespaceObject(cx.RootShape(nil, cx.realmPart, delegatedRoot), ns)
 	tag := wtf8.String("Module")
 	if deferred {
 		tag = "Deferred Module"
 	}
-	cx.add(o, cx.WellKnownSymbol(SymbolToStringTag), cx.NewString(tag), 0)
+	cx.Add(o, cx.WellKnownSymbol(SymbolToStringTag), cx.NewString(tag), 0)
 	return o
 }
 
 func namespaceOf(o *Object) *moduleNamespace {
-	return o.extState().(*moduleNamespace)
+	return o.ExtState().(*moduleNamespace)
 }
 
 // isNamespaceExportKey reports whether k is a key that the module namespace object o
@@ -83,7 +84,7 @@ func (ag *agent) isNamespaceExportKey(o *Object, k PropKey) bool {
 	if k.IsSymbol() {
 		return false
 	}
-	return !namespaceOf(o).deferred || k.key != ag.Key(KeyThen)
+	return !namespaceOf(o).deferred || k.Key != ag.Key(KeyThen)
 }
 
 // namespaceExports implements GetModuleExportsList: it returns the namespace data of the
@@ -101,20 +102,20 @@ func (cx *ExecutionContext) namespaceGet(o *Object, k PropKey) Value {
 	ns := cx.namespaceExports(o)
 	i, ok := ns.index[k]
 	if !ok {
-		return Undefined
+		return storage.Undefined
 	}
 	r := ns.targets[i]
 	switch r.Binding {
 	case modulegraph.BindingNamespace:
-		return Value{o: cx.moduleNamespace(r.Module)}
+		return Value{O: cx.moduleNamespace(r.Module)}
 	case modulegraph.BindingSource:
 		if r.Module.source == nil {
 			cx.ThrowReferenceError("the module source of '" + wtf8.ToValidUTF8(cx.KeyString(k)) + "' is not available")
 		}
-		return Value{o: r.Module.source}
+		return Value{O: r.Module.source}
 	}
-	v := *r.Module.env[r.Binding].p
-	if v.o == tdzObject {
+	v := *r.Module.env[r.Binding].P
+	if v.O == tdzObject {
 		cx.ThrowReferenceError("cannot access '" + wtf8.ToValidUTF8(cx.KeyString(k)) + "' before initialization")
 	}
 	return v
@@ -132,7 +133,7 @@ func (cx *ExecutionContext) namespaceGetOwnProperty(o *Object, k PropKey) (PropD
 	if !cx.namespaceHas(o, k) {
 		return PropDesc{}, false
 	}
-	return dataDesc(cx.namespaceGet(o, k), FlagEnumerable|FlagWritable), true
+	return storage.DataDesc(cx.namespaceGet(o, k), FlagEnumerable|FlagWritable), true
 }
 
 // namespaceDefineOwnProperty implements [[DefineOwnProperty]] of the module namespace object o
@@ -142,20 +143,20 @@ func (cx *ExecutionContext) namespaceDefineOwnProperty(o *Object, k PropKey, d P
 	if !ok {
 		return false
 	}
-	if d.hasTrue(HasConfigurable, FlagConfigurable) {
+	if d.HasTrue(HasConfigurable, FlagConfigurable) {
 		return false
 	}
-	if d.hasFalse(HasEnumerable, FlagEnumerable) {
+	if d.HasFalse(HasEnumerable, FlagEnumerable) {
 		return false
 	}
 	if d.IsAccessor() {
 		return false
 	}
-	if d.hasFalse(HasWritable, FlagWritable) {
+	if d.HasFalse(HasWritable, FlagWritable) {
 		return false
 	}
-	if d.hasField(HasValue) {
-		return SameValue(d.Value(), cur.Value())
+	if d.HasField(HasValue) {
+		return storage.SameValue(d.Value(), cur.Value())
 	}
 	return true
 }
@@ -163,8 +164,8 @@ func (cx *ExecutionContext) namespaceDefineOwnProperty(o *Object, k PropKey, d P
 // namespaceOwnKeys implements [[OwnPropertyKeys]] of the module namespace object o.
 func (cx *ExecutionContext) namespaceOwnKeys(o *Object) []PropKey {
 	keys := slices.Clone(cx.namespaceExports(o).keys)
-	for _, k := range o.shape.keys() {
-		keys = append(keys, NamedKey(k))
+	for _, k := range o.Shape.Keys() {
+		keys = append(keys, storage.NamedKey(k))
 	}
 	return keys
 }

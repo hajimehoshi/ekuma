@@ -10,6 +10,7 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/builtin"
 	"github.com/hajimehoshi/ekuma/internal/engine"
 	"github.com/hajimehoshi/ekuma/internal/intl/duration"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 	"github.com/hajimehoshi/ekuma/internal/temporal"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
@@ -135,7 +136,7 @@ func toDurationRecord(cx *engine.ExecutionContext, v engine.Value) duration.Dura
 	any := false
 	// The fields in the alphabetical order of their names.
 	for _, i := range []int{duration.Days, duration.Hours, duration.Microseconds, duration.Milliseconds, duration.Minutes, duration.Months, duration.Nanoseconds, duration.Seconds, duration.Weeks, duration.Years} {
-		x := cx.Get(o, engine.NamedKey(cx.Intern(wtf8.String(duration.Units[i]))))
+		x := cx.Get(o, storage.NamedKey(cx.Intern(wtf8.String(duration.Units[i]))))
 		if x.IsUndefined() {
 			continue
 		}
@@ -163,12 +164,12 @@ func newDurationFormat(cx *engine.ExecutionContext, this engine.Value, args []en
 		cx.ThrowTypeError("constructor Intl.DurationFormat requires 'new'")
 	}
 	proto := cx.GetPrototypeFromConstructor(nt, engine.IntrinsicIntlDurationFormatPrototype)
-	return engine.ObjectValue(cx.NewIntlObject(proto, createDurationFormat(cx, arg(args, 0), arg(args, 1))))
+	return storage.ObjectValue(cx.NewIntlObject(proto, createDurationFormat(cx, arg(args, 0), arg(args, 1))))
 }
 
 // thisDurationFormat implements RequireInternalSlot for an Intl.DurationFormat.
 func thisDurationFormat(cx *engine.ExecutionContext, this engine.Value, name string) *durationFormatData {
-	df, ok := engine.IntlData(this).(*durationFormatData)
+	df, ok := storage.IntlData(this).(*durationFormatData)
 	if !ok {
 		cx.ThrowTypeError("Intl.DurationFormat.prototype." + name + " called on an object that is not an Intl.DurationFormat")
 	}
@@ -215,7 +216,7 @@ func durationFormatResolvedOptions(cx *engine.ExecutionContext, this engine.Valu
 	}
 	out := resolvedOptions(cx, kv...)
 	if o.FractionalDigits >= 0 {
-		cx.CreateDataPropertyOrThrow(out.Object(), engine.NamedKey(cx.Intern("fractionalDigits")), engine.Number(float64(o.FractionalDigits)))
+		cx.CreateDataPropertyOrThrow(out.Object(), storage.NamedKey(cx.Intern("fractionalDigits")), storage.Number(float64(o.FractionalDigits)))
 	}
 	return out
 }

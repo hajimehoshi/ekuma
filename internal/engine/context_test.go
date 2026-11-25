@@ -9,6 +9,7 @@ import (
 
 	"github.com/hajimehoshi/ekuma/internal/builtin"
 	"github.com/hajimehoshi/ekuma/internal/engine"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 )
 
 func TestExecutionContextHostReentry(t *testing.T) {
@@ -38,12 +39,12 @@ func TestExecutionContextHostReentry(t *testing.T) {
 								t.Error("iterator step did not restore C on throw")
 							}
 						}()
-						outer.IteratorStepValue(engine.Undefined, args[0])
+						outer.IteratorStepValue(storage.Undefined, args[0])
 					case "interrupt":
 						cx.Interrupt(stop)
 						cx.Poll()
 					}
-					return engine.Undefined
+					return storage.Undefined
 				})
 				c.Define(c.GlobalObject().Object(), c.Intern("probe"), probe, engine.FlagsData)
 				var err error
@@ -62,7 +63,7 @@ func TestExecutionContextHostReentry(t *testing.T) {
 							t.Error("return from C did not restore running B and entered A")
 						}
 					}()
-					v, err := cx.HostCall(inner, engine.Undefined, nil)
+					v, err := cx.HostCall(inner, storage.Undefined, nil)
 					if ex, ok := errors.AsType[*engine.Error](err); ok {
 						cx.Throw(ex.Value)
 					}
@@ -72,7 +73,7 @@ func TestExecutionContextHostReentry(t *testing.T) {
 					return v
 				})
 			})
-			v, err := a.HostConstruct(engine.ObjectValue(ctor), nil)
+			v, err := a.HostConstruct(storage.ObjectValue(ctor), nil)
 			switch outcome {
 			case "return", "allocate":
 				if err != nil {
@@ -118,9 +119,9 @@ func TestSameRealmContextCallAllocations(t *testing.T) {
 	}
 	cx, _ := engine.NewExecutionContext(nil)
 	f := cx.NewFunction("noop", func(*engine.ExecutionContext, engine.Value, []engine.Value) engine.Value {
-		return engine.Undefined
+		return storage.Undefined
 	}).Object()
-	if got := testing.AllocsPerRun(100, func() { cx.Call(f, engine.Undefined) }); got != 0 {
+	if got := testing.AllocsPerRun(100, func() { cx.Call(f, storage.Undefined) }); got != 0 {
 		t.Errorf("same-realm native call allocated %v times, want 0", got)
 	}
 }

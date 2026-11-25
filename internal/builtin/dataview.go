@@ -6,6 +6,7 @@ package builtin
 import (
 	"github.com/hajimehoshi/ekuma/internal/element"
 	"github.com/hajimehoshi/ekuma/internal/engine"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 )
 
 func thisDataView(cx *engine.ExecutionContext, this engine.Value, what string) *engine.DataView {
@@ -126,24 +127,24 @@ func dataViewConstructor(cx *engine.ExecutionContext, this engine.Value, args []
 	if !length.IsUndefined() && offset+viewLength > int64(b.ByteLength()) {
 		cx.ThrowRangeError("invalid DataView length " + itoa(viewLength))
 	}
-	return engine.ObjectValue(cx.NewDataViewObject(p, buf.Object(), int(offset), int(viewLength)))
+	return storage.ObjectValue(cx.NewDataViewObject(p, buf.Object(), int(offset), int(viewLength)))
 }
 
 func dataViewBuffer(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-	return engine.ObjectValue(thisDataView(cx, this, "buffer").Buffer())
+	return storage.ObjectValue(thisDataView(cx, this, "buffer").Buffer())
 }
 
 func dataViewByteLength(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	n, _ := thisDataView(cx, this, "byteLength").ByteLength()
-	return engine.Number(float64(n))
+	return storage.Number(float64(n))
 }
 
 func dataViewByteOffset(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	d := thisDataView(cx, this, "byteOffset")
 	if _, ok := d.ByteLength(); !ok {
-		return engine.Number(0)
+		return storage.Number(0)
 	}
-	return engine.Number(float64(d.ByteOffset()))
+	return storage.Number(float64(d.ByteOffset()))
 }
 
 var (
@@ -167,7 +168,7 @@ func dataViewGetNative(name string, typ element.Type) engine.NativeFunc {
 	return func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		d := thisDataView(cx, this, name)
 		i := toIndex(cx, arg(args, 0))
-		le := engine.ToBoolean(arg(args, 1))
+		le := storage.ToBoolean(arg(args, 1))
 		return loadViewElement(cx, d, typ, i, le, name)
 	}
 }
@@ -192,13 +193,13 @@ var (
 func dataViewSetNative(name string, typ element.Type) engine.NativeFunc {
 	return func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		d := thisDataView(cx, this, name)
-		if engine.ArrayBufferData(engine.ObjectValue(d.Buffer())).IsImmutable() {
+		if engine.ArrayBufferData(storage.ObjectValue(d.Buffer())).IsImmutable() {
 			cx.ThrowTypeError("DataView.prototype." + name + ": the DataView is backed by an immutable ArrayBuffer")
 		}
 		i := toIndex(cx, arg(args, 0))
 		v := cx.ToElementValue(typ, arg(args, 1))
-		le := engine.ToBoolean(arg(args, 2))
+		le := storage.ToBoolean(arg(args, 2))
 		storeViewElement(cx, d, typ, i, v, le, name)
-		return engine.Undefined
+		return storage.Undefined
 	}
 }

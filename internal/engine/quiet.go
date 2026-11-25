@@ -3,7 +3,9 @@
 
 package engine
 
-import "github.com/hajimehoshi/ekuma/internal/wtf8"
+import (
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
+)
 
 // QuietContext binds operations that run no script or host code to one realm of an agent.
 // A shortcut must preserve the ordinary result and effects or decline before changing observable state.
@@ -18,8 +20,8 @@ func (cx *ExecutionContext) Quiet() QuietContext {
 	}
 }
 
-// quiet returns the quiet context of the realm that embeds r.
-func (r *realmPart) quiet() QuietContext {
+// quietContextOf returns the quiet context of the realm that embeds r.
+func quietContextOf(r *realmPart) QuietContext {
 	return QuietContext{
 		realm: r,
 	}
@@ -51,15 +53,15 @@ func (q QuietContext) Substring(s Value, start, end int) Value {
 }
 
 // CreationQuietContext is the quiet context of [CreationContext].
-func (o *Object) CreationQuietContext() QuietContext {
+func CreationQuietContext(o *Object) QuietContext {
 	return QuietContext{
-		realm: o.creationRealm(),
+		realm: o.CreationRealm(),
 	}
 }
 
 // Poll is [ExecutionContext.Poll].
 func (q QuietContext) Poll() {
-	q.realm.poll()
+	q.realm.Poll()
 }
 
 // Intrinsic is [ExecutionContext.Intrinsic].
@@ -90,7 +92,7 @@ func (q QuietContext) NewSetObject(proto *Object, data any) *Object {
 // hasPropertyPlain is HasProperty of o and the named key when finding out runs no code. ok is
 // false otherwise.
 func (q QuietContext) hasPropertyPlain(o, key *Object) (has, ok bool) {
-	switch q.realm.lookup(o, key).kind {
+	switch q.realm.Lookup(o, key).Kind {
 	case lookupSlot, lookupLength:
 		return true, true
 	case lookupAbsent, lookupNumericMiss:
@@ -102,14 +104,14 @@ func (q QuietContext) hasPropertyPlain(o, key *Object) (has, ok bool) {
 // lookupNamed finds the named property key on o and its prototype chain, as far as that runs no
 // code.
 func (q QuietContext) lookupNamed(o, key *Object) namedLookup {
-	return q.realm.lookup(o, key)
+	return q.realm.Lookup(o, key)
 }
 
 // delegates reports whether looking up a property that is not found on o and its prototype chain
 // can run code.
 func (q QuietContext) delegates(o *Object) bool {
-	for h := o; h != nil; h = h.shape.proto {
-		if h.shape.family == delegatedRoot {
+	for h := o; h != nil; h = h.Shape.Proto {
+		if h.Shape.Family == delegatedRoot {
 			return true
 		}
 	}
@@ -119,7 +121,7 @@ func (q QuietContext) delegates(o *Object) bool {
 // GetVWithoutCall is GetV(v, key) when that runs no code and does not throw. ok is false
 // otherwise.
 func (q QuietContext) GetVWithoutCall(v Value, key *Object) (val Value, ok bool) {
-	return q.realm.getVWithoutCall(v, key, nil)
+	return q.realm.GetVWithoutCall(v, key, nil)
 }
 
 // quietJobs provides the promise operations that run no script or host code. Their context stays
@@ -138,23 +140,23 @@ func (cx *ExecutionContext) quietJobs() quietJobs {
 // HasOwnMethod reports whether method is the value of the own data property key of o. It can
 // report false for an object with internal methods of its own.
 func (q QuietContext) HasOwnMethod(o, key, method *Object) bool {
-	return o.hasOwnMethod(key, method)
+	return o.HasOwnMethod(key, method)
 }
 
 // InheritsMethod reports whether o has no own property key, its prototype is proto, and method
 // is the value of the own data property key of proto. It can report false for an object with
 // internal methods of its own.
 func (q QuietContext) InheritsMethod(o, proto, key, method *Object) bool {
-	return o.inheritsMethod(proto, key, method)
+	return o.InheritsMethod(proto, key, method)
 }
 
 // AssignDataProperties copies the own enumerable properties of from to the empty object to as
 // Object.assign does, when that is known to run no code, and reports whether it did.
 func (q QuietContext) AssignDataProperties(to, from *Object) bool {
-	return q.realm.assignDataProperties(to, from)
+	return q.realm.AssignDataProperties(to, from)
 }
 
 // NumberToString returns Number::toString of n as a string value.
 func (q QuietContext) NumberToString(n float64) Value {
-	return q.realm.numberToString(n)
+	return q.realm.NumberToString(n)
 }

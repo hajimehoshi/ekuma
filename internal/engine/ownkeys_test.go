@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/hajimehoshi/ekuma/internal/engine"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 )
 
 func TestOwnKeysOfManyIndicesPoll(t *testing.T) {
@@ -28,7 +29,7 @@ func TestOwnKeysOfManyIndicesPoll(t *testing.T) {
 			cx.Interrupt(cause)
 			tc.list(cx, args[0].Object())
 			returned = true
-			return engine.Undefined
+			return storage.Undefined
 		})
 		if err := cx.HostSet(cx.GlobalObject(), cx.StringFromGo("list"), list); err != nil {
 			t.Fatalf("HostSet: %v", err)

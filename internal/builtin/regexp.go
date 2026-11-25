@@ -11,6 +11,7 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/engine"
 	"github.com/hajimehoshi/ekuma/internal/numconv"
 	"github.com/hajimehoshi/ekuma/internal/regexp"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 	"github.com/hajimehoshi/ekuma/internal/xstrings"
 )
@@ -37,7 +38,7 @@ func unmodifiedPattern(q engine.QuietContext, r *engine.Object) (regExpPattern, 
 
 // getFlags returns ToString(Get(r, "flags")).
 func getFlags(cx *engine.ExecutionContext, r *engine.Object) engine.Value {
-	return cx.ToStringValue(cx.Get(r, engine.NamedKey(cx.Key(engine.KeyFlags))))
+	return cx.ToStringValue(cx.Get(r, storage.NamedKey(cx.Key(engine.KeyFlags))))
 }
 
 // getMatchFlags reports whether ToString(Get(r, "flags")) contains g, and whether it contains u or v.
@@ -54,7 +55,7 @@ func getMatchFlags(cx *engine.ExecutionContext, r *engine.Object) (global, fullU
 func getLastIndex(cx *engine.ExecutionContext, r *engine.Object) int64 {
 	v, ok := cx.Quiet().RegExpLastIndex(r)
 	if !ok {
-		v = cx.Get(r, engine.NamedKey(cx.Key(engine.KeyLastIndex)))
+		v = cx.Get(r, storage.NamedKey(cx.Key(engine.KeyLastIndex)))
 	}
 	if v.IsNumber() {
 		return numericLastIndex(v.Number())
@@ -70,8 +71,8 @@ func numericLastIndex(n float64) int64 {
 }
 
 func setLastIndex(cx *engine.ExecutionContext, r *engine.Object, n int64) {
-	if !cx.Quiet().SetRegExpLastIndex(r, engine.Number(float64(n))) {
-		cx.Set(r, engine.NamedKey(cx.Key(engine.KeyLastIndex)), engine.Number(float64(n)))
+	if !cx.Quiet().SetRegExpLastIndex(r, storage.Number(float64(n))) {
+		cx.Set(r, storage.NamedKey(cx.Key(engine.KeyLastIndex)), storage.Number(float64(n)))
 	}
 }
 
@@ -129,7 +130,7 @@ func builtinExecRaw(cx *engine.ExecutionContext, r *engine.Object, s engine.Valu
 func capture(q engine.QuietContext, s engine.Value, caps []int, i int) engine.Value {
 	a, b := caps[2*i], caps[2*i+1]
 	if a < 0 {
-		return engine.Undefined
+		return storage.Undefined
 	}
 	if a == 0 && b == s.StringLength() {
 		return s
@@ -141,7 +142,7 @@ func capture(q engine.QuietContext, s engine.Value, caps []int, i int) engine.Va
 func groupsObject(cx *engine.ExecutionContext, re *regexp.Regexp, vals func(i int) engine.Value) engine.Value {
 	names := re.Names()
 	if len(names) == 0 {
-		return engine.Undefined
+		return storage.Undefined
 	}
 	g := cx.NewObject(nil)
 	matched := map[wtf8.String]bool{}
@@ -154,9 +155,9 @@ func groupsObject(cx *engine.ExecutionContext, re *regexp.Regexp, vals func(i in
 		if !v.IsUndefined() {
 			matched[name] = true
 		}
-		cx.CreateDataPropertyOrThrow(g, engine.NamedKey(cx.Intern(name)), v)
+		cx.CreateDataPropertyOrThrow(g, storage.NamedKey(cx.Intern(name)), v)
 	}
-	return engine.ObjectValue(g)
+	return storage.ObjectValue(g)
 }
 
 // builtinExec implements RegExpBuiltinExec.
@@ -165,7 +166,7 @@ func builtinExec(cx *engine.ExecutionContext, r *engine.Object, s engine.Value) 
 	lastIndex := getLastIndex(cx, r)
 	caps := builtinExecRaw(cx, r, s, lastIndex)
 	if caps == nil {
-		return engine.Null
+		return storage.Null
 	}
 	re := r.RegExpMatcher()
 	n := re.GroupCount()
@@ -190,26 +191,26 @@ func builtinExec(cx *engine.ExecutionContext, r *engine.Object, s engine.Value) 
 		pairs = make([]engine.Value, n+1)
 		for i := range pairs {
 			if caps[2*i] >= 0 {
-				pairs[i] = engine.ObjectValue(cx.NewArrayPair(
-					engine.Number(float64(caps[2*i])),
-					engine.Number(float64(caps[2*i+1])),
+				pairs[i] = storage.ObjectValue(cx.NewArrayPair(
+					storage.Number(float64(caps[2*i])),
+					storage.Number(float64(caps[2*i+1])),
 				))
 			}
 		}
 	}
-	index := engine.Number(float64(caps[0]))
+	index := storage.Number(float64(caps[0]))
 	groups := groupsObject(cx, re, func(i int) engine.Value {
 		v, _ := engine.Element(a, int64(i))
 		return v
 	})
 	if pairs == nil {
 		cx.DefineMatchResultProperties(a, index, s, groups)
-		return engine.ObjectValue(a)
+		return storage.ObjectValue(a)
 	}
 	ia := cx.NewArray(pairs)
-	cx.CreateDataPropertyOrThrow(ia, engine.NamedKey(cx.Key(engine.KeyGroups)), groupsObject(cx, re, func(i int) engine.Value { return pairs[i] }))
-	cx.DefineMatchResultPropertiesWithIndices(a, index, s, groups, engine.ObjectValue(ia))
-	return engine.ObjectValue(a)
+	cx.CreateDataPropertyOrThrow(ia, storage.NamedKey(cx.Key(engine.KeyGroups)), groupsObject(cx, re, func(i int) engine.Value { return pairs[i] }))
+	cx.DefineMatchResultPropertiesWithIndices(a, index, s, groups, storage.ObjectValue(ia))
+	return storage.ObjectValue(a)
 }
 
 // execMatch performs RegExpExec, returning capture indices or the result object, or both nil for no match.
@@ -217,11 +218,11 @@ func execMatch(cx *engine.ExecutionContext, r *engine.Object, s engine.Value) ([
 	var exec, index engine.Value
 	if cx.Quiet().UnmodifiedRegExpMatcher(r) != nil {
 		index, _ = cx.Quiet().RegExpLastIndex(r)
-		exec = engine.ObjectValue(cx.Intrinsic(engine.IntrinsicRegExpPrototypeExec))
+		exec = storage.ObjectValue(cx.Intrinsic(engine.IntrinsicRegExpPrototypeExec))
 	} else {
-		exec = cx.Get(r, engine.NamedKey(cx.Key(engine.KeyExec)))
+		exec = cx.Get(r, storage.NamedKey(cx.Key(engine.KeyExec)))
 		if exec.IsObject() && exec.Object() == cx.Intrinsic(engine.IntrinsicRegExpPrototypeExec) && r.RegExpMatcher() != nil {
-			if d, _ := cx.GetOwnProperty(r, engine.NamedKey(cx.Key(engine.KeyLastIndex))); d.Writable() {
+			if d, _ := cx.GetOwnProperty(r, storage.NamedKey(cx.Key(engine.KeyLastIndex))); d.Writable() {
 				index = d.Value()
 			}
 		}
@@ -248,7 +249,7 @@ func cloneRegExp(cx *engine.ExecutionContext, src wtf8.String, flags engine.Valu
 // regExpExecWith implements RegExpExec with the value of r.exec already read.
 func regExpExecWith(cx *engine.ExecutionContext, r *engine.Object, s engine.Value, exec engine.Value) engine.Value {
 	if exec.IsCallable() {
-		res := cx.Call(exec.Object(), engine.ObjectValue(r), s)
+		res := cx.Call(exec.Object(), storage.ObjectValue(r), s)
 		if !res.IsObject() && !res.IsNull() {
 			cx.ThrowTypeError("the result of a RegExp exec method must be an object or null")
 		}
@@ -262,7 +263,7 @@ func regExpExecWith(cx *engine.ExecutionContext, r *engine.Object, s engine.Valu
 
 // regExpExec implements RegExpExec.
 func regExpExec(cx *engine.ExecutionContext, r *engine.Object, s engine.Value) engine.Value {
-	exec := cx.Get(r, engine.NamedKey(cx.Key(engine.KeyExec)))
+	exec := cx.Get(r, storage.NamedKey(cx.Key(engine.KeyExec)))
 	return regExpExecWith(cx, r, s, exec)
 }
 
@@ -272,7 +273,7 @@ func isRegExp(cx *engine.ExecutionContext, v engine.Value) bool {
 		return false
 	}
 	if m := cx.GetV(v, cx.WellKnownSymbol(engine.SymbolMatch)); !m.IsUndefined() {
-		return engine.ToBoolean(m)
+		return storage.ToBoolean(m)
 	}
 	return v.Object().IsRegExpObject()
 }
@@ -284,10 +285,10 @@ func requireGlobalRegExp(cx *engine.ExecutionContext, o *engine.Object, name str
 	if m := cx.Quiet().UnmodifiedRegExpMatcher(o); m != nil {
 		global = m.Flags()&regexp.FlagGlobal != 0
 	} else {
-		if !isRegExp(cx, engine.ObjectValue(o)) {
+		if !isRegExp(cx, storage.ObjectValue(o)) {
 			return
 		}
-		flags := cx.GetV(engine.ObjectValue(o), cx.Intern("flags"))
+		flags := cx.GetV(storage.ObjectValue(o), cx.Intern("flags"))
 		cx.RequireObjectCoercible(flags, "String.prototype."+name)
 		global = strings.Contains(string(cx.ToString(flags)), "g")
 	}
@@ -303,7 +304,7 @@ func regExpCreate(cx *engine.ExecutionContext, p, f engine.Value) *engine.Object
 
 // speciesConstructor implements SpeciesConstructor.
 func speciesConstructor(cx *engine.ExecutionContext, o *engine.Object, def *engine.Object) *engine.Object {
-	c := cx.Get(o, engine.NamedKey(cx.Key(engine.KeyConstructor)))
+	c := cx.Get(o, storage.NamedKey(cx.Key(engine.KeyConstructor)))
 	if c.IsUndefined() {
 		return def
 	}
@@ -454,11 +455,11 @@ func regExpFlagNative(name string, flag regexp.Flags) engine.NativeFunc {
 		re := this.Object().RegExpMatcher()
 		if re == nil {
 			if this.Object() == cx.Intrinsic(engine.IntrinsicRegExpPrototype) {
-				return engine.Undefined
+				return storage.Undefined
 			}
 			cx.ThrowTypeError("RegExp.prototype." + name + " getter called on non-RegExp object")
 		}
-		return engine.Bool(re.Flags()&flag != 0)
+		return storage.Bool(re.Flags()&flag != 0)
 	}
 }
 
@@ -574,7 +575,7 @@ func regExpConstructor(cx *engine.ExecutionContext, this engine.Value, args []en
 		p, f = pattern, flags
 	}
 	o := cx.RegExpAlloc(nt)
-	return engine.ObjectValue(cx.RegExpInitialize(o, p, f))
+	return storage.ObjectValue(cx.RegExpInitialize(o, p, f))
 }
 
 func regExpExecMethod(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -593,13 +594,13 @@ func regExpTest(cx *engine.ExecutionContext, this engine.Value, args []engine.Va
 	r := thisObject(cx, this, "RegExp.prototype.test")
 	s := cx.ToStringValue(arg(args, 0))
 	caps, result := execMatch(cx, r, s)
-	return engine.Bool(caps != nil || result != nil)
+	return storage.Bool(caps != nil || result != nil)
 }
 
 func regExpToString(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	r := thisObject(cx, this, "RegExp.prototype.toString")
-	src := cx.ToString(cx.Get(r, engine.NamedKey(cx.Key(engine.KeySource))))
-	fl := cx.ToString(cx.Get(r, engine.NamedKey(cx.Key(engine.KeyFlags))))
+	src := cx.ToString(cx.Get(r, storage.NamedKey(cx.Key(engine.KeySource))))
+	fl := cx.ToString(cx.Get(r, storage.NamedKey(cx.Key(engine.KeyFlags))))
 	checkStringLength(cx, len(src)+len(fl)+2)
 	return cx.NewString(wtf8.Concat(wtf8.Concat("/"+src, "/"), fl))
 }
@@ -621,7 +622,7 @@ func regExpCompile(cx *engine.ExecutionContext, this engine.Value, args []engine
 		src, fl := pattern.Object().RegExpOriginal()
 		p, f = cx.NewString(src), cx.NewString(fl)
 	}
-	return engine.ObjectValue(cx.RegExpInitialize(o, p, f))
+	return storage.ObjectValue(cx.RegExpInitialize(o, p, f))
 }
 
 func regExpFlags(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -631,7 +632,7 @@ func regExpFlags(cx *engine.ExecutionContext, this engine.Value, args []engine.V
 	}
 	var f regexp.Flags
 	for _, fp := range flagProps {
-		if engine.ToBoolean(cx.Get(r, engine.NamedKey(cx.Key(fp.key)))) {
+		if storage.ToBoolean(cx.Get(r, storage.NamedKey(cx.Key(fp.key)))) {
 			f |= fp.flag
 		}
 	}
@@ -670,7 +671,7 @@ func regExpMatch(cx *engine.ExecutionContext, this engine.Value, args []engine.V
 		if caps != nil {
 			matchStr = capture(cx.Quiet(), s, caps, 0)
 		} else if result != nil {
-			matchStr = cx.ToStringValue(cx.Get(result, engine.IndexKey(0)))
+			matchStr = cx.ToStringValue(cx.Get(result, storage.IndexKey(0)))
 		} else {
 			break
 		}
@@ -681,32 +682,32 @@ func regExpMatch(cx *engine.ExecutionContext, this engine.Value, args []engine.V
 		}
 	}
 	if len(out) == 0 {
-		return engine.Null
+		return storage.Null
 	}
-	return engine.ObjectValue(cx.NewArray(out))
+	return storage.ObjectValue(cx.NewArray(out))
 }
 
 // nativeRegExpStringIteratorNext is %RegExpStringIteratorPrototype%.next.
 var nativeRegExpStringIteratorNext = engine.RegisterIteratorNext(engine.IteratorMethodRealm, regExpStringIteratorStep)
 
 func regExpStringIteratorStep(cx *engine.ExecutionContext, this engine.Value) (engine.Value, bool) {
-	st, ok := engine.IteratorState(this).(*regexpStringIterator)
+	st, ok := storage.IteratorState(this).(*regexpStringIterator)
 	if !ok {
 		cx.ThrowTypeError("%RegExpStringIteratorPrototype%.next requires that 'this' be a RegExp String Iterator")
 	}
 	if st.done {
-		return engine.Undefined, false
+		return storage.Undefined, false
 	}
 	m := regExpExec(cx, st.r, st.s)
 	if m.IsNull() {
 		st.done = true
-		return engine.Undefined, false
+		return storage.Undefined, false
 	}
 	if !st.global {
 		st.done = true
 		return m, true
 	}
-	if cx.ToString(cx.Get(m.Object(), engine.IndexKey(0))) == "" {
+	if cx.ToString(cx.Get(m.Object(), storage.IndexKey(0))) == "" {
 		i := getLastIndex(cx, st.r)
 		setLastIndex(cx, st.r, advanceStringIndex(st.s, i, st.fullUnicode))
 	}
@@ -724,12 +725,12 @@ func regExpMatchAll(cx *engine.ExecutionContext, this engine.Value, args []engin
 	} else {
 		c := speciesConstructor(cx, r, cx.Intrinsic(engine.IntrinsicRegExp))
 		flags = getFlags(cx, r)
-		matcher = cx.Construct(c, []engine.Value{engine.ObjectValue(r), flags}, c)
+		matcher = cx.Construct(c, []engine.Value{storage.ObjectValue(r), flags}, c)
 	}
 	lastIndex := getLastIndex(cx, r)
 	setLastIndex(cx, matcher, lastIndex)
 	fl := flags.Str()
-	return engine.ObjectValue(cx.NewIteratorObject(cx.Intrinsic(engine.IntrinsicRegExpStringIteratorPrototype), &regexpStringIterator{
+	return storage.ObjectValue(cx.NewIteratorObject(cx.Intrinsic(engine.IntrinsicRegExpStringIteratorPrototype), &regexpStringIterator{
 		r:           matcher,
 		s:           s,
 		global:      strings.Contains(string(fl), "g"),
@@ -746,21 +747,21 @@ func regExpReplaceMethod(cx *engine.ExecutionContext, this engine.Value, args []
 func regExpSearch(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	rx := thisObject(cx, this, "RegExp.prototype[Symbol.search]")
 	s := cx.ToStringValue(arg(args, 0))
-	key := engine.NamedKey(cx.Key(engine.KeyLastIndex))
+	key := storage.NamedKey(cx.Key(engine.KeyLastIndex))
 	prev := cx.Get(rx, key)
-	if !engine.SameValue(prev, engine.Number(0)) {
-		cx.Set(rx, key, engine.Number(0))
+	if !storage.SameValue(prev, storage.Number(0)) {
+		cx.Set(rx, key, storage.Number(0))
 	}
-	index := engine.Number(-1)
+	index := storage.Number(-1)
 	caps, result := execMatch(cx, rx, s)
 	if caps != nil {
-		index = engine.Number(float64(caps[0]))
+		index = storage.Number(float64(caps[0]))
 	}
-	if cur := cx.Get(rx, key); !engine.SameValue(cur, prev) {
+	if cur := cx.Get(rx, key); !storage.SameValue(cur, prev) {
 		cx.Set(rx, key, prev)
 	}
 	if result != nil {
-		index = cx.Get(result, engine.NamedKey(cx.Key(engine.KeyIndex)))
+		index = cx.Get(result, storage.NamedKey(cx.Key(engine.KeyIndex)))
 	}
 	return index
 }
@@ -850,7 +851,7 @@ func regExpReplace(cx *engine.ExecutionContext, rx *engine.Object, s engine.Valu
 		} else {
 			results = append(results, match{res: res})
 			if global {
-				empty = cx.ToString(cx.Get(res, engine.IndexKey(0))) == ""
+				empty = cx.ToString(cx.Get(res, storage.IndexKey(0))) == ""
 			}
 		}
 		if !global {
@@ -881,15 +882,15 @@ func regExpReplace(cx *engine.ExecutionContext, rx *engine.Object, s engine.Valu
 			for i := range captures {
 				captures[i] = capture(cx.Quiet(), s, caps, i+1)
 			}
-			named = engine.Undefined
+			named = storage.Undefined
 			if len(re.Names()) > 0 && (functional || strings.Contains(string(template), "$<")) {
 				named = groupsObject(cx, re, func(i int) engine.Value { return captures[i-1] })
 			}
 		} else {
 			res := r.res
 			n := max(cx.LengthOfArrayLike(res)-1, 0)
-			matched = cx.ToString(cx.Get(res, engine.IndexKey(0)))
-			p := cx.ToIntegerOrInfinity(cx.Get(res, engine.NamedKey(cx.Key(engine.KeyIndex))))
+			matched = cx.ToString(cx.Get(res, storage.IndexKey(0)))
+			p := cx.ToIntegerOrInfinity(cx.Get(res, storage.NamedKey(cx.Key(engine.KeyIndex))))
 			position = int(math.Max(math.Min(p, float64(length)), 0))
 			captures = make([]engine.Value, n)
 			for i := range captures {
@@ -899,11 +900,11 @@ func regExpReplace(cx *engine.ExecutionContext, rx *engine.Object, s engine.Valu
 				}
 				captures[i] = c
 			}
-			named = cx.Get(res, engine.NamedKey(cx.Key(engine.KeyGroups)))
+			named = cx.Get(res, storage.NamedKey(cx.Key(engine.KeyGroups)))
 		}
 		if !functional {
 			if !named.IsUndefined() {
-				named = engine.ObjectValue(cx.ToObject(named))
+				named = storage.ObjectValue(cx.ToObject(named))
 			}
 			if position < next {
 				// The replacement is unused, but computing it can run JavaScript.
@@ -919,11 +920,11 @@ func regExpReplace(cx *engine.ExecutionContext, rx *engine.Object, s engine.Valu
 		callArgs := make([]engine.Value, 0, len(captures)+4)
 		callArgs = append(callArgs, cx.NewString(matched))
 		callArgs = append(callArgs, captures...)
-		callArgs = append(callArgs, engine.Number(float64(position)), s)
+		callArgs = append(callArgs, storage.Number(float64(position)), s)
 		if !named.IsUndefined() {
 			callArgs = append(callArgs, named)
 		}
-		replacement := cx.ToString(cx.Call(replaceValue.Object(), engine.Undefined, callArgs...))
+		replacement := cx.ToString(cx.Call(replaceValue.Object(), storage.Undefined, callArgs...))
 		if position >= next {
 			writeLimited(cx, &b, s.Substring(next, position))
 			writeLimited(cx, &b, replacement)
@@ -955,7 +956,7 @@ func substituteMatch(cx *engine.ExecutionContext, b *wtf8.Builder, re *regexp.Re
 		}
 		return caps[1]
 	}
-	named := engine.Undefined
+	named := storage.Undefined
 	if len(re.Names()) > 0 && strings.Contains(string(template), "$<") {
 		named = groupsObject(cx, re, func(i int) engine.Value { return capture(cx.Quiet(), s, caps, i) })
 	}
@@ -983,14 +984,14 @@ func regExpSplit(cx *engine.ExecutionContext, rx *engine.Object, s engine.Value,
 		if !strings.Contains(string(flags), "y") {
 			newFlags += "y"
 		}
-		splitter = cx.Construct(c, []engine.Value{engine.ObjectValue(rx), cx.NewString(newFlags)}, c)
+		splitter = cx.Construct(c, []engine.Value{storage.ObjectValue(rx), cx.NewString(newFlags)}, c)
 	}
 	lim := uint32(math.MaxUint32)
 	if !limit.IsUndefined() {
 		lim = cx.ToUint32(limit)
 	}
 	if lim == 0 {
-		return engine.ObjectValue(cx.NewArray(nil))
+		return storage.ObjectValue(cx.NewArray(nil))
 	}
 	// When the splitter is a RegExp object that no code can see, and its exec is the original
 	// one, searching for the next match is the same as trying every position. The matcher of rx
@@ -1013,9 +1014,9 @@ func regExpSplit(cx *engine.ExecutionContext, rx *engine.Object, s engine.Value,
 	if size == 0 {
 		caps, result := execMatch(cx, splitter, s)
 		if caps != nil || result != nil {
-			return engine.ObjectValue(cx.NewArray(nil))
+			return storage.ObjectValue(cx.NewArray(nil))
 		}
-		return engine.ObjectValue(cx.NewArray([]engine.Value{s}))
+		return storage.ObjectValue(cx.NewArray([]engine.Value{s}))
 	}
 	var out []engine.Value
 	p, q := 0, 0
@@ -1033,36 +1034,36 @@ func regExpSplit(cx *engine.ExecutionContext, rx *engine.Object, s engine.Value,
 		}
 		out = append(out, cx.Substring(s, p, q))
 		if uint32(len(out)) == lim {
-			return engine.ObjectValue(cx.NewArray(out))
+			return storage.ObjectValue(cx.NewArray(out))
 		}
 		p = end
 		n := max(cx.LengthOfArrayLike(z.Object())-1, 0)
 		for i := int64(1); i <= n; i++ {
 			out = append(out, getAt(cx, z.Object(), i))
 			if uint32(len(out)) == lim {
-				return engine.ObjectValue(cx.NewArray(out))
+				return storage.ObjectValue(cx.NewArray(out))
 			}
 		}
 		q = p
 	}
 	out = append(out, cx.Substring(s, p, size))
-	return engine.ObjectValue(cx.NewArray(out))
+	return storage.ObjectValue(cx.NewArray(out))
 }
 
 // splitUnmodified returns the array of at most lim strings that splitting s by the matches of re
 // makes, when [engine.QuietContext.UnmodifiedRegExpMatcher] accepts r. It reports false otherwise.
 func splitUnmodified(qx engine.QuietContext, r *engine.Object, re *regexp.Regexp, s engine.Value, lim uint32, unicodeMatching bool) (engine.Value, bool) {
 	if qx.UnmodifiedRegExpMatcher(r) == nil {
-		return engine.Undefined, false
+		return storage.Undefined, false
 	}
 	size := s.StringLength()
 	if size == 0 {
 		// The splitter is sticky and its lastIndex is 0, so it can only match at 0.
 		if caps := qx.FindRegExp(re, s, 0); caps != nil {
 			qx.UpdateLegacyRegExpStaticProperties(s, caps)
-			return engine.ObjectValue(qx.NewArray(nil)), true
+			return storage.ObjectValue(qx.NewArray(nil)), true
 		}
-		return engine.ObjectValue(qx.NewArray([]engine.Value{s})), true
+		return storage.ObjectValue(qx.NewArray([]engine.Value{s})), true
 	}
 	var out []engine.Value
 	p, q := 0, 0
@@ -1080,19 +1081,19 @@ func splitUnmodified(qx engine.QuietContext, r *engine.Object, re *regexp.Regexp
 		}
 		out = append(out, qx.Substring(s, p, q))
 		if uint32(len(out)) == lim {
-			return engine.ObjectValue(qx.NewArray(out)), true
+			return storage.ObjectValue(qx.NewArray(out)), true
 		}
 		p = end
 		for i := 1; i < len(caps)/2; i++ {
 			out = append(out, capture(qx, s, caps, i))
 			if uint32(len(out)) == lim {
-				return engine.ObjectValue(qx.NewArray(out)), true
+				return storage.ObjectValue(qx.NewArray(out)), true
 			}
 		}
 		q = p
 	}
 	out = append(out, qx.Substring(s, p, size))
-	return engine.ObjectValue(qx.NewArray(out)), true
+	return storage.ObjectValue(qx.NewArray(out)), true
 }
 
 // substCaptures is the captures of a match for GetSubstitution. They are vals, which holds
@@ -1360,7 +1361,7 @@ func legacyInputSetter(cx *engine.ExecutionContext, this engine.Value, args []en
 		throwIncompatibleLegacyStatic(cx, p, "setter")
 	}
 	cx.SetLegacyRegExpInput(cx.ToStringValue(arg(args, 0)))
-	return engine.Undefined
+	return storage.Undefined
 }
 
 // legacyMatchGetter is the getter of the properties other than input.

@@ -12,6 +12,7 @@ import (
 
 	"github.com/hajimehoshi/ekuma/internal/collection"
 	"github.com/hajimehoshi/ekuma/internal/engine"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
@@ -38,7 +39,7 @@ func seq(from, to int) []float64 {
 func TestCursorAcrossCompaction(t *testing.T) {
 	var tab collection.Table
 	for i := range 100 {
-		tab.Set(engine.Number(float64(i)), engine.Undefined)
+		tab.Set(storage.Number(float64(i)), storage.Undefined)
 	}
 	c := tab.Start()
 	if got := rest(&tab, &c); len(got) != 100 {
@@ -51,9 +52,9 @@ func TestCursorAcrossCompaction(t *testing.T) {
 	// Deleting most entries compacts the table several times, and a deleted key that is
 	// added again moves to the end.
 	for i := range 80 {
-		tab.Delete(engine.Number(float64(i)))
+		tab.Delete(storage.Number(float64(i)))
 	}
-	tab.Set(engine.Number(5), engine.Undefined)
+	tab.Set(storage.Number(5), storage.Undefined)
 	want := append(seq(80, 100), 5)
 	if got := rest(&tab, &c); !slices.Equal(got, want) {
 		t.Errorf("after compaction: got %v, want %v", got, want)
@@ -65,8 +66,8 @@ func TestCursorAcrossCompaction(t *testing.T) {
 	c = tab.Start()
 	tab.Next(&c)
 	tab.Clear()
-	tab.Set(engine.Number(1), engine.Undefined)
-	tab.Set(engine.Number(2), engine.Undefined)
+	tab.Set(storage.Number(1), storage.Undefined)
+	tab.Set(storage.Number(2), storage.Undefined)
 	if got, want := rest(&tab, &c), []float64{1, 2}; !slices.Equal(got, want) {
 		t.Errorf("after Clear: got %v, want %v", got, want)
 	}
@@ -78,24 +79,24 @@ func TestSameValueZero(t *testing.T) {
 	for _, filler := range []int{0, 20} {
 		var tab collection.Table
 		for i := range filler {
-			tab.Set(engine.Number(float64(1000+i)), engine.Undefined)
+			tab.Set(storage.Number(float64(1000+i)), storage.Undefined)
 		}
-		tab.Set(engine.Number(math.Copysign(0, -1)), engine.Number(1))
-		tab.Set(engine.Number(math.NaN()), engine.Number(2))
-		tab.Set(cx.NewString("key"), engine.Number(3))
-		o := engine.ObjectValue(cx.NewObject(nil))
-		tab.Set(o, engine.Number(4))
+		tab.Set(storage.Number(math.Copysign(0, -1)), storage.Number(1))
+		tab.Set(storage.Number(math.NaN()), storage.Number(2))
+		tab.Set(cx.NewString("key"), storage.Number(3))
+		o := storage.ObjectValue(cx.NewObject(nil))
+		tab.Set(o, storage.Number(4))
 
 		for _, tc := range []struct {
 			key  engine.Value
 			want float64
 		}{
 			{
-				key:  engine.Number(0),
+				key:  storage.Number(0),
 				want: 1,
 			},
 			{
-				key:  engine.Number(math.Float64frombits(0x7ff8_0000_dead_beef)),
+				key:  storage.Number(math.Float64frombits(0x7ff8_0000_dead_beef)),
 				want: 2,
 			},
 			{
@@ -113,7 +114,7 @@ func TestSameValueZero(t *testing.T) {
 				t.Errorf("filler %d: Get(%s) = %v, %t; want %v", filler, cx.DisplayString(tc.key), cx.DisplayString(v), ok, tc.want)
 			}
 		}
-		if tab.Has(engine.ObjectValue(cx.NewObject(nil))) {
+		if tab.Has(storage.ObjectValue(cx.NewObject(nil))) {
 			t.Errorf("filler %d: another object is found", filler)
 		}
 		c := tab.Start()
@@ -136,33 +137,33 @@ func TestSameValueZero(t *testing.T) {
 func TestSameValueZeroBigInts(t *testing.T) {
 	cx, _ := engine.NewExecutionContext(nil)
 	big64 := func() engine.Value {
-		return engine.NewBigInt(new(big.Int).Lsh(big.NewInt(1), 64))
+		return storage.NewBigInt(new(big.Int).Lsh(big.NewInt(1), 64))
 	}
 	// Below and above the size at which the table indexes its keys.
 	for _, filler := range []int{0, 20} {
 		var tab collection.Table
 		for i := range filler {
-			tab.Set(engine.Number(float64(1000+i)), engine.Undefined)
+			tab.Set(storage.Number(float64(1000+i)), storage.Undefined)
 		}
 		// The bits of -1n are those of a NaN, and the bits of the smallest int64 are those of -0.
-		tab.Set(engine.BigIntFromInt64(-1), engine.Number(1))
-		tab.Set(engine.BigIntFromInt64(math.MinInt64), engine.Number(2))
-		tab.Set(big64(), engine.Number(3))
-		tab.Set(engine.NewBigInt(new(big.Int).Neg(new(big.Int).Lsh(big.NewInt(1), 64))), engine.Number(4))
+		tab.Set(storage.BigIntFromInt64(-1), storage.Number(1))
+		tab.Set(storage.BigIntFromInt64(math.MinInt64), storage.Number(2))
+		tab.Set(big64(), storage.Number(3))
+		tab.Set(storage.NewBigInt(new(big.Int).Neg(new(big.Int).Lsh(big.NewInt(1), 64))), storage.Number(4))
 		// A key of many bits is stored and found quickly.
 		huge := new(big.Int).Lsh(big.NewInt(3), 1<<26)
-		tab.Set(engine.NewBigInt(huge), engine.Number(5))
+		tab.Set(storage.NewBigInt(huge), storage.Number(5))
 
 		for _, tc := range []struct {
 			key  engine.Value
 			want float64
 		}{
 			{
-				key:  engine.BigIntFromInt64(-1),
+				key:  storage.BigIntFromInt64(-1),
 				want: 1,
 			},
 			{
-				key:  engine.BigIntFromInt64(math.MinInt64),
+				key:  storage.BigIntFromInt64(math.MinInt64),
 				want: 2,
 			},
 			{
@@ -171,11 +172,11 @@ func TestSameValueZeroBigInts(t *testing.T) {
 				want: 3,
 			},
 			{
-				key:  engine.NewBigInt(new(big.Int).Neg(new(big.Int).Lsh(big.NewInt(1), 64))),
+				key:  storage.NewBigInt(new(big.Int).Neg(new(big.Int).Lsh(big.NewInt(1), 64))),
 				want: 4,
 			},
 			{
-				key:  engine.NewBigInt(new(big.Int).Set(huge)),
+				key:  storage.NewBigInt(new(big.Int).Set(huge)),
 				want: 5,
 			},
 		} {
@@ -184,7 +185,7 @@ func TestSameValueZeroBigInts(t *testing.T) {
 				t.Errorf("filler %d: Get of %d bits = %v, %t; want %v", filler, tc.key.BigInt().BitLen(), cx.DisplayString(v), ok, tc.want)
 			}
 		}
-		if tab.Has(engine.BigIntFromInt64(0)) {
+		if tab.Has(storage.BigIntFromInt64(0)) {
 			t.Errorf("filler %d: 0n is found", filler)
 		}
 	}
@@ -198,7 +199,7 @@ func TestFindAfterDeletes(t *testing.T) {
 	key := func(i int) engine.Value {
 		switch i % 3 {
 		case 0:
-			return engine.Number(float64(i))
+			return storage.Number(float64(i))
 		case 1:
 			return cx.NewString(wtf8.String(strconv.Itoa(i)))
 		default:
@@ -215,7 +216,7 @@ func TestFindAfterDeletes(t *testing.T) {
 	}
 	var tab collection.Table
 	for i := range 300 {
-		tab.Set(key(i), engine.Number(float64(i)))
+		tab.Set(key(i), storage.Number(float64(i)))
 	}
 	// Too few deletions to compact the table.
 	for i := 0; i < 300; i += 4 {
@@ -223,7 +224,7 @@ func TestFindAfterDeletes(t *testing.T) {
 	}
 	check("after deletes", &tab, 300)
 	for i := 300; i < 1000; i++ {
-		tab.Set(key(i), engine.Number(float64(i)))
+		tab.Set(key(i), storage.Number(float64(i)))
 	}
 	check("after growth", &tab, 1000)
 	check("clone", tab.Clone(nil), 1000)
@@ -237,14 +238,14 @@ func TestGrowthByUnhashedKeys(t *testing.T) {
 	var numbers int
 	for i := range 1000 {
 		if tab.Size() == collection.EntryStorage(&tab) {
-			tab.Set(cx.NewString(wtf8.String("a key longer than sixteen bytes "+strconv.Itoa(i))), engine.Undefined)
+			tab.Set(cx.NewString(wtf8.String("a key longer than sixteen bytes "+strconv.Itoa(i))), storage.Undefined)
 			continue
 		}
-		tab.Set(engine.Number(float64(numbers)), engine.Undefined)
+		tab.Set(storage.Number(float64(numbers)), storage.Undefined)
 		numbers++
 	}
 	for i := range numbers + 1 {
-		if got, want := tab.Has(engine.Number(float64(i))), i < numbers; got != want {
+		if got, want := tab.Has(storage.Number(float64(i))), i < numbers; got != want {
 			t.Errorf("Has(%d) = %t, want %t", i, got, want)
 		}
 	}
@@ -254,16 +255,16 @@ func TestGrowthByUnhashedKeys(t *testing.T) {
 func TestStorageShrinks(t *testing.T) {
 	var tab collection.Table
 	for i := range 10000 {
-		tab.Append(engine.Number(float64(i)), engine.Undefined)
+		tab.Append(storage.Number(float64(i)), storage.Undefined)
 	}
 	for i := range 9990 {
-		tab.Delete(engine.Number(float64(i)))
+		tab.Delete(storage.Number(float64(i)))
 	}
 	if got := collection.EntryStorage(&tab); got > 100 {
 		t.Errorf("got storage for %d entries, want at most 100", got)
 	}
 	// The entries left are still found.
-	if !tab.Has(engine.Number(9995)) {
+	if !tab.Has(storage.Number(9995)) {
 		t.Errorf("Has(9995) = false, want true")
 	}
 }
@@ -274,10 +275,10 @@ func TestReserveBeforeEntries(t *testing.T) {
 	var tab collection.Table
 	tab.Reserve(1000)
 	for i := range 10 {
-		tab.Set(engine.Number(float64(i)), engine.Undefined)
+		tab.Set(storage.Number(float64(i)), storage.Undefined)
 	}
 	for i := range 11 {
-		if got, want := tab.Has(engine.Number(float64(i))), i < 10; got != want {
+		if got, want := tab.Has(storage.Number(float64(i))), i < 10; got != want {
 			t.Errorf("Has(%d) = %t, want %t", i, got, want)
 		}
 	}
@@ -288,7 +289,7 @@ func TestCopyFromPolls(t *testing.T) {
 	var src collection.Table
 	n := 2 * engine.PollInterval
 	for i := range n {
-		src.Append(engine.Number(float64(i)), engine.Undefined)
+		src.Append(storage.Number(float64(i)), storage.Undefined)
 	}
 	var polls int
 	var dst collection.Table
@@ -301,18 +302,18 @@ func TestCopyFromPolls(t *testing.T) {
 	if got := dst.Size(); got != n {
 		t.Errorf("Size: got %d, want %d", got, n)
 	}
-	if !dst.Has(engine.Number(float64(n - 1))) {
+	if !dst.Has(storage.Number(float64(n - 1))) {
 		t.Errorf("Has(%d) = false, want true", n-1)
 	}
 }
 
 func TestCopyFromAfterDeletingAllEntries(t *testing.T) {
 	var src, dst collection.Table
-	src.Set(engine.Number(1), engine.Number(42))
-	dst.Set(engine.Number(2), engine.Undefined)
+	src.Set(storage.Number(1), storage.Number(42))
+	dst.Set(storage.Number(2), storage.Undefined)
 	cursor := dst.Start()
 	dst.Next(&cursor)
-	dst.Delete(engine.Number(2))
+	dst.Delete(storage.Number(2))
 	dst.CopyFrom(&src, nil)
 	key, value, ok := dst.Next(&cursor)
 	if !ok || key.Number() != 1 || value.Number() != 42 {
@@ -323,14 +324,14 @@ func TestCopyFromAfterDeletingAllEntries(t *testing.T) {
 func TestReserveAfterDeletingAllEntries(t *testing.T) {
 	var tab collection.Table
 	for i := range 8 {
-		tab.Set(engine.Number(float64(i)), engine.Undefined)
+		tab.Set(storage.Number(float64(i)), storage.Undefined)
 	}
 	for i := range 8 {
-		tab.Delete(engine.Number(float64(i)))
+		tab.Delete(storage.Number(float64(i)))
 	}
 	tab.Reserve(64)
 	for i := range 64 {
-		tab.Set(engine.Number(float64(i)), engine.Undefined)
+		tab.Set(storage.Number(float64(i)), storage.Undefined)
 	}
 	if got := tab.Size(); got != 64 {
 		t.Errorf("size = %d, want 64", got)
@@ -354,7 +355,7 @@ func TestShrinkGivesUpBlockPointers(t *testing.T) {
 			},
 			shrink: func(tab *collection.Table) {
 				for i := range left {
-					tab.Set(engine.Number(float64(i)), engine.Undefined)
+					tab.Set(storage.Number(float64(i)), storage.Undefined)
 				}
 				tab.Trim()
 			},
@@ -363,13 +364,13 @@ func TestShrinkGivesUpBlockPointers(t *testing.T) {
 			name: "compact",
 			fill: func(tab *collection.Table) {
 				for i := range peak {
-					tab.Set(engine.Number(float64(i)), engine.Undefined)
+					tab.Set(storage.Number(float64(i)), storage.Undefined)
 				}
 			},
 			shrink: func(tab *collection.Table) {
 				// Deleting most entries compacts the table.
 				for i := range peak - left {
-					tab.Delete(engine.Number(float64(i)))
+					tab.Delete(storage.Number(float64(i)))
 				}
 			},
 		},
@@ -397,9 +398,9 @@ func TestQueue(t *testing.T) {
 	var tab collection.Table
 	var most int
 	for i := range 100 * live {
-		tab.Set(engine.Number(float64(i)), engine.Undefined)
+		tab.Set(storage.Number(float64(i)), storage.Undefined)
 		if i >= live {
-			tab.Delete(engine.Number(float64(i - live)))
+			tab.Delete(storage.Number(float64(i - live)))
 		}
 		most = max(most, collection.EntryStorage(&tab))
 	}
@@ -411,7 +412,7 @@ func TestQueue(t *testing.T) {
 	}
 	var missing int
 	for i := 99 * live; i < 100*live; i++ {
-		if !tab.Has(engine.Number(float64(i))) {
+		if !tab.Has(storage.Number(float64(i))) {
 			missing++
 		}
 	}
@@ -424,21 +425,21 @@ func TestDeletedUndefinedKey(t *testing.T) {
 	for _, filler := range []int{0, 20} {
 		var tab collection.Table
 		for i := range filler {
-			tab.Set(engine.Number(float64(i)), engine.Undefined)
+			tab.Set(storage.Number(float64(i)), storage.Undefined)
 		}
-		tab.Set(engine.Undefined, engine.Undefined)
-		if !tab.Delete(engine.Undefined) {
+		tab.Set(storage.Undefined, storage.Undefined)
+		if !tab.Delete(storage.Undefined) {
 			t.Fatalf("filler %d: deleting undefined failed", filler)
 		}
-		if tab.Has(engine.Undefined) {
+		if tab.Has(storage.Undefined) {
 			t.Errorf("filler %d: deleted undefined key is still present", filler)
 		}
 		clone := tab.Clone(nil)
-		if clone.Has(engine.Undefined) {
+		if clone.Has(storage.Undefined) {
 			t.Errorf("filler %d: clone contains deleted undefined key", filler)
 		}
-		tab.Set(engine.Undefined, engine.Undefined)
-		if v, ok := tab.Get(engine.Undefined); !ok || !v.IsUndefined() {
+		tab.Set(storage.Undefined, storage.Undefined)
+		if v, ok := tab.Get(storage.Undefined); !ok || !v.IsUndefined() {
 			t.Errorf("filler %d: reinserted undefined key is missing or has the wrong value", filler)
 		}
 		c := tab.Start()
@@ -457,21 +458,21 @@ func TestDeletedUndefinedKey(t *testing.T) {
 func TestCursorAfterFrontDeletes(t *testing.T) {
 	var tab collection.Table
 	for i := range 20 {
-		tab.Set(engine.Number(float64(i)), engine.Undefined)
+		tab.Set(storage.Number(float64(i)), storage.Undefined)
 	}
 	c := tab.Start()
 	tab.Next(&c)
 	tab.Next(&c)
 	// Too few deletions to compact the table: the deleted entries stay in place.
 	for _, k := range []float64{0, 1, 2, 3, 4, 7, 5, 6} {
-		tab.Delete(engine.Number(k))
+		tab.Delete(storage.Number(k))
 	}
 	if got, want := rest(&tab, &c), seq(8, 20); !slices.Equal(got, want) {
 		t.Errorf("after deleting the first entries: got %v, want %v", got, want)
 	}
 	tab.Clear()
-	tab.Set(engine.Number(1), engine.Undefined)
-	tab.Set(engine.Number(2), engine.Undefined)
+	tab.Set(storage.Number(1), storage.Undefined)
+	tab.Set(storage.Number(2), storage.Undefined)
 	c = tab.Start()
 	if got, want := rest(&tab, &c), []float64{1, 2}; !slices.Equal(got, want) {
 		t.Errorf("after Clear: got %v, want %v", got, want)

@@ -6,6 +6,7 @@ package ekuma
 import (
 	"github.com/hajimehoshi/ekuma/internal/builtin"
 	"github.com/hajimehoshi/ekuma/internal/engine"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
@@ -85,13 +86,13 @@ func (r *Realm) NewArrayBuffer(b []byte) Value {
 	}
 	cx := r.context()
 	proto := cx.Intrinsic(engine.IntrinsicArrayBufferPrototype)
-	return fromEngine(engine.ObjectValue(cx.NewHostArrayBufferObject(proto, b)))
+	return fromEngine(storage.ObjectValue(cx.NewHostArrayBufferObject(proto, b)))
 }
 
 // NewPromise returns a new pending promise of r and the resolver that settles it.
 func (r *Realm) NewPromise() (Value, *PromiseResolver) {
 	cx := r.context()
-	c := cx.NewPromiseCapability(engine.ObjectValue(cx.Intrinsic(engine.IntrinsicPromise)))
+	c := cx.NewPromiseCapability(storage.ObjectValue(cx.Intrinsic(engine.IntrinsicPromise)))
 	return fromEngine(c.Promise()), &PromiseResolver{
 		realm: r,
 		c:     c,

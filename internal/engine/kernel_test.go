@@ -14,6 +14,7 @@ import (
 
 	"github.com/hajimehoshi/ekuma/internal/builtin"
 	"github.com/hajimehoshi/ekuma/internal/engine"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 )
 
 // kernelProbes defines the operands that the shortcuts are tested with.
@@ -160,7 +161,7 @@ func (k *kernelTest) run(s *engine.Shortcut, f, site engine.Value, args ...engin
 		k.subject, k.raise = nil, false
 		k.cx.ClearInterrupt()
 	}()
-	return k.cx.HostCall(f, engine.Undefined, append([]engine.Value{site, s.Func}, args...))
+	return k.cx.HostCall(f, storage.Undefined, append([]engine.Value{site, s.Func}, args...))
 }
 
 // probe is run for a function f that returns a description.
@@ -378,8 +379,8 @@ func (k *kernelTest) withHostHooks(t *testing.T, f func()) {
 	newHook := k.eval(t, "name => hook(name)")
 	h := &hostHooks{
 		call: func(name string) {
-			hook := k.cx.Call(newHook.Object(), engine.Undefined, k.cx.StringFromGo(name))
-			k.cx.Call(hook.Object(), engine.Undefined)
+			hook := k.cx.Call(newHook.Object(), storage.Undefined, k.cx.StringFromGo(name))
+			k.cx.Call(hook.Object(), storage.Undefined)
 		},
 	}
 	k.cx.SetClock(func() time.Time {
@@ -402,7 +403,7 @@ func (k *kernelTest) testPending(t *testing.T, s *engine.Shortcut, form string, 
 	site := k.sites(t, pendingSites)[len(keys)-1]
 	raise := k.cx.NewFunction("raise", func(cx *engine.ExecutionContext, _ engine.Value, _ []engine.Value) engine.Value {
 		cx.Interrupt(errKernelInterrupt)
-		return engine.Undefined
+		return storage.Undefined
 	})
 	f := k.eval(t, "(site, f, keys, raise) => site(f, raise, ...keys.map(k => operands[k]()))")
 	if _, err := k.run(s, f, site, k.array(keys), raise); !errors.Is(err, errKernelInterrupt) {
@@ -444,15 +445,15 @@ func (k *kernelTest) testSteps(t *testing.T, s *engine.Shortcut, form string) {
 	case "arrayIndex":
 		site = k.eval(t, "indexedArraySite")
 		probe := k.eval(t, "probeIndexedArray")
-		got := k.probe(t, s, probe, site, engine.False)
+		got := k.probe(t, s, probe, site, storage.False)
 		if !k.took(form) {
 			t.Errorf("indexed array getter did not take %s: %v", form, k.events)
 		}
-		want := k.probe(t, s, probe, site, engine.True)
+		want := k.probe(t, s, probe, site, storage.True)
 		if !k.declined(form) || got != want {
 			t.Errorf("indexed array getter gave %s, generic call gave %s with %v", got, want, k.events)
 		}
-		if !k.interrupted(t, s, probe, site, engine.False) || !k.interrupted(t, s, probe, site, engine.True) {
+		if !k.interrupted(t, s, probe, site, storage.False) || !k.interrupted(t, s, probe, site, storage.True) {
 			t.Error("indexed array getter did not honor the interruption")
 		}
 		return
@@ -467,7 +468,7 @@ func (k *kernelTest) testSteps(t *testing.T, s *engine.Shortcut, form string) {
 	var taken, hooks int
 	for _, key := range k.keys(t, "iterators") {
 		it := k.cx.StringFromGo(key)
-		got := k.probe(t, s, probe, site, it, engine.False)
+		got := k.probe(t, s, probe, site, it, storage.False)
 		if !slices.Contains(k.events, form+" start") {
 			t.Errorf("%s of %s: the form did not start: %v", form, key, k.events)
 		}
@@ -477,7 +478,7 @@ func (k *kernelTest) testSteps(t *testing.T, s *engine.Shortcut, form string) {
 				hooks++
 			}
 		}
-		want := k.probe(t, s, probe, site, it, engine.True)
+		want := k.probe(t, s, probe, site, it, storage.True)
 		if slices.ContainsFunc(k.events, func(e string) bool { return e != "native start" }) || len(k.events) == 0 {
 			t.Errorf("%s of %s: the generic step did not call next alone: %v", form, key, k.events)
 		}
@@ -496,14 +497,14 @@ func (k *kernelTest) testSteps(t *testing.T, s *engine.Shortcut, form string) {
 	f := k.eval(t, "(site, next, key, generic) => site(stepped(largeIterators[key](), next, generic))")
 	for _, key := range k.keys(t, "largeIterators") {
 		it := k.cx.StringFromGo(key)
-		if _, err := k.run(s, f, site, it, engine.False); err != nil || slices.Contains(k.events, "native start") {
+		if _, err := k.run(s, f, site, it, storage.False); err != nil || slices.Contains(k.events, "native start") {
 			// The iterator is not of the kind of next.
 			continue
 		}
-		got := k.interrupted(t, s, f, site, it, engine.False)
+		got := k.interrupted(t, s, f, site, it, storage.False)
 		// The step that was interrupted did not end.
 		polled = polled || got && !slices.Contains(k.events, form+" taken") && !slices.Contains(k.events, form+" declined")
-		if want := k.interrupted(t, s, f, site, it, engine.True); got != want {
+		if want := k.interrupted(t, s, f, site, it, storage.True); got != want {
 			t.Errorf("%s of %s was interrupted: %t, the call of next: %t", form, key, got, want)
 		}
 	}

@@ -3,12 +3,14 @@
 
 //go:build !js
 
-package engine
+package storage
 
-import "sync/atomic"
+import (
+	"sync/atomic"
+)
 
 // interruptFlag is the flag of a pending interruption.
 type interruptFlag = atomic.Bool
 
-// pollYield does nothing, as the other goroutines run without waiting for a yield.
-func (p *poller) pollYield() {}
+// PollYield does nothing, as the other goroutines run without waiting for a yield.
+func (p *Poller) PollYield() {}

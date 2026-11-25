@@ -12,6 +12,7 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/intl/locale"
 	"github.com/hajimehoshi/ekuma/internal/intl/number"
 	"github.com/hajimehoshi/ekuma/internal/localetag"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
@@ -44,7 +45,7 @@ func optionsObject(cx *engine.ExecutionContext, v engine.Value) *engine.Object {
 
 // getNumberOption implements GetNumberOption, with -1 for an undefined fallback.
 func getNumberOption(cx *engine.ExecutionContext, options *engine.Object, name string, minimum, maximum, fallback int) int {
-	return defaultNumberOption(cx, cx.Get(options, engine.NamedKey(cx.Intern(wtf8.String(name)))), name, minimum, maximum, fallback)
+	return defaultNumberOption(cx, cx.Get(options, storage.NamedKey(cx.Intern(wtf8.String(name)))), name, minimum, maximum, fallback)
 }
 
 // defaultNumberOption implements DefaultNumberOption, with -1 for an undefined fallback.
@@ -83,7 +84,7 @@ func supportedLocalesOf(cx *engine.ExecutionContext, this engine.Value, args []e
 // setDigitOptions implements SetNumberFormatDigitOptions.
 func setDigitOptions(cx *engine.ExecutionContext, d *number.Digits, slots *digitSlots, options *engine.Object, minFDDefault, maxFDDefault int, notation string) {
 	get := func(name string) engine.Value {
-		return cx.Get(options, engine.NamedKey(cx.Intern(wtf8.String(name))))
+		return cx.Get(options, storage.NamedKey(cx.Intern(wtf8.String(name))))
 	}
 	minInt := getNumberOption(cx, options, "minimumIntegerDigits", 1, 21, 1)
 	minFD := get("minimumFractionDigits")
@@ -298,11 +299,11 @@ func createNumberFormat(cx *engine.ExecutionContext, locales, opts engine.Value)
 	}
 	o.UseGrouping = defaultUseGrouping
 	nf.useGrouping = true
-	if v := cx.Get(options, engine.NamedKey(cx.Intern("useGrouping"))); !v.IsUndefined() {
+	if v := cx.Get(options, storage.NamedKey(cx.Intern("useGrouping"))); !v.IsUndefined() {
 		switch {
-		case v.IsBool() && engine.ToBoolean(v):
+		case v.IsBool() && storage.ToBoolean(v):
 			o.UseGrouping = "always"
-		case !engine.ToBoolean(v):
+		case !storage.ToBoolean(v):
 			o.UseGrouping = ""
 			nf.useGrouping = false
 		default:
@@ -338,16 +339,16 @@ func newNumberFormat(cx *engine.ExecutionContext, this engine.Value, args []engi
 	proto := cx.GetPrototypeFromConstructor(nt, engine.IntrinsicIntlNumberFormatPrototype)
 	nf := cx.NewIntlObject(proto, createNumberFormat(cx, arg(args, 0), arg(args, 1)))
 	// ChainNumberFormat.
-	if nt == nil && cx.OrdinaryHasInstance(engine.ObjectValue(cx.Intrinsic(engine.IntrinsicIntlNumberFormat)), this) {
+	if nt == nil && cx.OrdinaryHasInstance(storage.ObjectValue(cx.Intrinsic(engine.IntrinsicIntlNumberFormat)), this) {
 		var d engine.PropDesc
-		d.SetValue(engine.ObjectValue(nf))
+		d.SetValue(storage.ObjectValue(nf))
 		d.SetWritable(false)
 		d.SetEnumerable(false)
 		d.SetConfigurable(false)
-		cx.DefinePropertyOrThrow(this.Object(), engine.NamedKey(cx.IntlFallbackSymbol()), d)
+		cx.DefinePropertyOrThrow(this.Object(), storage.NamedKey(cx.IntlFallbackSymbol()), d)
 		return this
 	}
-	return engine.ObjectValue(nf)
+	return storage.ObjectValue(nf)
 }
 
 // unwrapNumberFormat implements UnwrapNumberFormat followed by the check of the internal
@@ -356,11 +357,11 @@ func unwrapNumberFormat(cx *engine.ExecutionContext, this engine.Value, name str
 	if !this.IsObject() {
 		cx.ThrowTypeError("Intl.NumberFormat.prototype." + name + " called on a value that is not an object")
 	}
-	if nf, ok := engine.IntlData(this).(*numberFormatData); ok {
+	if nf, ok := storage.IntlData(this).(*numberFormatData); ok {
 		return nf
 	}
-	if cx.OrdinaryHasInstance(engine.ObjectValue(cx.Intrinsic(engine.IntrinsicIntlNumberFormat)), this) {
-		if nf, ok := engine.IntlData(cx.Get(this.Object(), engine.NamedKey(cx.IntlFallbackSymbol()))).(*numberFormatData); ok {
+	if cx.OrdinaryHasInstance(storage.ObjectValue(cx.Intrinsic(engine.IntrinsicIntlNumberFormat)), this) {
+		if nf, ok := storage.IntlData(cx.Get(this.Object(), storage.NamedKey(cx.IntlFallbackSymbol()))).(*numberFormatData); ok {
 			return nf
 		}
 	}
@@ -370,7 +371,7 @@ func unwrapNumberFormat(cx *engine.ExecutionContext, this engine.Value, name str
 
 // thisNumberFormat implements RequireInternalSlot for an Intl.NumberFormat.
 func thisNumberFormat(cx *engine.ExecutionContext, this engine.Value, name string) *numberFormatData {
-	nf, ok := engine.IntlData(this).(*numberFormatData)
+	nf, ok := storage.IntlData(this).(*numberFormatData)
 	if !ok {
 		cx.ThrowTypeError("Intl.NumberFormat.prototype." + name + " called on an object that is not an Intl.NumberFormat")
 	}
@@ -381,9 +382,9 @@ func thisNumberFormat(cx *engine.ExecutionContext, this engine.Value, name strin
 // "value", and "source" for range parts.
 func partsArray(cx *engine.ExecutionContext, n int, part func(i int) (typ, value, source string)) engine.Value {
 	keys := [...]engine.PropKey{
-		engine.NamedKey(cx.Intern("type")),
-		engine.NamedKey(cx.Intern("value")),
-		engine.NamedKey(cx.Intern("source")),
+		storage.NamedKey(cx.Intern("type")),
+		storage.NamedKey(cx.Intern("value")),
+		storage.NamedKey(cx.Intern("source")),
 	}
 	vals := make([]engine.Value, n)
 	var p engine.Pacer
@@ -396,7 +397,7 @@ func partsArray(cx *engine.ExecutionContext, n int, part func(i int) (typ, value
 			props[2] = cx.NewString(wtf8.String(source))
 			propertyCount++
 		}
-		vals[i] = engine.ObjectValue(cx.NewObjectFromProperties(keys[:propertyCount], props[:propertyCount]))
+		vals[i] = storage.ObjectValue(cx.NewObjectFromProperties(keys[:propertyCount], props[:propertyCount]))
 	}
 	return cx.NewArrayOf(vals)
 }
@@ -459,7 +460,7 @@ func numberFormatFormat(cx *engine.ExecutionContext, this engine.Value, args []e
 	if nf.boundFormat == nil {
 		nf.boundFormat = cx.NewNativeWithState("", 1, nativeNumberFormatFunction, nf)
 	}
-	return engine.ObjectValue(nf.boundFormat)
+	return storage.ObjectValue(nf.boundFormat)
 }
 
 func numberFormatFormatRange(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -494,7 +495,7 @@ func (nf *numberFormatData) resolvedOptions(cx *engine.ExecutionContext) engine.
 	o := &nf.opts
 	out := cx.NewObject(cx.Intrinsic(engine.IntrinsicObjectPrototype))
 	set := func(name string, v engine.Value) {
-		cx.CreateDataPropertyOrThrow(out, engine.NamedKey(cx.Intern(wtf8.String(name))), v)
+		cx.CreateDataPropertyOrThrow(out, storage.NamedKey(cx.Intern(wtf8.String(name))), v)
 	}
 	str := func(name, v string) {
 		if v != "" {
@@ -502,7 +503,7 @@ func (nf *numberFormatData) resolvedOptions(cx *engine.ExecutionContext) engine.
 		}
 	}
 	num := func(name string, v int) {
-		set(name, engine.Number(float64(v)))
+		set(name, storage.Number(float64(v)))
 	}
 	str("locale", nf.locale)
 	str("numberingSystem", o.NumberingSystem)
@@ -524,7 +525,7 @@ func (nf *numberFormatData) resolvedOptions(cx *engine.ExecutionContext) engine.
 	if nf.useGrouping {
 		str("useGrouping", o.UseGrouping)
 	} else {
-		set("useGrouping", engine.Bool(false))
+		set("useGrouping", storage.Bool(false))
 	}
 	str("notation", o.Notation)
 	str("compactDisplay", o.CompactDisplay)
@@ -537,7 +538,7 @@ func (nf *numberFormatData) resolvedOptions(cx *engine.ExecutionContext) engine.
 	} else {
 		str("trailingZeroDisplay", "auto")
 	}
-	return engine.ObjectValue(out)
+	return storage.ObjectValue(out)
 }
 
 // formattedString returns the formatted string s, and throws a RangeError instead when it is
@@ -565,7 +566,7 @@ func initToLocaleString(cx *engine.ExecutionContext) {
 }
 
 func numberToLocaleString(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-	x, ok := engine.ThisNumberValue(this)
+	x, ok := storage.ThisNumberValue(this)
 	if !ok {
 		cx.ThrowTypeError("Number.prototype.toLocaleString requires that 'this' be a Number")
 	}
@@ -573,7 +574,7 @@ func numberToLocaleString(cx *engine.ExecutionContext, this engine.Value, args [
 }
 
 func bigIntToLocaleString(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-	x, ok := engine.ThisBigIntValue(this)
+	x, ok := storage.ThisBigIntValue(this)
 	if !ok {
 		cx.ThrowTypeError("BigInt.prototype.toLocaleString requires that 'this' be a BigInt")
 	}

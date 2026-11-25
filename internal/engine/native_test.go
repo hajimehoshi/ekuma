@@ -8,6 +8,7 @@ import (
 
 	"github.com/hajimehoshi/ekuma/internal/builtin"
 	"github.com/hajimehoshi/ekuma/internal/engine"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 )
 
 func TestNativeCallLimit(t *testing.T) {
@@ -20,8 +21,8 @@ func TestNativeCallLimit(t *testing.T) {
 		defer func() {
 			depth--
 		}()
-		cx.Call(nest.Object(), engine.Undefined)
-		return engine.Undefined
+		cx.Call(nest.Object(), storage.Undefined)
+		return storage.Undefined
 	})
 	if err := cx.HostSet(cx.GlobalObject(), cx.StringFromGo("nest"), nest); err != nil {
 		t.Fatalf("HostSet: %v", err)

@@ -6,6 +6,7 @@ package builtin
 import (
 	"github.com/hajimehoshi/ekuma/internal/engine"
 	"github.com/hajimehoshi/ekuma/internal/json"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 )
 
 var (
@@ -17,7 +18,7 @@ var (
 
 func initJSON(cx *engine.ExecutionContext) {
 	j := cx.NewOrdinaryObject()
-	cx.Define(cx.GlobalObject().Object(), cx.Intern("JSON"), engine.ObjectValue(j), engine.FlagsHidden)
+	cx.Define(cx.GlobalObject().Object(), cx.Intern("JSON"), storage.ObjectValue(j), engine.FlagsHidden)
 	cx.Define(j, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("JSON"), engine.FlagConfigurable)
 
 	parse := methodWithState(cx, j, "parse", 2, nativeJsonParse, &json.Parser{})
@@ -50,5 +51,5 @@ func jsonRawJSON(cx *engine.ExecutionContext, this engine.Value, args []engine.V
 }
 
 func jsonIsRawJSON(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-	return engine.Bool(json.IsRawJSON(arg(args, 0)))
+	return storage.Bool(json.IsRawJSON(arg(args, 0)))
 }

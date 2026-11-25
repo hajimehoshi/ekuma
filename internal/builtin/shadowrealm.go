@@ -5,6 +5,7 @@ package builtin
 
 import (
 	"github.com/hajimehoshi/ekuma/internal/engine"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
@@ -38,7 +39,7 @@ func shadowRealmConstructor(cx *engine.ExecutionContext, this engine.Value, args
 	r := cx.CreateRealm(func(cx *engine.ExecutionContext) {
 		Install(cx)
 	})
-	return engine.ObjectValue(cx.NewShadowRealmObject(p, r))
+	return storage.ObjectValue(cx.NewShadowRealmObject(p, r))
 }
 
 func shadowRealmEvaluate(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -85,8 +86,8 @@ func shadowRealmImportValue(cx *engine.ExecutionContext, specifier wtf8.String, 
 	}
 	onFulfilled := cx.NewNativeWithState("", 1, nativeShadowRealmExportGetter, st)
 	onRejected := cx.NewNativeWithState("", 1, nativeShadowRealmImportRejected, st)
-	c := cx.NewPromiseCapability(engine.ObjectValue(cx.Intrinsic(engine.IntrinsicPromise)))
-	return cx.PerformPromiseThen(engine.ObjectValue(inner), engine.ObjectValue(onFulfilled), engine.ObjectValue(onRejected), c)
+	c := cx.NewPromiseCapability(storage.ObjectValue(cx.Intrinsic(engine.IntrinsicPromise)))
+	return cx.PerformPromiseThen(storage.ObjectValue(inner), storage.ObjectValue(onFulfilled), storage.ObjectValue(onRejected), c)
 }
 
 // shadowRealmImport is the state of the functions that handle the result of an import in a
@@ -113,7 +114,7 @@ func shadowRealmExportGetter(cx *engine.ExecutionContext, this engine.Value, arg
 func shadowRealmImportRejected(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	st := cx.ActiveNativeState().(*shadowRealmImport)
 	cx.ThrowTypeError("cannot import '" + wtf8.ToValidUTF8(st.specifier) + "' in the ShadowRealm")
-	return engine.Undefined
+	return storage.Undefined
 }
 
 // getWrappedValue implements GetWrappedValue with the current realm as the caller realm.
@@ -124,7 +125,7 @@ func getWrappedValue(cx *engine.ExecutionContext, v engine.Value) engine.Value {
 	if !v.IsCallable() {
 		cx.ThrowTypeError("only primitives and callable objects can cross the boundary of a ShadowRealm")
 	}
-	return engine.ObjectValue(wrappedFunctionCreate(cx, v.Object()))
+	return storage.ObjectValue(wrappedFunctionCreate(cx, v.Object()))
 }
 
 // nativeWrappedFunction leads to the code that makes its function objects.

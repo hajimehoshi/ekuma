@@ -5,6 +5,7 @@ package builtin
 
 import (
 	"github.com/hajimehoshi/ekuma/internal/engine"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 )
 
 // disposableStack holds the internal slots of a DisposableStack or AsyncDisposableStack object.
@@ -23,11 +24,11 @@ func initDisposableStacks(cx *engine.ExecutionContext) {
 }
 
 func asyncIteratorAsyncDispose(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-	pc := cx.NewPromiseCapability(engine.ObjectValue(cx.Intrinsic(engine.IntrinsicPromise)))
+	pc := cx.NewPromiseCapability(storage.ObjectValue(cx.Intrinsic(engine.IntrinsicPromise)))
 	cx.IfAbruptRejectPromise(pc, func() {
 		m := cx.GetMethod(this, cx.Intern("return"))
 		if m == nil {
-			cx.ResolveCapability(pc, engine.Undefined)
+			cx.ResolveCapability(pc, storage.Undefined)
 			return
 		}
 		r := cx.Call(m, this)
@@ -36,7 +37,7 @@ func asyncIteratorAsyncDispose(cx *engine.ExecutionContext, this engine.Value, a
 				cx.RejectCapability(pc, v)
 				return
 			}
-			cx.ResolveCapability(pc, engine.Undefined)
+			cx.ResolveCapability(pc, storage.Undefined)
 		})
 	})
 	return pc.Promise()
@@ -63,13 +64,13 @@ func newDisposableStack(cx *engine.ExecutionContext, hint engine.DisposeHint, pr
 	s := &disposableStack{
 		dc: dc,
 	}
-	return engine.ObjectValue(cx.NewDisposableStackObject(proto, hint == engine.AsyncDispose, s))
+	return storage.ObjectValue(cx.NewDisposableStackObject(proto, hint == engine.AsyncDispose, s))
 }
 
 // thisDisposableStack returns the state of the stack this with hint, or throws a TypeError naming
 // the method.
 func thisDisposableStack(cx *engine.ExecutionContext, hint engine.DisposeHint, this engine.Value, method string) *disposableStack {
-	s, _ := engine.DisposableStackState(this, hint == engine.AsyncDispose).(*disposableStack)
+	s, _ := storage.DisposableStackState(this, hint == engine.AsyncDispose).(*disposableStack)
 	if s == nil {
 		cx.ThrowTypeError(disposableStackName(hint) + ".prototype." + method + " called on incompatible receiver " + cx.DisplayString(this))
 	}
@@ -96,7 +97,7 @@ type adoptedResource struct {
 // *adoptedResource.
 func disposeAdopted(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	r := cx.ActiveNativeState().(*adoptedResource)
-	return cx.Call(r.onDispose, engine.Undefined, r.value)
+	return cx.Call(r.onDispose, storage.Undefined, r.value)
 }
 
 var nativeDisposableStackDispose = engine.RegisterNative(disposableStackDispose)
@@ -109,7 +110,7 @@ func initDisposableStack(cx *engine.ExecutionContext) {
 	method(cx, proto, "adopt", 2, nativeDisposableStackAdopt)
 	method(cx, proto, "defer", 1, nativeDisposableStackDefer)
 	dispose := method(cx, proto, "dispose", 0, nativeDisposableStackDispose)
-	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolDispose), engine.ObjectValue(dispose), engine.FlagsHidden)
+	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolDispose), storage.ObjectValue(dispose), engine.FlagsHidden)
 	getter(cx, proto, cx.Intern("disposed"), "disposed", nativeDisposableStackDisposed)
 	method(cx, proto, "move", 0, nativeDisposableStackMove)
 	method(cx, proto, "use", 1, nativeDisposableStackUse)
@@ -128,12 +129,12 @@ var (
 func disposableStackDispose(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	s := thisDisposableStack(cx, engine.SyncDispose, this, "dispose")
 	if s.disposed {
-		return engine.Undefined
+		return storage.Undefined
 	}
 	s.disposed = true
 	var result engine.Value
 	var failed bool
-	cx.DisposeResources(s.dc, engine.Undefined, false, func(cx *engine.ExecutionContext, v engine.Value, thrown bool) {
+	cx.DisposeResources(s.dc, storage.Undefined, false, func(cx *engine.ExecutionContext, v engine.Value, thrown bool) {
 		result, failed = v, thrown
 	})
 	if failed {
@@ -152,7 +153,7 @@ func initAsyncDisposableStack(cx *engine.ExecutionContext) {
 	method(cx, proto, "adopt", 2, nativeAsyncDisposableStackAdopt)
 	method(cx, proto, "defer", 1, nativeAsyncDisposableStackDefer)
 	dispose := method(cx, proto, "disposeAsync", 0, nativeAsyncDisposableStackDisposeAsync)
-	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolAsyncDispose), engine.ObjectValue(dispose), engine.FlagsHidden)
+	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolAsyncDispose), storage.ObjectValue(dispose), engine.FlagsHidden)
 	getter(cx, proto, cx.Intern("disposed"), "disposed", nativeAsyncDisposableStackDisposed)
 	method(cx, proto, "move", 0, nativeAsyncDisposableStackMove)
 	method(cx, proto, "use", 1, nativeAsyncDisposableStackUse)
@@ -169,16 +170,16 @@ var (
 )
 
 func asyncDisposableStackDisposeAsync(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-	pc := cx.NewPromiseCapability(engine.ObjectValue(cx.Intrinsic(engine.IntrinsicPromise)))
-	s, _ := engine.DisposableStackState(this, true).(*disposableStack)
+	pc := cx.NewPromiseCapability(storage.ObjectValue(cx.Intrinsic(engine.IntrinsicPromise)))
+	s, _ := storage.DisposableStackState(this, true).(*disposableStack)
 	switch {
 	case s == nil:
 		cx.RejectCapability(pc, cx.NewError(engine.ErrorKindType, "AsyncDisposableStack.prototype.disposeAsync called on incompatible receiver "+cx.DisplayString(this)))
 	case s.disposed:
-		cx.ResolveCapability(pc, engine.Undefined)
+		cx.ResolveCapability(pc, storage.Undefined)
 	default:
 		s.disposed = true
-		cx.DisposeResources(s.dc, engine.Undefined, false, func(cx *engine.ExecutionContext, v engine.Value, thrown bool) {
+		cx.DisposeResources(s.dc, storage.Undefined, false, func(cx *engine.ExecutionContext, v engine.Value, thrown bool) {
 			if thrown {
 				cx.RejectCapability(pc, v)
 				return
@@ -218,7 +219,7 @@ func disposableStackAdoptNative(hint engine.DisposeHint) engine.NativeFunc {
 			value:     v,
 			onDispose: onDispose.Object(),
 		})
-		cx.AddDisposableResource(s.dc, engine.Undefined, hint, f)
+		cx.AddDisposableResource(s.dc, storage.Undefined, hint, f)
 		return v
 	}
 }
@@ -233,8 +234,8 @@ func disposableStackDeferNative(hint engine.DisposeHint) engine.NativeFunc {
 		if !onDispose.IsCallable() {
 			cx.ThrowTypeError(cx.DisplayString(onDispose) + " is not a function")
 		}
-		cx.AddDisposableResource(s.dc, engine.Undefined, hint, onDispose.Object())
-		return engine.Undefined
+		cx.AddDisposableResource(s.dc, storage.Undefined, hint, onDispose.Object())
+		return storage.Undefined
 	}
 }
 
@@ -243,7 +244,7 @@ func disposableStackDeferNative(hint engine.DisposeHint) engine.NativeFunc {
 //go:noinline
 func disposableStackDisposedNative(hint engine.DisposeHint) engine.NativeFunc {
 	return func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		return engine.Bool(thisDisposableStack(cx, hint, this, "disposed").disposed)
+		return storage.Bool(thisDisposableStack(cx, hint, this, "disposed").disposed)
 	}
 }
 

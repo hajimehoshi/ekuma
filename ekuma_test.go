@@ -20,6 +20,7 @@ import (
 
 	"github.com/hajimehoshi/ekuma"
 	"github.com/hajimehoshi/ekuma/internal/engine"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
@@ -3612,24 +3613,24 @@ func TestInlineStringBoundaries(t *testing.T) {
 			if got := cx.ToString(v); got != s {
 				t.Errorf("ToString = %q, want %q", got, s)
 			}
-			if !engine.IsStrictlyEqual(v, otherContext.NewString(s)) {
+			if !storage.IsStrictlyEqual(v, otherContext.NewString(s)) {
 				t.Error("equal strings from different VMs differ")
 			}
 			if len(s) > 0 {
 				different := []byte(s)
 				different[0] ^= 1
-				if engine.IsStrictlyEqual(v, cx.NewString(wtf8.String(different))) {
+				if storage.IsStrictlyEqual(v, cx.NewString(wtf8.String(different))) {
 					t.Error("different payloads compare equal")
 				}
 			}
-			boxed := engine.ObjectValue(v.Object())
-			if !engine.IsStrictlyEqual(v, boxed) {
+			boxed := storage.ObjectValue(v.Object())
+			if !storage.IsStrictlyEqual(v, boxed) {
 				t.Error("materialized value differs")
 			}
-			if engine.IsStrictlyEqual(v, cx.NewString(s+"\x00")) {
+			if storage.IsStrictlyEqual(v, cx.NewString(s+"\x00")) {
 				t.Error("different lengths compare equal")
 			}
-			if got := engine.ToBoolean(v); got != (s != "") {
+			if got := storage.ToBoolean(v); got != (s != "") {
 				t.Errorf("ToBoolean = %v", got)
 			}
 		})

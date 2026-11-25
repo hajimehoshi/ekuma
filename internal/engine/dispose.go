@@ -3,6 +3,10 @@
 
 package engine
 
+import (
+	"github.com/hajimehoshi/ekuma/internal/storage"
+)
+
 // DisposeHint is the hint of a disposable resource.
 type DisposeHint uint8
 
@@ -38,11 +42,11 @@ func NewDisposeCapability() *DisposeCapability {
 // AddDisposableResource implements AddDisposableResource. A nil method is not present.
 func (cx *ExecutionContext) AddDisposableResource(dc *DisposeCapability, v Value, hint DisposeHint, method *Object) {
 	if method != nil {
-		if !(Value{o: method}).IsCallable() {
-			cx.ThrowTypeError(cx.DisplayString(Value{o: method}) + " is not a function")
+		if !(Value{O: method}).IsCallable() {
+			cx.ThrowTypeError(cx.DisplayString(Value{O: method}) + " is not a function")
 		}
 		dc.stack = append(dc.stack, disposableResource{
-			value:  Undefined,
+			value:  storage.Undefined,
 			hint:   hint,
 			method: method,
 		})
@@ -53,7 +57,7 @@ func (cx *ExecutionContext) AddDisposableResource(dc *DisposeCapability, v Value
 			return
 		}
 		dc.stack = append(dc.stack, disposableResource{
-			value: Undefined,
+			value: storage.Undefined,
 			hint:  hint,
 		})
 		return
@@ -96,10 +100,10 @@ func asyncDisposeFunction(cx *ExecutionContext, this Value, args []Value) Value 
 		cx.Call(m, this)
 	}); !ok {
 		cx.RejectCapability(c, e)
-		return Value{o: c.promise}
+		return Value{O: c.promise}
 	}
-	cx.ResolveCapability(c, Undefined)
-	return Value{o: c.promise}
+	cx.ResolveCapability(c, storage.Undefined)
+	return Value{O: c.promise}
 }
 
 // beginDispose starts DisposeResources on dc for the completion v, which is a throw
@@ -118,9 +122,9 @@ func (cx *ExecutionContext) disposeStep(dc *DisposeCapability) (Value, bool) {
 		r := dc.stack[len(dc.stack)-1]
 		if r.hint == SyncDispose && dc.needsAwait && !dc.hasAwaited {
 			dc.needsAwait = false
-			return Undefined, true
+			return storage.Undefined, true
 		}
-		dc.stack = withoutLast(dc.stack)
+		dc.stack = storage.WithoutLast(dc.stack)
 		if r.method == nil {
 			dc.needsAwait = true
 			continue
@@ -140,9 +144,9 @@ func (cx *ExecutionContext) disposeStep(dc *DisposeCapability) (Value, bool) {
 	dc.stack = nil
 	if dc.needsAwait && !dc.hasAwaited {
 		dc.needsAwait = false
-		return Undefined, true
+		return storage.Undefined, true
 	}
-	return Undefined, false
+	return storage.Undefined, false
 }
 
 // disposeError records that disposing a resource of dc threw e.
@@ -156,14 +160,14 @@ func (cx *ExecutionContext) disposeError(dc *DisposeCapability, e Value) {
 	cx.Define(s, cx.Key(KeyError), e, FlagsHidden)
 	suppressed, _ := unpackException(dc.completion)
 	cx.Define(s, cx.Key(KeySuppressed), suppressed, FlagsHidden)
-	s.setExtState(cx.newErrorData(s, "", len(cx.frames), len(cx.natives)))
-	dc.completion = Value{o: s}
+	s.SetExtState(cx.newErrorData(s, "", len(cx.frames), len(cx.natives)))
+	dc.completion = Value{O: s}
 }
 
 // endDispose ends DisposeResources on dc and returns its completion.
 func (dc *DisposeCapability) endDispose() (Value, bool) {
 	v, thrown := dc.completion, dc.thrown
-	dc.completion = Undefined
+	dc.completion = storage.Undefined
 	return v, thrown
 }
 
@@ -202,9 +206,9 @@ func (cx *ExecutionContext) continueDispose(dc *DisposeCapability, k AwaitHandle
 // creating it when d is undefined, and returns the new register value.
 func (cx *ExecutionContext) addDisposableOp(v, d Value, hint DisposeHint) Value {
 	if d.IsUndefined() {
-		d = Value{o: newObjectWithState(nil, classObject, NewDisposeCapability())}
+		d = Value{O: storage.NewObjectWithState(nil, classObject, NewDisposeCapability())}
 	}
-	cx.AddDisposableResource(d.o.extState().(*DisposeCapability), v, hint, nil)
+	cx.AddDisposableResource(d.O.ExtState().(*DisposeCapability), v, hint, nil)
 	return d
 }
 
@@ -215,22 +219,22 @@ func beginDisposeOp(d, v, k Value) {
 	if d.IsUndefined() {
 		return
 	}
-	d.o.extState().(*DisposeCapability).beginDispose(v, k.o == numberObject && k.n == 1 && v.o != closeSignal)
+	d.O.ExtState().(*DisposeCapability).beginDispose(v, k.O == storage.NumberObject && k.N == 1 && v.O != closeSignal)
 }
 
 // disposeStepOp is disposeStep on the dispose capability that the register value d holds, if any.
 func (cx *ExecutionContext) disposeStepOp(d Value) (Value, bool) {
 	if d.IsUndefined() {
-		return Undefined, false
+		return storage.Undefined, false
 	}
-	return cx.disposeStep(d.o.extState().(*DisposeCapability))
+	return cx.disposeStep(d.O.ExtState().(*DisposeCapability))
 }
 
 // endDisposeOp is endDispose on the dispose capability that the register value d holds.
 // It reports false when d holds none.
 func endDisposeOp(d Value) (Value, bool) {
 	if d.IsUndefined() {
-		return Undefined, false
+		return storage.Undefined, false
 	}
-	return d.o.extState().(*DisposeCapability).endDispose()
+	return d.O.ExtState().(*DisposeCapability).endDispose()
 }

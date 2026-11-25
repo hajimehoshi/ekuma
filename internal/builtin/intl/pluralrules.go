@@ -8,6 +8,7 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/intl/locale"
 	"github.com/hajimehoshi/ekuma/internal/intl/number"
 	"github.com/hajimehoshi/ekuma/internal/intl/plural"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
@@ -59,12 +60,12 @@ func newPluralRules(cx *engine.ExecutionContext, this engine.Value, args []engin
 		pr.compactDisplay = compactDisplay
 	}
 	setDigitOptions(cx, &pr.digits, &pr.slots, options, 0, 3, pr.notation)
-	return engine.ObjectValue(cx.NewIntlObject(proto, pr))
+	return storage.ObjectValue(cx.NewIntlObject(proto, pr))
 }
 
 // thisPluralRules implements RequireInternalSlot for an Intl.PluralRules.
 func thisPluralRules(cx *engine.ExecutionContext, this engine.Value, name string) *pluralRulesData {
-	pr, ok := engine.IntlData(this).(*pluralRulesData)
+	pr, ok := storage.IntlData(this).(*pluralRulesData)
 	if !ok {
 		cx.ThrowTypeError("Intl.PluralRules.prototype." + name + " called on an object that is not an Intl.PluralRules")
 	}
@@ -93,10 +94,10 @@ func pluralRulesResolvedOptions(cx *engine.ExecutionContext, this engine.Value, 
 	pr := thisPluralRules(cx, this, "resolvedOptions")
 	out := cx.NewObject(cx.Intrinsic(engine.IntrinsicObjectPrototype))
 	set := func(name string, v engine.Value) {
-		cx.CreateDataPropertyOrThrow(out, engine.NamedKey(cx.Intern(wtf8.String(name))), v)
+		cx.CreateDataPropertyOrThrow(out, storage.NamedKey(cx.Intern(wtf8.String(name))), v)
 	}
 	num := func(name string, v int) {
-		set(name, engine.Number(float64(v)))
+		set(name, storage.Number(float64(v)))
 	}
 	set("locale", cx.NewString(wtf8.String(pr.locale)))
 	typ := "cardinal"
@@ -127,7 +128,7 @@ func pluralRulesResolvedOptions(cx *engine.ExecutionContext, this engine.Value, 
 		tzd = "stripIfInteger"
 	}
 	set("trailingZeroDisplay", cx.NewString(wtf8.String(tzd)))
-	return engine.ObjectValue(out)
+	return storage.ObjectValue(out)
 }
 
 func pluralRulesSelect(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {

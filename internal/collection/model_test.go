@@ -14,6 +14,7 @@ import (
 
 	"github.com/hajimehoshi/ekuma/internal/collection"
 	"github.com/hajimehoshi/ekuma/internal/engine"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
@@ -65,18 +66,18 @@ func (s *keySource) newKey(kind, id int) engine.Value {
 		switch id {
 		case 0:
 			if alt {
-				return engine.Number(math.Copysign(0, -1))
+				return storage.Number(math.Copysign(0, -1))
 			}
-			return engine.Number(0)
+			return storage.Number(0)
 		case 1:
 			if alt {
-				return engine.Number(math.Float64frombits(0xfff8_0000_dead_beef))
+				return storage.Number(math.Float64frombits(0xfff8_0000_dead_beef))
 			}
-			return engine.Number(math.NaN())
+			return storage.Number(math.NaN())
 		}
-		return engine.Number(float64(id))
+		return storage.Number(float64(id))
 	case 1:
-		return engine.Number(float64(id) + 0.5)
+		return storage.Number(float64(id) + 0.5)
 	case 2, 3:
 		// Strings on both sides of the length up to which the slots locate them. The
 		// strings of NUL bytes differ in their lengths only.
@@ -95,7 +96,7 @@ func (s *keySource) newKey(kind, id int) engine.Value {
 		}
 		return s.cx.NewString(wtf8.FromValidUTF8(str))
 	case 4:
-		return engine.BigIntFromInt64(math.MinInt64 + int64(id))
+		return storage.BigIntFromInt64(math.MinInt64 + int64(id))
 	case 5:
 		// The smallest magnitudes that an int64 does not hold, of both signs.
 		b := new(big.Int).Lsh(big.NewInt(1), 63)
@@ -103,19 +104,19 @@ func (s *keySource) newKey(kind, id int) engine.Value {
 		if id&1 != 0 {
 			b.Neg(b).Sub(b, big.NewInt(1))
 		}
-		return engine.NewBigInt(b)
+		return storage.NewBigInt(b)
 	default:
 		switch id {
 		case 0:
-			return engine.Undefined
+			return storage.Undefined
 		case 1:
-			return engine.Null
+			return storage.Null
 		case 2:
-			return engine.True
+			return storage.True
 		}
 		v, ok := s.objects[id]
 		if !ok {
-			v = engine.ObjectValue(s.cx.NewObject(nil))
+			v = storage.ObjectValue(s.cx.NewObject(nil))
 			s.objects[id] = v
 		}
 		return v
@@ -274,9 +275,9 @@ func (r *modelRun) set(s *subject, kind, id int) {
 	v := float64(r.value)
 	// Append is for the keys that a table does not have.
 	if !present && r.value%3 != 0 {
-		s.table.Append(k, engine.Number(v))
+		s.table.Append(k, storage.Number(v))
 	} else {
-		s.table.Set(k, engine.Number(v))
+		s.table.Set(k, storage.Number(v))
 	}
 	s.model.set(ident, v)
 	// A probe without an empty slot would not end.
@@ -329,7 +330,7 @@ func (r *modelRun) advance(s *subject, c *modelCursor, what string) {
 		return
 	}
 	want := r.keys.newKey(e.key.kind, e.key.id)
-	if !engine.SameValueZero(k, want) || !v.IsNumber() || v.Number() != e.value {
+	if !storage.SameValueZero(k, want) || !v.IsNumber() || v.Number() != e.value {
 		r.errorf("%s: not the entry %s with the value %v", what, e.key, e.value)
 	}
 }

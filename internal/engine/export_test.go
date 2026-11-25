@@ -9,30 +9,31 @@ import (
 	"testing"
 
 	"github.com/hajimehoshi/ekuma/internal/bytecode"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 )
 
 // NewExecutionContextWithBigIntResultLimit limits checked BigInt results to maxBits bits.
 func NewExecutionContextWithBigIntResultLimit(maxBits int64) *ExecutionContext {
 	cx, _ := NewExecutionContext(nil)
-	cx.maxBigIntResultBits = maxBits
+	cx.MaxBigIntResultBits = maxBits
 	return cx
 }
 
 // InternedCount returns the number of entries in the table of interned strings of cx.
 func InternedCount(cx *ExecutionContext) int {
-	return len(cx.strings.interned.entries)
+	return len(cx.Strings.Interned.Entries)
 }
 
 // ObjectTransitionCount returns the number of transitions from the empty shape of the objects
 // whose prototype is %Object.prototype%.
 func ObjectTransitionCount(cx *ExecutionContext) int {
-	return cx.realm.shapes.object.transitions.len()
+	return cx.realm.Shapes.Object.Transitions.Len()
 }
 
 // ElementStorage returns the number of values that the storage of the elements of the object
 // v has room for, including those that removing its first elements left unused.
 func ElementStorage(v Value) int {
-	return v.o.elemsStorage()
+	return v.O.ElemsStorage()
 }
 
 // StackSize returns the number of slots of the stack of cx.
@@ -52,53 +53,53 @@ const MaxNatives = maxNatives
 // execution of its single op site. bypass forces that site to take its generic path.
 func TraceShortcut(t *testing.T, f Value, op bytecode.Opcode, bypass bool, distances *[]int) {
 	t.Helper()
-	fp := f.o.fn.code
+	fp := f.O.Fn.Code
 	site := -1
-	for pc, i := range fp.code {
+	for pc, i := range fp.Code {
 		if i.Op == op {
 			if site >= 0 {
-				t.Fatalf("multiple %v sites in %s", op, fp.name)
+				t.Fatalf("multiple %v sites in %s", op, fp.Name)
 			}
 			site = pc
 		}
 	}
 	if site < 0 {
-		t.Fatalf("no %v site in %s", op, fp.name)
+		t.Fatalf("no %v site in %s", op, fp.Name)
 	}
 
 	switch op {
 	case bytecode.OpCopyPropToGlobal:
-		if fp.code[site+1].Op != bytecode.OpGetProp {
+		if fp.Code[site+1].Op != bytecode.OpGetProp {
 			t.Fatal("expected the source property read after OpCopyPropToGlobal")
 		}
 	case bytecode.OpGetPropChain:
-		if fp.code[site+1].Op != bytecode.OpGetProp {
+		if fp.Code[site+1].Op != bytecode.OpGetProp {
 			t.Fatal("expected a second named read after OpGetPropChain")
 		}
 	case bytecode.OpGetMethod:
-		call := fp.code[site+1]
-		if call.Op != bytecode.OpCall || call.B != fp.code[site].A {
+		call := fp.Code[site+1]
+		if call.Op != bytecode.OpCall || call.B != fp.Code[site].A {
 			t.Fatal("expected a call of the loaded method after OpGetMethod")
 		}
 	case bytecode.OpIterNextPair:
-		if fp.code[site+1].Op != bytecode.OpExtra || fp.code[site+2].Op != bytecode.OpIterNext {
+		if fp.Code[site+1].Op != bytecode.OpExtra || fp.Code[site+2].Op != bytecode.OpIterNext {
 			t.Fatal("expected the extra word and ordinary iterator step after OpIterNextPair")
 		}
 		if bypass {
 			// Give this VM its own copy and keep the offsets of handlers and jumps.
-			fp.code = slices.Clone(fp.code)
+			fp.Code = slices.Clone(fp.Code)
 			jump := bytecode.Instr{
 				Op: bytecode.OpJump,
 				A:  int32(site + 2),
 			}
-			fp.code[site], fp.code[site+1] = jump, jump
+			fp.Code[site], fp.Code[site+1] = jump, jump
 		}
 	default:
 		t.Fatalf("unsupported shortcut %v", op)
 	}
 
 	var stepping bool
-	executionContextOf(fp.realm).checks.observeSteps(func(current *funcProto, pc int) {
+	executionContextOf(fp.Realm).checks.observeSteps(func(current *funcProto, pc int) {
 		if current != fp {
 			return
 		}
@@ -107,12 +108,12 @@ func TraceShortcut(t *testing.T, f Value, op bytecode.Opcode, bypass bool, dista
 		}
 		stepping = pc == site
 		if stepping && bypass && op == bytecode.OpCopyPropToGlobal {
-			store := fp.code[fp.code[site].C-1]
-			fp.globals[store.C] = globalCache{}
+			store := fp.Code[fp.Code[site].C-1]
+			fp.Globals[store.C] = globalCache{}
 		}
 		if stepping && bypass && (op == bytecode.OpGetPropChain || op == bytecode.OpGetMethod) {
 			// A cold lookup dispatches the following read or call separately.
-			fp.caches[fp.code[site].C] = propCache{}
+			fp.Caches[fp.Code[site].C] = propCache{}
 		}
 	})
 }
@@ -131,8 +132,8 @@ type Registers struct {
 func NewRegisters(f *bytecode.Func) *Registers {
 	fp := &funcProto{
 		Func:  f,
-		code:  f.Code,
-		nregs: f.NumRegs,
+		Code:  f.Code,
+		Nregs: f.NumRegs,
 	}
 	ag := &agent{
 		frames: []frame{{
@@ -140,11 +141,11 @@ func NewRegisters(f *bytecode.Func) *Registers {
 		}},
 		active: &ExecutionContext{},
 	}
-	ag.ensureStack(fp.nregs + 1)
+	ag.ensureStack(fp.Nregs + 1)
 	return &Registers{
 		ag:   ag,
 		fp:   fp,
-		regs: ag.stack[:fp.nregs+1],
+		regs: ag.stack[:fp.Nregs+1],
 	}
 }
 
@@ -155,7 +156,7 @@ func (r *Registers) Step(pc int) {
 
 // EnsureStack makes room on the stack as a call does, without reloading the registers.
 func (r *Registers) EnsureStack() {
-	r.ag.ensureStack(r.fp.nregs + 1)
+	r.ag.ensureStack(r.fp.Nregs + 1)
 }
 
 // Reload loads the registers as the interpreter loop does after a call.
@@ -177,14 +178,14 @@ func (r *Registers) Get(i int) Value {
 func CheckDispatchSequence(f *bytecode.Func, pcs ...int) {
 	fp := &funcProto{
 		Func:  f,
-		code:  f.Code,
-		nregs: f.NumRegs,
+		Code:  f.Code,
+		Nregs: f.NumRegs,
 	}
 	ag := &agent{
 		frames: []frame{{
 			fp: fp,
 		}},
-		stack: make([]Value, fp.nregs+1),
+		stack: make([]Value, fp.Nregs+1),
 	}
 	for _, pc := range pcs {
 		ag.checkStep(fp, pc, ag.stack)
@@ -194,25 +195,25 @@ func CheckDispatchSequence(f *bytecode.Func, pcs ...int) {
 // CorruptCaches makes every filled cache of the function f answer wrongly for the receivers that
 // it already answers for.
 func CorruptCaches(f Value) {
-	fp := f.o.fn.code
-	for i := range fp.caches {
-		e := &fp.caches[i].cacheEntry
-		switch e.kind {
+	fp := f.O.Fn.Code
+	for i := range fp.Caches {
+		e := &fp.Caches[i].CacheEntry
+		switch e.Kind {
 		case cacheOwn:
-			e.slot ^= 1
+			e.Slot ^= 1
 		case cacheProto:
-			v := *e.ref
-			e.ref = &v
+			v := *e.Ref
+			e.Ref = &v
 		case cacheGetter, cacheSetter:
-			e.holder = f.o
+			e.Holder = f.O
 		case cacheAdd:
-			e.next = e.shape
+			e.Next = e.Shape
 		}
 	}
-	for i := range fp.globals {
-		if c := &fp.globals[i]; c.ref != nil {
-			v := *c.ref
-			c.ref = &v
+	for i := range fp.Globals {
+		if c := &fp.Globals[i]; c.Ref != nil {
+			v := *c.Ref
+			c.Ref = &v
 		}
 	}
 }
@@ -220,15 +221,15 @@ func CorruptCaches(f Value) {
 // BuiltinHolders returns the objects that have got a property since the creation of the built-in
 // objects of cx started. It is empty once their creation has ended.
 func BuiltinHolders(cx *ExecutionContext) []*Object {
-	return slices.Clone(cx.builtins.objects)
+	return slices.Clone(cx.Builtins.Objects)
 }
 
 // RunningFunction returns the innermost running function written in JavaScript, or undefined.
 func RunningFunction(cx *ExecutionContext) Value {
 	if n := len(cx.frames); n > 0 {
-		return Value{o: cx.frames[n-1].cl}
+		return Value{O: cx.frames[n-1].cl}
 	}
-	return Undefined
+	return storage.Undefined
 }
 
 // Shortcut is a native function of a realm that has forms that its callers use instead of calling it.
@@ -252,7 +253,7 @@ func Shortcuts(t *testing.T, cx *ExecutionContext, holders []*Object, observe fu
 	var objects []*Object
 	names := map[*Object]string{}
 	visit := func(o *Object, name string) {
-		if o == nil || !(Value{o: o}).IsObject() || o.class == classProxy {
+		if o == nil || !(Value{O: o}).IsObject() || o.Class == classProxy {
 			return
 		}
 		if old, ok := names[o]; !ok {
@@ -265,8 +266,8 @@ func Shortcuts(t *testing.T, cx *ExecutionContext, holders []*Object, observe fu
 	for _, o := range holders {
 		visit(o, "")
 	}
-	visit(cx.realm.global, "")
-	for _, o := range cx.realm.intrinsics {
+	visit(cx.realm.Global, "")
+	for _, o := range cx.realm.Intrinsics {
 		visit(o, "")
 	}
 	// The slice grows while it is visited.
@@ -276,9 +277,9 @@ func Shortcuts(t *testing.T, cx *ExecutionContext, holders []*Object, observe fu
 		for _, k := range cx.OwnKeys(o) {
 			if d, ok := cx.GetOwnProperty(o, k); ok {
 				name := holderName(cx, o) + string(cx.KeyString(k))
-				visit(d.value.o, name)
-				visit(d.getter, name)
-				visit(d.setter, name)
+				visit(d.Value().O, name)
+				visit(d.Getter(), name)
+				visit(d.Setter(), name)
 			}
 		}
 	}
@@ -289,16 +290,16 @@ func Shortcuts(t *testing.T, cx *ExecutionContext, holders []*Object, observe fu
 	})
 	var shortcuts []*Shortcut
 	for _, o := range objects {
-		if o.fn == nil || o.fn.info == nil || nativeFastOf(o.fn.info.native) == nil && o.fn.info.extremum == ExtremumNone {
+		if o.Fn == nil || o.Fn.Info == nil || nativeFastOf(o.Fn.Info.Native) == nil && o.Fn.Info.Extremum == ExtremumNone {
 			continue
 		}
 		s := &Shortcut{
 			Name:      names[o],
-			Func:      Value{o: o},
-			Frameless: o.fn.frameless(),
+			Func:      Value{O: o},
+			Frameless: o.Fn.Frameless(),
 		}
 		if s.Name == "" {
-			s.Name = string(o.fn.nativeName())
+			s.Name = string(o.Fn.NativeName())
 		}
 		s.wrap(t, observe)
 		shortcuts = append(shortcuts, s)
@@ -308,15 +309,15 @@ func Shortcuts(t *testing.T, cx *ExecutionContext, holders []*Object, observe fu
 
 // holderName returns the prefix for the names of the properties of the built-in object o.
 func holderName(cx *ExecutionContext, o *Object) string {
-	if o.fn != nil {
-		return string(o.fn.nativeName()) + "."
+	if o.Fn != nil {
+		return string(o.Fn.NativeName()) + "."
 	}
-	if v, ok := diagnosticDataProperty(o, cx.Key(KeyConstructor)); ok && v.o.fn != nil {
-		if d, ok := cx.GetOwnProperty(v.o, PropKey{key: cx.Key(KeyPrototype)}); ok && d.value.o == o {
-			return string(v.o.fn.nativeName()) + ".prototype."
+	if v, ok := storage.DiagnosticDataProperty(o, cx.Key(KeyConstructor)); ok && v.O.Fn != nil {
+		if d, ok := cx.GetOwnProperty(v.O, PropKey{Key: cx.Key(KeyPrototype)}); ok && d.Value().O == o {
+			return string(v.O.Fn.NativeName()) + ".prototype."
 		}
 	}
-	if v, ok := diagnosticDataProperty(o, cx.WellKnownSymbol(SymbolToStringTag)); ok && v.IsString() {
+	if v, ok := storage.DiagnosticDataProperty(o, cx.WellKnownSymbol(SymbolToStringTag)); ok && v.IsString() {
 		return string(v.Str()) + "."
 	}
 	return ""
@@ -325,14 +326,14 @@ func holderName(cx *ExecutionContext, o *Object) string {
 // wrap fills in the forms of s and makes them call observe.
 func (s *Shortcut) wrap(t *testing.T, observe func(s *Shortcut, form, event string)) {
 	t.Helper()
-	fn := s.Func.o.fn
+	fn := s.Func.O.Fn
 	ObserveNative(s.Func, func() {
 		observe(s, "native", "start")
 	})
-	if fn.info.extremum != ExtremumNone {
+	if fn.Info.Extremum != ExtremumNone {
 		s.Forms = append(s.Forms, "extremum")
 	}
-	fast := nativeFastOf(fn.info.native)
+	fast := nativeFastOf(fn.Info.Native)
 	if fast == nil {
 		return
 	}
@@ -356,7 +357,7 @@ func (s *Shortcut) wrap(t *testing.T, observe func(s *Shortcut, form, event stri
 			wrapped.step = func(cx *ExecutionContext, this Value) (Value, bool) {
 				observe(s, form, "start")
 				v, ok := fast.step(cx, this)
-				ended(form, ok || v.o != stepDeclined)
+				ended(form, ok || v.O != stepDeclined)
 				return v, ok
 			}
 		case "framedStep":
@@ -417,40 +418,40 @@ func (s *Shortcut) wrap(t *testing.T, observe func(s *Shortcut, form, event stri
 			t.Fatalf("%s has a form %s that the test does not know", s.Name, form)
 		}
 	}
-	fn.info.native.fastIndex = addNativeFast(&wrapped)
+	fn.Info.Native.FastIndex = addNativeFast(&wrapped)
 }
 
 // observers maps the functions of [ObserveNative] to functions that observe the calls of the code
 // that they had, which keep nothing alive longer.
-var observers = newWeakTable()
+var observers = storage.NewWeakTable()
 
 var nativeObserved = RegisterNative(func(cx *ExecutionContext, this Value, args []Value) Value {
 	return observer(cx.activeNative())(cx, this, args)
 })
 
 func observer(f *Object) NativeFunc {
-	v, _ := observers.Get(Value{o: f})
-	return v.o.extState().(NativeFunc)
+	v, _ := observers.Get(Value{O: f})
+	return v.O.ExtState().(NativeFunc)
 }
 
 // ObserveNative makes the native function f call observe whenever it starts.
 func ObserveNative(f Value, observe func()) {
-	info := f.o.fn.changeableInfo()
-	code := nativeCodeOf(info.native)
-	if info.native.index == nativeObserved.index {
-		code = observer(f.o)
+	info := f.O.Fn.ChangeableInfo()
+	code := nativeCodeOf(info.Native)
+	if info.Native.Index == nativeObserved.Index {
+		code = observer(f.O)
 	}
-	observers.Set(f, executionContextOf(info.realm).NewFunction("", func(cx *ExecutionContext, this Value, args []Value) Value {
+	observers.Set(f, executionContextOf(info.Realm).NewFunction("", func(cx *ExecutionContext, this Value, args []Value) Value {
 		observe()
 		return code(cx, this, args)
 	}))
-	info.native.index = nativeObserved.index
+	info.Native.Index = nativeObserved.Index
 }
 
 // NewGoConstructor returns a function with the code f that can be called with new.
 func NewGoConstructor(cx *ExecutionContext, name string, f NativeFunc) *Object {
-	o := cx.NewFunction(name, f).o
-	o.fn.constructor = true
+	o := cx.NewFunction(name, f).O
+	o.Fn.Constructor = true
 	return o
 }
 
@@ -458,6 +459,6 @@ func NewGoConstructor(cx *ExecutionContext, name string, f NativeFunc) *Object {
 // prototypes and the constructor of arrays.
 func ArraysPlain(cx *ExecutionContext) bool {
 	a := cx.NewArray(nil)
-	return cx.arrayProtoPlain() && a.holesAreAbsent() && cx.arrayCtorPlain(a) &&
-		cx.arrayIterationPlain(a) && cx.pairDestructuringPlain(cx.realmPart)
+	return cx.ArrayProtoPlain() && a.HolesAreAbsent() && cx.ArrayCtorPlain(a) &&
+		cx.ArrayIterationPlain(a) && cx.PairDestructuringPlain(cx.realmPart)
 }

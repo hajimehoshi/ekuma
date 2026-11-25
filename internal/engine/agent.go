@@ -4,20 +4,14 @@
 package engine
 
 import (
-	"cmp"
 	"math/rand/v2"
 	"slices"
-	"strconv"
-	"strings"
-	"sync/atomic"
-	"time"
-	"unicode/utf8"
 
 	"github.com/hajimehoshi/ekuma/internal/bytecode"
 	"github.com/hajimehoshi/ekuma/internal/datetime"
 	"github.com/hajimehoshi/ekuma/internal/element"
-	"github.com/hajimehoshi/ekuma/internal/numconv"
 	"github.com/hajimehoshi/ekuma/internal/regexp"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
@@ -26,74 +20,6 @@ import (
 // args is only valid until the function returns. An exception is thrown with the Throw methods of
 // [ExecutionContext], which do not return.
 type NativeFunc func(cx *ExecutionContext, this Value, args []Value) Value
-
-// function is the state of a callable object.
-type function struct {
-	// code is the compiled code of a function written in JavaScript.
-	code *funcProto
-
-	// upvals are the variables of enclosing functions that code refers to.
-	upvals []*upvalue
-
-	// info describes a native function. It is nil for any other function.
-	info *nativeInfo
-
-	bound *boundFunc
-
-	// home is the object that super property accesses in a method start from.
-	home *Object
-
-	// fields are the elements that a class constructor adds to every instance, or nil when
-	// there are none.
-	fields *[]classElement
-
-	// shared marks the initial state shared by closures of the same function.
-	shared bool
-
-	// materialized is set once the initial properties, such as length and name, exist as slots.
-	materialized bool
-
-	// constructor says whether the function can be called with new.
-	constructor bool
-
-	// derived marks the constructor of a class with an extends clause.
-	derived bool
-
-	// classConstructor marks a function that throws when called without new.
-	classConstructor bool
-
-	// scopes points to the dynamic scopes that were open where the function was created,
-	// innermost last, or is nil when none were.
-	scopes *[]*Object
-}
-
-// nativeInfo is the description of a native function.
-type nativeInfo struct {
-	// native is the native function.
-	native Native
-
-	// name and length are the initial values of the properties name and length.
-	name   wtf8.String
-	length int32
-
-	// extremum says that the function is Math.min or Math.max, which the interpreter computes
-	// for two numbers.
-	extremum Extremum
-
-	// frameless says that calls of the function show no frame, as [agent.SetFrameless] describes.
-	frameless bool
-
-	// prototype is the intrinsic of realm that the property prototype of the function holds,
-	// when fixedPrototype is set. The property can then be neither changed nor deleted.
-	prototype      Intrinsic
-	fixedPrototype bool
-
-	// realm is the [[Realm]] of the function, or nil for a proxy.
-	realm *realmPart
-}
-
-// proxyInfo describes every callable proxy. It must not be modified.
-var proxyInfo nativeInfo
 
 // nativeFast holds the forms of a native function that its callers use instead of calling it.
 type nativeFast struct {
@@ -132,177 +58,27 @@ type nativeFast struct {
 func (k *nativeFast) callMethod(r *realmPart, this Value, args []Value) (Value, bool) {
 	switch {
 	case len(args) == 0 && k.method0 != nil:
-		return k.method0(r.quiet(), this)
+		return k.method0(quietContextOf(r), this)
 	case len(args) == 1 && k.method1 != nil:
-		return k.method1(r.quiet(), this, args[0])
+		return k.method1(quietContextOf(r), this, args[0])
 	case len(args) == 2 && k.method2 != nil:
-		return k.method2(r.quiet(), this, args[0], args[1])
+		return k.method2(quietContextOf(r), this, args[0], args[1])
 	}
 	return Value{}, false
 }
 
-// changeableInfo returns the description of the native function f, which must not be a proxy, for
-// changing it.
-func (f *function) changeableInfo() *nativeInfo {
-	if f.info == &proxyInfo {
-		panic("engine: change of the description of a proxy")
-	}
-	return f.info
-}
-
-// nativeName returns the initial value of the property name of the native function f.
-func (f *function) nativeName() wtf8.String {
-	if f.info == nil {
-		return ""
-	}
-	return f.info.name
-}
-
-// frameless reports whether f, which may be nil, is a native function whose calls show no frame.
-func (f *function) frameless() bool {
-	return f != nil && f.info != nil && f.info.frameless
-}
-
 // hasIteratorFast reports whether f is a native function of the realm of cx with fast forms.
 func (cx *ExecutionContext) hasIteratorFast(f *function) bool {
-	return f.info != nil && f.info.native.hasFast() && f.info.realm == cx.realmPart
+	return f.Info != nil && f.Info.Native.HasFast() && f.Info.Realm == cx.realmPart
 }
 
 // iteratorPairStepOf returns the pair step of the next method f of a built-in iterator in realm r, or nil.
 func iteratorPairStepOf(f *function, r *realmPart) IteratorPairStepFunc {
-	info := f.info
-	if info == nil || !info.native.hasFast() || info.realm != r {
+	info := f.Info
+	if info == nil || !info.Native.HasFast() || info.Realm != r {
 		return nil
 	}
-	return nativeFastOf(info.native).pairStep
-}
-
-type boundFunc struct {
-	target *Object
-	this   Value
-	args   []Value
-}
-
-// upvalue is a variable of an enclosing function. p points to the variable: into the registers
-// of that function while it is running, and to val afterwards.
-type upvalue struct {
-	p *Value
-
-	// index is the stack index or, for a generator, the register that p points to while the upvalue is open.
-	index int
-	val   Value
-}
-
-// CommonKey identifies a string property key that the engine provides.
-type CommonKey uint8
-
-const (
-	KeyLength CommonKey = iota
-	KeyPrototype
-	KeyConstructor
-	KeyName
-	KeyMessage
-	KeyStack
-	KeyCause
-	KeyErrors
-	KeyError
-	KeySuppressed
-	KeyToString
-	keyValueOf
-	KeyToJSON
-	keyCall
-	keyApply
-	keyBind
-	KeyGet
-	KeySet
-	KeyValue
-	KeyWritable
-	KeyEnumerable
-	KeyConfigurable
-	KeyNext
-	keyDone
-	KeyReturn
-	keyThrow
-	KeyThen
-	keyCallee
-	keyCaller
-	keyArguments
-	KeyIndex
-	keyInput
-	KeyGroups
-	KeyLastIndex
-	KeyRaw
-	KeySource
-	KeyFlags
-	keyDefault
-	keyGetPrototypeOf
-	keySetPrototypeOf
-	keyIsExtensible
-	keyPreventExtensions
-	keyGetOwnPropertyDescriptor
-	keyDefineProperty
-	KeyHas
-	keyDeleteProperty
-	keyOwnKeys
-	keyConstruct
-	KeyAdd
-	KeyKeys
-	KeySize
-	KeyStatus
-	KeyReason
-	KeyMode
-	KeyPadding
-	KeyToLocaleString
-	KeyToISOString
-	KeyHasIndices
-	KeyGlobal
-	KeyIgnoreCase
-	KeyMultiline
-	KeyDotAll
-	KeyUnicode
-	KeyUnicodeSets
-	KeySticky
-	KeyExec
-	commonKeyCount
-)
-
-// WellKnownSymbol identifies a well-known symbol.
-type WellKnownSymbol uint8
-
-const (
-	SymbolIterator WellKnownSymbol = iota
-	SymbolAsyncIterator
-	SymbolHasInstance
-	SymbolToPrimitive
-	SymbolToStringTag
-	SymbolSpecies
-	SymbolIsConcatSpreadable
-	SymbolUnscopables
-	SymbolMatch
-	SymbolMatchAll
-	SymbolReplace
-	SymbolSearch
-	SymbolSplit
-	SymbolDispose
-	SymbolAsyncDispose
-	SymbolMetadata
-	wellKnownSymbolCount
-)
-
-// keys are the property keys that the engine itself uses.
-type keys struct {
-	common    [commonKeyCount]*Object
-	wellKnown [wellKnownSymbolCount]*Object
-}
-
-// Key returns the string property key k.
-func (sp *space) Key(k CommonKey) *Object {
-	return sp.keys.common[k]
-}
-
-// WellKnownSymbol returns the well-known symbol s.
-func (sp *space) WellKnownSymbol(s WellKnownSymbol) *Object {
-	return sp.keys.wellKnown[s]
+	return nativeFastOf(info.Native).pairStep
 }
 
 func (cx *ExecutionContext) initKeys() {
@@ -330,7 +106,7 @@ func (cx *ExecutionContext) initKeys() {
 		KeyUnicodeSets: "unicodeSets", KeySticky: "sticky",
 		KeyExec: "exec",
 	} {
-		cx.keys.common[k] = cx.Intern(name)
+		cx.Keys.Common[k] = cx.Intern(name)
 	}
 	for s, name := range [wellKnownSymbolCount]wtf8.String{
 		SymbolIterator: "Symbol.iterator", SymbolAsyncIterator: "Symbol.asyncIterator",
@@ -342,14 +118,8 @@ func (cx *ExecutionContext) initKeys() {
 		SymbolDispose: "Symbol.dispose", SymbolAsyncDispose: "Symbol.asyncDispose",
 		SymbolMetadata: "Symbol.metadata",
 	} {
-		cx.keys.wellKnown[s] = cx.NewSymbol(name, true)
+		cx.Keys.WellKnown[s] = cx.NewSymbol(name, true)
 	}
-}
-
-// interruptSignal is what an interruption unwinds Go frames with. No JavaScript code can catch it.
-type interruptSignal struct {
-	// cause is the cause of the interruption.
-	cause error
 }
 
 // InterruptedError reports the cause of an interruption by [agent.Interrupt].
@@ -397,55 +167,27 @@ func isHostPanic(value any) bool {
 // cleared. Interrupted module evaluations are rejected with an Error whose message is
 // "ekuma: interrupted" and whose [GoError] is cause, or the [InterruptedError] when cause is nil.
 func (ag *agent) Interrupt(cause error) {
-	ag.interruptCause.Store(&cause)
-	ag.interrupt.Store(true)
+	ag.InterruptCause.Store(&cause)
+	ag.InterruptFlag.Store(true)
 	ag.mailbox.poke()
 }
 
 // ClearInterrupt withdraws a request of [agent.Interrupt] that no script has observed.
 func (ag *agent) ClearInterrupt() {
-	ag.interrupt.Store(false)
-	ag.interruptCause.Store(nil)
+	ag.InterruptFlag.Store(false)
+	ag.InterruptCause.Store(nil)
 }
 
 // Poll stops the script when an interruption was requested. It also takes the notifications of
 // other agents, which raise the interrupt flag too. A loop calls it only between runs of many
 // steps, such as [PollInterval] steps.
 func (ag *agent) Poll() {
-	ag.pollYield()
+	ag.PollYield()
 	ag.ResumeInterruption()
-	if ag.interrupt.Load() {
-		ag.interrupt.Store(false)
+	if ag.InterruptFlag.Load() {
+		ag.InterruptFlag.Store(false)
 		ag.receiveNotifications()
-		ag.raise()
-	}
-}
-
-// poll is [agent.Poll] without taking notifications. It leaves the flag set, so that the next
-// Poll of the agent takes them.
-func (p *poller) poll() {
-	p.pollYield()
-	p.ResumeInterruption()
-	if p.interrupt.Load() {
-		p.raise()
-	}
-}
-
-// raise panics with the pending interruption, if there is one.
-func (p *poller) raise() {
-	if c := p.interruptCause.Swap(nil); c != nil {
-		p.raised = &interruptSignal{
-			cause: *c,
-		}
-		panic(p.raised)
-	}
-}
-
-// ResumeInterruption panics again with an interruption that a host callback recovered before
-// the interruption reached the outermost call from Go.
-func (p *poller) ResumeInterruption() {
-	if p.raised != nil {
-		panic(p.raised)
+		ag.Raise()
 	}
 }
 
@@ -499,7 +241,7 @@ func (cx *ExecutionContext) growNatives() {
 
 // callNative dispatches a native call or construction. A proxy inherits its caller's context.
 func (cx *ExecutionContext) callNative(f *Object, this Value, args []Value, newTarget *Object) Value {
-	if r := f.fn.info.realm; r != nil && r != cx.realmPart {
+	if r := f.Fn.Info.Realm; r != nil && r != cx.realmPart {
 		cx = executionContextOf(r)
 	}
 	if previous := cx.activate(); previous != cx {
@@ -524,7 +266,7 @@ func (cx *ExecutionContext) invokeNative(f *Object, this Value, args []Value, ne
 	ag.natives = ag.natives[:n+1]
 	c := &ag.natives[n]
 	c.f, c.receiver, c.frames, c.newTarget = f, this, len(ag.frames), newTarget
-	r := nativeCodeOf(f.fn.info.native)(cx, this, args)
+	r := nativeCodeOf(f.Fn.Info.Native)(cx, this, args)
 	cx.popNative()
 	return r
 }
@@ -532,7 +274,7 @@ func (cx *ExecutionContext) invokeNative(f *Object, this Value, args []Value, ne
 // showsFrame reports whether stack traces show the call c, and the functions that c calls have
 // no caller. A proxy shows its target or its trap instead, and a frameless function nothing.
 func (c *nativeCall) showsFrame() bool {
-	return c.f.class != classProxy && !c.f.fn.frameless()
+	return c.f.Class != classProxy && !c.f.Fn.Frameless()
 }
 
 // popNative records the end of the innermost call of a native function.
@@ -545,7 +287,7 @@ func (ag *agent) popNative() {
 
 // truncateNatives drops the calls of native functions after the first n.
 func (ag *agent) truncateNatives(n int) {
-	ag.natives = truncated(ag.natives, n)
+	ag.natives = storage.Truncated(ag.natives, n)
 }
 
 // dropNatives drops the calls of native functions that started when there were more than
@@ -557,81 +299,6 @@ func (ag *agent) dropNatives(frames int) {
 		ag.natives[n] = nativeCall{}
 	}
 	ag.natives = ag.natives[:n]
-}
-
-// poller is what a long operation needs to stop at an interruption.
-type poller struct {
-	interrupt interruptFlag
-
-	// interruptCause is the cause of the pending interruption.
-	interruptCause atomic.Pointer[error]
-
-	// raised is the interruption that is unwinding to the outermost call from Go.
-	raised *interruptSignal
-}
-
-// space is the state of an agent that its objects and values need: the property keys and the
-// strings, the symbols, the shapes that belong to no realm, the epochs and IDs that the inline
-// caches rely on, and the objects that WeakRefs keep alive. The objects of an agent lead to its
-// space through their shapes. It also holds what operations on them need besides: the state of
-// polling, the clock and the RegExp matcher.
-//
-// It must not refer to the agent, a realm, a frame or an execution context, except that a shape
-// records its realm. hostDefined belongs to the host and is opaque to the engine.
-type space struct {
-	// poller comes first, as the interpreter loop reads its flag often.
-	poller
-
-	keys keys
-
-	strings stringTable
-
-	// missHolder holds undefined in its one slot, where the cache entries of properties that
-	// were not found point.
-	missHolder *Object
-
-	// protoEpoch changes whenever the properties or the prototype of a prototype object change,
-	// or its slots move.
-	protoEpoch uint32
-
-	lastReadShapeID uint32
-
-	sparseIndices sparseIndexCache
-
-	// indexStrings holds the strings of the array indices below indexStringCount that were
-	// made, by index, and nil for the others.
-	indexStrings []*Object
-
-	// symbolShape is the shape of the symbols of the agent. It records the space that they belong
-	// to, and no lookup starts from it.
-	symbolShape *shape
-
-	// typeofs are the interned results of the typeof operator, indexed by the typeof constants.
-	typeofs [typeofCount]Value
-
-	// matchResultShapes are the shapes of RegExp match results of the realm that made them last.
-	matchResultShapes matchResultShapes
-
-	builtins builtinLayout
-
-	// maxBigIntResultBits is the bit limit for checked BigInt arithmetic results.
-	// Tests lower it to exercise overflow with small operands.
-	maxBigIntResultBits int64
-
-	// symbolRegistry is the GlobalSymbolRegistry List, by key.
-	symbolRegistry map[wtf8.String]*Object
-
-	// keptObjects is the [[KeptAlive]] list.
-	keptObjects keptObjects
-
-	// clock gives the current time, or is nil for time.Now.
-	clock func() time.Time
-
-	// regExpMatcher matches regular expressions. Nothing that a match runs starts another one.
-	regExpMatcher regexp.Matcher
-
-	// hostDefined is the value that [space.HostDefined] returns.
-	hostDefined any
 }
 
 // agent is an ECMAScript agent. It must not be used from more than one goroutine at a time.
@@ -740,193 +407,37 @@ const initialStackSize = 1 << 12
 // The realm starts without the standard built-ins.
 func NewExecutionContext(hostDefined any) (*ExecutionContext, *Host) {
 	host := &Host{
-		hostDefined:         hostDefined,
+		HostDefinedValue:    hostDefined,
 		stack:               make([]Value, initialStackSize),
-		symbolRegistry:      map[wtf8.String]*Object{},
-		thrown:              Undefined,
+		SymbolRegistry:      map[wtf8.String]*Object{},
+		thrown:              storage.Undefined,
 		mailbox:             newMailbox(),
-		maxBigIntResultBits: MaxBigIntBits,
+		MaxBigIntResultBits: MaxBigIntBits,
 	}
 	r := host.newRealm()
 	cx := &r.context
 	cx.activate()
-	cx.symbolShape = &shape{
-		space: cx.space,
-		small: []shapeEntry{},
+	cx.SymbolShape = &shape{
+		Space: cx.space,
+		Small: []shapeEntry{},
 	}
 	cx.initRealmPrototypes()
 
-	cx.strings.startKeeping()
-	cx.strings.init(r.shapes.string)
+	cx.Strings.StartKeeping()
+	cx.Strings.Init(r.Shapes.String)
 	cx.initKeys()
 	for t, name := range typeofNames {
-		cx.typeofs[t] = ObjectValue(cx.Intern(name))
+		cx.Typeofs[t] = storage.ObjectValue(cx.Intern(name))
 	}
-	cx.missHolder = (&propertyObject{
-		kind:  kindObject,
-		shape: r.shapes.nullProto[ordinaryRoot],
-		slots: []Value{Undefined},
-	}).init()
+	cx.MissHolder = (&propertyObject{
+		Kind:  kindObject,
+		Shape: r.Shapes.NullProto[ordinaryRoot],
+		Slots: []Value{storage.Undefined},
+	}).Init()
 	cx.initRealmGlobals()
-	cx.strings.endKeeping()
+	cx.Strings.EndKeeping()
 	return cx, host
 }
-
-// Intrinsic identifies an intrinsic object.
-type Intrinsic uint8
-
-const (
-	IntrinsicObjectPrototype Intrinsic = iota
-	IntrinsicFunctionPrototype
-	IntrinsicArrayPrototype
-	IntrinsicStringPrototype
-	IntrinsicNumberPrototype
-	IntrinsicBooleanPrototype
-	IntrinsicSymbolPrototype
-	IntrinsicBigIntPrototype
-	IntrinsicIteratorPrototype
-	IntrinsicAsyncIteratorPrototype
-	IntrinsicArrayIteratorPrototype
-	IntrinsicStringIteratorPrototype
-	IntrinsicMapIteratorPrototype
-	IntrinsicSetIteratorPrototype
-	IntrinsicRegExpStringIteratorPrototype
-	IntrinsicIteratorHelperPrototype
-	IntrinsicWrapForValidIteratorPrototype
-	IntrinsicGeneratorPrototype
-	IntrinsicAsyncGeneratorPrototype
-	IntrinsicGeneratorFunctionPrototype
-	IntrinsicAsyncFunctionPrototype
-	IntrinsicAsyncGeneratorFunctionPrototype
-	IntrinsicRegExpPrototype
-	IntrinsicPromisePrototype
-	IntrinsicMapPrototype
-	IntrinsicSetPrototype
-	IntrinsicDatePrototype
-	IntrinsicSharedArrayBufferPrototype
-	IntrinsicArrayBufferPrototype
-	IntrinsicDataViewPrototype
-	IntrinsicWeakMapPrototype
-	IntrinsicWeakSetPrototype
-	IntrinsicWeakRefPrototype
-	IntrinsicFinalizationRegistryPrototype
-	IntrinsicDisposableStackPrototype
-	IntrinsicAsyncDisposableStackPrototype
-	IntrinsicShadowRealmPrototype
-	IntrinsicAbstractModuleSourcePrototype
-	IntrinsicPromise
-	IntrinsicArray
-	IntrinsicObject
-	IntrinsicFunction
-	IntrinsicRegExp
-	IntrinsicIterator
-	IntrinsicArrayBuffer
-	IntrinsicSharedArrayBuffer
-	IntrinsicAbstractModuleSource
-
-	IntrinsicTemporal
-
-	IntrinsicIntl
-	IntrinsicIntlDateTimeFormat
-	IntrinsicIntlNumberFormat
-	IntrinsicIntlSegmentsPrototype
-	IntrinsicIntlSegmentIteratorPrototype
-
-	// The Temporal namespace initializes this range of prototypes.
-	IntrinsicTemporalInstantPrototype
-	IntrinsicTemporalDurationPrototype
-	IntrinsicTemporalPlainDatePrototype
-	IntrinsicTemporalPlainTimePrototype
-	IntrinsicTemporalPlainDateTimePrototype
-	IntrinsicTemporalPlainYearMonthPrototype
-	IntrinsicTemporalPlainMonthDayPrototype
-	IntrinsicTemporalZonedDateTimePrototype
-
-	// The Intl namespace initializes this range of prototypes.
-	IntrinsicIntlCollatorPrototype
-	IntrinsicIntlDateTimeFormatPrototype
-	IntrinsicIntlDisplayNamesPrototype
-	IntrinsicIntlDurationFormatPrototype
-	IntrinsicIntlListFormatPrototype
-	IntrinsicIntlLocalePrototype
-	IntrinsicIntlNumberFormatPrototype
-	IntrinsicIntlPluralRulesPrototype
-	IntrinsicIntlRelativeTimeFormatPrototype
-	IntrinsicIntlSegmenterPrototype
-
-	// The prototypes of the native error types are in the order of [ErrorKind].
-	IntrinsicErrorPrototype
-	IntrinsicTypeErrorPrototype
-	IntrinsicRangeErrorPrototype
-	IntrinsicReferenceErrorPrototype
-	IntrinsicSyntaxErrorPrototype
-	IntrinsicEvalErrorPrototype
-	IntrinsicURIErrorPrototype
-	IntrinsicAggregateErrorPrototype
-	IntrinsicSuppressedErrorPrototype
-
-	IntrinsicThrowTypeError
-
-	// The getters of the caller and arguments properties of non-strict ordinary functions.
-	IntrinsicFunctionCallerGetter
-	IntrinsicFunctionArgumentsGetter
-
-	// The typed array constructors are in the order of [element.Type].
-	IntrinsicInt8Array
-	IntrinsicUint8Array
-	IntrinsicUint8ClampedArray
-	IntrinsicInt16Array
-	IntrinsicUint16Array
-	IntrinsicInt32Array
-	IntrinsicUint32Array
-	IntrinsicFloat16Array
-	IntrinsicFloat32Array
-	IntrinsicFloat64Array
-	IntrinsicBigInt64Array
-	IntrinsicBigUint64Array
-
-	// The prototypes of the typed array constructors are in the order of [element.Type].
-	IntrinsicInt8ArrayPrototype
-	IntrinsicUint8ArrayPrototype
-	IntrinsicUint8ClampedArrayPrototype
-	IntrinsicInt16ArrayPrototype
-	IntrinsicUint16ArrayPrototype
-	IntrinsicInt32ArrayPrototype
-	IntrinsicUint32ArrayPrototype
-	IntrinsicFloat16ArrayPrototype
-	IntrinsicFloat32ArrayPrototype
-	IntrinsicFloat64ArrayPrototype
-	IntrinsicBigInt64ArrayPrototype
-	IntrinsicBigUint64ArrayPrototype
-
-	// The initial values of these functions are what the engine treats specially.
-	IntrinsicFunctionPrototypeCall
-	IntrinsicFunctionPrototypeApply
-	IntrinsicEval
-	IntrinsicFunctionPrototypeHasInstance
-	IntrinsicArrayPrototypeValues
-	IntrinsicArrayIteratorPrototypeNext
-	IntrinsicArraySpeciesGetter
-	IntrinsicTypedArrayPrototypeLengthGetter
-	IntrinsicGeneratorPrototypeNext
-
-	// The initial values of these functions are what the built-ins treat specially.
-	IntrinsicRegExpPrototypeExec
-	IntrinsicMapPrototypeSet
-	IntrinsicMapPrototypeEntries
-	IntrinsicMapIteratorPrototypeNext
-	IntrinsicSetPrototypeAdd
-	IntrinsicSetPrototypeHas
-	IntrinsicSetPrototypeValues
-	IntrinsicSetIteratorPrototypeNext
-	IntrinsicWeakMapPrototypeSet
-	IntrinsicWeakSetPrototypeAdd
-
-	// The functions that the engine calls.
-	IntrinsicJSONParse
-
-	intrinsicCount
-)
 
 // ErrorPrototypeIntrinsic returns the intrinsic that is the prototype of the native error type k.
 func ErrorPrototypeIntrinsic(k ErrorKind) Intrinsic {
@@ -943,15 +454,10 @@ func TypedArrayPrototypeIntrinsic(t element.Type) Intrinsic {
 	return IntrinsicInt8ArrayPrototype + Intrinsic(t)
 }
 
-// Intrinsic returns the intrinsic object id of the execution realm, or nil before it is set.
-func (r *realmPart) Intrinsic(id Intrinsic) *Object {
-	return r.intrinsics[id]
-}
-
 // IntrinsicValue returns the intrinsic object id of the execution realm, which must be set, as a value.
 func (cx *ExecutionContext) IntrinsicValue(id Intrinsic) Value {
 	return Value{
-		o: cx.realm.intrinsics[id],
+		O: cx.realm.Intrinsics[id],
 	}
 }
 
@@ -970,18 +476,6 @@ const (
 	ErrorKindSuppressed
 	ErrorKindCount
 )
-
-// Error is a JavaScript exception that reached Go.
-type Error struct {
-	// Value is the thrown value.
-	Value Value
-
-	msg string
-}
-
-func (e *Error) Error() string {
-	return e.msg
-}
 
 // Throw throws v as a JavaScript exception. It does not return.
 func (ag *agent) Throw(v Value) {
@@ -1027,15 +521,15 @@ type savedException struct {
 }
 
 func (ag *agent) saveException() Value {
-	return Value{o: newMarker(&savedException{
+	return Value{O: storage.NewMarker(&savedException{
 		value: ag.thrown,
 		at:    ag.thrownAt,
 	})}
 }
 
 func unpackException(v Value) (Value, *throwSite) {
-	if v.o != nil && v.o.kind == kindHole {
-		if saved, ok := v.o.ext.(*savedException); ok {
+	if v.O != nil && v.O.Kind == kindHole {
+		if saved, ok := v.O.Ext.(*savedException); ok {
 			return saved.value, &saved.at
 		}
 	}
@@ -1054,13 +548,13 @@ func (ag *agent) restoreException(v Value) {
 func (cx *ExecutionContext) newError(kind ErrorKind, msg string) *Object {
 	e := cx.NewErrorObject(cx.Intrinsic(ErrorPrototypeIntrinsic(kind)))
 	// A message that quotes a value of the script can be longer than a string may be.
-	cx.Define(e, cx.Key(KeyMessage), cx.NewString(clip(wtf8.FromValidUTF8(msg), MaxStringLength, "")), FlagsHidden)
-	e.setExtState(cx.newErrorData(e, msg, len(cx.frames), len(cx.natives)))
+	cx.Define(e, cx.Key(KeyMessage), cx.NewString(storage.Clip(wtf8.FromValidUTF8(msg), MaxStringLength, "")), FlagsHidden)
+	e.SetExtState(cx.newErrorData(e, msg, len(cx.frames), len(cx.natives)))
 	return e
 }
 
 func (cx *ExecutionContext) throwError(kind ErrorKind, msg string) {
-	cx.Throw(Value{o: cx.newError(kind, msg)})
+	cx.Throw(Value{O: cx.newError(kind, msg)})
 }
 
 // ThrowTypeError throws a TypeError in the execution realm with the given message. It does not return.
@@ -1097,7 +591,7 @@ func (ag *agent) RecordStack(e *Object, msg string, newTarget *Object) {
 			break
 		}
 	}
-	e.setExtState(ag.newErrorData(e, msg, frames, natives))
+	e.SetExtState(ag.newErrorData(e, msg, frames, natives))
 }
 
 // maxStackFrames is the number of calls that a stack trace shows.
@@ -1108,47 +602,47 @@ const maxStackFrames = 16
 // shows are read now, and the trace is formatted when it is first read.
 func (ag *agent) newErrorData(e *Object, msg string, frames, natives int) *errorData {
 	d := &errorData{
-		name:    "Error",
-		msg:     msg,
-		pending: true,
+		Name:    "Error",
+		Msg:     msg,
+		Pending: true,
 	}
-	if v, ok := diagnosticDataProperty(e, ag.Key(KeyName)); ok && v.IsString() {
-		d.name = v.Str()
+	if v, ok := storage.DiagnosticDataProperty(e, ag.Key(KeyName)); ok && v.IsString() {
+		d.Name = v.Str()
 	}
 	if n := min(frames+natives, maxStackFrames); n > 0 {
-		d.calls = make([]stackCall, 0, n)
+		d.Calls = make([]stackCall, 0, n)
 	}
-	globalThis := e.creationRealm().globalThis
+	globalThis := e.CreationRealm().GlobalThis
 	j := natives - 1
-	for i := frames - 1; len(d.calls) < maxStackFrames; i-- {
+	for i := frames - 1; len(d.Calls) < maxStackFrames; i-- {
 		// A native function called from the frame i runs inside it.
-		for ; j >= 0 && ag.natives[j].frames > i && len(d.calls) < maxStackFrames; j-- {
+		for ; j >= 0 && ag.natives[j].frames > i && len(d.Calls) < maxStackFrames; j-- {
 			c := &ag.natives[j]
 			if !c.showsFrame() {
 				continue
 			}
-			d.calls = append(d.calls, stackCall{
-				name:  c.f.fn.nativeName(),
-				recv:  ag.receiverName(globalThis, c.newTarget != nil, c.receiver),
-				isNew: c.newTarget != nil,
+			d.Calls = append(d.Calls, stackCall{
+				Name:  c.f.Fn.NativeName(),
+				Recv:  ag.receiverName(globalThis, c.newTarget != nil, c.receiver),
+				IsNew: c.newTarget != nil,
 			})
 		}
-		if i < 0 || len(d.calls) >= maxStackFrames {
+		if i < 0 || len(d.Calls) >= maxStackFrames {
 			break
 		}
 		fr := &ag.frames[i]
 		c := stackCall{
-			fp:    fr.fp,
-			name:  fr.fp.name,
-			pc:    fr.pc,
-			isNew: fr.newTarget != nil,
+			Fp:    fr.fp,
+			Name:  fr.fp.Name,
+			Pc:    fr.pc,
+			IsNew: fr.newTarget != nil,
 		}
 		if fr.fp.IsEval {
-			c.name = "eval"
+			c.Name = "eval"
 		} else {
-			c.recv = ag.receiverName(globalThis, c.isNew, fr.this)
+			c.Recv = ag.receiverName(globalThis, c.IsNew, fr.this)
 		}
-		d.calls = append(d.calls, c)
+		d.Calls = append(d.Calls, c)
 	}
 	return d
 }
@@ -1156,98 +650,10 @@ func (ag *agent) newErrorData(e *Object, msg string, frames, natives int) *error
 // receiverName returns the type name that a stack trace shows for a call with this, or an
 // empty string when the call shows no receiver.
 func (ag *agent) receiverName(globalThis *Object, isNew bool, this Value) wtf8.String {
-	if isNew || this.IsObject() && this.o == globalThis || this.IsNullish() {
+	if isNew || this.IsObject() && this.O == globalThis || this.IsNullish() {
 		return ""
 	}
 	return ag.typeName(this)
-}
-
-// stackCall is a line of a stack trace.
-type stackCall struct {
-	// fp is the function that runs, or nil for a native function.
-	fp *funcProto
-
-	// name is the name of the function.
-	name wtf8.String
-
-	// recv is the type name of the receiver of a method call, or empty.
-	recv wtf8.String
-
-	// pc is past the instruction of fp that is running.
-	pc int
-
-	isNew bool
-}
-
-const stackFramePrefix = "\n    at "
-
-// formatStack returns a stack trace starting with the WTF-8 name and UTF-8 message,
-// followed by one line per call.
-func formatStack(name wtf8.String, msg string, calls []stackCall) wtf8.String {
-	// ASCII punctuation separates the WTF-8 fields, so surrogate pairs cannot span writes.
-	var b strings.Builder
-	b.Grow(len(calls) * len(stackFramePrefix))
-	b.WriteString(string(name))
-	if msg != "" {
-		b.WriteString(": ")
-		b.WriteString(string(wtf8.FromValidUTF8(msg)))
-	}
-	for i := range calls {
-		calls[i].write(&b)
-	}
-	return clip(wtf8.String(b.String()), MaxStringLength, "")
-}
-
-// maxFrameName is the length in bytes up to which a stack trace shows a name.
-const maxFrameName = 1 << 10
-
-// clip returns s, or its longest prefix that ends at a character boundary and leaves room for
-// the suffix within max bytes, followed by the suffix.
-func clip[S ~string](s S, max int, suffix S) S {
-	if len(s) <= max {
-		return s
-	}
-	i := max - len(suffix)
-	for i > 0 && !utf8.RuneStart(s[i]) {
-		i--
-	}
-	return s[:i] + suffix
-}
-
-// write writes the line of the stack trace for c to b.
-func (c *stackCall) write(b *strings.Builder) {
-	b.WriteString(stackFramePrefix)
-	name := clip(c.name, maxFrameName, "...")
-	switch {
-	case c.isNew:
-		b.WriteString("new ")
-		name = cmp.Or(name, "<anonymous>")
-	case c.recv != "":
-		b.WriteString(string(clip(c.recv, maxFrameName, "...")))
-		b.WriteByte('.')
-		name = cmp.Or(name, "<anonymous>")
-	}
-	if name != "" {
-		b.WriteString(string(name))
-		if c.fp != nil && c.fp.File == "" {
-			return
-		}
-		b.WriteString(" (")
-	}
-	if fp := c.fp; fp != nil && fp.File != "" {
-		b.WriteString(string(wtf8.FromValidUTF8(fp.File)))
-		if line, column := fp.Position(max(c.pc-1, 0)); line > 0 {
-			b.WriteByte(':')
-			b.WriteString(strconv.Itoa(line))
-			b.WriteByte(':')
-			b.WriteString(strconv.Itoa(column))
-		}
-	} else {
-		b.WriteString("<anonymous>")
-	}
-	if name != "" {
-		b.WriteByte(')')
-	}
 }
 
 // typeName returns the name of the type of v that a stack trace shows for a method called on v.
@@ -1265,19 +671,19 @@ func (ag *agent) typeName(v Value) wtf8.String {
 	case v.IsBigInt():
 		return "BigInt"
 	}
-	o := v.o
+	o := v.O
 	if v.IsCallable() {
-		if n, ok := diagnosticDataProperty(o, ag.Key(KeyName)); ok && n.IsString() && n.Str() != "" {
+		if n, ok := storage.DiagnosticDataProperty(o, ag.Key(KeyName)); ok && n.IsString() && n.Str() != "" {
 			return n.Str()
 		}
 		return "Function"
 	}
-	if c, ok := diagnosticDataProperty(o, ag.Key(KeyConstructor)); ok && c.IsCallable() {
-		if n, ok := diagnosticDataProperty(c.o, ag.Key(KeyName)); ok && n.IsString() && n.Str() != "" && n.Str() != "Object" {
+	if c, ok := storage.DiagnosticDataProperty(o, ag.Key(KeyConstructor)); ok && c.IsCallable() {
+		if n, ok := storage.DiagnosticDataProperty(c.O, ag.Key(KeyName)); ok && n.IsString() && n.Str() != "" && n.Str() != "Object" {
 			return n.Str()
 		}
 	}
-	if t, ok := diagnosticDataProperty(o, ag.WellKnownSymbol(SymbolToStringTag)); ok && t.IsString() && t.Str() != "" {
+	if t, ok := storage.DiagnosticDataProperty(o, ag.WellKnownSymbol(SymbolToStringTag)); ok && t.IsString() && t.Str() != "" {
 		return t.Str()
 	}
 	return "Object"
@@ -1286,78 +692,19 @@ func (ag *agent) typeName(v Value) wtf8.String {
 // takeException converts the pending exception to a Go error.
 func (ag *agent) takeException() error {
 	v := ag.thrown
-	ag.thrown = Undefined
-	return ag.errorOf(v)
-}
-
-// errorOf returns the Go error for the thrown value v.
-func (sp *space) errorOf(v Value) *Error {
-	var msg string
-	if v.IsObject() {
-		if s, ok := diagnosticDataProperty(v.o, sp.Key(KeyStack)); ok && s.IsString() {
-			msg = wtf8.ToValidUTF8(s.Str())
-		} else if s, ok := ErrorStack(v); ok {
-			msg = wtf8.ToValidUTF8(s)
-		} else if s, ok := diagnosticDataProperty(v.o, sp.Key(KeyMessage)); ok && s.IsString() {
-			msg = wtf8.ToValidUTF8(s.Str())
-		} else {
-			msg = "uncaught exception"
-		}
-	} else {
-		msg = "uncaught " + displayString(v)
-	}
-	return &Error{
-		Value: v,
-		msg:   msg,
-	}
+	ag.thrown = storage.Undefined
+	return ag.ErrorOf(v)
 }
 
 // NewError returns a new error object of the given type in the execution realm with the message msg, which is UTF-8.
 func (cx *ExecutionContext) NewError(kind ErrorKind, msg string) Value {
-	return Value{o: cx.newError(kind, msg)}
+	return Value{O: cx.newError(kind, msg)}
 }
-
-// maxDisplayString is the length in bytes up to which a message shows a string.
-const maxDisplayString = 1 << 10
 
 // DisplayString describes v for messages, without running any JavaScript. A long string is
 // shortened.
 func (ag *agent) DisplayString(v Value) string {
-	return displayString(v)
-}
-
-// displayString is [agent.DisplayString].
-func displayString(v Value) string {
-	if validateExec {
-		checkValue(v)
-	}
-	o := v.o
-	if o == nil {
-		return "undefined"
-	}
-	if o == numberObject {
-		return string(numconv.NumberToString(v.n))
-	}
-	switch o.kind {
-	case kindNull:
-		return "null"
-	case kindFalse:
-		return "false"
-	case kindTrue:
-		return "true"
-	case kindString:
-		return wtf8.ToValidUTF8(clip(v.Str(), maxDisplayString, "..."))
-	case kindSymbol:
-		return "Symbol(" + wtf8.ToValidUTF8(o.str) + ")"
-	case kindBigInt:
-		return displayBigInt(v)
-	case kindArray:
-		return "[object Array]"
-	}
-	if o.fn != nil {
-		return "[object Function]"
-	}
-	return "[object Object]"
+	return storage.DisplayString(v)
 }
 
 // protect runs f and reports whether it completed without throwing.

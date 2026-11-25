@@ -196,7 +196,7 @@ func TestValueStorageOwnership(t *testing.T) {
 		}
 
 		for _, file := range p.files {
-			if p.isEngine() && filepath.Base(p.fset.Position(file.Pos()).Filename) == "storage.go" {
+			if p.path == storagePath && filepath.Base(p.fset.Position(file.Pos()).Filename) == "storage.go" {
 				continue
 			}
 			for _, decl := range file.Decls {

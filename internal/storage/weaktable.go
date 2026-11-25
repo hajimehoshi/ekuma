@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: 0BSD
 // SPDX-FileCopyrightText: 2026 Hajime Hoshi
 
-package engine
+package storage
 
 import (
 	"runtime"
@@ -9,13 +9,7 @@ import (
 	"weak"
 )
 
-// This file holds the entries of the weak collections.
-//
-// A key owns its entries, so a value that refers back to its key can be collected with it.
-// Each collection tracks the keys' entry stores weakly. Its cleanup removes its value from
-// every store that outlives the collection.
-
-// WeakTable is the [[WeakMapData]] of a WeakMap or the [[WeakSetData]] of a WeakSet.
+// WeakTable is the [WeakMapData] of a WeakMap or the [WeakSetData] of a WeakSet.
 // Every key must be a value for which CanBeHeldWeakly holds.
 type WeakTable struct {
 	// Operations on keys keep the table alive until its entries have been read or updated.
@@ -88,7 +82,7 @@ type weakEntries struct {
 	self weak.Pointer[weakEntries]
 }
 
-func newWeakTable() *WeakTable {
+func NewWeakTable() *WeakTable {
 	return &WeakTable{
 		keys: &weakTableKeys{},
 	}
@@ -96,7 +90,7 @@ func newWeakTable() *WeakTable {
 
 // Get returns the value of the entry with the key k.
 func (t *WeakTable) Get(k Value) (Value, bool) {
-	m := k.o.meta()
+	m := k.O.Meta()
 	if m == nil || m.weak == nil {
 		return Undefined, false
 	}
@@ -120,7 +114,7 @@ func (t *WeakTable) Has(k Value) bool {
 // Set sets the value of the entry with the key k.
 func (t *WeakTable) Set(k, v Value) {
 	defer runtime.KeepAlive(t)
-	m := k.o.ensureMeta()
+	m := k.O.ensureMeta()
 	if m.weak == nil {
 		w := &weakEntries{}
 		w.self = weak.Make(w)
@@ -155,7 +149,7 @@ func (w *weakEntries) set(table *weakTableKeys, v Value) bool {
 // Delete deletes the entry with the key k and reports whether there was one.
 func (t *WeakTable) Delete(k Value) bool {
 	defer runtime.KeepAlive(t)
-	m := k.o.meta()
+	m := k.O.Meta()
 	if m == nil || m.weak == nil || !m.weak.delete(t.keys) {
 		return false
 	}

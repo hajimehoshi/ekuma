@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: 0BSD
 // SPDX-FileCopyrightText: 2026 Hajime Hoshi
 
-package engine
+package storage
 
 import (
 	"math"
@@ -12,7 +12,7 @@ import (
 )
 
 // StringFromCodeUnits returns the string value whose code units are units.
-func (r *realmPart) StringFromCodeUnits(units []uint16) Value {
+func (r *RealmPart) StringFromCodeUnits(units []uint16) Value {
 	// Every code unit takes at least one byte.
 	if len(units) > shortstrings.MaxBytes {
 		return r.NewString(wtf8.FromUTF16(units))
@@ -25,7 +25,7 @@ func (r *realmPart) StringFromCodeUnits(units []uint16) Value {
 }
 
 // CodePointsToString returns the string value of points, code points that may be surrogates.
-func (r *realmPart) CodePointsToString(points []rune) Value {
+func (r *RealmPart) CodePointsToString(points []rune) Value {
 	// Every code point takes at least one byte.
 	if len(points) > shortstrings.MaxBytes {
 		var b wtf8.Buffer
@@ -42,32 +42,32 @@ func (r *realmPart) CodePointsToString(points []rune) Value {
 }
 
 // builtString returns b's string as a string value.
-func (r *realmPart) builtString(b *shortstrings.Builder) Value {
+func (r *RealmPart) builtString(b *shortstrings.Builder) Value {
 	data, n, ok := b.Packed()
 	if !ok {
 		return r.NewString(b.String())
 	}
 	if n == 0 {
-		return r.strings.empty
+		return r.Strings.Empty
 	}
 	if n == 1 && byte(data) < 0x80 {
-		return r.strings.character(byte(data))
+		return r.Strings.Character(byte(data))
 	}
 	return Value{
-		n: math.Float64frombits(data),
-		o: &r.shapes.shortStrings[n],
+		N: math.Float64frombits(data),
+		O: &r.Shapes.ShortStrings[n],
 	}
 }
 
-// numberToString is [QuietContext.NumberToString].
-func (r *realmPart) numberToString(n float64) Value {
+// NumberToString is QuietContext.NumberToString.
+func (r *RealmPart) NumberToString(n float64) Value {
 	var buf [32]byte
 	text := numconv.AppendNumber(buf[:0], n)
 	if len(text) == 1 {
-		return r.strings.character(text[0])
+		return r.Strings.Character(text[0])
 	}
 	if len(text) <= shortstrings.MaxBytes {
-		return r.shortString(wtf8.String(text))
+		return r.ShortString(wtf8.String(text))
 	}
 	return r.NewString(wtf8.String(text))
 }

@@ -12,6 +12,7 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/element"
 	"github.com/hajimehoshi/ekuma/internal/engine"
 	"github.com/hajimehoshi/ekuma/internal/numconv"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
@@ -267,7 +268,7 @@ func fromHexRun(s wtf8.String, stop, maxLength int, r *decodeResult) {
 // optionsObject implements GetOptionsObject.
 func optionsObject(cx *engine.ExecutionContext, options engine.Value) engine.Value {
 	if options.IsUndefined() {
-		return engine.ObjectValue(cx.NewObject(nil))
+		return storage.ObjectValue(cx.NewObject(nil))
 	}
 	if !options.IsObject() {
 		cx.ThrowTypeError("options must be an object")
@@ -339,17 +340,17 @@ func storeDecodeResult(cx *engine.ExecutionContext, t *engine.TypedArray, r deco
 		cx.ThrowSyntaxError(r.err)
 	}
 	o := cx.NewObjectFromProperties(
-		[]engine.PropKey{engine.NamedKey(cx.Intern("read")), engine.NamedKey(cx.Intern("written"))},
-		[]engine.Value{engine.Number(float64(r.read)), engine.Number(float64(len(r.bytes)))},
+		[]engine.PropKey{storage.NamedKey(cx.Intern("read")), storage.NamedKey(cx.Intern("written"))},
+		[]engine.Value{storage.Number(float64(r.read)), storage.Number(float64(len(r.bytes)))},
 	)
-	return engine.ObjectValue(o)
+	return storage.ObjectValue(o)
 }
 
 // newUint8Array returns a new Uint8Array of the elements b.
 func newUint8Array(cx *engine.ExecutionContext, b []byte) engine.Value {
 	o := newTypedArray(cx, cx.Intrinsic(engine.IntrinsicUint8ArrayPrototype), element.Uint8, int64(len(b)))
-	writeElements(engine.TypedArrayData(engine.ObjectValue(o)), 0, b)
-	return engine.ObjectValue(o)
+	writeElements(engine.TypedArrayData(storage.ObjectValue(o)), 0, b)
+	return storage.ObjectValue(o)
 }
 
 var (
@@ -410,7 +411,7 @@ func uint8ArrayToBase64(cx *engine.ExecutionContext, this engine.Value, args []e
 	t := thisUint8Array(cx, this, false, "toBase64")
 	opts := optionsObject(cx, arg(args, 0))
 	alphabet := stringOption(cx, opts, "alphabet", "base64", "base64url")
-	omitPadding := engine.ToBoolean(cx.GetV(opts, cx.Intern("omitPadding")))
+	omitPadding := storage.ToBoolean(cx.GetV(opts, cx.Intern("omitPadding")))
 	b := uint8ArrayBytes(cx, t, "toBase64")
 	enc := base64.StdEncoding
 	if alphabet == "base64url" {

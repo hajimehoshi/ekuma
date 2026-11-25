@@ -3,13 +3,17 @@
 
 package engine
 
+import (
+	"github.com/hajimehoshi/ekuma/internal/storage"
+)
+
 // FunctionCaller returns the value of the caller property of the non-strict ordinary function f:
 // the function that made the innermost running call of f, or null. It throws a TypeError when f
 // is not such a function.
 func (cx *ExecutionContext) FunctionCaller(f Value) Value {
 	i := cx.innermostCall(f)
 	if i < 0 {
-		return Null
+		return storage.Null
 	}
 	return cx.callerOf(i)
 }
@@ -20,17 +24,17 @@ func (cx *ExecutionContext) FunctionCaller(f Value) Value {
 func (cx *ExecutionContext) FunctionArguments(f Value) Value {
 	i := cx.innermostCall(f)
 	if i < 0 {
-		return Null
+		return storage.Null
 	}
-	return Value{o: cx.callArguments(i)}
+	return Value{O: cx.callArguments(i)}
 }
 
 // innermostCall returns the index of the frame of the innermost running call of the non-strict
 // ordinary function f, or -1 when f is not running. It throws a TypeError when f is not such a
 // function.
 func (cx *ExecutionContext) innermostCall(f Value) int {
-	o := f.o
-	if o == nil || o.fn == nil || o.fn.code == nil || !o.fn.code.legacyCallerArguments {
+	o := f.O
+	if o == nil || o.Fn == nil || o.Fn.Code == nil || !o.Fn.Code.LegacyCallerArguments {
 		cx.ThrowTypeError("'caller' and 'arguments' are only available on non-strict functions")
 	}
 	i := len(cx.frames) - 1
@@ -44,8 +48,8 @@ func (cx *ExecutionContext) innermostCall(f Value) int {
 // frames[i], which are not mapped to its parameters.
 func (cx *ExecutionContext) callArguments(i int) *Object {
 	fr := &cx.frames[i]
-	o := cx.newArgumentsObject(cx.frameRegs(fr)[:min(fr.argc, fr.fp.nparams)], cx.extraArgs(fr))
-	cx.add(o, cx.Key(keyCallee), Value{o: fr.cl}, FlagsHidden)
+	o := cx.NewArgumentsObject(cx.frameRegs(fr)[:min(fr.argc, fr.fp.Nparams)], cx.extraArgs(fr))
+	cx.Add(o, cx.Key(keyCallee), Value{O: fr.cl}, FlagsHidden)
 	return o
 }
 
@@ -60,18 +64,18 @@ func (ag *agent) callerOf(i int) Value {
 		j--
 	}
 	if j < 0 {
-		return Null
+		return storage.Null
 	}
 	// A native function called by the frame j or an eval frame above it made the call, unless
 	// it shows no frame.
 	for k := len(ag.natives) - 1; k >= 0 && ag.natives[k].frames > j; k-- {
 		if c := &ag.natives[k]; c.frames <= i && c.showsFrame() {
-			return Null
+			return storage.Null
 		}
 	}
 	fp := ag.frames[j].fp
-	if fp.IsScript || fp.strict || fp.isGenerator || fp.isAsync {
-		return Null
+	if fp.IsScript || fp.Strict || fp.IsGenerator || fp.IsAsync {
+		return storage.Null
 	}
-	return Value{o: ag.frames[j].cl}
+	return Value{O: ag.frames[j].cl}
 }

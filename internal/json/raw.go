@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"github.com/hajimehoshi/ekuma/internal/engine"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
@@ -27,7 +28,7 @@ func RawJSON(cx *engine.ExecutionContext, text engine.Value) engine.Value {
 	o := cx.NewRawJSONObject()
 	cx.Define(o, cx.Intern("rawJSON"), s, engine.FlagEnumerable)
 	cx.PreventExtensions(o)
-	return engine.ObjectValue(o)
+	return storage.ObjectValue(o)
 }
 
 // IsRawJSON implements JSON.isRawJSON.

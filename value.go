@@ -11,6 +11,7 @@ import (
 
 	"github.com/hajimehoshi/ekuma/internal/element"
 	"github.com/hajimehoshi/ekuma/internal/engine"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 )
 
 // Type is the type of a JavaScript value. Null has type [TypeNull], and
@@ -81,7 +82,7 @@ var (
 	Undefined Value
 
 	// Null is the value null.
-	Null = fromEngine(engine.Null)
+	Null = fromEngine(storage.Null)
 )
 
 // Type returns the type of v.
@@ -125,7 +126,7 @@ func (v Value) IsNaN() bool {
 
 // Truthy returns the boolean that v converts to.
 func (v Value) Truthy() bool {
-	return engine.ToBoolean(v.value)
+	return storage.ToBoolean(v.value)
 }
 
 // Bool returns the boolean v. It panics with a [*ValueError] when v is not a boolean.
@@ -137,7 +138,7 @@ func (v Value) Bool() bool {
 			Type:   v.Type(),
 		})
 	}
-	return engine.ToBoolean(e)
+	return storage.ToBoolean(e)
 }
 
 // Float returns the number v. A NaN always has the bits 0x7ff8000000000000. Float panics with
@@ -210,7 +211,7 @@ func (v Value) String() string {
 
 // Equal reports whether v and w are equal according to the JavaScript === operator.
 func (v Value) Equal(w Value) bool {
-	return engine.IsStrictlyEqual(v.value, w.value)
+	return storage.IsStrictlyEqual(v.value, w.value)
 }
 
 // vm returns the [VM] that the object, function or string v belongs to.
@@ -291,7 +292,7 @@ func (v Value) DeleteWithValueKey(key Value) error {
 
 func (vm *VM) indexKey(i int) engine.Value {
 	if uint64(i) <= engine.MaxArrayIndex {
-		return engine.Number(float64(i))
+		return storage.Number(float64(i))
 	}
 	return vm.hostContext().StringFromGo(strconv.Itoa(i))
 }
@@ -378,7 +379,7 @@ func (v Value) invoke(ctx context.Context, method string, construct bool, args [
 			if construct {
 				return vm.hostContext().HostConstruct(v.value, a)
 			}
-			return vm.hostContext().HostCall(v.value, engine.Undefined, a)
+			return vm.hostContext().HostCall(v.value, storage.Undefined, a)
 		})
 	})
 }

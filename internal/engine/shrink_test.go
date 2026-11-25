@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/hajimehoshi/ekuma/internal/engine"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 )
 
 // TestArrayStorageShrinks tests that removing most elements of an array gives up the storage
@@ -41,7 +42,7 @@ func TestArrayStorageShrinks(t *testing.T) {
 			if err != nil {
 				t.Fatalf("runScript: %v", err)
 			}
-			if got := engine.ElementCount(v); got != 10 {
+			if got := storage.ElementCount(v); got != 10 {
 				t.Fatalf("got %d elements, want 10", got)
 			}
 			if got := engine.ElementStorage(v); got > 100 {

@@ -9,6 +9,7 @@ import (
 
 	"github.com/hajimehoshi/ekuma/internal/engine"
 	"github.com/hajimehoshi/ekuma/internal/numconv"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
@@ -17,7 +18,7 @@ func arg(args []engine.Value, i int) engine.Value {
 	if i < len(args) {
 		return args[i]
 	}
-	return engine.Undefined
+	return storage.Undefined
 }
 
 // shortContract is the contract of the kernels that run in a short time.
@@ -35,21 +36,21 @@ var polledContract = engine.ShortcutContract{
 // method defines the non-enumerable function name on o.
 func method(cx *engine.ExecutionContext, o *engine.Object, name wtf8.String, length int, f engine.Native) *engine.Object {
 	fn := cx.NewNative(name, length, f)
-	cx.Define(o, cx.Intern(name), engine.ObjectValue(fn), engine.FlagsHidden)
+	cx.Define(o, cx.Intern(name), storage.ObjectValue(fn), engine.FlagsHidden)
 	return fn
 }
 
 // methodWithState is [method] for a function whose internal slots are state.
 func methodWithState(cx *engine.ExecutionContext, o *engine.Object, name wtf8.String, length int, f engine.Native, state any) *engine.Object {
 	fn := cx.NewNativeWithState(name, length, f, state)
-	cx.Define(o, cx.Intern(name), engine.ObjectValue(fn), engine.FlagsHidden)
+	cx.Define(o, cx.Intern(name), storage.ObjectValue(fn), engine.FlagsHidden)
 	return fn
 }
 
 // symMethod defines the non-enumerable function under the symbol key on o.
 func symMethod(cx *engine.ExecutionContext, o *engine.Object, key *engine.Object, name wtf8.String, length int, f engine.Native) *engine.Object {
 	fn := cx.NewNative(name, length, f)
-	cx.Define(o, key, engine.ObjectValue(fn), engine.FlagsHidden)
+	cx.Define(o, key, storage.ObjectValue(fn), engine.FlagsHidden)
 	return fn
 }
 
@@ -71,8 +72,8 @@ func constant(cx *engine.ExecutionContext, o *engine.Object, name wtf8.String, v
 func constructor(cx *engine.ExecutionContext, name wtf8.String, length int, protoID engine.Intrinsic, f engine.Native) *engine.Object {
 	c := cx.NewNativeConstructor(name, length, f)
 	cx.DefineConstructorPrototype(c, protoID)
-	cx.Define(cx.Intrinsic(protoID), cx.Key(engine.KeyConstructor), engine.ObjectValue(c), engine.FlagsHidden)
-	cx.Define(cx.GlobalObject().Object(), cx.Intern(name), engine.ObjectValue(c), engine.FlagsHidden)
+	cx.Define(cx.Intrinsic(protoID), cx.Key(engine.KeyConstructor), storage.ObjectValue(c), engine.FlagsHidden)
+	cx.Define(cx.GlobalObject().Object(), cx.Intern(name), storage.ObjectValue(c), engine.FlagsHidden)
 	return c
 }
 
@@ -142,10 +143,10 @@ func Install(cx *engine.ExecutionContext) {
 	}
 
 	g := cx.GlobalObject().Object()
-	cx.Define(g, cx.Intern("globalThis"), engine.ObjectValue(g), engine.FlagsHidden)
-	constant(cx, g, "undefined", engine.Undefined)
-	constant(cx, g, "NaN", engine.Number(math.NaN()))
-	constant(cx, g, "Infinity", engine.Number(math.Inf(1)))
+	cx.Define(g, cx.Intern("globalThis"), storage.ObjectValue(g), engine.FlagsHidden)
+	constant(cx, g, "undefined", storage.Undefined)
+	constant(cx, g, "NaN", storage.Number(math.NaN()))
+	constant(cx, g, "Infinity", storage.Number(math.Inf(1)))
 
 	throwTypeError := cx.NewNative("", 0, nativeThrowRestrictedProperty)
 	setIntegrity(cx, throwTypeError, true)
@@ -186,7 +187,7 @@ func Install(cx *engine.ExecutionContext) {
 
 func throwRestrictedProperty(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	cx.ThrowTypeError("'caller', 'callee', and 'arguments' properties may not be accessed on strict mode functions or the arguments objects for calls to them")
-	return engine.Undefined
+	return storage.Undefined
 }
 
 // objectPrototypeToString implements Object.prototype.toString for the value v, which is neither undefined nor null.
@@ -221,7 +222,7 @@ func primitiveTag(v engine.Value) wtf8.String {
 // objectToString implements Object.prototype.toString for the object o.
 func objectToString(cx *engine.ExecutionContext, o *engine.Object) engine.Value {
 	tag := cx.BuiltinTag(o)
-	if t := cx.GetV(engine.ObjectValue(o), cx.WellKnownSymbol(engine.SymbolToStringTag)); t.IsString() {
+	if t := cx.GetV(storage.ObjectValue(o), cx.WellKnownSymbol(engine.SymbolToStringTag)); t.IsString() {
 		tag = t.Str()
 	}
 	return cx.ObjectTagString(tag)
@@ -289,7 +290,7 @@ func enumerableOwn(cx *engine.ExecutionContext, o *engine.Object, entries bool) 
 		}
 		v := cx.Get(o, k)
 		if entries {
-			v = engine.ObjectValue(cx.NewArrayPair(cx.KeyValue(k), v))
+			v = storage.ObjectValue(cx.NewArrayPair(cx.KeyValue(k), v))
 		}
 		out = append(out, v)
 	}
@@ -410,46 +411,46 @@ func initObject(cx *engine.ExecutionContext) {
 
 func objectConstructor(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	if nt := cx.GetNewTarget(); nt != nil && nt != cx.Intrinsic(engine.IntrinsicObject) {
-		return engine.ObjectValue(cx.NewInstance(cx.GetPrototypeFromConstructor(nt, engine.IntrinsicObjectPrototype)))
+		return storage.ObjectValue(cx.NewInstance(cx.GetPrototypeFromConstructor(nt, engine.IntrinsicObjectPrototype)))
 	}
 	v := arg(args, 0)
 	if v.IsNullish() {
-		return engine.ObjectValue(cx.NewOrdinaryObject())
+		return storage.ObjectValue(cx.NewOrdinaryObject())
 	}
-	return engine.ObjectValue(cx.ToObject(v))
+	return storage.ObjectValue(cx.ToObject(v))
 }
 
 func objectHasOwnProperty(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	k := cx.QueryKey(arg(args, 0))
-	return engine.Bool(cx.QueryOwnProperty(cx.ToObject(this), k))
+	return storage.Bool(cx.QueryOwnProperty(cx.ToObject(this), k))
 }
 
 func objectHasOwnPropertyKernel(q engine.QuietContext, this, k engine.Value) (engine.Value, bool) {
 	if !this.IsObject() {
-		return engine.Undefined, false
+		return storage.Undefined, false
 	}
 	has, ok := engine.HasOwnPropertyPlain(q, this.Object(), k)
-	return engine.Bool(has), ok
+	return storage.Bool(has), ok
 }
 
 func objectIsPrototypeOf(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	v := arg(args, 0)
 	if !v.IsObject() {
-		return engine.False
+		return storage.False
 	}
 	o := cx.ToObject(this)
 	for p := cx.ProtoOf(v.Object()); p != nil; p = cx.ProtoOf(p) {
 		if p == o {
-			return engine.True
+			return storage.True
 		}
 	}
-	return engine.False
+	return storage.False
 }
 
 func objectPropertyIsEnumerable(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	k := cx.ToPropertyKey(arg(args, 0))
 	d, ok := cx.GetOwnProperty(cx.ToObject(this), k)
-	return engine.Bool(ok && d.Enumerable())
+	return storage.Bool(ok && d.Enumerable())
 }
 
 func objectToStringMethod(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -467,21 +468,21 @@ func objectToLocaleString(cx *engine.ExecutionContext, this engine.Value, args [
 }
 
 func objectValueOf(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-	return engine.ObjectValue(cx.ToObject(this))
+	return storage.ObjectValue(cx.ToObject(this))
 }
 
 func objectProtoGetter(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	if p := cx.ProtoOf(cx.ToObject(this)); p != nil {
-		return engine.ObjectValue(p)
+		return storage.ObjectValue(p)
 	}
-	return engine.Null
+	return storage.Null
 }
 
 func objectProtoSetter(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	cx.RequireObjectCoercible(this, "Object.prototype.__proto__")
 	p := arg(args, 0)
 	if !this.IsObject() || !(p.IsObject() || p.IsNull()) {
-		return engine.Undefined
+		return storage.Undefined
 	}
 	var po *engine.Object
 	if p.IsObject() {
@@ -490,7 +491,7 @@ func objectProtoSetter(cx *engine.ExecutionContext, this engine.Value, args []en
 	if !cx.SetPrototypeOf(this.Object(), po) {
 		cx.ThrowTypeError("cannot set prototype")
 	}
-	return engine.Undefined
+	return storage.Undefined
 }
 
 func objectDefineGetter(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -518,7 +519,7 @@ func objectDefineAccessor(cx *engine.ExecutionContext, this engine.Value, args [
 		d.SetGetter(f.Object())
 	}
 	cx.DefinePropertyOrThrow(o, cx.ToPropertyKey(arg(args, 0)), d)
-	return engine.Undefined
+	return storage.Undefined
 }
 
 func objectLookupGetter(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -544,18 +545,18 @@ func objectLookupAccessor(cx *engine.ExecutionContext, this engine.Value, args [
 			f = d.Setter()
 		}
 		if !d.IsAccessor() || f == nil {
-			return engine.Undefined
+			return storage.Undefined
 		}
-		return engine.ObjectValue(f)
+		return storage.ObjectValue(f)
 	}
-	return engine.Undefined
+	return storage.Undefined
 }
 
 func objectGetPrototypeOf(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	if p := cx.ProtoOf(cx.ToObject(arg(args, 0))); p != nil {
-		return engine.ObjectValue(p)
+		return storage.ObjectValue(p)
 	}
-	return engine.Null
+	return storage.Null
 }
 
 func objectSetPrototypeOf(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -590,7 +591,7 @@ func objectCreate(cx *engine.ExecutionContext, this engine.Value, args []engine.
 	if props := arg(args, 1); !props.IsUndefined() {
 		objectDefineProperties(cx, o, props)
 	}
-	return engine.ObjectValue(o)
+	return storage.ObjectValue(o)
 }
 
 func objectDefineProperty(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -616,7 +617,7 @@ func objectGetOwnPropertyDescriptor(cx *engine.ExecutionContext, this engine.Val
 	o := cx.ToObject(arg(args, 0))
 	d, ok := cx.GetOwnProperty(o, cx.ToPropertyKey(arg(args, 1)))
 	if !ok {
-		return engine.Undefined
+		return storage.Undefined
 	}
 	return cx.FromPropertyDescriptor(d)
 }
@@ -631,7 +632,7 @@ func objectGetOwnPropertyDescriptors(cx *engine.ExecutionContext, this engine.Va
 			cx.CreateDataPropertyOrThrow(out, k, cx.FromPropertyDescriptor(d))
 		}
 	}
-	return engine.ObjectValue(out)
+	return storage.ObjectValue(out)
 }
 
 func objectGetOwnPropertyNames(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -643,7 +644,7 @@ func objectGetOwnPropertyNames(cx *engine.ExecutionContext, this engine.Value, a
 			out = append(out, cx.KeyValue(k))
 		}
 	}
-	return engine.ObjectValue(cx.NewArray(out))
+	return storage.ObjectValue(cx.NewArray(out))
 }
 
 func objectGetOwnPropertySymbols(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -655,7 +656,7 @@ func objectGetOwnPropertySymbols(cx *engine.ExecutionContext, this engine.Value,
 			out = append(out, cx.KeyValue(k))
 		}
 	}
-	return engine.ObjectValue(cx.NewArray(out))
+	return storage.ObjectValue(cx.NewArray(out))
 }
 
 func objectKeys(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -666,15 +667,15 @@ func objectKeys(cx *engine.ExecutionContext, this engine.Value, args []engine.Va
 		pacer.Step(cx)
 		out[i] = cx.KeyValue(k)
 	}
-	return engine.ObjectValue(cx.NewArray(out))
+	return storage.ObjectValue(cx.NewArray(out))
 }
 
 func objectValues(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-	return engine.ObjectValue(cx.NewArray(enumerableOwn(cx, cx.ToObject(arg(args, 0)), false)))
+	return storage.ObjectValue(cx.NewArray(enumerableOwn(cx, cx.ToObject(arg(args, 0)), false)))
 }
 
 func objectEntries(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-	return engine.ObjectValue(cx.NewArray(enumerableOwn(cx, cx.ToObject(arg(args, 0)), true)))
+	return storage.ObjectValue(cx.NewArray(enumerableOwn(cx, cx.ToObject(arg(args, 0)), true)))
 }
 
 func objectAssign(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -697,7 +698,7 @@ func objectAssign(cx *engine.ExecutionContext, this engine.Value, args []engine.
 			cx.Set(to, k, cx.Get(from, k))
 		}
 	}
-	return engine.ObjectValue(to)
+	return storage.ObjectValue(to)
 }
 
 func objectFreeze(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -725,21 +726,21 @@ func objectPreventExtensions(cx *engine.ExecutionContext, this engine.Value, arg
 
 func objectIsFrozen(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	o := arg(args, 0)
-	return engine.Bool(!o.IsObject() || testIntegrity(cx, o.Object(), true))
+	return storage.Bool(!o.IsObject() || testIntegrity(cx, o.Object(), true))
 }
 
 func objectIsSealed(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	o := arg(args, 0)
-	return engine.Bool(!o.IsObject() || testIntegrity(cx, o.Object(), false))
+	return storage.Bool(!o.IsObject() || testIntegrity(cx, o.Object(), false))
 }
 
 func objectIsExtensible(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	o := arg(args, 0)
-	return engine.Bool(o.IsObject() && cx.IsExtensible(o.Object()))
+	return storage.Bool(o.IsObject() && cx.IsExtensible(o.Object()))
 }
 
 func objectIs(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-	return engine.Bool(engine.SameValue(arg(args, 0), arg(args, 1)))
+	return storage.Bool(storage.SameValue(arg(args, 0), arg(args, 1)))
 }
 
 func objectFromEntries(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -753,12 +754,12 @@ func objectFromEntries(cx *engine.ExecutionContext, this engine.Value, args []en
 		cx.CreateDataPropertyOrThrow(o, cx.ToPropertyKey(k), v)
 		return true
 	})
-	return engine.ObjectValue(o)
+	return storage.ObjectValue(o)
 }
 
 func objectHasOwn(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	o := cx.ToObject(arg(args, 0))
-	return engine.Bool(cx.QueryOwnProperty(o, cx.QueryKey(arg(args, 1))))
+	return storage.Bool(cx.QueryOwnProperty(o, cx.QueryKey(arg(args, 1))))
 }
 
 // listFromArrayLike implements CreateListFromArrayLike.
@@ -821,9 +822,9 @@ func initFunction(cx *engine.ExecutionContext) {
 	method(cx, proto, "toString", 0, nativeFunctionToString)
 	hasInstance := cx.NewNative("[Symbol.hasInstance]", 1, nativeFunctionHasInstance)
 	cx.SetIntrinsic(engine.IntrinsicFunctionPrototypeHasInstance, hasInstance)
-	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolHasInstance), engine.ObjectValue(hasInstance), 0)
+	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolHasInstance), storage.ObjectValue(hasInstance), 0)
 	// Function.prototype[Symbol.metadata] of the decorator metadata proposal.
-	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolMetadata), engine.Null, 0)
+	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolMetadata), storage.Null, 0)
 
 	// AddRestrictedFunctionProperties
 	throwTypeError := cx.Intrinsic(engine.IntrinsicThrowTypeError)
@@ -860,7 +861,7 @@ func functionBind(cx *engine.ExecutionContext, this engine.Value, args []engine.
 	target := this.Object()
 	b := cx.BoundFunctionCreate(target, arg(args, 0), args[min(1, len(args)):])
 	copyNameAndLength(cx, b, target, "bound ", max(0, len(args)-1))
-	return engine.ObjectValue(b)
+	return storage.ObjectValue(b)
 }
 
 func functionToString(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -873,7 +874,7 @@ func functionToString(cx *engine.ExecutionContext, this engine.Value, args []eng
 }
 
 func functionHasInstance(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-	return engine.Bool(cx.OrdinaryHasInstance(this, arg(args, 0)))
+	return storage.Bool(cx.OrdinaryHasInstance(this, arg(args, 0)))
 }
 
 func functionCallerGetter(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -887,17 +888,17 @@ func functionArgumentsGetter(cx *engine.ExecutionContext, this engine.Value, arg
 // copyNameAndLength implements CopyNameAndLength.
 func copyNameAndLength(cx *engine.ExecutionContext, f, target *engine.Object, prefix wtf8.String, argCount int) {
 	length := 0.0
-	if cx.HasOwnProperty(target, engine.NamedKey(cx.Key(engine.KeyLength))) {
-		if l := cx.GetV(engine.ObjectValue(target), cx.Key(engine.KeyLength)); l.IsNumber() {
+	if cx.HasOwnProperty(target, storage.NamedKey(cx.Key(engine.KeyLength))) {
+		if l := cx.GetV(storage.ObjectValue(target), cx.Key(engine.KeyLength)); l.IsNumber() {
 			length = math.Max(0, numconv.ToIntegerOrInfinity(l.Number())-float64(argCount))
 		}
 	}
 	name := cx.NewString(prefix)
-	if n := cx.GetV(engine.ObjectValue(target), cx.Key(engine.KeyName)); n.IsString() {
+	if n := cx.GetV(storage.ObjectValue(target), cx.Key(engine.KeyName)); n.IsString() {
 		// Concatenating the values keeps a chain of bound functions linear in its length.
 		name = cx.Concat(name, n)
 	}
-	cx.Define(f, cx.Key(engine.KeyLength), engine.Number(length), engine.FlagConfigurable)
+	cx.Define(f, cx.Key(engine.KeyLength), storage.Number(length), engine.FlagConfigurable)
 	cx.Define(f, cx.Key(engine.KeyName), name, engine.FlagConfigurable)
 }
 
@@ -977,14 +978,14 @@ func errorConstructorNative(kind engine.ErrorKind) engine.NativeFunc {
 		case engine.ErrorKindAggregate:
 			msgArg, optArg = arg(args, 1), arg(args, 2)
 		case engine.ErrorKindSuppressed:
-			msgArg, optArg = arg(args, 2), engine.Undefined
+			msgArg, optArg = arg(args, 2), storage.Undefined
 		}
 		var msg wtf8.String
 		if !msgArg.IsUndefined() {
 			msg = cx.ToString(msgArg)
 			cx.Define(e, cx.Key(engine.KeyMessage), cx.NewString(msg), engine.FlagsHidden)
 		}
-		if optArg.IsObject() && cx.HasProperty(optArg.Object(), engine.NamedKey(cx.Key(engine.KeyCause))) {
+		if optArg.IsObject() && cx.HasProperty(optArg.Object(), storage.NamedKey(cx.Key(engine.KeyCause))) {
 			cx.Define(e, cx.Key(engine.KeyCause), cx.GetV(optArg, cx.Key(engine.KeyCause)), engine.FlagsHidden)
 		}
 		if kind == engine.ErrorKindAggregate {
@@ -993,29 +994,29 @@ func errorConstructorNative(kind engine.ErrorKind) engine.NativeFunc {
 				errs = append(errs, v)
 				return true
 			})
-			cx.Define(e, cx.Key(engine.KeyErrors), engine.ObjectValue(cx.NewArray(errs)), engine.FlagsHidden)
+			cx.Define(e, cx.Key(engine.KeyErrors), storage.ObjectValue(cx.NewArray(errs)), engine.FlagsHidden)
 		}
 		if kind == engine.ErrorKindSuppressed {
 			cx.Define(e, cx.Key(engine.KeyError), arg(args, 0), engine.FlagsHidden)
 			cx.Define(e, cx.Key(engine.KeySuppressed), arg(args, 1), engine.FlagsHidden)
 		}
 		cx.RecordStack(e, wtf8.ToValidUTF8(msg), nt)
-		return engine.ObjectValue(e)
+		return storage.ObjectValue(e)
 	}
 }
 
 func errorIsError(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-	return engine.Bool(engine.IsError(arg(args, 0)))
+	return storage.Bool(storage.IsError(arg(args, 0)))
 }
 
 func errorStackGetter(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	if !this.IsObject() {
 		cx.ThrowTypeError("Error.prototype.stack getter called on non-object")
 	}
-	if s, ok := engine.ErrorStack(this); ok {
+	if s, ok := storage.ErrorStack(this); ok {
 		return cx.NewString(s)
 	}
-	return engine.Undefined
+	return storage.Undefined
 }
 
 func errorStackSetter(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -1026,18 +1027,18 @@ func errorStackSetter(cx *engine.ExecutionContext, this engine.Value, args []eng
 	if !v.IsString() {
 		cx.ThrowTypeError("Error.prototype.stack setter requires a string")
 	}
-	setterThatIgnoresPrototypeProperties(cx, this, cx.Intrinsic(engine.IntrinsicErrorPrototype), engine.NamedKey(cx.Key(engine.KeyStack)), v, "Error.prototype.stack setter")
-	return engine.Undefined
+	setterThatIgnoresPrototypeProperties(cx, this, cx.Intrinsic(engine.IntrinsicErrorPrototype), storage.NamedKey(cx.Key(engine.KeyStack)), v, "Error.prototype.stack setter")
+	return storage.Undefined
 }
 
 func errorToString(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	o := thisObject(cx, this, "Error.prototype.toString")
 	name := wtf8.String("Error")
-	if n := cx.GetV(engine.ObjectValue(o), cx.Key(engine.KeyName)); !n.IsUndefined() {
+	if n := cx.GetV(storage.ObjectValue(o), cx.Key(engine.KeyName)); !n.IsUndefined() {
 		name = cx.ToString(n)
 	}
 	var msg wtf8.String
-	if m := cx.GetV(engine.ObjectValue(o), cx.Key(engine.KeyMessage)); !m.IsUndefined() {
+	if m := cx.GetV(storage.ObjectValue(o), cx.Key(engine.KeyMessage)); !m.IsUndefined() {
 		msg = cx.ToString(m)
 	}
 	switch {
@@ -1063,12 +1064,12 @@ func newParseFunctions(cx *engine.ExecutionContext) (parseFloat, parseInt *engin
 }
 
 func globalParseFloat(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-	return engine.Number(numconv.ParseFloat(cx.ToString(arg(args, 0)), cx.Poll))
+	return storage.Number(numconv.ParseFloat(cx.ToString(arg(args, 0)), cx.Poll))
 }
 
 func globalParseInt(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	s := cx.ToString(arg(args, 0))
-	return engine.Number(numconv.ParseInt(s, int(cx.ToInt32(arg(args, 1))), cx.Poll))
+	return storage.Number(numconv.ParseInt(s, int(cx.ToInt32(arg(args, 1))), cx.Poll))
 }
 
 var (
@@ -1085,8 +1086,8 @@ func initGlobalFunctions(cx *engine.ExecutionContext, parseFloat, parseInt *engi
 	cx.SetIntrinsic(engine.IntrinsicEval, eval)
 	method(cx, g, "isNaN", 1, nativeGlobalIsNaN)
 	method(cx, g, "isFinite", 1, nativeGlobalIsFinite)
-	cx.Define(g, cx.Intern("parseFloat"), engine.ObjectValue(parseFloat), engine.FlagsHidden)
-	cx.Define(g, cx.Intern("parseInt"), engine.ObjectValue(parseInt), engine.FlagsHidden)
+	cx.Define(g, cx.Intern("parseFloat"), storage.ObjectValue(parseFloat), engine.FlagsHidden)
+	cx.Define(g, cx.Intern("parseInt"), storage.ObjectValue(parseInt), engine.FlagsHidden)
 	initURIFunctions(cx)
 }
 
@@ -1096,10 +1097,10 @@ func globalEval(cx *engine.ExecutionContext, this engine.Value, args []engine.Va
 
 func globalIsNaN(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	n := cx.ToNumber(arg(args, 0))
-	return engine.Bool(n != n)
+	return storage.Bool(n != n)
 }
 
 func globalIsFinite(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	n := cx.ToNumber(arg(args, 0))
-	return engine.Bool(n == n && !math.IsInf(n, 0))
+	return storage.Bool(n == n && !math.IsInf(n, 0))
 }

@@ -6,14 +6,15 @@ package json
 import (
 	"github.com/hajimehoshi/ekuma/internal/engine"
 	"github.com/hajimehoshi/ekuma/internal/numconv"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 )
 
 // indexKey returns the property key for the integer index i, which may be beyond the array indices.
 func indexKey(cx *engine.ExecutionContext, i int64) engine.PropKey {
 	if i >= 0 && i <= engine.MaxArrayIndex {
-		return engine.IndexKey(uint32(i))
+		return storage.IndexKey(uint32(i))
 	}
-	return engine.NamedKey(cx.Intern(numconv.NumberToString(float64(i))))
+	return storage.NamedKey(cx.Intern(numconv.NumberToString(float64(i))))
 }
 
 // reviver is the state of one call of [Revive].
@@ -27,7 +28,7 @@ type reviver struct {
 // its parts. v and rec are the results of ParseWithRecord.
 func Revive(cx *engine.ExecutionContext, v engine.Value, rec *Record, fn *engine.Object) engine.Value {
 	root := cx.NewOrdinaryObject()
-	k := engine.NamedKey(cx.Intern(""))
+	k := storage.NamedKey(cx.Intern(""))
 	cx.CreateDataPropertyOrThrow(root, k, v)
 	r := &reviver{
 		cx:        cx,
@@ -45,9 +46,9 @@ func (r *reviver) internalize(holder *engine.Object, name engine.PropKey, rec *R
 	}
 	val := cx.Get(holder, name)
 	ctx := cx.NewOrdinaryObject()
-	if rec != nil && engine.SameValue(rec.value, val) {
+	if rec != nil && storage.SameValue(rec.value, val) {
 		if !val.IsObject() {
-			cx.CreateDataPropertyOrThrow(ctx, engine.NamedKey(r.keySource), cx.NewString(rec.source))
+			cx.CreateDataPropertyOrThrow(ctx, storage.NamedKey(r.keySource), cx.NewString(rec.source))
 		}
 	} else {
 		rec = nil
@@ -81,5 +82,5 @@ func (r *reviver) internalize(holder *engine.Object, name engine.PropKey, rec *R
 			}
 		}
 	}
-	return cx.Call(r.fn, engine.ObjectValue(holder), cx.KeyValue(name), val, engine.ObjectValue(ctx))
+	return cx.Call(r.fn, storage.ObjectValue(holder), cx.KeyValue(name), val, storage.ObjectValue(ctx))
 }

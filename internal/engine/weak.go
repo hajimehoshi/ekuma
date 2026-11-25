@@ -9,95 +9,42 @@ import (
 	"sync"
 	"sync/atomic"
 	"weak"
+
+	"github.com/hajimehoshi/ekuma/internal/storage"
 )
 
 // This file holds the weak collections, WeakRef and FinalizationRegistry.
 
 // NewWeakMapObject returns a WeakMap object without entries with the prototype proto.
 func (cx *ExecutionContext) NewWeakMapObject(proto *Object) *Object {
-	return newObjectWithState(cx.shapeFor(proto), classWeakMap, newWeakTable())
+	return storage.NewObjectWithState(cx.ShapeFor(proto), classWeakMap, storage.NewWeakTable())
 }
 
 // WeakMapData returns the [[WeakMapData]] of the WeakMap object v, or nil when v is not a WeakMap object.
 func WeakMapData(v Value) *WeakTable {
-	if v.IsObject() && v.o.class == classWeakMap {
-		return v.o.extState().(*WeakTable)
+	if v.IsObject() && v.O.Class == classWeakMap {
+		return v.O.ExtState().(*WeakTable)
 	}
 	return nil
 }
 
 // NewWeakSetObject returns a WeakSet object without entries with the prototype proto.
 func (cx *ExecutionContext) NewWeakSetObject(proto *Object) *Object {
-	return newObjectWithState(cx.shapeFor(proto), classWeakSet, newWeakTable())
+	return storage.NewObjectWithState(cx.ShapeFor(proto), classWeakSet, storage.NewWeakTable())
 }
 
 // WeakSetData returns the [[WeakSetData]] of the WeakSet object v, or nil when v is not a WeakSet object.
 func WeakSetData(v Value) *WeakTable {
-	if v.IsObject() && v.o.class == classWeakSet {
-		return v.o.extState().(*WeakTable)
+	if v.IsObject() && v.O.Class == classWeakSet {
+		return v.O.ExtState().(*WeakTable)
 	}
 	return nil
-}
-
-// CanBeHeldWeakly implements CanBeHeldWeakly.
-func (sp *space) CanBeHeldWeakly(v Value) bool {
-	if v.IsObject() {
-		return true
-	}
-	if !v.IsSymbol() {
-		return false
-	}
-	_, registered := sp.KeyForSymbol(v.o)
-	return !registered
 }
 
 // NewWeakRefObject returns a WeakRef object with the prototype proto whose target is v,
 // for which CanBeHeldWeakly must hold.
 func (cx *ExecutionContext) NewWeakRefObject(proto *Object, v Value) *Object {
-	return newObjectWithState(cx.shapeFor(proto), classWeakRef, weak.Make(v.o))
-}
-
-// WeakRefDeref implements WeakRefDeref for the WeakRef object v.
-// It reports false when v is not a WeakRef object.
-func (sp *space) WeakRefDeref(v Value) (Value, bool) {
-	if !v.IsObject() || v.o.class != classWeakRef {
-		return Undefined, false
-	}
-	t := v.o.extState().(weak.Pointer[Object]).Value()
-	if t == nil {
-		return Undefined, true
-	}
-	sp.AddToKeptObjects(t)
-	return Value{o: t}, true
-}
-
-// keptObjects is a [[KeptAlive]] list: the objects and symbols that must stay alive until the
-// current job ends.
-type keptObjects struct {
-	objects map[*Object]struct{}
-}
-
-func (k *keptObjects) add(o *Object) {
-	if k.objects == nil {
-		k.objects = map[*Object]struct{}{}
-	}
-	k.objects[o] = struct{}{}
-}
-
-func (k *keptObjects) clear() {
-	clear(k.objects)
-}
-
-// AddToKeptObjects implements AddToKeptObjects: o stays alive until the current job ends.
-func (sp *space) AddToKeptObjects(o *Object) {
-	sp.keptObjects.add(o)
-}
-
-// clearKeptObjects implements ClearKeptObjects.
-// It must be called when a job ends: after each promise job, and when the outermost call into
-// the engine returns.
-func (sp *space) clearKeptObjects() {
-	sp.keptObjects.clear()
+	return storage.NewObjectWithState(cx.ShapeFor(proto), classWeakRef, weak.Make(v.O))
 }
 
 // FinalizationRegistry is the state of a FinalizationRegistry object.
@@ -201,14 +148,14 @@ func (cx *ExecutionContext) NewFinalizationRegistryObject(proto *Object, callbac
 	}
 	r.self = weak.Make(r)
 	runtime.AddCleanup(r, (*cellCleanups).stopAll, r.cleanups)
-	return newObjectWithState(cx.shapeFor(proto), classFinalizationRegistry, r)
+	return storage.NewObjectWithState(cx.ShapeFor(proto), classFinalizationRegistry, r)
 }
 
 // FinalizationRegistryData returns the state of the FinalizationRegistry object v,
 // or nil when v is not a FinalizationRegistry object.
 func FinalizationRegistryData(v Value) *FinalizationRegistry {
-	if v.IsObject() && v.o.class == classFinalizationRegistry {
-		return v.o.extState().(*FinalizationRegistry)
+	if v.IsObject() && v.O.Class == classFinalizationRegistry {
+		return v.O.ExtState().(*FinalizationRegistry)
 	}
 	return nil
 }
@@ -221,7 +168,7 @@ func (r *FinalizationRegistry) Register(target, held, token Value) {
 	id := r.lastID
 	c := &finalizationCell{held: held}
 	if !token.IsUndefined() {
-		c.token = weak.Make(token.o)
+		c.token = weak.Make(token.O)
 		c.hasToken = true
 		if r.tokens == nil {
 			r.tokens = map[weak.Pointer[Object]][]uint64{}
@@ -230,7 +177,7 @@ func (r *FinalizationRegistry) Register(target, held, token Value) {
 		r.tokens[c.token] = append(r.tokens[c.token], id)
 	}
 	q := r.queue
-	r.cleanups.m[id] = runtime.AddCleanup(target.o, func(d deadCell) {
+	r.cleanups.m[id] = runtime.AddCleanup(target.O, func(d deadCell) {
 		q.push(d)
 	}, deadCell{
 		registry: r.self,
@@ -244,7 +191,7 @@ func (r *FinalizationRegistry) Register(target, held, token Value) {
 // and then over many cells and may stop the removal by panicking, leaving the cells that were
 // not removed yet.
 func (r *FinalizationRegistry) Unregister(token Value, poll func()) bool {
-	w := weak.Make(token.o)
+	w := weak.Make(token.O)
 	ids, ok := r.tokens[w]
 	if !ok {
 		return false
@@ -300,7 +247,7 @@ func (cx *ExecutionContext) runFinalizationCleanups() bool {
 	q := cx.finalization
 	ran := false
 	for {
-		if cx.interrupt.Load() {
+		if cx.InterruptFlag.Load() {
 			cx.Poll()
 		}
 		d, ok := q.pop()
@@ -320,7 +267,7 @@ func (cx *ExecutionContext) runFinalizationCleanups() bool {
 		r.context.enterJob(r.continuationData, func() {
 			cx := r.context
 			if !cx.protect(func() {
-				cx.Call(r.callback, Undefined, c.held)
+				cx.Call(r.callback, storage.Undefined, c.held)
 			}) {
 				thrown := cx.takeThrown()
 				cx.reportUncaughtException(thrown, cx.thrownAt)
@@ -330,6 +277,6 @@ func (cx *ExecutionContext) runFinalizationCleanups() bool {
 		if cx.abortCause != nil {
 			return ran
 		}
-		cx.clearKeptObjects()
+		cx.ClearKeptObjects()
 	}
 }

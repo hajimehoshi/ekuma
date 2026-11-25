@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/hajimehoshi/ekuma/internal/element"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 	"github.com/hajimehoshi/ekuma/internal/waiterlist"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
@@ -248,7 +249,7 @@ func (cx *ExecutionContext) Wait(t *TypedArray, i int, v uint64, timeout float64
 		w.Data.promiseContext = cx
 	} else {
 		w.Data.done = make(chan struct{})
-		if cx.interrupt.Load() {
+		if cx.InterruptFlag.Load() {
 			cx.Poll()
 		}
 	}
@@ -267,7 +268,7 @@ func (cx *ExecutionContext) Wait(t *TypedArray, i int, v uint64, timeout float64
 	if ns := timeout * float64(time.Millisecond); ns < math.MaxInt64 {
 		cx.asyncWaiters.setDeadline(w, cx.Now().Add(time.Duration(ns)))
 	}
-	return Value{o: w.Data.promise}, true
+	return Value{O: w.Data.promise}, true
 }
 
 // compareAndAdd reports whether the element of the type t at byteIndex has the encoding v,
@@ -330,7 +331,7 @@ func (cx *ExecutionContext) suspend(w *waiter, timeout float64) Value {
 			return cx.NewString("ok")
 		case <-cx.mailbox.wake:
 			// The posted waiters wait for the end of the wait.
-			if cx.interruptCause.Load() != nil {
+			if cx.InterruptCause.Load() != nil {
 				cx.Poll()
 			}
 		}
@@ -359,7 +360,7 @@ func (cx *ExecutionContext) NotifyWaiters(b *ArrayBuffer, byteIndex int, count f
 // goroutine. The interrupt flag makes a running script take it at its next poll.
 func (ag *agent) post(w *waiter) {
 	ag.mailbox.add(w)
-	ag.interrupt.Store(true)
+	ag.InterruptFlag.Store(true)
 	ag.mailbox.poke()
 }
 
@@ -393,7 +394,7 @@ func (ag *agent) receiveNotifications() bool {
 // false if there are no jobs or waiters, or an InterruptedError if interrupted.
 func (ag *agent) AwaitJobs() (bool, error) {
 	for {
-		if cause := ag.interruptCause.Load(); cause != nil {
+		if cause := ag.InterruptCause.Load(); cause != nil {
 			return false, &InterruptedError{
 				Cause: *cause,
 			}
@@ -443,7 +444,7 @@ func (ag *agent) Running() bool {
 func (cx *ExecutionContext) RunJobs() error {
 	// enter drains the pending jobs after this empty callback returns.
 	_, err := cx.enter(func() Value {
-		return Undefined
+		return storage.Undefined
 	})
 	return err
 }

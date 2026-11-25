@@ -6,6 +6,7 @@ package builtin
 import (
 	"github.com/hajimehoshi/ekuma/internal/engine"
 	"github.com/hajimehoshi/ekuma/internal/numconv"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
@@ -14,8 +15,8 @@ import (
 func functionKindConstructor(cx *engine.ExecutionContext, name wtf8.String, f engine.Native, proto *engine.Object) {
 	c := cx.NewNativeConstructor(name, 1, f)
 	cx.SetPrototypeOf(c, cx.Intrinsic(engine.IntrinsicFunction))
-	cx.Define(c, cx.Key(engine.KeyPrototype), engine.ObjectValue(proto), 0)
-	cx.Define(proto, cx.Key(engine.KeyConstructor), engine.ObjectValue(c), engine.FlagConfigurable)
+	cx.Define(c, cx.Key(engine.KeyPrototype), storage.ObjectValue(proto), 0)
+	cx.Define(proto, cx.Key(engine.KeyConstructor), storage.ObjectValue(c), engine.FlagConfigurable)
 	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString(name), engine.FlagConfigurable)
 }
 
@@ -38,8 +39,8 @@ func initAsync(cx *engine.ExecutionContext) {
 	method(cx, gp, "throw", 1, nativeAsyncGeneratorThrow)
 	cx.Define(gp, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("AsyncGenerator"), engine.FlagConfigurable)
 	gf := cx.Intrinsic(engine.IntrinsicAsyncGeneratorFunctionPrototype)
-	cx.Define(gf, cx.Key(engine.KeyPrototype), engine.ObjectValue(gp), engine.FlagConfigurable)
-	cx.Define(gp, cx.Key(engine.KeyConstructor), engine.ObjectValue(gf), engine.FlagConfigurable)
+	cx.Define(gf, cx.Key(engine.KeyPrototype), storage.ObjectValue(gp), engine.FlagConfigurable)
+	cx.Define(gp, cx.Key(engine.KeyConstructor), storage.ObjectValue(gf), engine.FlagConfigurable)
 
 	method(cx, cx.Intrinsic(engine.IntrinsicArray), "fromAsync", 1, nativeArrayFromAsync)
 }
@@ -90,7 +91,7 @@ type fromAsync struct {
 }
 
 func arrayFromAsync(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-	pc := cx.NewPromiseCapability(engine.ObjectValue(cx.Intrinsic(engine.IntrinsicPromise)))
+	pc := cx.NewPromiseCapability(storage.ObjectValue(cx.Intrinsic(engine.IntrinsicPromise)))
 	s := &fromAsync{
 		pc:      pc,
 		mapper:  arg(args, 1),
@@ -119,7 +120,7 @@ func arrayFromAsync(cx *engine.ExecutionContext, this engine.Value, args []engin
 		s.arrayLike = cx.ToObject(items)
 		s.length = cx.LengthOfArrayLike(s.arrayLike)
 		if custom {
-			s.array = cx.Construct(this.Object(), []engine.Value{engine.Number(float64(s.length))}, this.Object())
+			s.array = cx.Construct(this.Object(), []engine.Value{storage.Number(float64(s.length))}, this.Object())
 		} else {
 			if s.length > engine.MaxArrayIndex+1 {
 				cx.ThrowRangeError("invalid array length")
@@ -165,7 +166,7 @@ func (s *fromAsync) onNext(cx *engine.ExecutionContext, r engine.Value, rejected
 		if !r.IsObject() {
 			cx.ThrowTypeError("iterator result " + cx.DisplayString(r) + " is not an object")
 		}
-		done = engine.ToBoolean(cx.GetV(r, cx.Intern("done")))
+		done = storage.ToBoolean(cx.GetV(r, cx.Intern("done")))
 		if done {
 			setLength(cx, s.array, s.k)
 			return
@@ -176,7 +177,7 @@ func (s *fromAsync) onNext(cx *engine.ExecutionContext, r engine.Value, rejected
 		return
 	}
 	if done {
-		cx.ResolveCapability(s.pc, engine.ObjectValue(s.array))
+		cx.ResolveCapability(s.pc, storage.ObjectValue(s.array))
 		return
 	}
 	if s.mapper.IsUndefined() {
@@ -185,7 +186,7 @@ func (s *fromAsync) onNext(cx *engine.ExecutionContext, r engine.Value, rejected
 	}
 	var mapped engine.Value
 	if e, ok := cx.Completion(func() {
-		mapped = cx.Call(s.mapper.Object(), s.thisArg, v, engine.Number(float64(s.k)))
+		mapped = cx.Call(s.mapper.Object(), s.thisArg, v, storage.Number(float64(s.k)))
 		cx.Await(mapped, s.onMapped)
 	}); !ok {
 		s.closeAndReject(cx, e)
@@ -220,7 +221,7 @@ func (s *fromAsync) define(cx *engine.ExecutionContext, v engine.Value) {
 func (s *fromAsync) stepArrayLike(cx *engine.ExecutionContext) {
 	if s.k >= s.length {
 		setLength(cx, s.array, s.length)
-		cx.ResolveCapability(s.pc, engine.ObjectValue(s.array))
+		cx.ResolveCapability(s.pc, storage.ObjectValue(s.array))
 		return
 	}
 	v := getAt(cx, s.arrayLike, s.k)
@@ -236,7 +237,7 @@ func (s *fromAsync) onArrayLikeValue(cx *engine.ExecutionContext, v engine.Value
 			s.defineArrayLike(cx, v)
 			return
 		}
-		mapped := cx.Call(s.mapper.Object(), s.thisArg, v, engine.Number(float64(s.k)))
+		mapped := cx.Call(s.mapper.Object(), s.thisArg, v, storage.Number(float64(s.k)))
 		cx.Await(mapped, func(cx *engine.ExecutionContext, v engine.Value, rejected bool) {
 			cx.IfAbruptRejectPromise(s.pc, func() {
 				if rejected {

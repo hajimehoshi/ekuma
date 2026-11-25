@@ -10,6 +10,7 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/engine"
 	"github.com/hajimehoshi/ekuma/internal/intl/locale"
 	"github.com/hajimehoshi/ekuma/internal/localetag"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
@@ -36,7 +37,7 @@ func (l *localeData) String() string {
 // thisLocale returns the internal slots of the Intl.Locale object this, or throws a TypeError
 // naming the method.
 func thisLocale(cx *engine.ExecutionContext, this engine.Value, name string) *localeData {
-	l, ok := engine.IntlData(this).(*localeData)
+	l, ok := storage.IntlData(this).(*localeData)
 	if !ok {
 		cx.ThrowTypeError("Intl.Locale.prototype." + name + " called on an object that is not an Intl.Locale")
 	}
@@ -112,7 +113,7 @@ func newLocale(cx *engine.ExecutionContext, this engine.Value, args []engine.Val
 		cx.ThrowTypeError("the tag of Intl.Locale must be a string or an object, not " + cx.DisplayString(tagV))
 	}
 	var tag string
-	if l, ok := engine.IntlData(tagV).(*localeData); ok {
+	if l, ok := storage.IntlData(tagV).(*localeData); ok {
 		tag = l.String()
 	} else {
 		tag = wtf8.ToValidUTF8(cx.ToString(tagV))
@@ -171,9 +172,9 @@ func newLocale(cx *engine.ExecutionContext, this engine.Value, args []engine.Val
 	typeOption("firstDayOfWeek", "fw", weekdayToString)
 	enumOption("hourCycle", "hc", "h11", "h12", "h23", "h24")
 	enumOption("caseFirst", "kf", "upper", "lower", "false")
-	if v := cx.Get(options, engine.NamedKey(cx.Intern("numeric"))); !v.IsUndefined() {
+	if v := cx.Get(options, storage.NamedKey(cx.Intern("numeric"))); !v.IsUndefined() {
 		s := "false"
-		if engine.ToBoolean(v) {
+		if storage.ToBoolean(v) {
 			s = "true"
 		}
 		kws = append(kws, locale.Keyword{
@@ -195,12 +196,12 @@ func newLocale(cx *engine.ExecutionContext, this engine.Value, args []engine.Val
 			}
 		}
 	}
-	return engine.ObjectValue(cx.NewIntlObject(proto, newLocaleData(t.CanonicalizePolled(cx.Poll))))
+	return storage.ObjectValue(cx.NewIntlObject(proto, newLocaleData(t.CanonicalizePolled(cx.Poll))))
 }
 
 // localeFromTag returns a new Intl.Locale for t.
 func localeFromTag(cx *engine.ExecutionContext, t locale.Tag) engine.Value {
-	return engine.ObjectValue(cx.NewIntlObject(cx.Intrinsic(engine.IntrinsicIntlLocalePrototype), newLocaleData(t)))
+	return storage.ObjectValue(cx.NewIntlObject(cx.Intrinsic(engine.IntrinsicIntlLocalePrototype), newLocaleData(t)))
 }
 
 var (
@@ -294,7 +295,7 @@ func localeKeywordNative(name, key string) engine.NativeFunc {
 
 func localeNumeric(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	v, ok := thisLocale(cx, this, "numeric").tag.Keyword("kn")
-	return engine.Bool(ok && (v == "" || v == "true"))
+	return storage.Bool(ok && (v == "" || v == "true"))
 }
 
 func localeLanguage(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -336,7 +337,7 @@ func localeListNative(name string, f func(locale.Tag) []string) engine.NativeFun
 func localeGetTimeZones(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	zones, ok := locale.TimeZonesOf(thisLocale(cx, this, "getTimeZones").tag)
 	if !ok {
-		return engine.Undefined
+		return storage.Undefined
 	}
 	return stringArray(cx, zones)
 }
@@ -344,18 +345,18 @@ func localeGetTimeZones(cx *engine.ExecutionContext, this engine.Value, args []e
 func localeGetTextInfo(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	d := locale.TextDirectionOf(thisLocale(cx, this, "getTextInfo").tag)
 	info := cx.NewObject(cx.Intrinsic(engine.IntrinsicObjectPrototype))
-	cx.CreateDataPropertyOrThrow(info, engine.NamedKey(cx.Intern("direction")), stringOrUndefined(cx, d, d != ""))
-	return engine.ObjectValue(info)
+	cx.CreateDataPropertyOrThrow(info, storage.NamedKey(cx.Intern("direction")), stringOrUndefined(cx, d, d != ""))
+	return storage.ObjectValue(info)
 }
 
 func localeGetWeekInfo(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	firstDay, weekend := locale.WeekInfoOf(thisLocale(cx, this, "getWeekInfo").tag)
 	days := make([]engine.Value, len(weekend))
 	for i, d := range weekend {
-		days[i] = engine.Number(float64(d))
+		days[i] = storage.Number(float64(d))
 	}
 	info := cx.NewObject(cx.Intrinsic(engine.IntrinsicObjectPrototype))
-	cx.CreateDataPropertyOrThrow(info, engine.NamedKey(cx.Intern("firstDay")), engine.Number(float64(firstDay)))
-	cx.CreateDataPropertyOrThrow(info, engine.NamedKey(cx.Intern("weekend")), cx.NewArrayOf(days))
-	return engine.ObjectValue(info)
+	cx.CreateDataPropertyOrThrow(info, storage.NamedKey(cx.Intern("firstDay")), storage.Number(float64(firstDay)))
+	cx.CreateDataPropertyOrThrow(info, storage.NamedKey(cx.Intern("weekend")), cx.NewArrayOf(days))
+	return storage.ObjectValue(info)
 }

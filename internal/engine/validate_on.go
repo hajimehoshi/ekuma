@@ -12,27 +12,12 @@ import (
 	"slices"
 
 	"github.com/hajimehoshi/ekuma/internal/bytecode"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 )
-
-// validateExec enables the interpreter's frame and bytecode checks. The registers must belong
-// to the running frame. Each instruction must write only the registers in [bytecode.Opcode.Operands]
-// and continue where [bytecode.Opcode.Flow] or a jump target allows. A cache that answers for a
-// property lookup must answer as the lookup does (see validate_cache_on.go). Every request for room
-// on the stack moves the stack, so that registers that are not reloaded after one are stale.
-const validateExec = true
 
 // maxMovedStack is the number of stack slots that every request for room moves. A larger stack
 // moves less often, by as much as it is larger.
 const maxMovedStack = 1 << 12
-
-// stalePoison fills the stack storage that the interpreter has moved away from. It has no shape,
-// so that most uses as an object fail at once.
-var stalePoison = Value{
-	n: math.Inf(-1),
-	o: &Object{
-		kind: kindObject,
-	},
-}
 
 // abandonedStack is stack storage that the interpreter has moved away from.
 type abandonedStack struct {
@@ -133,7 +118,7 @@ func (ag *agent) checkStep(fp *funcProto, pc int, regs []Value) {
 	c := &ag.checks
 	n := len(ag.frames) - 1
 	fr := &ag.frames[n]
-	if want := fr.fp.nregs + 1; len(regs) != want {
+	if want := fr.fp.Nregs + 1; len(regs) != want {
 		panic(validationFailure(fp, pc, fmt.Sprintf("register count is %d, want %d", len(regs), want)))
 	}
 	var first *Value
@@ -149,7 +134,7 @@ func (ag *agent) checkStep(fp *funcProto, pc int, regs []Value) {
 		panic(validationFailure(fp, pc, fmt.Sprintf("wrote stale registers at the stack slot %d before the instruction", i)))
 	}
 	for r := range regs {
-		if isStale(regs[r]) {
+		if storage.IsStale(regs[r]) {
 			panic(validationFailure(fp, pc, fmt.Sprintf("register %d has a value read from stale registers", r)))
 		}
 	}
@@ -168,7 +153,7 @@ func (ag *agent) checkStep(fp *funcProto, pc int, regs []Value) {
 	s.valid = true
 	s.fp, s.base, s.gen, s.pc = fp, fr.base, fr.gen, pc
 	// The slot after the registers receives the results that the loop discards.
-	s.regs = append(s.regs[:0], regs[:fp.nregs]...)
+	s.regs = append(s.regs[:0], regs[:fp.Nregs]...)
 	if c.observe != nil {
 		c.observe(fp, pc)
 	}
@@ -187,7 +172,7 @@ func (ag *agent) moveStack() {
 	ag.abandonStack()
 	ag.stack = s
 	for _, u := range ag.openUpvals {
-		u.p = &s[u.index]
+		u.P = &s[u.Index]
 	}
 }
 
@@ -208,7 +193,7 @@ func (c *execChecks) storage(n int) []Value {
 	s := c.retired[0]
 	c.retired = slices.Delete(c.retired, 0, 1)
 	for i := range s {
-		if !sameBits(s[i], stalePoison) {
+		if !sameBits(s[i], storage.StalePoison) {
 			panic(fmt.Sprintf("ekumavalidate: wrote to abandoned storage at the stack slot %d", i))
 		}
 	}
@@ -257,7 +242,7 @@ func (ag *agent) abandonStack() {
 
 func fillStale(slots []Value) {
 	for i := range slots {
-		slots[i] = stalePoison
+		slots[i] = storage.StalePoison
 	}
 }
 
@@ -275,7 +260,7 @@ func (ag *agent) holdStack() {
 func (ag *agent) holdArgs(args []Value) int {
 	c := &ag.checks
 	for _, v := range args {
-		checkValue(v)
+		storage.CheckValue(v)
 	}
 	n := len(c.args)
 	if start := ag.sp - len(args); len(args) > 0 && start >= 0 && ag.sp <= len(ag.stack) && &ag.stack[start] == &args[0] {
@@ -302,7 +287,7 @@ func (ag *agent) staleWrite(depth int) int {
 		c.abandoned[n] = abandonedStack{}
 		c.abandoned = c.abandoned[:n]
 		for i := range a.slots {
-			if !sameBits(a.slots[i], stalePoison) && !a.reads(i) {
+			if !sameBits(a.slots[i], storage.StalePoison) && !a.reads(i) {
 				return i
 			}
 		}
@@ -332,23 +317,11 @@ func (ag *agent) checkIdleStack() {
 	ag.stackHigh = 0
 }
 
-// isStale reports whether v was read from storage that the stack has moved away from.
-func isStale(v Value) bool {
-	return v.o == stalePoison.o
-}
-
-// checkValue checks that v was not read from stale registers.
-func checkValue(v Value) {
-	if isStale(v) {
-		panic("ekumavalidate: a value was read from stale registers")
-	}
-}
-
 // checkInstr checks the instruction of s, after which its frame continues at pc with the
 // registers regs. A dispatch may include a second instruction or continue at an exception handler.
 func (ag *agent) checkInstr(s *execStep, pc int, regs []Value) {
 	regs = regs[:len(s.regs)]
-	code := s.fp.code
+	code := s.fp.Code
 	bad, reached := ag.fits(s, regs, pc, s.pc, -1)
 	if reached && bad < 0 {
 		return
@@ -391,7 +364,7 @@ func canFuse(first, second bytecode.Instr) bool {
 // first alone when second is -1, can continue at to, and returns a register that they changed
 // without writing it, or -1. The registers of the frame were s.regs before and are regs after.
 func (ag *agent) fits(s *execStep, regs []Value, to, first, second int) (bad int, reached bool) {
-	code := s.fp.code
+	code := s.fp.Code
 	var continues bool
 	last := first
 	if second < 0 {
@@ -432,42 +405,35 @@ func (ag *agent) hasOpenUpval(s *execStep, r int) bool {
 		ups, index = s.gen.openUpvals, r
 	}
 	_, ok := slices.BinarySearchFunc(ups, index, func(u *upvalue, i int) int {
-		return cmp.Compare(u.index, i)
+		return cmp.Compare(u.Index, i)
 	})
 	return ok
 }
 
 // validationFailure describes a failed check at pc.
 func validationFailure(fp *funcProto, pc int, msg string) string {
-	in := fp.code[pc]
-	return fmt.Sprintf("ekumavalidate: %s at %d of %s (%s): %s", in.Op, pc, fp.name, fp.File, msg)
+	in := fp.Code[pc]
+	return fmt.Sprintf("ekumavalidate: %s at %d of %s (%s): %s", in.Op, pc, fp.Name, fp.File, msg)
 }
 
 // checkActive checks that the active context is that of the running frame, whose code is fp.
 func (ag *agent) checkActive(fp *funcProto) {
-	if ag.active.realmPart != fp.realm {
-		panic(fmt.Sprintf("ekumavalidate: active context is not that of the running frame of %s", fp.name))
+	if ag.active.realmPart != fp.Realm {
+		panic(fmt.Sprintf("ekumavalidate: active context is not that of the running frame of %s", fp.Name))
 	}
 }
 
 // checkAppend checks that the conditions of the interpreter loop for an append to the array o agree
 // with those of the storage operations.
 func (cx *ExecutionContext) checkAppend(o *Object) {
-	if !o.elemsResizable() || !cx.newElementsPlain(o) {
+	if !o.ElemsResizable() || !cx.NewElementsPlain(o) {
 		panic("ekumavalidate: the interpreter loop appends to an array that is not plain")
-	}
-}
-
-// checkArrayProtoPlain checks that the prototypes of plain arrays have no index property and run no
-// code.
-func (r *realmPart) checkArrayProtoPlain() {
-	a := r.Intrinsic(IntrinsicArrayPrototype)
-	if a.kind != kindArray || a.flags&objExotic != 0 || len(a.elems) != 0 || !a.inheritsNoIndex() {
-		panic("ekumavalidate: the prototypes of plain arrays are not plain")
 	}
 }
 
 // sameBits reports whether a and b are the same bits.
 func sameBits(a, b Value) bool {
-	return a.o == b.o && math.Float64bits(a.n) == math.Float64bits(b.n)
+	return a.O == b.O && math.Float64bits(a.N) == math.Float64bits(b.N)
 }
+
+const validateExec = storage.ValidateExec

@@ -13,6 +13,7 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/compiler"
 	"github.com/hajimehoshi/ekuma/internal/engine"
 	"github.com/hajimehoshi/ekuma/internal/parser"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
@@ -48,11 +49,11 @@ func runAssignment(file, src string, conservative bool) (string, error) {
 		init := args[0].Object()
 		global := cx.GlobalObject().Object()
 		proto := cx.NewLazyObject(cx.ProtoOf(global), func(cx *engine.ExecutionContext, o *engine.Object) {
-			cx.Call(init, engine.Undefined, engine.ObjectValue(o))
+			cx.Call(init, storage.Undefined, storage.ObjectValue(o))
 		})
-		return engine.Bool(cx.SetPrototypeOf(global, proto))
+		return storage.Bool(cx.SetPrototypeOf(global, proto))
 	})
-	host := engine.ObjectValue(cx.NewOrdinaryObject())
+	host := storage.ObjectValue(cx.NewOrdinaryObject())
 	if err := cx.HostSet(host, cx.NewString("evalScript"), eval); err != nil {
 		return "", err
 	}

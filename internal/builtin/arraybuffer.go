@@ -8,6 +8,7 @@ import (
 
 	"github.com/hajimehoshi/ekuma/internal/engine"
 	"github.com/hajimehoshi/ekuma/internal/numconv"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 )
 
 // initBinary defines ArrayBuffer, SharedArrayBuffer, the typed arrays, DataView and Atomics.
@@ -110,36 +111,36 @@ func arrayBufferConstructor(cx *engine.ExecutionContext, this engine.Value, args
 	}
 	n := toIndex(cx, arg(args, 0))
 	m := maxByteLengthOption(cx, arg(args, 1))
-	return engine.ObjectValue(allocateArrayBuffer(cx, nt, n, m, false))
+	return storage.ObjectValue(allocateArrayBuffer(cx, nt, n, m, false))
 }
 
 func arrayBufferIsView(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	a := arg(args, 0)
-	return engine.Bool(engine.TypedArrayData(a) != nil || engine.DataViewData(a) != nil)
+	return storage.Bool(engine.TypedArrayData(a) != nil || engine.DataViewData(a) != nil)
 }
 
 func arrayBufferByteLength(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-	return engine.Number(float64(thisArrayBuffer(cx, this, false, "byteLength").ByteLength()))
+	return storage.Number(float64(thisArrayBuffer(cx, this, false, "byteLength").ByteLength()))
 }
 
 func arrayBufferMaxByteLength(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	b := thisArrayBuffer(cx, this, false, "maxByteLength")
 	if b.IsDetached() {
-		return engine.Number(0)
+		return storage.Number(0)
 	}
-	return engine.Number(float64(b.MaxByteLength()))
+	return storage.Number(float64(b.MaxByteLength()))
 }
 
 func arrayBufferResizable(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-	return engine.Bool(thisArrayBuffer(cx, this, false, "resizable").IsResizable())
+	return storage.Bool(thisArrayBuffer(cx, this, false, "resizable").IsResizable())
 }
 
 func arrayBufferDetached(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-	return engine.Bool(thisArrayBuffer(cx, this, false, "detached").IsDetached())
+	return storage.Bool(thisArrayBuffer(cx, this, false, "detached").IsDetached())
 }
 
 func arrayBufferImmutable(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-	return engine.Bool(thisArrayBuffer(cx, this, false, "immutable").IsImmutable())
+	return storage.Bool(thisArrayBuffer(cx, this, false, "immutable").IsImmutable())
 }
 
 func arrayBufferSlice(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -150,8 +151,8 @@ func arrayBufferSlice(cx *engine.ExecutionContext, this engine.Value, args []eng
 	first, final := relativeRange(cx, arg(args, 0), arg(args, 1), b.ByteLength())
 	newLen := max(final-first, 0)
 	c := speciesConstructor(cx, this.Object(), cx.Intrinsic(engine.IntrinsicArrayBuffer))
-	r := cx.Construct(c, []engine.Value{engine.Number(float64(newLen))}, c)
-	nb := engine.ArrayBufferData(engine.ObjectValue(r))
+	r := cx.Construct(c, []engine.Value{storage.Number(float64(newLen))}, c)
+	nb := engine.ArrayBufferData(storage.ObjectValue(r))
 	if nb == nil || nb.IsShared() {
 		cx.ThrowTypeError("species constructor did not return an ArrayBuffer")
 	}
@@ -174,7 +175,7 @@ func arrayBufferSlice(cx *engine.ExecutionContext, this engine.Value, args []eng
 	if cur := b.ByteLength(); first < cur {
 		copy(nb.Bytes()[:min(newLen, cur-first)], b.Bytes()[first:])
 	}
-	return engine.ObjectValue(r)
+	return storage.ObjectValue(r)
 }
 
 func arrayBufferSliceToImmutable(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -200,7 +201,7 @@ func arrayBufferSliceToImmutable(cx *engine.ExecutionContext, this engine.Value,
 			data = slices.Clone(b.Bytes()[first:final])
 		}
 	}
-	return engine.ObjectValue(cx.NewImmutableArrayBufferFromBytes(cx.Intrinsic(engine.IntrinsicArrayBufferPrototype), data))
+	return storage.ObjectValue(cx.NewImmutableArrayBufferFromBytes(cx.Intrinsic(engine.IntrinsicArrayBufferPrototype), data))
 }
 
 func arrayBufferResize(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -216,7 +217,7 @@ func arrayBufferResize(cx *engine.ExecutionContext, this engine.Value, args []en
 		cx.ThrowRangeError("new length exceeds maxByteLength")
 	}
 	b.Resize(int(n))
-	return engine.Undefined
+	return storage.Undefined
 }
 
 var (
@@ -255,7 +256,7 @@ func arrayBufferTransferNative(name string, preserve, immutable bool) engine.Nat
 				cx.ThrowRangeError("new length exceeds maxByteLength")
 			}
 		}
-		return engine.ObjectValue(cx.TransferArrayBuffer(this.Object(), cx.Intrinsic(engine.IntrinsicArrayBufferPrototype), n, m, immutable))
+		return storage.ObjectValue(cx.TransferArrayBuffer(this.Object(), cx.Intrinsic(engine.IntrinsicArrayBufferPrototype), n, m, immutable))
 	}
 }
 
@@ -290,19 +291,19 @@ func sharedArrayBufferConstructor(cx *engine.ExecutionContext, this engine.Value
 	}
 	n := toIndex(cx, arg(args, 0))
 	m := maxByteLengthOption(cx, arg(args, 1))
-	return engine.ObjectValue(allocateArrayBuffer(cx, nt, n, m, true))
+	return storage.ObjectValue(allocateArrayBuffer(cx, nt, n, m, true))
 }
 
 func sharedArrayBufferByteLength(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-	return engine.Number(float64(thisArrayBuffer(cx, this, true, "byteLength").ByteLength()))
+	return storage.Number(float64(thisArrayBuffer(cx, this, true, "byteLength").ByteLength()))
 }
 
 func sharedArrayBufferMaxByteLength(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-	return engine.Number(float64(thisArrayBuffer(cx, this, true, "maxByteLength").MaxByteLength()))
+	return storage.Number(float64(thisArrayBuffer(cx, this, true, "maxByteLength").MaxByteLength()))
 }
 
 func sharedArrayBufferGrowable(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-	return engine.Bool(thisArrayBuffer(cx, this, true, "growable").IsResizable())
+	return storage.Bool(thisArrayBuffer(cx, this, true, "growable").IsResizable())
 }
 
 func sharedArrayBufferGrow(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -317,7 +318,7 @@ func sharedArrayBufferGrow(cx *engine.ExecutionContext, this engine.Value, args 
 	if !b.Grow(int(n)) {
 		cx.ThrowRangeError("SharedArrayBuffer cannot shrink")
 	}
-	return engine.Undefined
+	return storage.Undefined
 }
 
 func sharedArrayBufferSlice(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -325,8 +326,8 @@ func sharedArrayBufferSlice(cx *engine.ExecutionContext, this engine.Value, args
 	first, final := relativeRange(cx, arg(args, 0), arg(args, 1), b.ByteLength())
 	newLen := max(final-first, 0)
 	c := speciesConstructor(cx, this.Object(), cx.Intrinsic(engine.IntrinsicSharedArrayBuffer))
-	r := cx.Construct(c, []engine.Value{engine.Number(float64(newLen))}, c)
-	nb := engine.ArrayBufferData(engine.ObjectValue(r))
+	r := cx.Construct(c, []engine.Value{storage.Number(float64(newLen))}, c)
+	nb := engine.ArrayBufferData(storage.ObjectValue(r))
 	if nb == nil || !nb.IsShared() {
 		cx.ThrowTypeError("species constructor did not return a SharedArrayBuffer")
 	}
@@ -339,5 +340,5 @@ func sharedArrayBufferSlice(cx *engine.ExecutionContext, this engine.Value, args
 	if cur := b.ByteLength(); first < cur {
 		engine.CopyBufferBytes(nb, 0, b, first, min(newLen, cur-first))
 	}
-	return engine.ObjectValue(r)
+	return storage.ObjectValue(r)
 }

@@ -9,6 +9,7 @@ import (
 	"slices"
 
 	"github.com/hajimehoshi/ekuma/internal/engine"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 	"github.com/hajimehoshi/ekuma/internal/temporal"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
@@ -109,7 +110,7 @@ func temporalNative(f engine.NativeFunc) engine.NativeFunc {
 
 // get returns the property name of o.
 func get(cx *engine.ExecutionContext, o *engine.Object, name string) engine.Value {
-	return cx.Get(o, engine.NamedKey(cx.Intern(wtf8.String(name))))
+	return cx.Get(o, storage.NamedKey(cx.Intern(wtf8.String(name))))
 }
 
 // requireString returns v as a Go string, or throws a TypeError when it is not a String.
@@ -342,7 +343,7 @@ func roundToOptions(cx *engine.ExecutionContext, v engine.Value, key string) *en
 	}
 	if v.IsString() {
 		o := cx.NewObject(nil)
-		cx.CreateDataPropertyOrThrow(o, engine.NamedKey(cx.Intern(wtf8.String(key))), v)
+		cx.CreateDataPropertyOrThrow(o, storage.NamedKey(cx.Intern(wtf8.String(key))), v)
 		return o
 	}
 	return getOptionsObject(cx, v)
@@ -359,7 +360,7 @@ func SystemTimeZone(cx *engine.ExecutionContext) temporal.TimeZone {
 
 // toTimeZone implements ToTemporalTimeZoneIdentifier, returning the time zone.
 func toTimeZone(cx *engine.ExecutionContext, v engine.Value) temporal.TimeZone {
-	if s, ok := engine.TemporalData(v).(*zonedDateTimeSlots); ok {
+	if s, ok := storage.TemporalData(v).(*zonedDateTimeSlots); ok {
 		return s.tz
 	}
 	str := requireString(cx, v, "time zone")
@@ -377,7 +378,7 @@ func toTimeZone(cx *engine.ExecutionContext, v engine.Value) temporal.TimeZone {
 
 // calendarOf returns the calendar of v when it is an object with a [[Calendar]] slot.
 func calendarOf(v engine.Value) (string, bool) {
-	switch s := engine.TemporalData(v).(type) {
+	switch s := storage.TemporalData(v).(type) {
 	case *plainDateSlots:
 		return s.cal, true
 	case *plainDateTimeSlots:
@@ -417,7 +418,7 @@ func parseCalendarString(cx *engine.ExecutionContext, s string) string {
 
 // calendarWithISODefault implements GetTemporalCalendarIdentifierWithISODefault.
 func calendarWithISODefault(cx *engine.ExecutionContext, item *engine.Object) string {
-	if c, ok := calendarOf(engine.ObjectValue(item)); ok {
+	if c, ok := calendarOf(storage.ObjectValue(item)); ok {
 		return c
 	}
 	v := get(cx, item, "calendar")
@@ -570,7 +571,7 @@ func rejectTemporalLikeObject(cx *engine.ExecutionContext, v engine.Value) *engi
 	if !v.IsObject() {
 		cx.ThrowTypeError("argument must be an object")
 	}
-	switch engine.TemporalData(v).(type) {
+	switch storage.TemporalData(v).(type) {
 	case *plainDateSlots, *plainDateTimeSlots, *plainMonthDaySlots, *plainTimeSlots, *plainYearMonthSlots, *zonedDateTimeSlots:
 		cx.ThrowTypeError("argument must be a partial object, not a Temporal object")
 	}
@@ -599,8 +600,8 @@ func temporalConstructor(cx *engine.ExecutionContext, ns *engine.Object, name wt
 	cx.SetIntrinsic(protoID, proto)
 	c := cx.NewNativeConstructor(name, length, f)
 	cx.DefineConstructorPrototype(c, protoID)
-	cx.Define(proto, cx.Key(engine.KeyConstructor), engine.ObjectValue(c), engine.FlagsHidden)
-	cx.Define(ns, cx.Intern(name), engine.ObjectValue(c), engine.FlagsHidden)
+	cx.Define(proto, cx.Key(engine.KeyConstructor), storage.ObjectValue(c), engine.FlagsHidden)
+	cx.Define(ns, cx.Intern(name), storage.ObjectValue(c), engine.FlagsHidden)
 	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Temporal."+name), engine.FlagConfigurable)
 	return c, proto
 }
@@ -611,7 +612,7 @@ func temporalConstructor(cx *engine.ExecutionContext, ns *engine.Object, name wt
 func temporalValueOfNative(name string) engine.NativeFunc {
 	return temporalNative(func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		cx.ThrowTypeError("use Temporal." + name + ".compare or equals to compare Temporal." + name + " values, and toString to convert them")
-		return engine.Undefined
+		return storage.Undefined
 	})
 }
 
@@ -633,18 +634,18 @@ func bigIntToEpochNs(cx *engine.ExecutionContext, v engine.Value) temporal.Int12
 
 // epochNsValue returns ns as a BigInt.
 func epochNsValue(cx *engine.ExecutionContext, ns temporal.Int128) engine.Value {
-	return engine.NewBigInt(ns.Big())
+	return storage.NewBigInt(ns.Big())
 }
 
 // epochMilliseconds returns floor(ns / 10⁶) as a Number.
 func epochMilliseconds(ns temporal.Int128) engine.Value {
 	ms, _ := ns.FloorDivInt64(1_000_000)
-	return engine.Number(ms.Float64())
+	return storage.Number(ms.Float64())
 }
 
 // compareResult returns c as a Number.
 func compareResult(c int) engine.Value {
-	return engine.Number(float64(c))
+	return storage.Number(float64(c))
 }
 
 // initTemporal defines the Temporal namespace and Date.prototype.toTemporalInstant. The
@@ -663,7 +664,7 @@ func initTemporal(cx *engine.ExecutionContext) {
 		initTemporalNow(cx, ns)
 	})
 	cx.SetIntrinsic(engine.IntrinsicTemporal, ns)
-	cx.Define(cx.GlobalObject().Object(), cx.Intern("Temporal"), engine.ObjectValue(ns), engine.FlagsHidden)
+	cx.Define(cx.GlobalObject().Object(), cx.Intern("Temporal"), storage.ObjectValue(ns), engine.FlagsHidden)
 
 	method(cx, cx.Intrinsic(engine.IntrinsicDatePrototype), "toTemporalInstant", 0, nativeDateToTemporalInstant)
 }
@@ -681,7 +682,7 @@ func dateToTemporalInstant(cx *engine.ExecutionContext, this engine.Value, args 
 // TemporalPlainDateOf returns the ISO date and the calendar of v, and reports whether v is a
 // Temporal.PlainDate.
 func TemporalPlainDateOf(v engine.Value) (temporal.ISODate, string, bool) {
-	s, ok := engine.TemporalData(v).(*plainDateSlots)
+	s, ok := storage.TemporalData(v).(*plainDateSlots)
 	if !ok {
 		return temporal.ISODate{}, "", false
 	}
@@ -691,7 +692,7 @@ func TemporalPlainDateOf(v engine.Value) (temporal.ISODate, string, bool) {
 // TemporalPlainYearMonthOf returns the ISO date and the calendar of v, and reports whether v
 // is a Temporal.PlainYearMonth.
 func TemporalPlainYearMonthOf(v engine.Value) (temporal.ISODate, string, bool) {
-	s, ok := engine.TemporalData(v).(*plainYearMonthSlots)
+	s, ok := storage.TemporalData(v).(*plainYearMonthSlots)
 	if !ok {
 		return temporal.ISODate{}, "", false
 	}
@@ -701,7 +702,7 @@ func TemporalPlainYearMonthOf(v engine.Value) (temporal.ISODate, string, bool) {
 // TemporalPlainMonthDayOf returns the ISO date and the calendar of v, and reports whether v
 // is a Temporal.PlainMonthDay.
 func TemporalPlainMonthDayOf(v engine.Value) (temporal.ISODate, string, bool) {
-	s, ok := engine.TemporalData(v).(*plainMonthDaySlots)
+	s, ok := storage.TemporalData(v).(*plainMonthDaySlots)
 	if !ok {
 		return temporal.ISODate{}, "", false
 	}
@@ -710,7 +711,7 @@ func TemporalPlainMonthDayOf(v engine.Value) (temporal.ISODate, string, bool) {
 
 // TemporalPlainTimeOf returns the time of v, and reports whether v is a Temporal.PlainTime.
 func TemporalPlainTimeOf(v engine.Value) (temporal.Time, bool) {
-	s, ok := engine.TemporalData(v).(*plainTimeSlots)
+	s, ok := storage.TemporalData(v).(*plainTimeSlots)
 	if !ok {
 		return temporal.Time{}, false
 	}
@@ -720,7 +721,7 @@ func TemporalPlainTimeOf(v engine.Value) (temporal.Time, bool) {
 // TemporalPlainDateTimeOf returns the ISO date and time and the calendar of v, and reports
 // whether v is a Temporal.PlainDateTime.
 func TemporalPlainDateTimeOf(v engine.Value) (temporal.ISODateTime, string, bool) {
-	s, ok := engine.TemporalData(v).(*plainDateTimeSlots)
+	s, ok := storage.TemporalData(v).(*plainDateTimeSlots)
 	if !ok {
 		return temporal.ISODateTime{}, "", false
 	}
@@ -730,7 +731,7 @@ func TemporalPlainDateTimeOf(v engine.Value) (temporal.ISODateTime, string, bool
 // TemporalZonedDateTimeOf returns the epoch nanoseconds, the time zone and the calendar of v,
 // and reports whether v is a Temporal.ZonedDateTime.
 func TemporalZonedDateTimeOf(v engine.Value) (temporal.Int128, temporal.TimeZone, string, bool) {
-	s, ok := engine.TemporalData(v).(*zonedDateTimeSlots)
+	s, ok := storage.TemporalData(v).(*zonedDateTimeSlots)
 	if !ok {
 		return temporal.Int128{}, temporal.TimeZone{}, "", false
 	}
@@ -740,7 +741,7 @@ func TemporalZonedDateTimeOf(v engine.Value) (temporal.Int128, temporal.TimeZone
 // TemporalInstantOf returns the epoch nanoseconds of v, and reports whether v is a
 // Temporal.Instant.
 func TemporalInstantOf(v engine.Value) (temporal.Int128, bool) {
-	s, ok := engine.TemporalData(v).(*instantSlots)
+	s, ok := storage.TemporalData(v).(*instantSlots)
 	if !ok {
 		return temporal.Int128{}, false
 	}
@@ -749,7 +750,7 @@ func TemporalInstantOf(v engine.Value) (temporal.Int128, bool) {
 
 // TemporalDurationOf returns the fields of v, and reports whether v is a Temporal.Duration.
 func TemporalDurationOf(v engine.Value) (temporal.Duration, bool) {
-	s, ok := engine.TemporalData(v).(*durationSlots)
+	s, ok := storage.TemporalData(v).(*durationSlots)
 	if !ok {
 		return temporal.Duration{}, false
 	}

@@ -5,6 +5,7 @@ package builtin
 
 import (
 	"github.com/hajimehoshi/ekuma/internal/engine"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 )
 
 var (
@@ -16,8 +17,8 @@ var (
 func initAbstractModuleSource(cx *engine.ExecutionContext) {
 	proto := cx.NewObject(cx.Intrinsic(engine.IntrinsicObjectPrototype))
 	c := cx.NewNativeConstructor("AbstractModuleSource", 0, nativeAbstractModuleSourceConstructor)
-	cx.Define(c, cx.Key(engine.KeyPrototype), engine.ObjectValue(proto), 0)
-	cx.Define(proto, cx.Key(engine.KeyConstructor), engine.ObjectValue(c), engine.FlagsHidden)
+	cx.Define(c, cx.Key(engine.KeyPrototype), storage.ObjectValue(proto), 0)
+	cx.Define(proto, cx.Key(engine.KeyConstructor), storage.ObjectValue(c), engine.FlagsHidden)
 	getter(cx, proto, cx.WellKnownSymbol(engine.SymbolToStringTag), "[Symbol.toStringTag]", nativeAbstractModuleSourceToStringTag)
 	cx.SetIntrinsic(engine.IntrinsicAbstractModuleSource, c)
 	cx.SetIntrinsic(engine.IntrinsicAbstractModuleSourcePrototype, proto)
@@ -25,13 +26,13 @@ func initAbstractModuleSource(cx *engine.ExecutionContext) {
 
 func abstractModuleSourceConstructor(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	cx.ThrowTypeError("AbstractModuleSource cannot be constructed")
-	return engine.Undefined
+	return storage.Undefined
 }
 
 func abstractModuleSourceToStringTag(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	name, ok := cx.ModuleSourceClassName(this)
 	if !ok {
-		return engine.Undefined
+		return storage.Undefined
 	}
 	return cx.StringFromGo(name)
 }

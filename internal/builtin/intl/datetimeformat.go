@@ -13,6 +13,7 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/intl/date"
 	"github.com/hajimehoshi/ekuma/internal/intl/locale"
 	"github.com/hajimehoshi/ekuma/internal/localetag"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 	"github.com/hajimehoshi/ekuma/internal/temporal"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
@@ -115,9 +116,9 @@ func createDateTimeFormat(cx *engine.ExecutionContext, locales, opts engine.Valu
 	bestFit := localeMatcher(cx, options)
 	cal, hasCal := typeOption(cx, options, "calendar")
 	nu, hasNu := typeOption(cx, options, "numberingSystem")
-	var hour12 engine.Value = cx.Get(options, engine.NamedKey(cx.Intern("hour12")))
+	var hour12 engine.Value = cx.Get(options, storage.NamedKey(cx.Intern("hour12")))
 	if !hour12.IsUndefined() {
-		hour12 = engine.Bool(engine.ToBoolean(hour12))
+		hour12 = storage.Bool(storage.ToBoolean(hour12))
 	}
 	hourCycle, hasHourCycle := getOption(cx, options, "hourCycle", "h11", "h12", "h23", "h24")
 	hcKey := locale.ExtensionKey{
@@ -155,13 +156,13 @@ func createDateTimeFormat(cx *engine.ExecutionContext, locales, opts engine.Valu
 		if hc == "" {
 			hc = def
 		}
-	case engine.ToBoolean(hour12):
+	case storage.ToBoolean(hour12):
 		hc = hc12
 	default:
 		hc = hc24
 	}
 
-	tzv := cx.Get(options, engine.NamedKey(cx.Intern("timeZone")))
+	tzv := cx.Get(options, storage.NamedKey(cx.Intern("timeZone")))
 	switch {
 	case tzv.IsUndefined() && toLocaleStringTZ != nil:
 		dtf.tz = *toLocaleStringTZ
@@ -508,16 +509,16 @@ func newDateTimeFormat(cx *engine.ExecutionContext, this engine.Value, args []en
 	proto := cx.GetPrototypeFromConstructor(nt, engine.IntrinsicIntlDateTimeFormatPrototype)
 	dtf := cx.NewIntlObject(proto, createDateTimeFormat(cx, arg(args, 0), arg(args, 1), date.Any, date.Date, nil))
 	// ChainDateTimeFormat.
-	if nt == nil && cx.OrdinaryHasInstance(engine.ObjectValue(cx.Intrinsic(engine.IntrinsicIntlDateTimeFormat)), this) {
+	if nt == nil && cx.OrdinaryHasInstance(storage.ObjectValue(cx.Intrinsic(engine.IntrinsicIntlDateTimeFormat)), this) {
 		var d engine.PropDesc
-		d.SetValue(engine.ObjectValue(dtf))
+		d.SetValue(storage.ObjectValue(dtf))
 		d.SetWritable(false)
 		d.SetEnumerable(false)
 		d.SetConfigurable(false)
-		cx.DefinePropertyOrThrow(this.Object(), engine.NamedKey(cx.IntlFallbackSymbol()), d)
+		cx.DefinePropertyOrThrow(this.Object(), storage.NamedKey(cx.IntlFallbackSymbol()), d)
 		return this
 	}
-	return engine.ObjectValue(dtf)
+	return storage.ObjectValue(dtf)
 }
 
 // unwrapDateTimeFormat implements UnwrapDateTimeFormat followed by the check of the internal
@@ -526,11 +527,11 @@ func unwrapDateTimeFormat(cx *engine.ExecutionContext, this engine.Value, name s
 	if !this.IsObject() {
 		cx.ThrowTypeError("Intl.DateTimeFormat.prototype." + name + " called on a value that is not an object")
 	}
-	if dtf, ok := engine.IntlData(this).(*dateTimeFormatData); ok {
+	if dtf, ok := storage.IntlData(this).(*dateTimeFormatData); ok {
 		return dtf
 	}
-	if cx.OrdinaryHasInstance(engine.ObjectValue(cx.Intrinsic(engine.IntrinsicIntlDateTimeFormat)), this) {
-		if dtf, ok := engine.IntlData(cx.Get(this.Object(), engine.NamedKey(cx.IntlFallbackSymbol()))).(*dateTimeFormatData); ok {
+	if cx.OrdinaryHasInstance(storage.ObjectValue(cx.Intrinsic(engine.IntrinsicIntlDateTimeFormat)), this) {
+		if dtf, ok := storage.IntlData(cx.Get(this.Object(), storage.NamedKey(cx.IntlFallbackSymbol()))).(*dateTimeFormatData); ok {
 			return dtf
 		}
 	}
@@ -540,7 +541,7 @@ func unwrapDateTimeFormat(cx *engine.ExecutionContext, this engine.Value, name s
 
 // thisDateTimeFormat implements RequireInternalSlot for an Intl.DateTimeFormat.
 func thisDateTimeFormat(cx *engine.ExecutionContext, this engine.Value, name string) *dateTimeFormatData {
-	dtf, ok := engine.IntlData(this).(*dateTimeFormatData)
+	dtf, ok := storage.IntlData(this).(*dateTimeFormatData)
 	if !ok {
 		cx.ThrowTypeError("Intl.DateTimeFormat.prototype." + name + " called on an object that is not an Intl.DateTimeFormat")
 	}
@@ -598,7 +599,7 @@ func dateTimeFormatFormat(cx *engine.ExecutionContext, this engine.Value, args [
 	if dtf.boundFormat == nil {
 		dtf.boundFormat = cx.NewNativeWithState("", 1, nativeDateTimeFormatFunction, dtf)
 	}
-	return engine.ObjectValue(dtf.boundFormat)
+	return storage.ObjectValue(dtf.boundFormat)
 }
 
 func dateTimeFormatFormatToParts(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -633,7 +634,7 @@ func dateTimeFormatFormatRangeToParts(cx *engine.ExecutionContext, this engine.V
 func (dtf *dateTimeFormatData) resolvedOptions(cx *engine.ExecutionContext) engine.Value {
 	out := cx.NewObject(cx.Intrinsic(engine.IntrinsicObjectPrototype))
 	set := func(name string, v engine.Value) {
-		cx.CreateDataPropertyOrThrow(out, engine.NamedKey(cx.Intern(wtf8.String(name))), v)
+		cx.CreateDataPropertyOrThrow(out, storage.NamedKey(cx.Intern(wtf8.String(name))), v)
 	}
 	str := func(name, v string) {
 		if v != "" {
@@ -646,7 +647,7 @@ func (dtf *dateTimeFormatData) resolvedOptions(cx *engine.ExecutionContext) engi
 	str("timeZone", dtf.timeZone)
 	if dtf.hourCycle != "" {
 		str("hourCycle", dtf.hourCycle)
-		set("hour12", engine.Bool(dtf.hourCycle == "h11" || dtf.hourCycle == "h12"))
+		set("hour12", storage.Bool(dtf.hourCycle == "h11" || dtf.hourCycle == "h12"))
 	}
 	if dtf.dateStyle == "" && dtf.timeStyle == "" {
 		c := dtf.format.Components()
@@ -660,13 +661,13 @@ func (dtf *dateTimeFormatData) resolvedOptions(cx *engine.ExecutionContext) engi
 		str("minute", c.Minute)
 		str("second", c.Second)
 		if c.FractionalSecondDigits > 0 {
-			set("fractionalSecondDigits", engine.Number(float64(c.FractionalSecondDigits)))
+			set("fractionalSecondDigits", storage.Number(float64(c.FractionalSecondDigits)))
 		}
 		str("timeZoneName", c.TimeZoneName)
 	}
 	str("dateStyle", dtf.dateStyle)
 	str("timeStyle", dtf.timeStyle)
-	return engine.ObjectValue(out)
+	return storage.ObjectValue(out)
 }
 
 var nativeDurationToLocaleString = engine.RegisterNative(durationToLocaleString)
@@ -684,8 +685,8 @@ func initTemporalToLocaleString(cx *engine.ExecutionContext) {
 			cx.DefineOwnProperty(ns, k, d)
 		}
 		define := func(name string, f engine.Native) {
-			ctor := cx.Get(ns, engine.NamedKey(cx.Intern(wtf8.String(name))))
-			proto := cx.Get(ctor.Object(), engine.NamedKey(cx.Key(engine.KeyPrototype))).Object()
+			ctor := cx.Get(ns, storage.NamedKey(cx.Intern(wtf8.String(name))))
+			proto := cx.Get(ctor.Object(), storage.NamedKey(cx.Key(engine.KeyPrototype))).Object()
 			method(cx, proto, "toLocaleString", 0, f)
 		}
 		define("Instant", nativeInstantToLocaleString)
@@ -698,7 +699,7 @@ func initTemporalToLocaleString(cx *engine.ExecutionContext) {
 		define("Duration", nativeDurationToLocaleString)
 	})
 	cx.SetIntrinsic(engine.IntrinsicTemporal, ns)
-	cx.Define(global, cx.Intern("Temporal"), engine.ObjectValue(ns), engine.FlagsHidden)
+	cx.Define(global, cx.Intern("Temporal"), storage.ObjectValue(ns), engine.FlagsHidden)
 }
 
 var (
@@ -773,7 +774,7 @@ var (
 //go:noinline
 func dateToLocaleStringNative(name, required, defaults string) engine.NativeFunc {
 	return func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		t, ok := engine.ThisTimeValue(this)
+		t, ok := storage.ThisTimeValue(this)
 		if !ok {
 			cx.ThrowTypeError("Date.prototype." + name + " requires that 'this' be a Date")
 		}

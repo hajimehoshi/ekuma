@@ -5,6 +5,7 @@ package builtin
 
 import (
 	"github.com/hajimehoshi/ekuma/internal/engine"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 	"github.com/hajimehoshi/ekuma/internal/temporal"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
@@ -15,7 +16,7 @@ func createPlainDate(cx *engine.ExecutionContext, d temporal.ISODate, cal string
 		cx.ThrowRangeError("date is out of range")
 	}
 	proto := cx.GetPrototypeFromConstructor(nt, engine.IntrinsicTemporalPlainDatePrototype)
-	return engine.ObjectValue(cx.NewTemporalObject(proto, &plainDateSlots{
+	return storage.ObjectValue(cx.NewTemporalObject(proto, &plainDateSlots{
 		date: d,
 		cal:  cal,
 	}))
@@ -27,7 +28,7 @@ func createPlainDateTime(cx *engine.ExecutionContext, dt temporal.ISODateTime, c
 		cx.ThrowRangeError("date-time is out of range")
 	}
 	proto := cx.GetPrototypeFromConstructor(nt, engine.IntrinsicTemporalPlainDateTimePrototype)
-	return engine.ObjectValue(cx.NewTemporalObject(proto, &plainDateTimeSlots{
+	return storage.ObjectValue(cx.NewTemporalObject(proto, &plainDateTimeSlots{
 		dt:  dt,
 		cal: cal,
 	}))
@@ -36,13 +37,13 @@ func createPlainDateTime(cx *engine.ExecutionContext, dt temporal.ISODateTime, c
 // newPlainTime implements CreateTemporalTime.
 func newPlainTime(cx *engine.ExecutionContext, t temporal.Time, nt *engine.Object) engine.Value {
 	proto := cx.GetPrototypeFromConstructor(nt, engine.IntrinsicTemporalPlainTimePrototype)
-	return engine.ObjectValue(cx.NewTemporalObject(proto, &plainTimeSlots{
+	return storage.ObjectValue(cx.NewTemporalObject(proto, &plainTimeSlots{
 		t: t,
 	}))
 }
 
 func thisPlainDate(cx *engine.ExecutionContext, this engine.Value, name string) *plainDateSlots {
-	s, ok := engine.TemporalData(this).(*plainDateSlots)
+	s, ok := storage.TemporalData(this).(*plainDateSlots)
 	if !ok {
 		incompatible(cx, "Temporal.PlainDate.prototype."+name, this)
 	}
@@ -50,7 +51,7 @@ func thisPlainDate(cx *engine.ExecutionContext, this engine.Value, name string) 
 }
 
 func thisPlainTime(cx *engine.ExecutionContext, this engine.Value, name string) *plainTimeSlots {
-	s, ok := engine.TemporalData(this).(*plainTimeSlots)
+	s, ok := storage.TemporalData(this).(*plainTimeSlots)
 	if !ok {
 		incompatible(cx, "Temporal.PlainTime.prototype."+name, this)
 	}
@@ -58,7 +59,7 @@ func thisPlainTime(cx *engine.ExecutionContext, this engine.Value, name string) 
 }
 
 func thisPlainDateTime(cx *engine.ExecutionContext, this engine.Value, name string) *plainDateTimeSlots {
-	s, ok := engine.TemporalData(this).(*plainDateTimeSlots)
+	s, ok := storage.TemporalData(this).(*plainDateTimeSlots)
 	if !ok {
 		incompatible(cx, "Temporal.PlainDateTime.prototype."+name, this)
 	}
@@ -68,7 +69,7 @@ func thisPlainDateTime(cx *engine.ExecutionContext, this engine.Value, name stri
 // toTemporalDate implements ToTemporalDate.
 func toTemporalDate(cx *engine.ExecutionContext, item, options engine.Value) plainDateSlots {
 	if item.IsObject() {
-		switch s := engine.TemporalData(item).(type) {
+		switch s := storage.TemporalData(item).(type) {
 		case *plainDateSlots:
 			getOverflowOption(cx, getOptionsObject(cx, options))
 			return *s
@@ -113,7 +114,7 @@ func toTemporalDate(cx *engine.ExecutionContext, item, options engine.Value) pla
 // toTemporalDateTime implements ToTemporalDateTime.
 func toTemporalDateTime(cx *engine.ExecutionContext, item, options engine.Value) plainDateTimeSlots {
 	if item.IsObject() {
-		switch s := engine.TemporalData(item).(type) {
+		switch s := storage.TemporalData(item).(type) {
 		case *plainDateTimeSlots:
 			getOverflowOption(cx, getOptionsObject(cx, options))
 			return *s
@@ -166,7 +167,7 @@ func toTemporalDateTime(cx *engine.ExecutionContext, item, options engine.Value)
 // toTemporalTime implements ToTemporalTime.
 func toTemporalTime(cx *engine.ExecutionContext, item, options engine.Value) temporal.Time {
 	if item.IsObject() {
-		switch s := engine.TemporalData(item).(type) {
+		switch s := storage.TemporalData(item).(type) {
 		case *plainTimeSlots:
 			getOverflowOption(cx, getOptionsObject(cx, options))
 			return s.t
@@ -194,7 +195,7 @@ func toTimeRecordOrMidnight(cx *engine.ExecutionContext, item engine.Value) temp
 	if item.IsUndefined() {
 		return temporal.MidnightTime
 	}
-	return toTemporalTime(cx, item, engine.Undefined)
+	return toTemporalTime(cx, item, storage.Undefined)
 }
 
 // calendarFieldNative returns the getter of the calendar field name. dateOf returns the ISO date
@@ -211,48 +212,48 @@ func calendarFieldNative(name string, dateOf func(cx *engine.ExecutionContext, t
 		switch name {
 		case "era":
 			if c.Era == "" {
-				return engine.Undefined
+				return storage.Undefined
 			}
 			return cx.NewString(wtf8.String(c.Era))
 		case "eraYear":
 			if c.Era == "" {
-				return engine.Undefined
+				return storage.Undefined
 			}
-			return engine.Number(float64(c.EraYear))
+			return storage.Number(float64(c.EraYear))
 		case "year":
-			return engine.Number(float64(c.Year))
+			return storage.Number(float64(c.Year))
 		case "month":
-			return engine.Number(float64(c.Month))
+			return storage.Number(float64(c.Month))
 		case "monthCode":
 			return cx.NewString(wtf8.String(c.MonthCode))
 		case "day":
-			return engine.Number(float64(c.Day))
+			return storage.Number(float64(c.Day))
 		case "dayOfWeek":
-			return engine.Number(float64(c.DayOfWeek))
+			return storage.Number(float64(c.DayOfWeek))
 		case "dayOfYear":
-			return engine.Number(float64(c.DayOfYear))
+			return storage.Number(float64(c.DayOfYear))
 		case "weekOfYear":
 			if c.WeekOfYear == 0 {
-				return engine.Undefined
+				return storage.Undefined
 			}
-			return engine.Number(float64(c.WeekOfYear))
+			return storage.Number(float64(c.WeekOfYear))
 		case "yearOfWeek":
 			if c.WeekOfYear == 0 {
-				return engine.Undefined
+				return storage.Undefined
 			}
-			return engine.Number(float64(c.YearOfWeek))
+			return storage.Number(float64(c.YearOfWeek))
 		case "daysInWeek":
-			return engine.Number(float64(c.DaysInWeek))
+			return storage.Number(float64(c.DaysInWeek))
 		case "daysInMonth":
-			return engine.Number(float64(c.DaysInMonth))
+			return storage.Number(float64(c.DaysInMonth))
 		case "daysInYear":
-			return engine.Number(float64(c.DaysInYear))
+			return storage.Number(float64(c.DaysInYear))
 		case "monthsInYear":
-			return engine.Number(float64(c.MonthsInYear))
+			return storage.Number(float64(c.MonthsInYear))
 		case "inLeapYear":
-			return engine.Bool(c.InLeapYear)
+			return storage.Bool(c.InLeapYear)
 		}
-		return engine.Undefined
+		return storage.Undefined
 	})
 }
 
@@ -294,12 +295,12 @@ func toZonedDateTimeArgs(cx *engine.ExecutionContext, item engine.Value) (tempor
 		o := item.Object()
 		tzLike := get(cx, o, "timeZone")
 		if tzLike.IsUndefined() {
-			return toTimeZone(cx, item), engine.Undefined
+			return toTimeZone(cx, item), storage.Undefined
 		}
 		tz := toTimeZone(cx, tzLike)
 		return tz, get(cx, o, "plainTime")
 	}
-	return toTimeZone(cx, item), engine.Undefined
+	return toTimeZone(cx, item), storage.Undefined
 }
 
 func initTemporalPlainDate(cx *engine.ExecutionContext, ns *engine.Object) {
@@ -408,7 +409,7 @@ func plainDateAddNative(name string) engine.NativeFunc {
 func plainDateUntilNative(name string) engine.NativeFunc {
 	return temporalNative(func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		s := thisPlainDate(cx, this, name)
-		other := toTemporalDate(cx, arg(args, 0), engine.Undefined)
+		other := toTemporalDate(cx, arg(args, 0), storage.Undefined)
 		checkSameCalendar(cx, s.cal, other.cal)
 		opts := getOptionsObject(cx, arg(args, 1))
 		settings := getDifferenceSettings(cx, name == "since", opts, unitGroupDate, nil, temporal.UnitDay, temporal.UnitDay)
@@ -467,8 +468,8 @@ func plainDateFrom(cx *engine.ExecutionContext, this engine.Value, args []engine
 }
 
 func plainDateCompare(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-	one := toTemporalDate(cx, arg(args, 0), engine.Undefined)
-	two := toTemporalDate(cx, arg(args, 1), engine.Undefined)
+	one := toTemporalDate(cx, arg(args, 0), storage.Undefined)
+	two := toTemporalDate(cx, arg(args, 1), storage.Undefined)
 	return compareResult(temporal.CompareISODate(one.date, two.date))
 }
 
@@ -500,7 +501,7 @@ func plainDateToZonedDateTime(cx *engine.ExecutionContext, this engine.Value, ar
 	if plainTime.IsUndefined() {
 		epochNs = must(tz.StartOfDay(s.date))
 	} else {
-		t := toTemporalTime(cx, plainTime, engine.Undefined)
+		t := toTemporalTime(cx, plainTime, storage.Undefined)
 		epochNs = must(tz.EpochNanosecondsFor(temporal.ISODateTime{
 			Date: s.date,
 			Time: t,
@@ -527,8 +528,8 @@ func plainDateWithCalendar(cx *engine.ExecutionContext, this engine.Value, args 
 
 func plainDateEquals(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	s := thisPlainDate(cx, this, "equals")
-	other := toTemporalDate(cx, arg(args, 0), engine.Undefined)
-	return engine.Bool(temporal.CompareISODate(s.date, other.date) == 0 && calendarEquals(s.cal, other.cal))
+	other := toTemporalDate(cx, arg(args, 0), storage.Undefined)
+	return storage.Bool(temporal.CompareISODate(s.date, other.date) == 0 && calendarEquals(s.cal, other.cal))
 }
 
 func plainDateToString(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -634,7 +635,7 @@ var (
 //go:noinline
 func plainTimeTimeNative(name string) engine.NativeFunc {
 	return temporalNative(func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		return engine.Number(float64(timeField(thisPlainTime(cx, this, name).t, name)))
+		return storage.Number(float64(timeField(thisPlainTime(cx, this, name).t, name)))
 	})
 }
 
@@ -662,7 +663,7 @@ func plainTimeAddNative(name string) engine.NativeFunc {
 func plainTimeUntilNative(name string) engine.NativeFunc {
 	return temporalNative(func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		s := thisPlainTime(cx, this, name)
-		other := toTemporalTime(cx, arg(args, 0), engine.Undefined)
+		other := toTemporalTime(cx, arg(args, 0), storage.Undefined)
 		opts := getOptionsObject(cx, arg(args, 1))
 		settings := getDifferenceSettings(cx, name == "since", opts, unitGroupTime, nil, temporal.UnitNanosecond, temporal.UnitHour)
 		t := must(temporal.RoundTimeDuration(temporal.DifferenceTime(s.t, other), settings.increment, settings.smallestUnit, settings.mode))
@@ -701,8 +702,8 @@ func plainTimeFrom(cx *engine.ExecutionContext, this engine.Value, args []engine
 }
 
 func plainTimeCompare(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-	one := toTemporalTime(cx, arg(args, 0), engine.Undefined)
-	two := toTemporalTime(cx, arg(args, 1), engine.Undefined)
+	one := toTemporalTime(cx, arg(args, 0), storage.Undefined)
+	two := toTemporalTime(cx, arg(args, 1), storage.Undefined)
 	return compareResult(temporal.CompareTimeRecord(one, two))
 }
 
@@ -730,7 +731,7 @@ func plainTimeRound(cx *engine.ExecutionContext, this engine.Value, args []engin
 
 func plainTimeEquals(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	s := thisPlainTime(cx, this, "equals")
-	return engine.Bool(temporal.CompareTimeRecord(s.t, toTemporalTime(cx, arg(args, 0), engine.Undefined)) == 0)
+	return storage.Bool(temporal.CompareTimeRecord(s.t, toTemporalTime(cx, arg(args, 0), storage.Undefined)) == 0)
 }
 
 func plainTimeToString(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -844,7 +845,7 @@ func plainDateTimeCalendarDate(cx *engine.ExecutionContext, this engine.Value, n
 //go:noinline
 func plainDateTimeTimeNative(name string) engine.NativeFunc {
 	return temporalNative(func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		return engine.Number(float64(timeField(thisPlainDateTime(cx, this, name).dt.Time, name)))
+		return storage.Number(float64(timeField(thisPlainDateTime(cx, this, name).dt.Time, name)))
 	})
 }
 
@@ -878,7 +879,7 @@ func plainDateTimeAddNative(name string) engine.NativeFunc {
 func plainDateTimeUntilNative(name string) engine.NativeFunc {
 	return temporalNative(func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		s := thisPlainDateTime(cx, this, name)
-		other := toTemporalDateTime(cx, arg(args, 0), engine.Undefined)
+		other := toTemporalDateTime(cx, arg(args, 0), storage.Undefined)
 		checkSameCalendar(cx, s.cal, other.cal)
 		opts := getOptionsObject(cx, arg(args, 1))
 		settings := getDifferenceSettings(cx, name == "since", opts, unitGroupDateTime, nil, temporal.UnitNanosecond, temporal.UnitDay)
@@ -934,8 +935,8 @@ func plainDateTimeFrom(cx *engine.ExecutionContext, this engine.Value, args []en
 }
 
 func plainDateTimeCompare(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-	one := toTemporalDateTime(cx, arg(args, 0), engine.Undefined)
-	two := toTemporalDateTime(cx, arg(args, 1), engine.Undefined)
+	one := toTemporalDateTime(cx, arg(args, 0), storage.Undefined)
+	two := toTemporalDateTime(cx, arg(args, 1), storage.Undefined)
 	return compareResult(temporal.CompareISODateTime(one.dt, two.dt))
 }
 
@@ -976,8 +977,8 @@ func plainDateTimeRound(cx *engine.ExecutionContext, this engine.Value, args []e
 
 func plainDateTimeEquals(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	s := thisPlainDateTime(cx, this, "equals")
-	other := toTemporalDateTime(cx, arg(args, 0), engine.Undefined)
-	return engine.Bool(temporal.CompareISODateTime(s.dt, other.dt) == 0 && calendarEquals(s.cal, other.cal))
+	other := toTemporalDateTime(cx, arg(args, 0), storage.Undefined)
+	return storage.Bool(temporal.CompareISODateTime(s.dt, other.dt) == 0 && calendarEquals(s.cal, other.cal))
 }
 
 func plainDateTimeToString(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {

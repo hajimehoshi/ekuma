@@ -8,6 +8,7 @@ import (
 	"strconv"
 
 	"github.com/hajimehoshi/ekuma/internal/engine"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
@@ -206,9 +207,9 @@ func (p *Parser) parseText(withRecords bool) (engine.Value, *Record) {
 			if p.pos < len(src) && (array && src[p.pos] == ']' || !array && src[p.pos] == '}') {
 				p.pos++
 				if array {
-					v = engine.ObjectValue(cx.NewArray(nil))
+					v = storage.ObjectValue(cx.NewArray(nil))
 				} else {
-					v = engine.ObjectValue(cx.NewOrdinaryObject())
+					v = storage.ObjectValue(cx.NewOrdinaryObject())
 				}
 				if withRecords {
 					rec = &Record{value: v}
@@ -229,20 +230,20 @@ func (p *Parser) parseText(withRecords bool) (engine.Value, *Record) {
 			v = cx.NewString(p.parseString())
 		case 't':
 			p.literal("true")
-			v = engine.True
+			v = storage.True
 		case 'f':
 			p.literal("false")
-			v = engine.False
+			v = storage.False
 		case 'n':
 			p.literal("null")
-			v = engine.Null
+			v = storage.Null
 		default:
 			n, end, ok := ScanNumber(src, p.pos, cx.Poll)
 			p.pos = end
 			if !ok {
 				p.fail()
 			}
-			v = engine.Number(n)
+			v = storage.Number(n)
 		}
 		if withRecords && rec == nil {
 			rec = &Record{
@@ -303,7 +304,7 @@ func (p *Parser) close(f *frame, withRecords bool) (engine.Value, *Record) {
 	} else {
 		o = cx.NewObjectFromProperties(p.keys[f.keyBase:], vals)
 	}
-	v := engine.ObjectValue(o)
+	v := storage.ObjectValue(o)
 	var rec *Record
 	if withRecords {
 		rec = &Record{value: v}

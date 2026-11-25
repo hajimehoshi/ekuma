@@ -8,6 +8,7 @@ import (
 	"sort"
 
 	"github.com/hajimehoshi/ekuma/internal/bytecode"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 )
 
 type genState uint8
@@ -30,7 +31,7 @@ const (
 
 // closeSignal is thrown through a suspended generator to make it return:
 // only finally handlers intercept it. A JavaScript finally block saves the return value in its frame.
-var closeSignal = newMarker(nil)
+var closeSignal = storage.NewMarker(nil)
 
 // generator is the suspended activation of a generator or async function.
 // Its registers are not on the stack, so that closures can keep referring to them.
@@ -112,17 +113,17 @@ func (g *generator) completeAt(pc int) {
 
 func (g *generator) findUpval(index int) *upvalue {
 	i := len(g.openUpvals)
-	if i > 0 && g.openUpvals[i-1].index > index {
+	if i > 0 && g.openUpvals[i-1].Index > index {
 		i = sort.Search(i-1, func(j int) bool {
-			return g.openUpvals[j].index > index
+			return g.openUpvals[j].Index > index
 		})
 	}
-	if i > 0 && g.openUpvals[i-1].index == index {
+	if i > 0 && g.openUpvals[i-1].Index == index {
 		return g.openUpvals[i-1]
 	}
 	u := &upvalue{
-		p:     &g.regs[index],
-		index: index,
+		P:     &g.regs[index],
+		Index: index,
 	}
 	g.openUpvals = slices.Insert(g.openUpvals, i, u)
 	return u
@@ -131,11 +132,11 @@ func (g *generator) findUpval(index int) *upvalue {
 // closeUpvals detaches the upvalues that refer to the registers from index from on.
 func (g *generator) closeUpvals(from int) {
 	n := len(g.openUpvals)
-	for n > 0 && g.openUpvals[n-1].index >= from {
+	for n > 0 && g.openUpvals[n-1].Index >= from {
 		n--
 		u := g.openUpvals[n]
-		u.val = *u.p
-		u.p = &u.val
+		u.Val = *u.P
+		u.P = &u.Val
 	}
 	clear(g.openUpvals[n:])
 	g.openUpvals = g.openUpvals[:n]
@@ -143,18 +144,18 @@ func (g *generator) closeUpvals(from int) {
 
 // newGenerator creates the activation of the generator or async function f without an object.
 func newGenerator(f *Object, this Value, args []Value) *generator {
-	fp := f.fn.code
-	fp.prepare()
+	fp := f.Fn.Code
+	fp.Prepare()
 	g := &generator{
 		f:    f,
 		fp:   fp,
 		this: this,
 		argc: len(args),
-		regs: make([]Value, fp.nregs+1),
+		regs: make([]Value, fp.Nregs+1),
 	}
-	copy(g.regs[:fp.nparams], args)
-	if len(args) > fp.nparams && fp.needsExtra {
-		g.extra = append(g.extra, args[fp.nparams:]...)
+	copy(g.regs[:fp.Nparams], args)
+	if len(args) > fp.Nparams && fp.NeedsExtra {
+		g.extra = append(g.extra, args[fp.Nparams:]...)
 	}
 	return g
 }
@@ -164,7 +165,7 @@ func newGenerator(f *Object, this Value, args []Value) *generator {
 // the generator object.
 func (ag *agent) pushGenerator(f *Object, this Value, args []Value, ret int32) {
 	g := newGenerator(f, this, args)
-	if g.fp.isAsync {
+	if g.fp.IsAsync {
 		g.async = &asyncState{}
 	}
 	ag.pushGenFrame(g, ret)
@@ -172,15 +173,15 @@ func (ag *agent) pushGenerator(f *Object, this Value, args []Value, ret int32) {
 
 // newGeneratorObject creates the generator object of g, whose parameters are instantiated.
 func (cx *ExecutionContext) newGeneratorObject(g *generator) *Object {
-	r := g.fp.realm
-	proto := r.intrinsics[IntrinsicGeneratorPrototype]
+	r := g.fp.Realm
+	proto := r.Intrinsics[IntrinsicGeneratorPrototype]
 	if g.async != nil {
-		proto = r.intrinsics[IntrinsicAsyncGeneratorPrototype]
+		proto = r.Intrinsics[IntrinsicAsyncGeneratorPrototype]
 	}
-	if p := cx.GetV(Value{o: g.f}, cx.Key(KeyPrototype)); p.IsObject() {
-		proto = p.o
+	if p := cx.GetV(Value{O: g.f}, cx.Key(KeyPrototype)); p.IsObject() {
+		proto = p.O
 	}
-	o := newObjectWithState(cx.shapeForRealm(proto, r), classGenerator, g)
+	o := storage.NewObjectWithState(cx.ShapeForRealm(proto, r), classGenerator, g)
 	g.object = o
 	return o
 }
@@ -211,8 +212,8 @@ func (ag *agent) pushGenFrame(g *generator, ret int32) {
 
 // callCoroutine calls the generator, async function or async generator f from Go.
 func (cx *ExecutionContext) callCoroutine(f *Object, this Value, args []Value) Value {
-	c := f.fn.code
-	if c.isAsync && !c.isGenerator {
+	c := f.Fn.Code
+	if c.IsAsync && !c.IsGenerator {
 		return cx.callAsync(f, this, args)
 	}
 	sp := cx.sp
@@ -235,7 +236,7 @@ func (resumer *ExecutionContext) resume(g *generator, mode ResumeMode, v Value) 
 		case ResumeReturn:
 			return v, true
 		}
-		return Undefined, true
+		return storage.Undefined, true
 	case genSuspendedStart:
 		switch mode {
 		case ResumeThrow:
@@ -257,7 +258,7 @@ func (resumer *ExecutionContext) resume(g *generator, mode ResumeMode, v Value) 
 	stop := len(resumer.frames) - 1
 	if started {
 		g.regs[g.resumeReg] = v
-		resumer.thrown = Undefined
+		resumer.thrown = storage.Undefined
 	}
 	if started && mode != ResumeNext && !g.delegating {
 		// The code after an await or a plain yield does not look at the mode: deliver
@@ -273,7 +274,7 @@ func (resumer *ExecutionContext) resume(g *generator, mode ResumeMode, v Value) 
 			resumer.thrown = v
 		case ResumeReturn:
 			g.closeValue = v
-			resumer.thrown = Value{o: closeSignal}
+			resumer.thrown = Value{O: closeSignal}
 		}
 		g.mode = ResumeNext
 		r, status := resumer.unwind(stop)
@@ -299,7 +300,7 @@ func isSyncGenerator(v Value) bool {
 	if !v.IsObject() {
 		return false
 	}
-	g, _ := v.o.extState().(*generator)
+	g, _ := v.O.ExtState().(*generator)
 	return g != nil && g.async == nil
 }
 
@@ -308,10 +309,10 @@ func isSyncGenerator(v Value) bool {
 func (cx *ExecutionContext) ResumeGenerator(gen Value, mode ResumeMode, v Value) (Value, bool) {
 	var g *generator
 	if gen.IsObject() {
-		g, _ = gen.o.extState().(*generator)
+		g, _ = gen.O.ExtState().(*generator)
 	}
 	if g == nil || g.async != nil {
-		return Undefined, false
+		return storage.Undefined, false
 	}
 	r, done := cx.resume(g, mode, v)
 	if !done {
@@ -320,7 +321,7 @@ func (cx *ExecutionContext) ResumeGenerator(gen Value, mode ResumeMode, v Value)
 			return r, true
 		}
 		// Yield creates its result before returning to the resuming method's realm.
-		return cx.contextOf(g.fp.realm).CreateIterResultObject(r, false), true
+		return cx.contextOf(g.fp.Realm).CreateIterResultObject(r, false), true
 	}
 	return cx.CreateIterResultObject(r, true), true
 }

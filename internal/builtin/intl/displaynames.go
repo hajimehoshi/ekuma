@@ -10,6 +10,7 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/intl/displaynames"
 	"github.com/hajimehoshi/ekuma/internal/intl/locale"
 	"github.com/hajimehoshi/ekuma/internal/localetag"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
@@ -54,12 +55,12 @@ func newDisplayNames(cx *engine.ExecutionContext, this engine.Value, args []engi
 		dn.languageDisplay = languageDisplay
 	}
 	dn.names = displaynames.New(res.DataLocale, dn.style != "long")
-	return engine.ObjectValue(cx.NewIntlObject(proto, dn))
+	return storage.ObjectValue(cx.NewIntlObject(proto, dn))
 }
 
 // thisDisplayNames implements RequireInternalSlot for an Intl.DisplayNames.
 func thisDisplayNames(cx *engine.ExecutionContext, this engine.Value, name string) *displayNamesData {
-	dn, ok := engine.IntlData(this).(*displayNamesData)
+	dn, ok := storage.IntlData(this).(*displayNamesData)
 	if !ok {
 		cx.ThrowTypeError("Intl.DisplayNames.prototype." + name + " called on an object that is not an Intl.DisplayNames")
 	}
@@ -120,7 +121,7 @@ func (dn *displayNamesData) of(cx *engine.ExecutionContext, code string) engine.
 	case dn.fallback == "code":
 		return cx.NewString(wtf8.String(code))
 	}
-	return engine.Undefined
+	return storage.Undefined
 }
 
 // isASCII reports whether s has only ASCII characters.

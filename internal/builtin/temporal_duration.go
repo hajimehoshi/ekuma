@@ -7,6 +7,7 @@ import (
 	"math"
 
 	"github.com/hajimehoshi/ekuma/internal/engine"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 	"github.com/hajimehoshi/ekuma/internal/temporal"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
@@ -17,7 +18,7 @@ var durationFieldNames = [10]string{"years", "months", "weeks", "days", "hours",
 // newDuration implements CreateTemporalDuration for a valid duration.
 func newDuration(cx *engine.ExecutionContext, d temporal.Duration, nt *engine.Object) engine.Value {
 	proto := cx.GetPrototypeFromConstructor(nt, engine.IntrinsicTemporalDurationPrototype)
-	return engine.ObjectValue(cx.NewTemporalObject(proto, &durationSlots{
+	return storage.ObjectValue(cx.NewTemporalObject(proto, &durationSlots{
 		d: d,
 	}))
 }
@@ -31,7 +32,7 @@ func createDuration(cx *engine.ExecutionContext, d temporal.Duration, nt *engine
 }
 
 func thisDuration(cx *engine.ExecutionContext, this engine.Value, name string) *durationSlots {
-	s, ok := engine.TemporalData(this).(*durationSlots)
+	s, ok := storage.TemporalData(this).(*durationSlots)
 	if !ok {
 		incompatible(cx, "Temporal.Duration.prototype."+name, this)
 	}
@@ -66,7 +67,7 @@ func toPartialDuration(cx *engine.ExecutionContext, v engine.Value) ([10]float64
 
 // toTemporalDuration implements ToTemporalDuration, returning the fields.
 func toTemporalDuration(cx *engine.ExecutionContext, item engine.Value) temporal.Duration {
-	if s, ok := engine.TemporalData(item).(*durationSlots); ok {
+	if s, ok := storage.TemporalData(item).(*durationSlots); ok {
 		return s.d
 	}
 	if !item.IsObject() {
@@ -106,7 +107,7 @@ func getRelativeToOption(cx *engine.ExecutionContext, opts *engine.Object) relat
 	var tz temporal.TimeZone
 	hasTZ := false
 	if v.IsObject() {
-		switch s := engine.TemporalData(v).(type) {
+		switch s := storage.TemporalData(v).(type) {
 		case *zonedDateTimeSlots:
 			return relativeTo{
 				zoned: s,
@@ -289,7 +290,7 @@ var (
 func durationFieldNative(i int, name string) engine.NativeFunc {
 	return temporalNative(func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		f := thisDuration(cx, this, name).d.Fields()
-		return engine.Number(f[i])
+		return storage.Number(f[i])
 	})
 }
 
@@ -335,7 +336,7 @@ func durationCompare(cx *engine.ExecutionContext, this engine.Value, args []engi
 	opts := getOptionsObject(cx, arg(args, 2))
 	rel := getRelativeToOption(cx, opts)
 	if one.Fields() == two.Fields() {
-		return engine.Number(0)
+		return storage.Number(0)
 	}
 	lu1 := temporal.DefaultTemporalLargestUnit(&one)
 	lu2 := temporal.DefaultTemporalLargestUnit(&two)
@@ -361,11 +362,11 @@ func durationCompare(cx *engine.ExecutionContext, this engine.Value, args []engi
 }
 
 func durationSign(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-	return engine.Number(float64(temporal.DurationSign(&thisDuration(cx, this, "sign").d)))
+	return storage.Number(float64(temporal.DurationSign(&thisDuration(cx, this, "sign").d)))
 }
 
 func durationBlank(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-	return engine.Bool(temporal.DurationSign(&thisDuration(cx, this, "blank").d) == 0)
+	return storage.Bool(temporal.DurationSign(&thisDuration(cx, this, "blank").d) == 0)
 }
 
 func durationWith(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -465,18 +466,18 @@ func durationTotal(cx *engine.ExecutionContext, this engine.Value, args []engine
 	if z := rel.zoned; z != nil {
 		id := temporal.ToInternalDurationRecord(&d)
 		target := must(temporal.AddZonedDateTime(z.ns, z.tz, z.cal, id, temporal.OverflowConstrain))
-		return engine.Number(must(temporal.DifferenceZonedDateTimeWithTotal(z.ns, target, z.tz, z.cal, unit)))
+		return storage.Number(must(temporal.DifferenceZonedDateTimeWithTotal(z.ns, target, z.tz, z.cal, unit)))
 	}
 	if p := rel.plain; p != nil {
 		_, from, to := plainRelativeEnd(cx, &d, p)
-		return engine.Number(must(temporal.DifferencePlainDateTimeWithTotal(from, to, p.cal, unit)))
+		return storage.Number(must(temporal.DifferencePlainDateTimeWithTotal(from, to, p.cal, unit)))
 	}
 	largest := temporal.DefaultTemporalLargestUnit(&d)
 	if largest.IsCalendarUnit() || unit.IsCalendarUnit() {
 		cx.ThrowRangeError("durations with years, months or weeks need a relativeTo to be totaled")
 	}
 	id := temporal.ToInternalDurationRecordWith24HourDays(&d)
-	return engine.Number(temporal.TotalTimeDuration(id.Time, unit))
+	return storage.Number(temporal.TotalTimeDuration(id.Time, unit))
 }
 
 func durationToString(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {

@@ -5,22 +5,23 @@ package engine
 
 import (
 	"github.com/hajimehoshi/ekuma/internal/bytecode"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 // NewShadowRealmObject returns a ShadowRealm object with the prototype proto whose
 // [[ShadowRealm]] is the realm of target.
 func (cx *ExecutionContext) NewShadowRealmObject(proto *Object, target *ExecutionContext) *Object {
-	return newObjectWithState(cx.shapeFor(proto), classShadowRealm, target.realm)
+	return storage.NewObjectWithState(cx.ShapeFor(proto), classShadowRealm, target.realm)
 }
 
 // ValidateShadowRealmObject implements ValidateShadowRealmObject, and returns the
 // context of its shadow realm.
 func (cx *ExecutionContext) ValidateShadowRealmObject(o Value) *ExecutionContext {
-	if !o.IsObject() || o.o.class != classShadowRealm {
+	if !o.IsObject() || o.O.Class != classShadowRealm {
 		cx.ThrowTypeError("the receiver is not a ShadowRealm")
 	}
-	return &o.o.extState().(*realm).context
+	return &o.O.ExtState().(*realm).context
 }
 
 // EvalInRealm evaluates the script src in the target realm as an indirect eval there would, as code
@@ -33,7 +34,7 @@ func (cx *ExecutionContext) EvalInRealm(target *ExecutionContext, src wtf8.Strin
 	target.Run(func() {
 		f := target.newScriptFunction(target.link(bc, target.realm.referrer))
 		e, ok = target.Completion(func() {
-			result = target.Call(f, Value{o: target.realm.globalThis})
+			result = target.Call(f, Value{O: target.realm.GlobalThis})
 		})
 	})
 	if !ok {

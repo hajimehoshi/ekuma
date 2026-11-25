@@ -10,6 +10,7 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/engine"
 	"github.com/hajimehoshi/ekuma/internal/intl/locale"
 	"github.com/hajimehoshi/ekuma/internal/localetag"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 	"github.com/hajimehoshi/ekuma/internal/unicode/cldr"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
@@ -18,7 +19,7 @@ import (
 func Install(cx *engine.ExecutionContext) {
 	ns := cx.NewLazyObject(cx.Intrinsic(engine.IntrinsicObjectPrototype), initNamespace)
 	cx.SetIntrinsic(engine.IntrinsicIntl, ns)
-	cx.Define(cx.GlobalObject().Object(), cx.Intern("Intl"), engine.ObjectValue(ns), engine.FlagsHidden)
+	cx.Define(cx.GlobalObject().Object(), cx.Intern("Intl"), storage.ObjectValue(ns), engine.FlagsHidden)
 	initToLocaleString(cx)
 	initDateToLocaleString(cx)
 	initTemporalToLocaleString(cx)
@@ -93,7 +94,7 @@ func canonicalizeLocaleList(cx *engine.ExecutionContext, locales engine.Value) [
 		return nil
 	}
 	var o *engine.Object
-	if _, ok := engine.IntlData(locales).(*localeData); ok || locales.IsString() {
+	if _, ok := storage.IntlData(locales).(*localeData); ok || locales.IsString() {
 		o = cx.NewArray([]engine.Value{locales})
 	} else {
 		o = cx.ToObject(locales)
@@ -103,7 +104,7 @@ func canonicalizeLocaleList(cx *engine.ExecutionContext, locales engine.Value) [
 	var seenSet map[string]struct{}
 	for k := range n {
 		cx.PollAt(k)
-		pk := cx.ToPropertyKey(engine.Number(float64(k)))
+		pk := cx.ToPropertyKey(storage.Number(float64(k)))
 		if !cx.HasProperty(o, pk) {
 			continue
 		}
@@ -112,7 +113,7 @@ func canonicalizeLocaleList(cx *engine.ExecutionContext, locales engine.Value) [
 			cx.ThrowTypeError("a locale must be a string or an object, not " + cx.DisplayString(v))
 		}
 		var tag string
-		if l, ok := engine.IntlData(v).(*localeData); ok {
+		if l, ok := storage.IntlData(v).(*localeData); ok {
 			tag = l.String()
 		} else {
 			tag = wtf8.ToValidUTF8(cx.ToString(v))
@@ -133,7 +134,7 @@ func arg(args []engine.Value, i int) engine.Value {
 	if i < len(args) {
 		return args[i]
 	}
-	return engine.Undefined
+	return storage.Undefined
 }
 
 // checkStringLength throws a RangeError when n is more bytes than a string may have.
@@ -150,14 +151,14 @@ func constructor(cx *engine.ExecutionContext, ns *engine.Object, name wtf8.Strin
 	cx.SetIntrinsic(protoID, proto)
 	ctor = cx.NewNativeConstructor(name, length, f)
 	cx.DefineConstructorPrototype(ctor, protoID)
-	cx.Define(proto, cx.Key(engine.KeyConstructor), engine.ObjectValue(ctor), engine.FlagsHidden)
-	cx.Define(ns, cx.Intern(name), engine.ObjectValue(ctor), engine.FlagsHidden)
+	cx.Define(proto, cx.Key(engine.KeyConstructor), storage.ObjectValue(ctor), engine.FlagsHidden)
+	cx.Define(ns, cx.Intern(name), storage.ObjectValue(ctor), engine.FlagsHidden)
 	return ctor, proto
 }
 
 // method defines the non-enumerable function name on o.
 func method(cx *engine.ExecutionContext, o *engine.Object, name string, length int, f engine.Native) {
-	cx.Define(o, cx.Intern(wtf8.String(name)), engine.ObjectValue(cx.NewNative(wtf8.String(name), length, f)), engine.FlagsHidden)
+	cx.Define(o, cx.Intern(wtf8.String(name)), storage.ObjectValue(cx.NewNative(wtf8.String(name), length, f)), engine.FlagsHidden)
 }
 
 // getter defines the accessor property name on o with the getter f.
@@ -177,7 +178,7 @@ func stringArray(cx *engine.ExecutionContext, ss []string) engine.Value {
 // stringOrUndefined returns s as a String when ok is true, or undefined otherwise.
 func stringOrUndefined(cx *engine.ExecutionContext, s string, ok bool) engine.Value {
 	if !ok {
-		return engine.Undefined
+		return storage.Undefined
 	}
 	return cx.NewString(wtf8.String(s))
 }
@@ -186,7 +187,7 @@ func stringOrUndefined(cx *engine.ExecutionContext, s string, ok bool) engine.Va
 // returns the option name of options converted to a String, and reports false when it is
 // undefined. A non-empty values lists the allowed values.
 func getOption(cx *engine.ExecutionContext, options *engine.Object, name string, values ...string) (string, bool) {
-	v := cx.Get(options, engine.NamedKey(cx.Intern(wtf8.String(name))))
+	v := cx.Get(options, storage.NamedKey(cx.Intern(wtf8.String(name))))
 	if v.IsUndefined() {
 		return "", false
 	}

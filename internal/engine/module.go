@@ -13,6 +13,7 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/compiler"
 	"github.com/hajimehoshi/ekuma/internal/modulegraph"
 	"github.com/hajimehoshi/ekuma/internal/parser"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 	"github.com/hajimehoshi/ekuma/internal/xerrors"
 )
@@ -209,8 +210,8 @@ func (m *Module) HostDefined() any {
 
 // newCell returns a binding that holds v and refers to no register.
 func newCell(v Value) *upvalue {
-	u := &upvalue{val: v}
-	u.p = &u.val
+	u := &upvalue{Val: v}
+	u.P = &u.Val
 	return u
 }
 
@@ -277,7 +278,7 @@ func (cx *ExecutionContext) getModuleSource(m *Module) (Value, bool) {
 	if m.source == nil {
 		return cx.NewError(ErrorKindSyntax, "a source phase import is not available for this module"), false
 	}
-	return Value{o: m.source}, true
+	return Value{O: m.source}, true
 }
 
 // isCyclic reports whether m is a Cyclic Module Record.
@@ -294,7 +295,7 @@ func (m *Module) LoadRequestedModules() error {
 		if e, ok := cx.loadModuleGraph(m); !ok {
 			cx.Throw(e)
 		}
-		return Undefined
+		return storage.Undefined
 	})
 	return err
 }
@@ -305,7 +306,7 @@ func (m *Module) Link() error {
 	cx := &m.ref.realm.context
 	_, err := cx.enter(func() Value {
 		cx.loadAndLink(m)
-		return Undefined
+		return storage.Undefined
 	})
 	return err
 }
@@ -336,7 +337,7 @@ func (m *Module) GetModuleNamespace() (Value, error) {
 	cx := &m.ref.realm.context
 	return cx.enter(func() Value {
 		cx.loadAndLink(m)
-		return Value{o: cx.moduleNamespace(m)}
+		return Value{O: cx.moduleNamespace(m)}
 	})
 }
 
@@ -345,7 +346,7 @@ func (m *Module) GetModuleNamespace() (Value, error) {
 // SyntaxError.
 func (cx *ExecutionContext) ParseJSONModule(src string, hostDefined any) (*Module, error) {
 	v, err := cx.enter(func() Value {
-		return cx.Call(cx.Intrinsic(IntrinsicJSONParse), Undefined, cx.StringFromGo(src))
+		return cx.Call(cx.Intrinsic(IntrinsicJSONParse), storage.Undefined, cx.StringFromGo(src))
 	})
 	if err != nil {
 		return nil, err
@@ -378,7 +379,7 @@ func (cx *ExecutionContext) errorValue(r *realm, err error) Value {
 func (cx *ExecutionContext) loadImportedModule(ref *scriptOrModule, req ModuleRequest) (m *Module, e Value, ok bool) {
 	k := requestKey(req)
 	if m := ref.loaded[k]; m != nil {
-		return m, Undefined, true
+		return m, storage.Undefined, true
 	}
 	r := ref.realm
 	if cx.modules.load == nil {
@@ -396,7 +397,7 @@ func (cx *ExecutionContext) loadImportedModule(ref *scriptOrModule, req ModuleRe
 		ref.loaded = map[string]*Module{}
 	}
 	ref.loaded[k] = m
-	return m, Undefined, true
+	return m, storage.Undefined, true
 }
 
 // allImportAttributesSupported implements AllImportAttributesSupported.
@@ -481,7 +482,7 @@ func (cx *ExecutionContext) loadModuleGraph(root *Module) (Value, bool) {
 			m.status = moduleUnlinked
 		}
 	}
-	return Undefined, true
+	return storage.Undefined, true
 }
 
 // loadingError returns the TypeError of loading m while an unfinished call is loading it.
@@ -493,18 +494,18 @@ func (cx *ExecutionContext) loadingError(r *realm, m *Module) Value {
 func (cx *ExecutionContext) loadRequestedModules(m *Module) Value {
 	c := cx.newIntrinsicCapability()
 	if e, ok := cx.loadModuleGraph(m); ok {
-		cx.ResolveCapability(c, Undefined)
+		cx.ResolveCapability(c, storage.Undefined)
 	} else {
 		cx.RejectCapability(c, e)
 	}
-	return Value{o: c.promise}
+	return Value{O: c.promise}
 }
 
 // linkModule implements Link and InnerModuleLinking. ok is false when linking fails, and the
 // result is the error to throw then.
 func (cx *ExecutionContext) linkModule(root *Module) (Value, bool) {
 	if !root.isCyclic() {
-		return Undefined, true
+		return storage.Undefined, true
 	}
 	type frame struct {
 		m *Module
@@ -565,7 +566,7 @@ func (cx *ExecutionContext) linkModule(root *Module) (Value, bool) {
 			}
 		}
 	}
-	return Undefined, true
+	return storage.Undefined, true
 }
 
 // initializeEnvironment implements InitializeEnvironment for the source text module m.
@@ -581,9 +582,9 @@ func (m *Module) initializeEnvironment() (Value, bool) {
 	for i, b := range code.Bindings {
 		switch b.Kind {
 		case bytecode.ModuleVar:
-			*m.env[i].p = Undefined
+			*m.env[i].P = storage.Undefined
 		case bytecode.ModuleLexical, bytecode.ModuleFunction:
-			*m.env[i].p = tdz
+			*m.env[i].P = tdz
 		}
 	}
 	for _, ie := range code.Imports {
@@ -593,7 +594,7 @@ func (m *Module) initializeEnvironment() (Value, bool) {
 		}
 		switch r.Binding {
 		case modulegraph.BindingNamespace:
-			m.env[ie.Binding] = newCell(Value{o: cx.moduleNamespace(r.Module)})
+			m.env[ie.Binding] = newCell(Value{O: cx.moduleNamespace(r.Module)})
 		case modulegraph.BindingSource:
 			v, ok := cx.getModuleSource(r.Module)
 			if !ok {
@@ -607,10 +608,10 @@ func (m *Module) initializeEnvironment() (Value, bool) {
 	for i, b := range code.Bindings {
 		switch b.Kind {
 		case bytecode.ModuleNamespace:
-			m.env[i] = newCell(Value{o: cx.moduleNamespace(m.node.Requested[b.Request].Module)})
+			m.env[i] = newCell(Value{O: cx.moduleNamespace(m.node.Requested[b.Request].Module)})
 		case bytecode.ModuleDeferredNamespace:
 			// A circular importer may already refer to this cell.
-			*m.env[i].p = Value{o: cx.deferredModuleNamespace(m.node.Requested[b.Request].Module)}
+			*m.env[i].P = Value{O: cx.deferredModuleNamespace(m.node.Requested[b.Request].Module)}
 		case bytecode.ModuleSource:
 			v, ok := cx.getModuleSource(m.node.Requested[b.Request].Module)
 			if !ok {
@@ -624,14 +625,14 @@ func (m *Module) initializeEnvironment() (Value, bool) {
 	for j, d := range m.body.Upvals {
 		upvals[j] = m.env[d.Index]
 	}
-	m.fn = newFunctionObject(cx.realm.shapes.function, &function{
-		code:   m.body,
-		upvals: upvals,
+	m.fn = storage.NewFunctionObject(cx.realm.Shapes.Function, &function{
+		Code:   m.body,
+		Upvals: upvals,
 	})
 	for _, f := range code.Funcs {
-		*m.env[f.Binding].p = Value{o: cx.newClosure(m.body.protos[f.Proto], upvals)}
+		*m.env[f.Binding].P = Value{O: cx.newClosure(m.body.Protos[f.Proto], upvals)}
 	}
-	return Undefined, true
+	return storage.Undefined, true
 }
 
 // resolutionError returns the SyntaxError of the import or export name of m that did not
@@ -647,20 +648,20 @@ func (cx *ExecutionContext) resolutionError(m *Module, n string, r modulegraph.R
 // not refer to registers of the enclosing function.
 func (cx *ExecutionContext) newClosure(p *funcProto, upvals []*upvalue) *Object {
 	fn := &function{
-		code:             p,
-		constructor:      p.isConstructor,
-		classConstructor: p.isClassConstructor,
-		derived:          p.isDerived,
+		Code:             p,
+		Constructor:      p.IsConstructor,
+		ClassConstructor: p.IsClassConstructor,
+		Derived:          p.IsDerived,
 	}
-	s := cx.realm.shapes.function
-	if p.isGenerator || p.isAsync {
-		s = cx.functionShapeFor(p.closurePrototype())
+	s := cx.realm.Shapes.Function
+	if p.IsGenerator || p.IsAsync {
+		s = cx.FunctionShapeFor(p.ClosurePrototype())
 	}
-	o := newFunctionObject(s, fn)
+	o := storage.NewFunctionObject(s, fn)
 	if n := len(p.Upvals); n > 0 {
-		fn.upvals = make([]*upvalue, n)
+		fn.Upvals = make([]*upvalue, n)
 		for j, d := range p.Upvals {
-			fn.upvals[j] = upvals[d.Index]
+			fn.Upvals[j] = upvals[d.Index]
 		}
 	}
 	return o
@@ -670,8 +671,8 @@ func (cx *ExecutionContext) newClosure(p *funcProto, upvals []*upvalue) *Object 
 func (cx *ExecutionContext) evaluateModule(m *Module) Value {
 	if !m.isCyclic() {
 		c := cx.newIntrinsicCapability()
-		cx.ResolveCapability(c, Undefined)
-		return Value{o: c.promise}
+		cx.ResolveCapability(c, storage.Undefined)
+		return Value{O: c.promise}
 	}
 	if m.status == moduleEvaluatingAsync || m.status == moduleEvaluated {
 		if m.cycleRoot != nil {
@@ -679,7 +680,7 @@ func (cx *ExecutionContext) evaluateModule(m *Module) Value {
 		}
 	}
 	if m.topLevelCapability != nil {
-		return Value{o: m.topLevelCapability.promise}
+		return Value{O: m.topLevelCapability.promise}
 	}
 	cx.moduleEvaluations.dropEvaluated()
 	c := cx.newIntrinsicCapability()
@@ -706,9 +707,9 @@ func (cx *ExecutionContext) evaluateModule(m *Module) Value {
 		cx.RejectCapability(c, e)
 	} else if m.asyncOrder == asyncOrderUnset || m.asyncOrder == asyncOrderDone {
 		// m finished evaluating, possibly asynchronously as a dependency of another module.
-		cx.ResolveCapability(c, Undefined)
+		cx.ResolveCapability(c, storage.Undefined)
 	}
-	return Value{o: c.promise}
+	return Value{O: c.promise}
 }
 
 // innerModuleEvaluation implements InnerModuleEvaluation for the module root and the index 0.
@@ -727,16 +728,16 @@ func (cx *ExecutionContext) innerModuleEvaluation(root *Module, stack *[]*Module
 	// and its error when it was evaluated with one.
 	enter := func(m *Module) (Value, bool, bool) {
 		if !m.isCyclic() {
-			return Undefined, true, false
+			return storage.Undefined, true, false
 		}
 		switch m.status {
 		case moduleEvaluatingAsync, moduleEvaluated:
 			if m.hasError {
 				return m.evalError, false, false
 			}
-			return Undefined, true, false
+			return storage.Undefined, true, false
 		case moduleEvaluating:
-			return Undefined, true, false
+			return storage.Undefined, true, false
 		}
 		m.status = moduleEvaluating
 		cx.moduleEvaluations.add(m)
@@ -749,12 +750,12 @@ func (cx *ExecutionContext) innerModuleEvaluation(root *Module, stack *[]*Module
 			m:    m,
 			list: m.evaluationList(),
 		})
-		return Undefined, true, true
+		return storage.Undefined, true, true
 	}
 	// after continues the module m after the evaluation of its requested module dep.
 	after := func(m, dep *Module) (Value, bool) {
 		if !dep.isCyclic() {
-			return Undefined, true
+			return storage.Undefined, true
 		}
 		if dep.status == moduleEvaluating {
 			m.dfsAncestorIndex = min(m.dfsAncestorIndex, dep.dfsAncestorIndex)
@@ -768,7 +769,7 @@ func (cx *ExecutionContext) innerModuleEvaluation(root *Module, stack *[]*Module
 			m.pendingAsyncDeps++
 			dep.asyncParents = append(dep.asyncParents, m)
 		}
-		return Undefined, true
+		return storage.Undefined, true
 	}
 	if e, ok, _ := enter(root); !ok {
 		return e, false
@@ -798,7 +799,7 @@ func (cx *ExecutionContext) innerModuleEvaluation(root *Module, stack *[]*Module
 				cx.executeAsyncModule(m)
 			}
 		} else if e, ok := cx.Completion(func() {
-			cx.Call(m.fn, Undefined)
+			cx.Call(m.fn, storage.Undefined)
 		}); !ok {
 			return e, false
 		}
@@ -823,7 +824,7 @@ func (cx *ExecutionContext) innerModuleEvaluation(root *Module, stack *[]*Module
 			}
 		}
 	}
-	return Undefined, true
+	return storage.Undefined, true
 }
 
 // minListedSet is the length from which evaluationList checks for duplicates in a set.
@@ -945,7 +946,7 @@ func (cx *ExecutionContext) evaluateModuleSync(m *Module) {
 	if m.isCyclic() && m.status != moduleEvaluated && !m.readyForSyncExecution() {
 		cx.ThrowTypeError("the deferred module cannot be evaluated synchronously")
 	}
-	p := cx.evaluateModule(m).o
+	p := cx.evaluateModule(m).O
 	if d := promiseOf(p); d.state == PromiseRejected {
 		if !d.isHandled {
 			cx.hostPromiseRejectionTracker(p, true)
@@ -957,8 +958,8 @@ func (cx *ExecutionContext) evaluateModuleSync(m *Module) {
 
 // executeAsyncModule implements ExecuteAsyncModule.
 func (cx *ExecutionContext) executeAsyncModule(m *Module) {
-	p := cx.Call(m.fn, Undefined)
-	cx.addNativeReaction(p.o, func(cx *ExecutionContext, v Value, rejected bool) {
+	p := cx.Call(m.fn, storage.Undefined)
+	cx.addNativeReaction(p.O, func(cx *ExecutionContext, v Value, rejected bool) {
 		if rejected {
 			cx.asyncModuleExecutionRejected(m, v)
 			return
@@ -975,7 +976,7 @@ func (cx *ExecutionContext) asyncModuleExecutionFulfilled(m *Module) {
 	m.asyncOrder = asyncOrderDone
 	m.status = moduleEvaluated
 	if c := m.topLevelCapability; c != nil {
-		cx.ResolveCapability(c, Undefined)
+		cx.ResolveCapability(c, storage.Undefined)
 	}
 
 	// GatherAvailableAncestors.
@@ -1015,7 +1016,7 @@ func (cx *ExecutionContext) asyncModuleExecutionFulfilled(m *Module) {
 			cx.executeAsyncModule(p)
 		default:
 			if e, ok := cx.Completion(func() {
-				cx.Call(p.fn, Undefined)
+				cx.Call(p.fn, storage.Undefined)
 			}); !ok {
 				cx.asyncModuleExecutionRejected(p, e)
 				break
@@ -1023,7 +1024,7 @@ func (cx *ExecutionContext) asyncModuleExecutionFulfilled(m *Module) {
 			p.asyncOrder = asyncOrderDone
 			p.status = moduleEvaluated
 			if c := p.topLevelCapability; c != nil {
-				cx.ResolveCapability(c, Undefined)
+				cx.ResolveCapability(c, storage.Undefined)
 			}
 		}
 	}
@@ -1101,29 +1102,29 @@ func (cx *ExecutionContext) importCall(specifier, options Value, phase bytecode.
 		if !options.IsObject() {
 			cx.ThrowTypeError("the options of import() must be an object")
 		}
-		attrs := cx.Get(options.o, NamedKey(cx.Intern("with")))
+		attrs := cx.Get(options.O, storage.NamedKey(cx.Intern("with")))
 		if attrs.IsUndefined() {
 			return
 		}
 		if !attrs.IsObject() {
 			cx.ThrowTypeError("the attributes of import() must be an object")
 		}
-		req.Attributes = cx.dynamicImportAttributes(attrs.o)
+		req.Attributes = cx.dynamicImportAttributes(attrs.O)
 	})
 	if !ok {
-		return Value{o: c.promise}
+		return Value{O: c.promise}
 	}
 	if cx.hasDetachedGlobal(cx.realm) {
 		cx.RejectCapability(c, cx.NewError(ErrorKindError, "Cannot import module from an inactive context"))
-		return Value{o: c.promise}
+		return Value{O: c.promise}
 	}
 	m, e, ok := cx.loadImportedModule(ref, req)
 	if !ok {
 		cx.RejectCapability(c, e)
-		return Value{o: c.promise}
+		return Value{O: c.promise}
 	}
 	cx.continueDynamicImport(c, m, phase)
-	return Value{o: c.promise}
+	return Value{O: c.promise}
 }
 
 // dynamicImportAttributes reads and validates the attributes of an import() call.
@@ -1179,7 +1180,7 @@ func (cx *ExecutionContext) continueDynamicImport(c *PromiseCapability, m *Modul
 		return
 	}
 	load := cx.loadRequestedModules(m)
-	cx.addNativeReaction(load.o, func(cx *ExecutionContext, v Value, rejected bool) {
+	cx.addNativeReaction(load.O, func(cx *ExecutionContext, v Value, rejected bool) {
 		if rejected {
 			cx.RejectCapability(c, v)
 			return
@@ -1194,7 +1195,7 @@ func (cx *ExecutionContext) continueDynamicImport(c *PromiseCapability, m *Modul
 		} else {
 			p = cx.evaluateModule(m)
 		}
-		cx.addNativeReaction(p.o, func(cx *ExecutionContext, v Value, rejected bool) {
+		cx.addNativeReaction(p.O, func(cx *ExecutionContext, v Value, rejected bool) {
 			if rejected {
 				cx.RejectCapability(c, v)
 				return
@@ -1203,7 +1204,7 @@ func (cx *ExecutionContext) continueDynamicImport(c *PromiseCapability, m *Modul
 			if phase == bytecode.PhaseDefer {
 				ns = cx.deferredModuleNamespace(m)
 			}
-			cx.ResolveCapability(c, Value{o: ns})
+			cx.ResolveCapability(c, Value{O: ns})
 		})
 	})
 }
@@ -1213,23 +1214,23 @@ func (cx *ExecutionContext) continueDynamicImport(c *PromiseCapability, m *Modul
 func (cx *ExecutionContext) evaluateAll(modules []*Module) Value {
 	c := cx.newIntrinsicCapability()
 	if len(modules) == 0 {
-		cx.ResolveCapability(c, Undefined)
-		return Value{o: c.promise}
+		cx.ResolveCapability(c, storage.Undefined)
+		return Value{O: c.promise}
 	}
 	remaining := len(modules)
 	for _, m := range modules {
 		p := cx.evaluateModule(m)
-		cx.addNativeReaction(p.o, func(cx *ExecutionContext, v Value, rejected bool) {
+		cx.addNativeReaction(p.O, func(cx *ExecutionContext, v Value, rejected bool) {
 			if rejected {
 				cx.RejectCapability(c, v)
 				return
 			}
 			if remaining--; remaining == 0 {
-				cx.ResolveCapability(c, Undefined)
+				cx.ResolveCapability(c, storage.Undefined)
 			}
 		})
 	}
-	return Value{o: c.promise}
+	return Value{O: c.promise}
 }
 
 // importMeta returns the object import.meta of the running module.
@@ -1251,7 +1252,7 @@ func (cx *ExecutionContext) importMeta() Value {
 			initialized = true
 		}
 	}
-	return Value{o: m.meta}
+	return Value{O: m.meta}
 }
 
 // importOp performs the instruction i, an [bytecode.OpImport] or an [bytecode.OpImportMeta], on
@@ -1260,5 +1261,5 @@ func (cx *ExecutionContext) importOp(regs []Value, i *bytecode.Instr) Value {
 	if i.Op == bytecode.OpImportMeta {
 		return cx.importMeta()
 	}
-	return cx.importCall(regs[i.B], regs[i.C], bytecode.Phase(regs[i.C+1].n))
+	return cx.importCall(regs[i.B], regs[i.C], bytecode.Phase(regs[i.C+1].N))
 }

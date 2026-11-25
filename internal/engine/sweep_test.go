@@ -9,6 +9,7 @@ import (
 
 	"github.com/hajimehoshi/ekuma/internal/builtin"
 	"github.com/hajimehoshi/ekuma/internal/engine"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
@@ -16,7 +17,7 @@ import (
 func runScript(cx *engine.ExecutionContext, file, src string) (engine.Value, error) {
 	s, err := cx.ParseScript(file, wtf8.FromValidUTF8(src))
 	if err != nil {
-		return engine.Undefined, err
+		return storage.Undefined, err
 	}
 	v, _, err := s.ScriptEvaluation()
 	return v, err
@@ -73,7 +74,7 @@ func TestDynamicKeysCollected(t *testing.T) {
 			if err != nil {
 				t.Fatalf("runScript: %v", err)
 			}
-			if !engine.ToBoolean(v) {
+			if !storage.ToBoolean(v) {
 				t.Errorf("the property of a live object was not found")
 			}
 		})

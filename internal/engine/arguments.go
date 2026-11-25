@@ -3,6 +3,10 @@
 
 package engine
 
+import (
+	"github.com/hajimehoshi/ekuma/internal/storage"
+)
+
 // argumentsMap is the parameter map of a mapped arguments object.
 type argumentsMap struct {
 	// params holds, by index, the storage of the parameter that the index property is mapped to,
@@ -17,7 +21,7 @@ func (cx *ExecutionContext) forwardedArguments(argsReg int32) Value {
 	regs := cx.frameRegs(fr)
 	if regs[argsReg].IsUndefined() {
 		// Only functions with a simple parameter list forward their arguments.
-		regs[argsReg] = Value{o: cx.newArguments(fr, !fr.fp.strict)}
+		regs[argsReg] = Value{O: cx.newArguments(fr, !fr.fp.Strict)}
 	}
 	return regs[argsReg]
 }
@@ -25,17 +29,17 @@ func (cx *ExecutionContext) forwardedArguments(argsReg int32) Value {
 // newArguments returns the arguments object of the frame fr.
 // A mapped object links the indices below both the argument count and the parameter count to the parameters.
 func (cx *ExecutionContext) newArguments(fr *frame, mapped bool) *Object {
-	o := cx.newArgumentsObject(cx.frameRegs(fr)[:min(fr.argc, fr.fp.nparams)], cx.extraArgs(fr))
+	o := cx.NewArgumentsObject(cx.frameRegs(fr)[:min(fr.argc, fr.fp.Nparams)], cx.extraArgs(fr))
 	if !mapped {
-		if cx.realm.strictCallee.o == nil {
+		if cx.realm.StrictCallee.O == nil {
 			// An accessor pair is never changed in place, so the objects share it.
 			throwTypeError := cx.Intrinsic(IntrinsicThrowTypeError)
-			cx.realm.strictCallee = newAccessor(throwTypeError, throwTypeError)
+			cx.realm.StrictCallee = storage.NewAccessor(throwTypeError, throwTypeError)
 		}
-		cx.add(o, cx.Key(keyCallee), cx.realm.strictCallee, FlagAccessor)
+		cx.Add(o, cx.Key(keyCallee), cx.realm.StrictCallee, FlagAccessor)
 		return o
 	}
-	if n := min(fr.argc, fr.fp.nparams); n > 0 {
+	if n := min(fr.argc, fr.fp.Nparams); n > 0 {
 		m := &argumentsMap{
 			params: make([]*upvalue, n),
 		}
@@ -46,23 +50,23 @@ func (cx *ExecutionContext) newArguments(fr *frame, mapped bool) *Object {
 			}
 			m.params[i] = cx.captureRegister(fr, i)
 			// A mapped property stays out of elems, so that every access to it takes a path that consults the map.
-			cx.add(o, cx.indexName(uint32(i)), Undefined, FlagsData)
-			o.elems[i] = hole
+			cx.Add(o, cx.IndexName(uint32(i)), storage.Undefined, FlagsData)
+			o.Elems[i] = storage.Hole
 		}
-		o.flags |= objSparse
-		o.setExtState(m)
+		o.Flags |= objSparse
+		o.SetExtState(m)
 	}
-	cx.add(o, cx.Key(keyCallee), Value{o: fr.cl}, FlagsHidden)
+	cx.Add(o, cx.Key(keyCallee), Value{O: fr.cl}, FlagsHidden)
 	return o
 }
 
 // mappedParam returns the storage of the parameter that the index property i of o is mapped to,
 // or nil when o is not an arguments object that maps i.
 func mappedParam(o *Object, i uint32) *upvalue {
-	if o.class != classArguments {
+	if o.Class != classArguments {
 		return nil
 	}
-	m, _ := o.extState().(*argumentsMap)
+	m, _ := o.ExtState().(*argumentsMap)
 	if m == nil || int64(i) >= int64(len(m.params)) {
 		return nil
 	}
@@ -72,29 +76,29 @@ func mappedParam(o *Object, i uint32) *upvalue {
 // defineMappedArgument implements [[DefineOwnProperty]] of an arguments exotic object
 // for the index i, which is mapped to the parameter u.
 func (cx *ExecutionContext) defineMappedArgument(o *Object, i uint32, u *upvalue, d PropDesc) bool {
-	m := o.extState().(*argumentsMap)
+	m := o.ExtState().(*argumentsMap)
 	// The ordinary definition validates against the value in the slot.
-	p, _ := o.shape.lookup(cx.indexName(i))
-	o.slots[p.slot] = *u.p
-	readOnly := d.hasFalse(HasWritable, FlagWritable)
-	if d.IsData() && !d.hasField(HasValue) && readOnly {
-		d.SetValue(*u.p)
+	p, _ := o.Shape.Lookup(cx.IndexName(i))
+	o.Slots[p.Slot] = *u.P
+	readOnly := d.HasFalse(HasWritable, FlagWritable)
+	if d.IsData() && !d.HasField(HasValue) && readOnly {
+		d.SetValue(*u.P)
 	}
 	m.params[i] = nil
-	if !cx.defineOwnProperty(o, IndexKey(i), d) {
+	if !cx.defineOwnProperty(o, storage.IndexKey(i), d) {
 		m.params[i] = u
-		o.slots[p.slot] = Undefined
+		o.Slots[p.Slot] = storage.Undefined
 		return false
 	}
 	if d.IsAccessor() {
 		return true
 	}
-	if d.hasField(HasValue) {
-		*u.p = d.Value()
+	if d.HasField(HasValue) {
+		*u.P = d.Value()
 	}
 	if !readOnly {
 		m.params[i] = u
-		o.slots[p.slot] = Undefined
+		o.Slots[p.Slot] = storage.Undefined
 	}
 	return true
 }
@@ -102,11 +106,11 @@ func (cx *ExecutionContext) defineMappedArgument(o *Object, i uint32, u *upvalue
 // deleteMappedArgument implements [[Delete]] of an arguments exotic object for the index i,
 // which is mapped to a parameter.
 func (cx *ExecutionContext) deleteMappedArgument(o *Object, i uint32) bool {
-	key := cx.indexName(i)
-	if p, _ := o.shape.lookup(key); p.flags&FlagConfigurable == 0 {
+	key := cx.IndexName(i)
+	if p, _ := o.Shape.Lookup(key); p.Flags&FlagConfigurable == 0 {
 		return false
 	}
 	cx.remove(o, key)
-	o.extState().(*argumentsMap).params[i] = nil
+	o.ExtState().(*argumentsMap).params[i] = nil
 	return true
 }

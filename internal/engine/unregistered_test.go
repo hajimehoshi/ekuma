@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/hajimehoshi/ekuma/internal/engine"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 )
 
 // shortcutProbes defines the operations that can stand for calls of built-in functions without a
@@ -41,10 +42,10 @@ func newProbeRealm(t *testing.T, generic bool) *probeRealm {
 	r.eval(t, "var generic = "+strconv.FormatBool(generic)+", setWatching")
 	set := r.cx.NewFunction("setWatching", func(cx *engine.ExecutionContext, _ engine.Value, args []engine.Value) engine.Value {
 		old := r.watching
-		r.watching = engine.ToBoolean(args[0])
-		return engine.Bool(old)
+		r.watching = storage.ToBoolean(args[0])
+		return storage.Bool(old)
 	})
-	if _, err := r.cx.HostCall(r.eval(t, "f => { setWatching = f; }"), engine.Undefined, []engine.Value{set}); err != nil {
+	if _, err := r.cx.HostCall(r.eval(t, "f => { setWatching = f; }"), storage.Undefined, []engine.Value{set}); err != nil {
 		t.Fatal(err)
 	}
 	for _, src := range []string{kernelProbes, shortcutProbes} {
@@ -179,7 +180,7 @@ func TestUnregisteredShortcuts(t *testing.T) {
 func (r *probeRealm) interrupted(t *testing.T, f engine.Value, args ...engine.Value) bool {
 	t.Helper()
 	defer r.cx.ClearInterrupt()
-	_, err := r.cx.HostCall(f, engine.Undefined, args)
+	_, err := r.cx.HostCall(f, storage.Undefined, args)
 	if _, ok := errors.AsType[*engine.Error](err); err != nil && !ok && !errors.Is(err, errKernelInterrupt) {
 		t.Fatal(err)
 	}
@@ -194,14 +195,14 @@ func TestUnregisteredShortcutInterruption(t *testing.T) {
 		var raising bool
 		raise := r.cx.NewFunction("raise", func(cx *engine.ExecutionContext, _ engine.Value, _ []engine.Value) engine.Value {
 			cx.Interrupt(errKernelInterrupt)
-			return engine.Undefined
+			return storage.Undefined
 		})
 		for _, key := range r.keys(t, "pending") {
 			r.eval(t, "started = false")
 			if !r.interrupted(t, r.eval(t, "pending["+strconv.Quote(key)+"]"), raise) {
 				t.Errorf("generic=%t: %s was not interrupted", generic, key)
 			}
-			if engine.ToBoolean(r.eval(t, "started")) {
+			if storage.ToBoolean(r.eval(t, "started")) {
 				t.Errorf("generic=%t: %s started a function after an interruption", generic, key)
 			}
 		}

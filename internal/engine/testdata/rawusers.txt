@@ -1,37 +1,63 @@
-# The declarations outside the storage files that use raw storage (see TestRawStorage).
+# The declarations outside the storage package that use raw storage (see TestRawStorage).
 # To add a line or to raise a count, find out first whether a guarded operation serves as well.
 
-# agent.exec and setNumber, which is inlined into it, are listed as a whole: operations cost more there.
+# agent.exec is listed as a whole: operations cost more there.
 
 # Store to raw storage, refer to it, or create objects.
 [stores]
+ExecutionContext.Concat ReversedBuilder.Sb:ref
 ExecutionContext.DeleteProp objectProperties.elems:read objectProperties.elems:write shape.lookup:read
-ExecutionContext.EnumerableOwnKeys objectProperties.elems:ref shape.order:ref
-ExecutionContext.GetVCached Value.accessor:read objectProperties.slots:read objectProperties.slots:ref propCache.cacheEntry:ref propCache.second:ref
+ExecutionContext.EnumerableOwnKeys Shape.Order:ref objectProperties.elems:ref
+ExecutionContext.GetVCached PropCache.CacheEntry:ref PropCache.Second:ref Value.accessor:read objectProperties.slots:read objectProperties.slots:ref
 ExecutionContext.IteratorToList objectProperties.elems:read objectProperties.elems:ref*2
+ExecutionContext.NewArrayCopy Object.Class:write Object.Kind:write Object.Length:write Object.Shape:write objectProperties.elems:write*2
+ExecutionContext.NewArrayWithRoom Object.Class:write Object.Kind:write Object.Length:write Object.Pinned:write Object.Shape:write
+ExecutionContext.NewEmptyArrayWithRoom Object.Class:write Object.Kind:write Object.Shape:write
+ExecutionContext.NewObjectFromProperties Object.Kind:write Object.Shape:write*2 Shape.Transitions:ref ShapeKey.Flags:lit ShapeKey.Key:lit objectProperties.elems:read objectProperties.elems:write shape.lookup:read
+ExecutionContext.NewOrdinaryObject Object.Kind:lit Object.Shape:lit
+ExecutionContext.NewStringBytes space.strings:ref
 ExecutionContext.OwnKeys objectProperties.elems:read objectProperties.elems:ref
-ExecutionContext.appendIterable Object.length:write objectProperties.elems:read
-ExecutionContext.defineFieldK cacheEntry.kind:write cacheEntry.next:write cacheEntry.shape:write shape.lookup:read
+ExecutionContext.appendIterable Object.Length:write objectProperties.elems:read
+ExecutionContext.concat ReversedBuilder.Sb:ref*3
+ExecutionContext.concatReversed ReversedBuilder.Sb:ref*4
+ExecutionContext.concatShort Value.N:lit Value.O:lit shapeTable.ShortStrings:ref
+ExecutionContext.concatSmall Value.N:lit Value.O:lit shapeTable.ShortStrings:ref
+ExecutionContext.concatenated Object.Ext:lit Object.Kind:lit Object.Shape:lit Object.Text:lit Value.O:lit
+ExecutionContext.defineFieldK CacheEntry.Kind:write CacheEntry.Next:write CacheEntry.Shape:write shape.lookup:read
 ExecutionContext.defineMappedArgument objectProperties.slots:write*3 shape.lookup:read
-ExecutionContext.definePublicField Object.shape:write
+ExecutionContext.definePublicField Object.Shape:write
+ExecutionContext.extendHead ObjectMeta.Length:lit ReversedBuilder.Sb:ref
+ExecutionContext.extendTail ObjectMeta.Cursor:lit ObjectMeta.Length:write
 ExecutionContext.forInMayVisit objectProperties.elems:ref
 ExecutionContext.forInOwnKeys objectProperties.elems:read objectProperties.elems:ref
-ExecutionContext.getGlobal Value.o:lit*2 globalCache.holder:write globalCache.ref:write globalCache.shape:write objectProperties.slots:read objectProperties.slots:ref shape.lookup:read
-ExecutionContext.getGlobalLexical globalCache.holder:write globalCache.ref:write globalCache.shape:write objectProperties.slots:ref shape.lookup:read
-ExecutionContext.getNamed cacheEntry.ref:write objectProperties.slots:ref propCache.cacheEntry:ref propCache.second:ref
+ExecutionContext.getGlobal GlobalCache.Holder:write GlobalCache.Ref:write GlobalCache.Shape:write Value.O:lit*2 objectProperties.slots:read objectProperties.slots:ref shape.lookup:read
+ExecutionContext.getGlobalLexical GlobalCache.Holder:write GlobalCache.Ref:write GlobalCache.Shape:write objectProperties.slots:ref shape.lookup:read
+ExecutionContext.getNamed CacheEntry.Ref:write PropCache.CacheEntry:ref PropCache.Second:ref objectProperties.slots:ref
+ExecutionContext.indexString Object.Length:write space.strings:ref
 ExecutionContext.initGlobalLex objectProperties.slots:write shape.lookup:read
-ExecutionContext.initRealmGlobals Object.class:write shapeTable.arguments:write shapeTable.iterResult:write
-ExecutionContext.initRealmPrototypes Object.kind:lit Object.shape:lit Object.str:lit realmPart.intrinsics:write*4 shapeTable.array:write shapeTable.function:write shapeTable.materializedFunction:write shapeTable.nullProto:write shapeTable.object:write shapeTable.proxy:write shapeTable.shortStrings:write*2 shapeTable.string:write
-ExecutionContext.newArguments Object.flags:write Value.o:lit objectProperties.elems:write
-ExecutionContext.regExpLiteralMethod Value.o:lit*3 propCache.cacheEntry:ref propCache.second:ref
-ExecutionContext.resolveGlobal globalCache.holder:write globalCache.shape:write shape.lookup:read
-ExecutionContext.setArrayLength Object.length:write*3 objectProperties.elems:read objectProperties.elems:ref*2 objectProperties.elems:write shape.lookup:read
-ExecutionContext.setGlobal Value.o:lit*2 globalCache.holder:write*2 globalCache.ref:write*2 globalCache.shape:write*2 objectProperties.slots:read objectProperties.slots:ref*2 objectProperties.slots:write*2 shape.lookup:read
+ExecutionContext.initRealmGlobals Object.Class:write shapeTable.Arguments:write shapeTable.IterResult:write
+ExecutionContext.initRealmPrototypes Object.Kind:lit Object.Shape:lit Object.Text:lit realmPart.intrinsics:write*4 shapeTable.Array:write shapeTable.Function:write shapeTable.MaterializedFunction:write shapeTable.NullProto:write shapeTable.Object:write shapeTable.Proxy:write shapeTable.ShortStrings:write*2 shapeTable.String:write
+ExecutionContext.mapASCII Value.N:lit Value.O:lit shapeTable.ShortStrings:ref space.strings:ref
+ExecutionContext.newArguments Object.Flags:write Value.O:lit objectProperties.elems:write
+ExecutionContext.newBuffered ReversedBuilder.Sb:ref*2
+ExecutionContext.newBufferedString Object.Ext:lit Object.Ext:write Object.Flags:lit*2 Object.Kind:lit*2 Object.Shape:lit*2 Object.Text:lit*2 ObjectMeta.Ext:write Value.O:lit*2
+ExecutionContext.newHead ReversedBuilder.Sb:ref
+ExecutionContext.newIndexString Object.Length:write
+ExecutionContext.padShort Value.N:lit Value.O:lit shapeTable.ShortStrings:ref space.strings:ref
+ExecutionContext.prependStrings ReversedBuilder.Sb:ref Value.O:lit
+ExecutionContext.regExpLiteralMethod PropCache.CacheEntry:ref PropCache.Second:ref Value.O:lit*3
+ExecutionContext.remove Object.Shape:write*2 Prop.Flags:lit Prop.Slot:lit Shape.Count:write Shape.Family:lit Shape.Order:write*2 Shape.Private:lit Shape.Proto:lit Shape.Realm:lit Shape.Space:lit Shape.Table:lit Shape.Table:write objectProperties.slots:read shape.lookup:read
+ExecutionContext.repeatShort Value.N:lit Value.O:lit shapeTable.ShortStrings:ref
+ExecutionContext.resolveGlobal GlobalCache.Holder:write GlobalCache.Shape:write shape.lookup:read
+ExecutionContext.setArrayLength Object.Length:write*3 objectProperties.elems:read objectProperties.elems:ref*2 objectProperties.elems:write shape.lookup:read
+ExecutionContext.setGlobal GlobalCache.Holder:write*2 GlobalCache.Ref:write*2 GlobalCache.Shape:write*2 Value.O:lit*2 objectProperties.slots:read objectProperties.slots:ref*2 objectProperties.slots:write*2 shape.lookup:read
 ExecutionContext.setIndex objectProperties.elems:read objectProperties.elems:write
-ExecutionContext.setNamed Value.accessor:read cacheEntry.epoch:write cacheEntry.holder:write cacheEntry.kind:write*2 cacheEntry.next:write cacheEntry.shape:write*2 cacheEntry.slot:write objectProperties.slots:read objectProperties.slots:write
+ExecutionContext.setNamed CacheEntry.Epoch:write CacheEntry.Holder:write CacheEntry.Kind:write*2 CacheEntry.Next:write CacheEntry.Shape:write*2 CacheEntry.Slot:write Value.accessor:read objectProperties.slots:read objectProperties.slots:write
 ExecutionContext.setPrivate Value.accessor:read objectProperties.slots:read objectProperties.slots:write shape.lookup:read
 ExecutionContext.storeValue objectProperties.elems:read objectProperties.elems:write
-NewExecutionContext Object.kind:lit Object.shape:lit objectProperties.slots:lit shape.small:lit shape.space:lit space.strings:ref*3
+ExecutionContext.toWellFormedShort Value.N:lit Value.O:lit shapeTable.ShortStrings:ref
+ExecutionContext.trimShortString Value.N:lit Value.O:lit shapeTable.ShortStrings:ref space.strings:ref
+NewExecutionContext Object.Kind:lit Object.Shape:lit Shape.Small:lit Shape.Space:lit objectProperties.slots:lit space.strings:ref*3
 agent.exec *
 evalArg objectProperties.elems:ref
 
@@ -44,7 +70,7 @@ ExecutionContext.HasOwnProperty objectProperties.elems:read shape.lookup:read
 ExecutionContext.QueryOwnProperty shape.lookup:read
 ExecutionContext.checkGlobalDecl shape.lookup:read
 ExecutionContext.declareGlobalAnnexB shape.lookup:read
-ExecutionContext.defineClassElement Value.accessor:read Value.o:lit objectProperties.slots:read shape.lookup:read
+ExecutionContext.defineClassElement Value.O:lit Value.accessor:read objectProperties.slots:read shape.lookup:read
 ExecutionContext.definePrivate shape.lookup:read
 ExecutionContext.deleteMappedArgument shape.lookup:read
 ExecutionContext.deleteName shape.lookup:read
@@ -54,7 +80,7 @@ ExecutionContext.getPrivate Value.accessor:read objectProperties.slots:read shap
 ExecutionContext.getProp shape.lookup:read
 ExecutionContext.getValue objectProperties.elems:read
 ExecutionContext.iteratePlainArray objectProperties.elems:read
-ExecutionContext.readInstancePrototype Value.accessor:read Value.o:lit*2
+ExecutionContext.readInstancePrototype Value.O:lit*2 Value.accessor:read
 ExecutionContext.setFuncName shape.lookup:read
 HasOwnPropertyPlain objectProperties.elems:read shape.lookup:read
 PushElements objectProperties.elems:read
@@ -65,107 +91,107 @@ decoratorAccessHas shape.lookup:read
 
 # Create values, property keys or descriptors from their parts.
 [values]
-ExecutionContext.AddDisposableResource Value.o:lit*2
-ExecutionContext.BuiltinTag Value.o:lit
-ExecutionContext.Construct Value.o:lit
-ExecutionContext.CreateDynamicFunction Value.o:lit
-ExecutionContext.DefineConstructorPrototype Value.o:lit
-ExecutionContext.EvalInRealm Value.o:lit
-ExecutionContext.FromPropertyDescriptor Value.o:lit*2
-ExecutionContext.FunctionArguments Value.o:lit
-ExecutionContext.Get Value.o:lit
-ExecutionContext.GetPrototypeFromConstructor Value.o:lit
-ExecutionContext.GlobalObject Value.o:lit
-ExecutionContext.HostConstruct Value.o:lit
-ExecutionContext.IntrinsicValue Value.o:lit
-ExecutionContext.LengthOfArrayLike Value.o:lit
-ExecutionContext.NewArrayOf Value.o:lit
-ExecutionContext.NewError Value.o:lit
-ExecutionContext.NewFunction Value.o:lit
-ExecutionContext.NewHTMLDDA Value.o:lit
-ExecutionContext.NewPlainObject Value.o:lit
-ExecutionContext.NewPromiseCapability Value.o:lit
-ExecutionContext.OrdinaryHasInstance Value.o:lit
-ExecutionContext.OrdinaryToPrimitive Value.o:lit
-ExecutionContext.OwnRegExp Value.o:lit
-ExecutionContext.PerformEval Value.o:lit
-ExecutionContext.PerformPromiseThen Value.o:lit
-ExecutionContext.PromiseResolve Value.o:lit*2
-ExecutionContext.Set Value.o:lit
-ExecutionContext.Wait Value.o:lit
-ExecutionContext.addClassElement Value.o:lit
-ExecutionContext.addDisposableOp Value.o:lit
-ExecutionContext.applyClassDecorators Value.o:lit*3
-ExecutionContext.applyDecoratorsToElementDefinition Value.o:lit*4
-ExecutionContext.asyncFromSyncIterator Value.o:lit*2
-ExecutionContext.autoAccessorOp Value.o:lit*3
-ExecutionContext.callArguments Value.o:lit
-ExecutionContext.callAsync Value.o:lit
-ExecutionContext.callSlow Value.o:lit
-ExecutionContext.callTrap Value.o:lit
-ExecutionContext.closePlainArrayIterator Value.o:lit
-ExecutionContext.continueDynamicImport Value.o:lit
-ExecutionContext.copyDataProperties Value.o:lit
-ExecutionContext.createDecoratorAccessObject Value.o:lit*4
-ExecutionContext.createDecoratorContextObject Value.o:lit*3
-ExecutionContext.createLazyArguments Value.o:lit
-ExecutionContext.declareEvalVar Value.o:lit
-ExecutionContext.defineMethodProperty Value.o:lit
-ExecutionContext.disposeError Value.o:lit
-ExecutionContext.evaluateAll Value.o:lit*2
-ExecutionContext.evaluateModule Value.o:lit*3
-ExecutionContext.findScope Value.o:lit
-ExecutionContext.forwardedArguments Value.o:lit
-ExecutionContext.getModuleSource Value.o:lit
-ExecutionContext.getScoped Value.o:lit
-ExecutionContext.importCall Value.o:lit*4
-ExecutionContext.importMeta Value.o:lit
-ExecutionContext.initAsyncFromSyncIteratorPrototype Value.o:lit*3
-ExecutionContext.instanceOf Value.o:lit
-ExecutionContext.lendRegExpLiteral Value.o:lit*2
-ExecutionContext.loadRequestedModules Value.o:lit
-ExecutionContext.namespaceGet Value.o:lit*2
-ExecutionContext.newForIn Value.o:lit
-ExecutionContext.newGeneratorObject Value.o:lit
-ExecutionContext.newGoError Value.o:lit
-ExecutionContext.notifyRejectedPromises Value.o:lit
-ExecutionContext.promiseReactionJob Value.o:lit
-ExecutionContext.promiseResolveThenableJob Value.o:lit*2
-ExecutionContext.proxyCall Value.o:lit*2
-ExecutionContext.proxyConstruct Value.o:lit*3
-ExecutionContext.proxyDefineOwnProperty Value.o:lit
-ExecutionContext.proxyDelete Value.o:lit
-ExecutionContext.proxyGet Value.o:lit
-ExecutionContext.proxyGetOwnProperty Value.o:lit
-ExecutionContext.proxyGetPrototypeOf Value.o:lit
-ExecutionContext.proxyHas Value.o:lit
-ExecutionContext.proxyIsExtensible Value.o:lit
-ExecutionContext.proxyOwnKeys Value.o:lit
-ExecutionContext.proxyPreventExtensions Value.o:lit
-ExecutionContext.proxySet Value.o:lit
-ExecutionContext.proxySetPrototypeOf Value.o:lit*2
-ExecutionContext.proxyTrap Value.o:lit
-ExecutionContext.resume Value.o:lit
-ExecutionContext.setScoped Value.o:lit*3
-ExecutionContext.setupClass Value.o:lit*2
-ExecutionContext.templateObject Value.o:lit
-ExecutionContext.throwError Value.o:lit
-Module.GetModuleNamespace Value.o:lit
-Module.initializeEnvironment Value.o:lit*4
-PromiseCapability.Promise Value.o:lit
-RegisterPlainIteratorNext Value.o:lit
-Script.CallScript Value.o:lit
-agent.CapabilityReject Value.o:lit
-agent.CapabilityResolve Value.o:lit
-agent.callerOf Value.o:lit
-agent.newClassDecoration Value.o:lit
-agent.saveException Value.o:lit
-arrayIterator.result Value.o:lit
-arrayIteratorIndex Value.o:lit*2
-asyncDisposeFunction Value.o:lit*2
-defaultHasInstanceCall.enterThrough Value.o:lit
-defaultHasInstanceCall.run Value.o:lit
-elementDef.appendElements Value.o:lit
-proxyFunction Value.o:lit
-space.WeakRefDeref Value.o:lit
-tdz Value.o:lit
+ExecutionContext.AddDisposableResource Value.O:lit*2
+ExecutionContext.BuiltinTag Value.O:lit
+ExecutionContext.Construct Value.O:lit
+ExecutionContext.CreateDynamicFunction Value.O:lit
+ExecutionContext.DefineConstructorPrototype Value.O:lit
+ExecutionContext.EvalInRealm Value.O:lit
+ExecutionContext.FromPropertyDescriptor Value.O:lit*2
+ExecutionContext.FunctionArguments Value.O:lit
+ExecutionContext.Get Value.O:lit
+ExecutionContext.GetPrototypeFromConstructor Value.O:lit
+ExecutionContext.GlobalObject Value.O:lit
+ExecutionContext.HostConstruct Value.O:lit
+ExecutionContext.IntrinsicValue Value.O:lit
+ExecutionContext.LengthOfArrayLike Value.O:lit
+ExecutionContext.NewArrayOf Value.O:lit
+ExecutionContext.NewError Value.O:lit
+ExecutionContext.NewFunction Value.O:lit
+ExecutionContext.NewHTMLDDA Value.O:lit
+ExecutionContext.NewPlainObject Value.O:lit
+ExecutionContext.NewPromiseCapability Value.O:lit
+ExecutionContext.OrdinaryHasInstance Value.O:lit
+ExecutionContext.OrdinaryToPrimitive Value.O:lit
+ExecutionContext.OwnRegExp Value.O:lit
+ExecutionContext.PerformEval Value.O:lit
+ExecutionContext.PerformPromiseThen Value.O:lit
+ExecutionContext.PromiseResolve Value.O:lit*2
+ExecutionContext.Set Value.O:lit
+ExecutionContext.Wait Value.O:lit
+ExecutionContext.addClassElement Value.O:lit
+ExecutionContext.addDisposableOp Value.O:lit
+ExecutionContext.applyClassDecorators Value.O:lit*3
+ExecutionContext.applyDecoratorsToElementDefinition Value.O:lit*4
+ExecutionContext.asyncFromSyncIterator Value.O:lit*2
+ExecutionContext.autoAccessorOp Value.O:lit*3
+ExecutionContext.callArguments Value.O:lit
+ExecutionContext.callAsync Value.O:lit
+ExecutionContext.callSlow Value.O:lit
+ExecutionContext.callTrap Value.O:lit
+ExecutionContext.closePlainArrayIterator Value.O:lit
+ExecutionContext.continueDynamicImport Value.O:lit
+ExecutionContext.copyDataProperties Value.O:lit
+ExecutionContext.createDecoratorAccessObject Value.O:lit*4
+ExecutionContext.createDecoratorContextObject Value.O:lit*3
+ExecutionContext.createLazyArguments Value.O:lit
+ExecutionContext.declareEvalVar Value.O:lit
+ExecutionContext.defineMethodProperty Value.O:lit
+ExecutionContext.disposeError Value.O:lit
+ExecutionContext.evaluateAll Value.O:lit*2
+ExecutionContext.evaluateModule Value.O:lit*3
+ExecutionContext.findScope Value.O:lit
+ExecutionContext.forwardedArguments Value.O:lit
+ExecutionContext.getModuleSource Value.O:lit
+ExecutionContext.getScoped Value.O:lit
+ExecutionContext.importCall Value.O:lit*4
+ExecutionContext.importMeta Value.O:lit
+ExecutionContext.initAsyncFromSyncIteratorPrototype Value.O:lit*3
+ExecutionContext.instanceOf Value.O:lit
+ExecutionContext.lendRegExpLiteral Value.O:lit*2
+ExecutionContext.loadRequestedModules Value.O:lit
+ExecutionContext.namespaceGet Value.O:lit*2
+ExecutionContext.newForIn Value.O:lit
+ExecutionContext.newGeneratorObject Value.O:lit
+ExecutionContext.newGoError Value.O:lit
+ExecutionContext.notifyRejectedPromises Value.O:lit
+ExecutionContext.promiseReactionJob Value.O:lit
+ExecutionContext.promiseResolveThenableJob Value.O:lit*2
+ExecutionContext.propKey PropKey.Key:lit
+ExecutionContext.proxyCall Value.O:lit*2
+ExecutionContext.proxyConstruct Value.O:lit*3
+ExecutionContext.proxyDefineOwnProperty Value.O:lit
+ExecutionContext.proxyDelete Value.O:lit
+ExecutionContext.proxyGet Value.O:lit
+ExecutionContext.proxyGetOwnProperty Value.O:lit
+ExecutionContext.proxyGetPrototypeOf Value.O:lit
+ExecutionContext.proxyHas Value.O:lit
+ExecutionContext.proxyIsExtensible Value.O:lit
+ExecutionContext.proxyOwnKeys Value.O:lit
+ExecutionContext.proxyPreventExtensions Value.O:lit
+ExecutionContext.proxySet Value.O:lit
+ExecutionContext.proxySetPrototypeOf Value.O:lit*2
+ExecutionContext.proxyTrap Value.O:lit
+ExecutionContext.resume Value.O:lit
+ExecutionContext.setScoped Value.O:lit*3
+ExecutionContext.setupClass Value.O:lit*2
+ExecutionContext.templateObject Value.O:lit
+ExecutionContext.throwError Value.O:lit
+Module.GetModuleNamespace Value.O:lit
+Module.initializeEnvironment Value.O:lit*4
+PromiseCapability.Promise Value.O:lit
+RegisterPlainIteratorNext Value.O:lit
+Script.CallScript Value.O:lit
+agent.CapabilityReject Value.O:lit
+agent.CapabilityResolve Value.O:lit
+agent.callerOf Value.O:lit
+agent.newClassDecoration Value.O:lit
+agent.saveException Value.O:lit
+arrayIterator.result Value.O:lit
+arrayIteratorIndex Value.O:lit*2
+asyncDisposeFunction Value.O:lit*2
+defaultHasInstanceCall.enterThrough Value.O:lit
+defaultHasInstanceCall.run Value.O:lit
+elementDef.appendElements Value.O:lit
+proxyFunction Value.O:lit
+tdz Value.O:lit

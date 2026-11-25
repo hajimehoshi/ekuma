@@ -4,20 +4,16 @@
 package engine
 
 import (
+	"github.com/hajimehoshi/ekuma/internal/storage"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 // This file holds the operations for Go code outside the engine. Unlike the rest of the engine,
 // they report a JavaScript exception as an error.
 
-// HostDefined returns the value that [NewExecutionContext] was given.
-func (sp *space) HostDefined() any {
-	return sp.hostDefined
-}
-
 // GlobalObject returns the global object.
 func (cx *ExecutionContext) GlobalObject() Value {
-	return Value{o: cx.realm.global}
+	return Value{O: cx.realm.Global}
 }
 
 // ExceptionLocation identifies the throw site. Line and Column are 1-based,
@@ -41,39 +37,39 @@ func (cx *ExecutionContext) SetExceptionReporter(report func(Value, ExceptionLoc
 // objectToString and errorToString are the reporting realm's original built-in methods.
 func (cx *ExecutionContext) ExceptionDescription(v, objectToString, errorToString Value) Value {
 	if !v.IsObject() {
-		return Undefined
+		return storage.Undefined
 	}
-	o := v.o
-	for o.class == classProxy {
-		st := o.extState().(*proxyState)
-		if st.isGlobal() {
+	o := v.O
+	for o.Class == classProxy {
+		st := o.ExtState().(*proxyState)
+		if st.IsGlobal() {
 			// Shell globals are ordinary receivers for exception reporting.
-			if o == v.o {
-				return Undefined
+			if o == v.O {
+				return storage.Undefined
 			}
 			break
 		}
-		o = st.target
+		o = st.Target
 		if o == nil {
 			return cx.NewString("null")
 		}
 	}
-	if o == v.o && o.class != classError {
-		return Undefined
+	if o == v.O && o.Class != classError {
+		return storage.Undefined
 	}
-	if o.fn != nil {
+	if o.Fn != nil {
 		src := cx.NewString(o.SourceText())
 		if n := src.StringLength(); n > 128 {
 			return cx.NewString(src.Substring(0, 111) + "...<omitted>..." + src.Substring(n-2, n))
 		}
 		return src
 	}
-	method, _ := diagnosticDataProperty(o, cx.Key(KeyToString))
-	if o.class == classError || IsStrictlyEqual(method, errorToString) {
-		name, _ := diagnosticDataProperty(o, cx.Key(KeyName))
-		message, _ := diagnosticDataProperty(o, cx.Key(KeyMessage))
+	method, _ := storage.DiagnosticDataProperty(o, cx.Key(KeyToString))
+	if o.Class == classError || storage.IsStrictlyEqual(method, errorToString) {
+		name, _ := storage.DiagnosticDataProperty(o, cx.Key(KeyName))
+		message, _ := storage.DiagnosticDataProperty(o, cx.Key(KeyMessage))
 		if !message.IsString() {
-			message = cx.strings.empty
+			message = cx.Strings.Empty
 		}
 		if !name.IsString() || name.StringLength() == 0 {
 			return message
@@ -83,10 +79,10 @@ func (cx *ExecutionContext) ExceptionDescription(v, objectToString, errorToStrin
 		}
 		return cx.ConcatStrings([]Value{name, cx.NewString(": "), message})
 	}
-	if IsStrictlyEqual(method, objectToString) {
-		ctor, _ := diagnosticDataProperty(o, cx.Key(KeyConstructor))
-		if ctor.IsCallable() && ctor.o.class != classProxy {
-			if name := diagnosticFunctionName(ctor.o.fn); name != "" {
+	if storage.IsStrictlyEqual(method, objectToString) {
+		ctor, _ := storage.DiagnosticDataProperty(o, cx.Key(KeyConstructor))
+		if ctor.IsCallable() && ctor.O.Class != classProxy {
+			if name := diagnosticFunctionName(ctor.O.Fn); name != "" {
 				return cx.NewString("#<" + name + ">")
 			}
 		}
@@ -97,16 +93,16 @@ func (cx *ExecutionContext) ExceptionDescription(v, objectToString, errorToStrin
 func diagnosticFunctionName(fn *function) wtf8.String {
 	const limit = 1000
 	var prefix wtf8.Buffer
-	for fn.bound != nil {
+	for fn.Bound != nil {
 		prefix.WriteString("bound ")
 		if prefix.Len() >= limit {
 			return prefix.String()[:limit]
 		}
-		fn = fn.bound.target.fn
+		fn = fn.Bound.Target.Fn
 	}
-	name := fn.nativeName()
-	if fn.code != nil {
-		name = fn.code.name
+	name := fn.NativeName()
+	if fn.Code != nil {
+		name = fn.Code.Name
 	}
 	end := wtf8.Seek(name, wtf8.Pos{}, limit-prefix.Len())
 	return prefix.String() + wtf8.Slice(name, wtf8.Pos{}, end)
@@ -114,7 +110,7 @@ func diagnosticFunctionName(fn *function) wtf8.String {
 
 // NewFunction returns a function implemented by f. name is UTF-8.
 func (cx *ExecutionContext) NewFunction(name string, f NativeFunc) Value {
-	return Value{o: cx.newGoFunction(wtf8.FromValidUTF8(name), f)}
+	return Value{O: cx.newGoFunction(wtf8.FromValidUTF8(name), f)}
 }
 
 // newGoFunction returns a function with the code f, which need not be registered.
@@ -133,19 +129,19 @@ func goFunction(cx *ExecutionContext, this Value, args []Value) Value {
 // NewHTMLDDA returns a function implemented by f that has the [[IsHTMLDDA]] internal slot.
 func (cx *ExecutionContext) NewHTMLDDA(f NativeFunc) Value {
 	o := cx.newGoFunction("", f)
-	o.makeHTMLDDA()
+	o.MakeHTMLDDA()
 	cx.madeHTMLDDA = true
-	return Value{o: o}
+	return Value{O: o}
 }
 
 // NewPlainObject returns a new empty object.
 func (cx *ExecutionContext) NewPlainObject() Value {
-	return Value{o: cx.NewOrdinaryObject()}
+	return Value{O: cx.NewOrdinaryObject()}
 }
 
 // NewArrayOf returns a new array with the given elements, which it keeps.
 func (cx *ExecutionContext) NewArrayOf(elems []Value) Value {
-	return Value{o: cx.NewArray(elems)}
+	return Value{O: cx.NewArray(elems)}
 }
 
 // GoString returns the content of the string v as UTF-8, with lone surrogates replaced by U+FFFD.
@@ -170,7 +166,7 @@ func (cx *ExecutionContext) HostSet(v, key, val Value) error {
 		if setter := cx.setValue(v, key, val, true); setter != nil {
 			cx.Call(setter, v, val)
 		}
-		return Undefined
+		return storage.Undefined
 	})
 	return err
 }
@@ -207,10 +203,10 @@ func (cx *ExecutionContext) HostCallMethod(v, key Value, args []Value) (Value, e
 // HostConstruct implements new f(...args).
 func (cx *ExecutionContext) HostConstruct(f Value, args []Value) (Value, error) {
 	return cx.enter(func() Value {
-		if !f.IsCallable() || !cx.IsConstructor(f.o) {
+		if !f.IsCallable() || !cx.IsConstructor(f.O) {
 			cx.ThrowTypeError(cx.DisplayString(f) + " is not a constructor")
 		}
-		return Value{o: cx.Construct(f.o, args, f.o)}
+		return Value{O: cx.Construct(f.O, args, f.O)}
 	})
 }
 
@@ -218,7 +214,7 @@ func (cx *ExecutionContext) HostConstruct(f Value, args []Value) (Value, error) 
 func (cx *ExecutionContext) HostResolve(c *PromiseCapability, v Value) error {
 	_, err := cx.enter(func() Value {
 		cx.ResolveCapability(c, v)
-		return Undefined
+		return storage.Undefined
 	})
 	return err
 }
@@ -227,7 +223,7 @@ func (cx *ExecutionContext) HostResolve(c *PromiseCapability, v Value) error {
 func (cx *ExecutionContext) HostReject(c *PromiseCapability, v Value) error {
 	_, err := cx.enter(func() Value {
 		cx.RejectCapability(c, v)
-		return Undefined
+		return storage.Undefined
 	})
 	return err
 }
@@ -235,18 +231,18 @@ func (cx *ExecutionContext) HostReject(c *PromiseCapability, v Value) error {
 // HostInstanceOf implements v instanceof t.
 func (cx *ExecutionContext) HostInstanceOf(v, t Value) (bool, error) {
 	r, err := cx.enter(func() Value {
-		return Bool(cx.instanceOf(v, t, nil))
+		return storage.Bool(cx.instanceOf(v, t, nil))
 	})
-	return ToBoolean(r), err
+	return storage.ToBoolean(r), err
 }
 
 // ThrownMessage describes the thrown value v for a Go error, without running any JavaScript.
 func ThrownMessage(v Value) string {
-	if v.o == nil || v.o.shape == nil {
+	if v.O == nil || v.O.Shape == nil {
 		// A primitive other than a string: its description needs no space.
-		return "uncaught " + displayString(v)
+		return "uncaught " + storage.DisplayString(v)
 	}
-	return v.o.shape.space.errorOf(v).Error()
+	return v.O.Shape.Space.ErrorOf(v).Error()
 }
 
 // ContinuationData returns the continuation data, the value of the host that promise

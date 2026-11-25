@@ -11,6 +11,7 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/bytecode"
 	"github.com/hajimehoshi/ekuma/internal/element"
 	"github.com/hajimehoshi/ekuma/internal/numconv"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
@@ -59,7 +60,7 @@ type frame struct {
 //go:noinline
 func (fr *frame) leaveScopes(n int) {
 	for len(fr.scopes) > n {
-		fr.scopes = withoutLast(fr.scopes)
+		fr.scopes = storage.WithoutLast(fr.scopes)
 	}
 }
 
@@ -72,18 +73,18 @@ var thrownErrorKinds = [...]ErrorKind{
 // primObjects maps the values that OpJumpNotSEqP compares with to their o.
 var primObjects = [...]*Object{
 	bytecode.PrimUndefined: nil,
-	bytecode.PrimNull:      nullObject,
-	bytecode.PrimFalse:     falseObject,
-	bytecode.PrimTrue:      trueObject,
+	bytecode.PrimNull:      storage.NullObject,
+	bytecode.PrimFalse:     storage.FalseObject,
+	bytecode.PrimTrue:      storage.TrueObject,
 }
 
 // maxFrames is the call depth at which a RangeError is thrown.
 const maxFrames = 10000
 
-var tdzObject = newMarker(nil)
+var tdzObject = storage.NewMarker(nil)
 
 // tdz is the content of a binding that is not initialized yet.
-var tdz = Value{o: tdzObject}
+var tdz = Value{O: tdzObject}
 
 type execStatus uint8
 
@@ -126,7 +127,7 @@ func (ag *agent) ensureStack(n int) {
 	ag.stack = s
 	// The open upvalues point into the old stack.
 	for _, u := range ag.openUpvals {
-		u.p = &s[u.index]
+		u.P = &s[u.Index]
 	}
 }
 
@@ -154,7 +155,7 @@ func (ag *agent) releaseStack() {
 	ag.stackHigh = ag.sp
 	// The open upvalues point into the old stack.
 	for _, u := range ag.openUpvals {
-		u.p = &s[u.index]
+		u.P = &s[u.Index]
 	}
 }
 
@@ -189,32 +190,32 @@ func (ag *agent) pushFrame(f *Object, this Value, base, argc int, ret int32, isN
 	// exec builds the same frame inline for OpCall and OpCallCall in its fast switch, and for
 	// OpApplyFwd in the switch after it, when the callee needs no surplus arguments; a change
 	// here belongs there too.
-	fp := f.fn.code
-	fp.prepare()
+	fp := f.Fn.Code
+	fp.Prepare()
 	extraBase := -1
-	if argc > fp.nparams && fp.needsExtra {
+	if argc > fp.Nparams && fp.NeedsExtra {
 		// The surplus arguments stay where they are, and the registers start above them.
-		extraBase = base + fp.nparams
+		extraBase = base + fp.Nparams
 		newBase := base + argc
-		ag.ensureStack(newBase + fp.nregs + 1)
+		ag.ensureStack(newBase + fp.Nregs + 1)
 		// The parameters move above the surplus arguments, so the two places do not overlap.
 		stack := ag.stack
-		for i := range fp.nparams {
+		for i := range fp.Nparams {
 			stack[newBase+i] = stack[base+i]
 		}
 		base = newBase
 	} else {
-		ag.ensureStack(base + fp.nregs + 1)
+		ag.ensureStack(base + fp.Nregs + 1)
 	}
-	if from, to := fp.firstCleared(argc), fp.nclear; from < to {
+	if from, to := fp.FirstCleared(argc), fp.Nclear; from < to {
 		clearFrameRegs(ag.stack[base:], from, to)
 	}
 	fr := ag.appendFrame()
 	fr.fp, fr.cl, fr.this, fr.newTarget, fr.gen, fr.scopes = fp, f, this, newTarget, nil, nil
 	fr.pc, fr.base, fr.ret, fr.isNew, fr.argc, fr.extraBase = 0, base, ret, isNew, argc, extraBase
 	n := len(ag.frames) - 1
-	fr.plainReturn = n > 0 && ag.frames[n-1].fp.realm == fp.realm
-	ag.sp = base + fp.nregs + 1
+	fr.plainReturn = n > 0 && ag.frames[n-1].fp.Realm == fp.Realm
+	ag.sp = base + fp.Nregs + 1
 	return base
 }
 
@@ -249,7 +250,7 @@ func (fr *frame) registers(stack []Value) []Value {
 	if fr.gen != nil {
 		return fr.gen.regs
 	}
-	return stack[fr.base:][:fr.fp.nregs+1]
+	return stack[fr.base:][:fr.fp.Nregs+1]
 }
 
 // captureRegister returns the shared upvalue for a register of fr.
@@ -278,29 +279,29 @@ func (ag *agent) extraArgs(fr *frame) []Value {
 	if fr.extraBase < 0 {
 		return nil
 	}
-	return ag.stack[fr.extraBase : fr.extraBase+fr.argc-fr.fp.nparams]
+	return ag.stack[fr.extraBase : fr.extraBase+fr.argc-fr.fp.Nparams]
 }
 
 // findUpval returns the upvalue for the stack slot index.
 func (ag *agent) findUpval(index int) *upvalue {
 	i := len(ag.openUpvals)
 	const tail = 4
-	if i > 2*tail && ag.openUpvals[i-tail].index > index {
+	if i > 2*tail && ag.openUpvals[i-tail].Index > index {
 		// Every slot in the tail is above index.
 		i = sort.Search(i-tail, func(j int) bool {
-			return ag.openUpvals[j].index > index
+			return ag.openUpvals[j].Index > index
 		})
 	} else {
-		for i > 0 && ag.openUpvals[i-1].index > index {
+		for i > 0 && ag.openUpvals[i-1].Index > index {
 			i--
 		}
 	}
-	if i > 0 && ag.openUpvals[i-1].index == index {
+	if i > 0 && ag.openUpvals[i-1].Index == index {
 		return ag.openUpvals[i-1]
 	}
 	u := &upvalue{
-		p:     &ag.stack[index],
-		index: index,
+		P:     &ag.stack[index],
+		Index: index,
 	}
 	ag.openUpvals = append(ag.openUpvals, nil)
 	copy(ag.openUpvals[i+1:], ag.openUpvals[i:])
@@ -311,10 +312,10 @@ func (ag *agent) findUpval(index int) *upvalue {
 // closeUpvals detaches the upvalues that refer to the stack from index from on.
 func (ag *agent) closeUpvals(from int) {
 	n := len(ag.openUpvals)
-	for n > 0 && ag.openUpvals[n-1].index >= from {
+	for n > 0 && ag.openUpvals[n-1].Index >= from {
 		u := ag.openUpvals[n-1]
-		u.val = *u.p
-		u.p = &u.val
+		u.Val = *u.P
+		u.P = &u.Val
 		ag.openUpvals[n-1] = nil
 		n--
 	}
@@ -328,7 +329,7 @@ func (ag *agent) unwind(stop int) (Value, execStatus) {
 		n := len(ag.frames) - 1
 		fr := &ag.frames[n]
 		pc := int32(fr.pc - 1)
-		closing := ag.thrown.o == closeSignal
+		closing := ag.thrown.O == closeSignal
 		for _, h := range fr.fp.Handlers {
 			if pc < h.Start || pc >= h.End || (closing && !h.Finally) {
 				continue
@@ -341,14 +342,14 @@ func (ag *agent) unwind(stop int) (Value, execStatus) {
 			if h.Finally && !closing && ag.captureThrowSites {
 				regs[h.Reg] = ag.saveException()
 			}
-			ag.thrown = Undefined
+			ag.thrown = storage.Undefined
 			ag.dropNatives(n)
 			fr.pc = int(h.Target)
 			if n := int(h.Scopes); n < len(fr.scopes) {
 				fr.leaveScopes(n)
 			}
 			ag.sp = fr.top()
-			return Undefined, execCatch
+			return storage.Undefined, execCatch
 		}
 		var closeValue Value
 		if fr.gen != nil {
@@ -360,11 +361,11 @@ func (ag *agent) unwind(stop int) (Value, execStatus) {
 		ag.frames = ag.frames[:n]
 		if n == stop {
 			if closing {
-				ag.thrown = Undefined
+				ag.thrown = storage.Undefined
 				ag.dropNatives(n)
 				return closeValue, execReturn
 			}
-			return Undefined, execThrow
+			return storage.Undefined, execThrow
 		}
 	}
 }
@@ -374,7 +375,7 @@ func (fr *frame) top() int {
 	if fr.gen != nil {
 		return fr.base
 	}
-	return fr.base + fr.fp.nregs + 1
+	return fr.base + fr.fp.Nregs + 1
 }
 
 // run executes the top frame until the frame at index stop returns, and returns its value.
@@ -402,7 +403,7 @@ func (cx *ExecutionContext) runFrame(stop int) (Value, bool) {
 	for {
 		v, st := cx.exec(stop)
 		if st == execEnter {
-			executionContextOf(cx.frames[len(cx.frames)-1].fp.realm).activate()
+			executionContextOf(cx.frames[len(cx.frames)-1].fp.Realm).activate()
 			continue
 		}
 		if validateExec {
@@ -425,7 +426,7 @@ func (cx *ExecutionContext) runFrame(stop int) (Value, bool) {
 func (cx *ExecutionContext) throwReturnError(stop, n, pc int, kind ErrorKind, msg string) {
 	r := cx.callerRealm
 	if n > stop {
-		r = cx.frames[n-1].fp.realm
+		r = cx.frames[n-1].fp.Realm
 	}
 	cx.frames[n].pc = pc
 	cx.recordThrow(executionContextOf(r).NewError(kind, msg))
@@ -436,7 +437,7 @@ func (cx *ExecutionContext) throwReturnError(stop, n, pc int, kind ErrorKind, ms
 
 // restArray returns the arguments of fr starting at index start as a fresh array.
 func (cx *ExecutionContext) restArray(fr *frame, start int) *Object {
-	n := min(fr.argc, fr.fp.nparams)
+	n := min(fr.argc, fr.fp.Nparams)
 	extra := cx.extraArgs(fr)
 	if start >= n {
 		return cx.NewArrayCopy(extra[start-n:])
@@ -465,10 +466,10 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 	fp := fr.fp
 	pc := fr.pc
 	// The active context is that of the running frame wherever exec reads it.
-	if fp.realm != ag.active.realmPart {
+	if fp.Realm != ag.active.realmPart {
 		// runFrame installs the context. Doing it here would keep the type that the way to the
 		// context checks in a register throughout the loop.
-		return Undefined, execEnter
+		return storage.Undefined, execEnter
 	}
 	if validateExec {
 		ag.enterChecks()
@@ -481,7 +482,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 		if validateExec {
 			ag.checkStep(fp, pc, slices.Clip(regs))
 		}
-		i := &fp.code[pc]
+		i := &fp.Code[pc]
 		pc++
 		// The fast paths of the common instructions. Nothing in this switch calls a function
 		// (TestExecFastPathsCallNothing checks it), so the values that the loop carries need
@@ -490,22 +491,22 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 		// no load.
 		switch i.Op {
 		case bytecode.OpLoadK:
-			regs[i.A] = fp.consts[i.B]
+			regs[i.A] = fp.Consts[i.B]
 			continue
 		case bytecode.OpLoadInt:
-			setNumber(&regs[i.A], float64(i.B))
+			storage.SetNumber(&regs[i.A], float64(i.B))
 			continue
 		case bytecode.OpLoadUndef:
 			regs[i.A] = Value{}
 			continue
 		case bytecode.OpLoadNull:
-			regs[i.A] = Null
+			regs[i.A] = storage.Null
 			continue
 		case bytecode.OpLoadTrue:
-			regs[i.A] = True
+			regs[i.A] = storage.True
 			continue
 		case bytecode.OpLoadFalse:
-			regs[i.A] = False
+			regs[i.A] = storage.False
 			continue
 		case bytecode.OpLoadTDZ:
 			regs[i.A] = tdz
@@ -518,86 +519,86 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				continue
 			}
 		case bytecode.OpGetGlobal, bytecode.OpGetGlobalStrict, bytecode.OpGetGlobalOrUndef, bytecode.OpGetGlobalOrUndefStrict:
-			c := &fp.globals[i.C]
-			if h := c.holder; h != nil && h.shape == c.shape {
+			c := &fp.Globals[i.C]
+			if h := c.Holder; h != nil && h.Shape == c.Shape {
 				if validateExec {
-					ag.active.checkGlobalHit(fp, pc-1, fp.keys[i.B], c, false)
+					ag.active.checkGlobalHit(fp, pc-1, fp.Keys[i.B], c, false)
 				}
-				regs[i.A] = *c.ref
+				regs[i.A] = *c.Ref
 				continue
 			}
 		case bytecode.OpSetGlobal, bytecode.OpSetGlobalStrict:
 			// Only setGlobal fills the cache of an assignment.
-			c := &fp.globals[i.C]
-			if h := c.holder; h != nil && h.shape == c.shape {
+			c := &fp.Globals[i.C]
+			if h := c.Holder; h != nil && h.Shape == c.Shape {
 				if validateExec {
-					ag.active.checkGlobalHit(fp, pc-1, fp.keys[i.B], c, true)
+					ag.active.checkGlobalHit(fp, pc-1, fp.Keys[i.B], c, true)
 				}
-				*c.ref = regs[i.A]
+				*c.Ref = regs[i.A]
 				continue
 			}
 		case bytecode.OpGetUpval:
-			regs[i.A] = *ag.frames[len(ag.frames)-1].cl.fn.upvals[i.B].p
+			regs[i.A] = *ag.frames[len(ag.frames)-1].cl.Fn.Upvals[i.B].P
 			continue
 		case bytecode.OpSetUpval:
-			*ag.frames[len(ag.frames)-1].cl.fn.upvals[i.B].p = regs[i.A]
+			*ag.frames[len(ag.frames)-1].cl.Fn.Upvals[i.B].P = regs[i.A]
 			continue
 		case bytecode.OpCopyPropToGlobal:
-			g := &fp.globals[fp.code[i.C-1].C]
-			if h := g.holder; h == nil || h.shape != g.shape {
+			g := &fp.Globals[fp.Code[i.C-1].C]
+			if h := g.Holder; h == nil || h.Shape != g.Shape {
 				break
 			}
 			if validateExec {
-				ag.active.checkGlobalHit(fp, int(i.C-1), fp.keys[fp.code[i.C-1].B], g, true)
+				ag.active.checkGlobalHit(fp, int(i.C-1), fp.Keys[fp.Code[i.C-1].B], g, true)
 			}
 			regs[i.A] = Value{}
-			c := &fp.caches[fp.code[pc].C]
-			o := regs[i.B].o
-			if o == nil || c.shape != o.shape {
+			c := &fp.Caches[fp.Code[pc].C]
+			o := regs[i.B].O
+			if o == nil || c.Shape != o.Shape {
 				continue
 			}
-			if c.kind == cacheOwnGetter || c.kind == cacheGetter {
+			if c.Kind == cacheOwnGetter || c.Kind == cacheGetter {
 				// The binding is resolved. Dispatch the read with its own call site.
-				i = &fp.code[pc]
+				i = &fp.Code[pc]
 				pc++
 				break
 			}
 			var v Value
-			switch c.kind {
+			switch c.Kind {
 			case cacheOwn:
-				v = o.slots[c.slot]
+				v = o.Slots[c.Slot]
 			case cacheProto:
-				if c.epoch != ag.protoEpoch {
+				if c.Epoch != ag.ProtoEpoch {
 					continue
 				}
-				v = *c.ref
+				v = *c.Ref
 			default:
 				continue
 			}
 			if validateExec {
-				ag.active.checkEntryRead(fp, pc, regs[i.B], o, fp.keys[fp.code[pc].C], &c.cacheEntry)
+				ag.active.checkEntryRead(fp, pc, regs[i.B], o, fp.Keys[fp.Code[pc].C], &c.CacheEntry)
 			}
 			regs[i.A+1] = v
-			*g.ref = v
+			*g.Ref = v
 			pc = int(i.C)
 			continue
 		case bytecode.OpResolveGlobal:
-			c := &fp.globals[i.C]
-			if h := c.holder; h == nil || h.shape != c.shape {
+			c := &fp.Globals[i.C]
+			if h := c.Holder; h == nil || h.Shape != c.Shape {
 				break
 			}
 			if validateExec {
-				ag.active.checkGlobalExists(fp, pc-1, fp.keys[i.B], c)
+				ag.active.checkGlobalExists(fp, pc-1, fp.Keys[i.B], c)
 			}
 			regs[i.A] = Value{}
 			// A named read may supply the value of the assignment.
-			if n := &fp.code[pc]; n.Op == bytecode.OpGetProp {
-				c := &fp.caches[n.C]
-				if o := regs[n.B].o; o != nil && c.kind == cacheOwn && c.shape == o.shape {
+			if n := &fp.Code[pc]; n.Op == bytecode.OpGetProp {
+				c := &fp.Caches[n.C]
+				if o := regs[n.B].O; o != nil && c.Kind == cacheOwn && c.Shape == o.Shape {
 					if validateExec {
-						ag.active.checkEntryRead(fp, pc, regs[n.B], o, fp.keys[n.C], &c.cacheEntry)
+						ag.active.checkEntryRead(fp, pc, regs[n.B], o, fp.Keys[n.C], &c.CacheEntry)
 					}
-					regs[n.A] = o.slots[c.slot]
+					regs[n.A] = o.Slots[c.Slot]
 					pc++
 				}
 			}
@@ -605,171 +606,171 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 		case bytecode.OpGetProp:
 			// The destination is read first, so that the instruction need not stay in
 			// registers across the tests of the cache.
-			if a, o := i.A, regs[i.B].o; o != nil {
-				c := &fp.caches[i.C]
-				e := &c.cacheEntry
-				if o.shape != e.shape {
-					e = &c.second
-					if o.shape != e.shape {
+			if a, o := i.A, regs[i.B].O; o != nil {
+				c := &fp.Caches[i.C]
+				e := &c.CacheEntry
+				if o.Shape != e.Shape {
+					e = &c.Second
+					if o.Shape != e.Shape {
 						break
 					}
 				}
-				if e.kind != cacheOwn {
-					if e.kind != cacheProto || e.epoch != ag.protoEpoch {
+				if e.Kind != cacheOwn {
+					if e.Kind != cacheProto || e.Epoch != ag.ProtoEpoch {
 						break
 					}
 					if validateExec {
-						ag.active.checkEntryRead(fp, pc-1, regs[i.B], o, fp.keys[i.C], e)
+						ag.active.checkEntryRead(fp, pc-1, regs[i.B], o, fp.Keys[i.C], e)
 					}
-					regs[a] = *e.ref
+					regs[a] = *e.Ref
 					continue
 				}
 				if validateExec {
-					ag.active.checkEntryRead(fp, pc-1, regs[i.B], o, fp.keys[i.C], e)
+					ag.active.checkEntryRead(fp, pc-1, regs[i.B], o, fp.Keys[i.C], e)
 				}
-				regs[a] = o.slots[e.slot]
+				regs[a] = o.Slots[e.Slot]
 				continue
 			}
 		case bytecode.OpGetPropChain:
-			if a, o := i.A, regs[i.B].o; o != nil {
-				c := &fp.caches[i.C]
-				e := &c.cacheEntry
-				if o.shape != e.shape {
-					e = &c.second
-					if o.shape != e.shape {
+			if a, o := i.A, regs[i.B].O; o != nil {
+				c := &fp.Caches[i.C]
+				e := &c.CacheEntry
+				if o.Shape != e.Shape {
+					e = &c.Second
+					if o.Shape != e.Shape {
 						break
 					}
 				}
 				var w Value
-				if e.kind != cacheOwn {
-					if e.kind != cacheProto || e.epoch != ag.protoEpoch {
+				if e.Kind != cacheOwn {
+					if e.Kind != cacheProto || e.Epoch != ag.ProtoEpoch {
 						break
 					}
-					w = *e.ref
+					w = *e.Ref
 				} else {
-					w = o.slots[e.slot]
+					w = o.Slots[e.Slot]
 				}
 				if validateExec {
-					ag.active.checkEntryRead(fp, pc-1, regs[i.B], o, fp.keys[i.C], e)
+					ag.active.checkEntryRead(fp, pc-1, regs[i.B], o, fp.Keys[i.C], e)
 				}
 				regs[a] = w
 				// Consume the next named read of w if its cache supplies a data property.
-				if o := w.o; o != nil {
-					n := &fp.code[pc]
-					c := &fp.caches[n.C]
-					e := &c.cacheEntry
-					if o.shape != e.shape {
-						e = &c.second
-						if o.shape != e.shape {
+				if o := w.O; o != nil {
+					n := &fp.Code[pc]
+					c := &fp.Caches[n.C]
+					e := &c.CacheEntry
+					if o.Shape != e.Shape {
+						e = &c.Second
+						if o.Shape != e.Shape {
 							continue
 						}
 					}
-					if e.kind != cacheOwn {
-						if e.kind != cacheProto || e.epoch != ag.protoEpoch {
+					if e.Kind != cacheOwn {
+						if e.Kind != cacheProto || e.Epoch != ag.ProtoEpoch {
 							continue
 						}
 						if validateExec {
-							ag.active.checkEntryRead(fp, pc, w, o, fp.keys[n.C], e)
+							ag.active.checkEntryRead(fp, pc, w, o, fp.Keys[n.C], e)
 						}
-						regs[n.A] = *e.ref
+						regs[n.A] = *e.Ref
 					} else {
 						if validateExec {
-							ag.active.checkEntryRead(fp, pc, w, o, fp.keys[n.C], e)
+							ag.active.checkEntryRead(fp, pc, w, o, fp.Keys[n.C], e)
 						}
-						regs[n.A] = o.slots[e.slot]
+						regs[n.A] = o.Slots[e.Slot]
 					}
 					pc++
 				}
 				continue
 			}
 		case bytecode.OpSetProp, bytecode.OpSetPropStrict:
-			if o := regs[i.A].o; o != nil {
-				c := &fp.caches[i.B]
-				e := &c.cacheEntry
-				if o.shape != e.shape {
-					e = &c.second
-					if o.shape != e.shape {
+			if o := regs[i.A].O; o != nil {
+				c := &fp.Caches[i.B]
+				e := &c.CacheEntry
+				if o.Shape != e.Shape {
+					e = &c.Second
+					if o.Shape != e.Shape {
 						break
 					}
 				}
-				if e.kind == cacheOwn {
+				if e.Kind == cacheOwn {
 					if validateExec {
-						ag.active.checkStoreHit(fp, pc-1, regs[i.A], fp.keys[i.B], &o.slots[e.slot])
+						ag.active.checkStoreHit(fp, pc-1, regs[i.A], fp.Keys[i.B], &o.Slots[e.Slot])
 					}
-					o.slots[e.slot] = regs[i.C]
+					o.Slots[e.Slot] = regs[i.C]
 					continue
 				}
-				if e.kind == cacheAdd && o.objectProperties != nil && e.epoch == ag.protoEpoch && o.flags&objIsProto == 0 {
-					if n := len(o.slots); n < cap(o.slots) {
+				if e.Kind == cacheAdd && o.ObjectProperties != nil && e.Epoch == ag.ProtoEpoch && o.Flags&objIsProto == 0 {
+					if n := len(o.Slots); n < cap(o.Slots) {
 						if validateExec {
-							ag.active.checkAddHit(fp, pc-1, o, fp.keys[i.B], e.next)
+							ag.active.checkAddHit(fp, pc-1, o, fp.Keys[i.B], e.Next)
 						}
-						o.shape = e.next
-						o.slots = o.slots[:n+1]
-						o.slots[n] = regs[i.C]
+						o.Shape = e.Next
+						o.Slots = o.Slots[:n+1]
+						o.Slots[n] = regs[i.C]
 						continue
 					}
 				}
 			}
 		case bytecode.OpGetLength:
-			if o := regs[i.B].o; o != nil && o.kind == kindArray {
+			if o := regs[i.B].O; o != nil && o.Kind == kindArray {
 				if validateExec {
-					ag.active.checkLengthHit(fp, pc-1, regs[i.B], float64(o.length))
+					ag.active.checkLengthHit(fp, pc-1, regs[i.B], float64(o.Length))
 				}
-				setNumber(&regs[i.A], float64(o.length))
+				storage.SetNumber(&regs[i.A], float64(o.Length))
 				continue
 			}
 			// The destination and the cache are read first, so that the instruction need not
 			// stay in registers across the tests, as in OpGetProp.
-			if a, c, o := i.A, &fp.caches[i.C], regs[i.B].o; o != nil {
+			if a, c, o := i.A, &fp.Caches[i.C], regs[i.B].O; o != nil {
 				// The length of a string known to be ASCII, as in Value.StringLength.
-				if o.kind == kindString && o.flags&(objASCIIKnown|objASCII) == objASCIIKnown|objASCII {
+				if o.Kind == kindString && o.Flags&(objASCIIKnown|objASCII) == objASCIIKnown|objASCII {
 					if validateExec {
-						ag.active.checkLengthHit(fp, pc-1, regs[i.B], float64(len(o.str)))
+						ag.active.checkLengthHit(fp, pc-1, regs[i.B], float64(len(o.Text)))
 					}
-					setNumber(&regs[a], float64(len(o.str)))
+					storage.SetNumber(&regs[a], float64(len(o.Text)))
 					continue
 				}
 				// The length of a fixed-length typed array in the bounds of its buffer, when the
 				// cache says that the length is the original getter, as in getNamed. The data of a
 				// shared or detached buffer is empty, so only an empty view of one passes the
 				// bounds check.
-				if t, ok := o.ext.(*TypedArray); ok && !t.tracking && t.offset+t.length*t.typ.Size() <= len(t.data.data) {
-					if o.shape == c.shape && c.kind == cacheGetter && c.epoch == ag.protoEpoch && c.holder == ag.active.realm.intrinsics[IntrinsicTypedArrayPrototypeLengthGetter] {
+				if t, ok := o.Ext.(*TypedArray); ok && !t.tracking && t.offset+t.length*t.typ.Size() <= len(t.data.data) {
+					if o.Shape == c.Shape && c.Kind == cacheGetter && c.Epoch == ag.ProtoEpoch && c.Holder == ag.active.realm.Intrinsics[IntrinsicTypedArrayPrototypeLengthGetter] {
 						if validateExec {
 							ag.active.checkTypedArrayLengthHit(fp, pc-1, regs[i.B], float64(t.length))
 						}
-						setNumber(&regs[a], float64(t.length))
+						storage.SetNumber(&regs[a], float64(t.length))
 						continue
 					}
 				}
 				// A length data property that the cache locates, as in OpGetProp.
-				e := &c.cacheEntry
-				if o.shape != e.shape {
-					e = &c.second
+				e := &c.CacheEntry
+				if o.Shape != e.Shape {
+					e = &c.Second
 				}
-				if o.shape == e.shape {
-					if e.kind == cacheOwn {
+				if o.Shape == e.Shape {
+					if e.Kind == cacheOwn {
 						if validateExec {
 							ag.active.checkEntryRead(fp, pc-1, regs[i.B], o, ag.Key(KeyLength), e)
 						}
-						regs[a] = o.slots[e.slot]
+						regs[a] = o.Slots[e.Slot]
 						continue
 					}
-					if e.kind == cacheProto && e.epoch == ag.protoEpoch {
+					if e.Kind == cacheProto && e.Epoch == ag.ProtoEpoch {
 						if validateExec {
 							ag.active.checkEntryRead(fp, pc-1, regs[i.B], o, ag.Key(KeyLength), e)
 						}
-						regs[a] = *e.ref
+						regs[a] = *e.Ref
 						continue
 					}
 				}
 			}
 		case bytecode.OpGetIndex:
 			v, k := regs[i.B], regs[i.C]
-			if o := v.o; o != nil && o.objectProperties != nil && k.o == numberObject {
-				if j := int(k.n); float64(j) == k.n && uint(j) < uint(len(o.elems)) {
-					if e := o.elems[j]; e.o != holeObject {
+			if o := v.O; o != nil && o.ObjectProperties != nil && k.O == storage.NumberObject {
+				if j := int(k.N); float64(j) == k.N && uint(j) < uint(len(o.Elems)) {
+					if e := o.Elems[j]; e.O != storage.HoleObject {
 						regs[i.A] = e
 						continue
 					}
@@ -780,8 +781,8 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				// a register the load took makes the compiler store loop values at the head of the
 				// loop on amd64. The functions of encoding/binary do not inline into exec, so the
 				// bytes are combined here.
-				if t, ok := o.ext.(*TypedArray); ok && t.typ < element.BigInt64 && t.typ != element.Float16 {
-					if j := int(k.n); float64(j) == k.n && !t.tracking && uint(j) < uint(t.length) {
+				if t, ok := o.Ext.(*TypedArray); ok && t.typ < element.BigInt64 && t.typ != element.Float16 {
+					if j := int(k.N); float64(j) == k.N && !t.tracking && uint(j) < uint(t.length) {
 						if r, s := &regs[i.A], t.typ.Size(); t.offset+t.length*s <= len(t.data.data) {
 							b := t.data.data[t.offset+j*s:]
 							var x float64
@@ -810,32 +811,32 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 								x = math.Float64frombits(uint64(b[0]) | uint64(b[1])<<8 | uint64(b[2])<<16 | uint64(b[3])<<24 |
 									uint64(b[4])<<32 | uint64(b[5])<<40 | uint64(b[6])<<48 | uint64(b[7])<<56)
 							}
-							setNumber(r, x)
+							storage.SetNumber(r, x)
 							continue
 						}
 					}
 				}
-			} else if o != nil && o.kind == kindString && o.flags&(objASCIIKnown|objASCII) == objASCIIKnown|objASCII && k.o == numberObject {
+			} else if o != nil && o.Kind == kindString && o.Flags&(objASCIIKnown|objASCII) == objASCIIKnown|objASCII && k.O == storage.NumberObject {
 				// A unit of a string known to be ASCII, as in asciiUnitAt. An index in its range is an
 				// own property that nothing shadows.
-				if j := int(k.n); float64(j) == k.n && uint(j) < uint(len(o.str)) {
-					if o.flags&objReversed != 0 {
-						j = len(o.str) - 1 - j
+				if j := int(k.N); float64(j) == k.N && uint(j) < uint(len(o.Text)) {
+					if o.Flags&objReversed != 0 {
+						j = len(o.Text) - 1 - j
 					}
-					regs[i.A] = ag.strings.ascii[o.str[j]]
+					regs[i.A] = ag.Strings.Ascii[o.Text[j]]
 					continue
 				}
 			}
 		case bytecode.OpGetIndexInt:
-			if o := regs[i.B].o; o != nil && o.objectProperties != nil && uint(i.C) < uint(len(o.elems)) {
-				if e := o.elems[i.C]; e.o != holeObject {
+			if o := regs[i.B].O; o != nil && o.ObjectProperties != nil && uint(i.C) < uint(len(o.Elems)) {
+				if e := o.Elems[i.C]; e.O != storage.HoleObject {
 					regs[i.A] = e
 					continue
 				}
 			}
 			// The same as OpGetIndex for a typed array.
-			if o := regs[i.B].o; o != nil {
-				if t, ok := o.ext.(*TypedArray); ok && t.typ < element.BigInt64 && t.typ != element.Float16 && !t.tracking && uint(i.C) < uint(t.length) {
+			if o := regs[i.B].O; o != nil {
+				if t, ok := o.Ext.(*TypedArray); ok && t.typ < element.BigInt64 && t.typ != element.Float16 && !t.tracking && uint(i.C) < uint(t.length) {
 					if j, r, s := int(i.C), &regs[i.A], t.typ.Size(); t.offset+t.length*s <= len(t.data.data) {
 						b := t.data.data[t.offset+j*s:]
 						var x float64
@@ -864,17 +865,17 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 							x = math.Float64frombits(uint64(b[0]) | uint64(b[1])<<8 | uint64(b[2])<<16 | uint64(b[3])<<24 |
 								uint64(b[4])<<32 | uint64(b[5])<<40 | uint64(b[6])<<48 | uint64(b[7])<<56)
 						}
-						setNumber(r, x)
+						storage.SetNumber(r, x)
 						continue
 					}
 				}
 				// The same as OpGetIndex for a string.
-				if o.kind == kindString && o.flags&(objASCIIKnown|objASCII) == objASCIIKnown|objASCII && uint(i.C) < uint(len(o.str)) {
+				if o.Kind == kindString && o.Flags&(objASCIIKnown|objASCII) == objASCIIKnown|objASCII && uint(i.C) < uint(len(o.Text)) {
 					j := int(i.C)
-					if o.flags&objReversed != 0 {
-						j = len(o.str) - 1 - j
+					if o.Flags&objReversed != 0 {
+						j = len(o.Text) - 1 - j
 					}
-					regs[i.A] = ag.strings.ascii[o.str[j]]
+					regs[i.A] = ag.Strings.Ascii[o.Text[j]]
 					continue
 				}
 			}
@@ -882,10 +883,10 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			// OpSetIndexInt's case at the end of this switch has the same fast paths for the key in
 			// the instruction; a change to one belongs in the other.
 			v, k := regs[i.A], regs[i.B]
-			if o := v.o; o != nil && o.objectProperties != nil && k.o == numberObject {
-				if j := int(k.n); float64(j) == k.n && uint(j) < uint(len(o.elems)) {
-					if o.elems[j].o != holeObject {
-						o.elems[j] = regs[i.C]
+			if o := v.O; o != nil && o.ObjectProperties != nil && k.O == storage.NumberObject {
+				if j := int(k.N); float64(j) == k.N && uint(j) < uint(len(o.Elems)) {
+					if o.Elems[j].O != storage.HoleObject {
+						o.Elems[j] = regs[i.C]
 						continue
 					}
 					// A store into a hole takes the switch below.
@@ -895,10 +896,10 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				// typedArraySet, with every check before the data is loaded as in OpGetIndex. A
 				// number beyond the range of int64, NaN included, goes to the switch below, so that
 				// an integer element takes the low bytes of int64(f).
-				if t, ok := o.ext.(*TypedArray); ok && t.numberStore && t.typ != element.Float16 {
-					if j, x := int(k.n), regs[i.C]; x.o == numberObject && float64(j) == k.n && !t.tracking && uint(j) < uint(t.length) && numconv.InInt64Range(x.n) {
+				if t, ok := o.Ext.(*TypedArray); ok && t.numberStore && t.typ != element.Float16 {
+					if j, x := int(k.N), regs[i.C]; x.O == storage.NumberObject && float64(j) == k.N && !t.tracking && uint(j) < uint(t.length) && numconv.InInt64Range(x.N) {
 						if s := t.typ.Size(); t.offset+t.length*s <= len(t.data.data) {
-							b, f := t.data.data[t.offset+j*s:], x.n
+							b, f := t.data.data[t.offset+j*s:], x.N
 							// The most common types are tested first.
 							if u := uint64(int64(f)); t.typ == element.Int32 || t.typ == element.Uint32 {
 								_ = b[3]
@@ -950,179 +951,179 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 					break
 				}
 				// An append to a plain array that has room for it, as in the switch below, with the
-				// conditions of elemsResizable and newElementsPlain written out.
-				if j := int(k.n); j == len(o.elems) && j < cap(o.elems) &&
-					o.kind == kindArray && uint32(j) == o.length && o.flags == 0 && float64(j) == k.n && o.shape == ag.active.realm.shapes.array {
-					if a := ag.active.realm.intrinsics[IntrinsicArrayPrototype]; len(a.elems) == 0 && a.flags&objSparse == 0 {
-						if p := a.shape.proto; p == ag.active.realm.intrinsics[IntrinsicObjectPrototype] && len(p.elems) == 0 && p.flags&objSparse == 0 {
+				// conditions of ElemsResizable and NewElementsPlain written out.
+				if j := int(k.N); j == len(o.Elems) && j < cap(o.Elems) &&
+					o.Kind == kindArray && uint32(j) == o.Length && o.Flags == 0 && float64(j) == k.N && o.Shape == ag.active.realm.Shapes.Array {
+					if a := ag.active.realm.Intrinsics[IntrinsicArrayPrototype]; len(a.Elems) == 0 && a.Flags&objSparse == 0 {
+						if p := a.Shape.Proto; p == ag.active.realm.Intrinsics[IntrinsicObjectPrototype] && len(p.Elems) == 0 && p.Flags&objSparse == 0 {
 							if validateExec {
 								ag.active.checkAppend(o)
 							}
 							// Reading x first keeps i.C from being read again after the
 							// store to the length.
 							x := regs[i.C]
-							o.elems = o.elems[:j+1]
-							o.elems[j] = x
-							o.length++
+							o.Elems = o.Elems[:j+1]
+							o.Elems[j] = x
+							o.Length++
 							continue
 						}
 					}
 				}
 			}
 		case bytecode.OpAdd:
-			if x, y := regs[i.B], regs[i.C]; x.o == numberObject && y.o == numberObject {
-				setNumber(&regs[i.A], x.n+y.n)
+			if x, y := regs[i.B], regs[i.C]; x.O == storage.NumberObject && y.O == storage.NumberObject {
+				storage.SetNumber(&regs[i.A], x.N+y.N)
 				continue
 			}
 		case bytecode.OpSub:
-			if x, y := regs[i.B], regs[i.C]; x.o == numberObject && y.o == numberObject {
-				setNumber(&regs[i.A], x.n-y.n)
+			if x, y := regs[i.B], regs[i.C]; x.O == storage.NumberObject && y.O == storage.NumberObject {
+				storage.SetNumber(&regs[i.A], x.N-y.N)
 				continue
 			}
 		case bytecode.OpMul:
-			if x, y := regs[i.B], regs[i.C]; x.o == numberObject && y.o == numberObject {
-				setNumber(&regs[i.A], x.n*y.n)
+			if x, y := regs[i.B], regs[i.C]; x.O == storage.NumberObject && y.O == storage.NumberObject {
+				storage.SetNumber(&regs[i.A], x.N*y.N)
 				continue
 			}
 		case bytecode.OpDiv:
-			if x, y := regs[i.B], regs[i.C]; x.o == numberObject && y.o == numberObject {
-				setNumber(&regs[i.A], x.n/y.n)
+			if x, y := regs[i.B], regs[i.C]; x.O == storage.NumberObject && y.O == storage.NumberObject {
+				storage.SetNumber(&regs[i.A], x.N/y.N)
 				continue
 			}
 		case bytecode.OpMod:
-			if x, y := regs[i.B], regs[i.C]; x.o == numberObject && y.o == numberObject {
-				if xi, yi := int32(x.n), int32(y.n); xi > 0 && yi > 0 && float64(xi) == x.n && float64(yi) == y.n {
-					setNumber(&regs[i.A], float64(xi%yi))
+			if x, y := regs[i.B], regs[i.C]; x.O == storage.NumberObject && y.O == storage.NumberObject {
+				if xi, yi := int32(x.N), int32(y.N); xi > 0 && yi > 0 && float64(xi) == x.N && float64(yi) == y.N {
+					storage.SetNumber(&regs[i.A], float64(xi%yi))
 					continue
 				}
 			}
 		case bytecode.OpBitAnd:
-			if x, y := regs[i.B], regs[i.C]; x.o == numberObject && y.o == numberObject && numconv.InInt64Range(x.n) && numconv.InInt64Range(y.n) {
-				setNumber(&regs[i.A], float64(int32(int64(x.n))&int32(int64(y.n))))
+			if x, y := regs[i.B], regs[i.C]; x.O == storage.NumberObject && y.O == storage.NumberObject && numconv.InInt64Range(x.N) && numconv.InInt64Range(y.N) {
+				storage.SetNumber(&regs[i.A], float64(int32(int64(x.N))&int32(int64(y.N))))
 				continue
 			}
 		case bytecode.OpBitOr:
-			if x, y := regs[i.B], regs[i.C]; x.o == numberObject && y.o == numberObject && numconv.InInt64Range(x.n) && numconv.InInt64Range(y.n) {
-				setNumber(&regs[i.A], float64(int32(int64(x.n))|int32(int64(y.n))))
+			if x, y := regs[i.B], regs[i.C]; x.O == storage.NumberObject && y.O == storage.NumberObject && numconv.InInt64Range(x.N) && numconv.InInt64Range(y.N) {
+				storage.SetNumber(&regs[i.A], float64(int32(int64(x.N))|int32(int64(y.N))))
 				continue
 			}
 		case bytecode.OpBitXor:
-			if x, y := regs[i.B], regs[i.C]; x.o == numberObject && y.o == numberObject && numconv.InInt64Range(x.n) && numconv.InInt64Range(y.n) {
-				setNumber(&regs[i.A], float64(int32(int64(x.n))^int32(int64(y.n))))
+			if x, y := regs[i.B], regs[i.C]; x.O == storage.NumberObject && y.O == storage.NumberObject && numconv.InInt64Range(x.N) && numconv.InInt64Range(y.N) {
+				storage.SetNumber(&regs[i.A], float64(int32(int64(x.N))^int32(int64(y.N))))
 				continue
 			}
 		case bytecode.OpShl:
-			if x, y := regs[i.B], regs[i.C]; x.o == numberObject && y.o == numberObject && numconv.InInt64Range(x.n) && numconv.InInt64Range(y.n) {
-				setNumber(&regs[i.A], float64(int32(int64(x.n))<<(uint32(int64(y.n))&31)))
+			if x, y := regs[i.B], regs[i.C]; x.O == storage.NumberObject && y.O == storage.NumberObject && numconv.InInt64Range(x.N) && numconv.InInt64Range(y.N) {
+				storage.SetNumber(&regs[i.A], float64(int32(int64(x.N))<<(uint32(int64(y.N))&31)))
 				continue
 			}
 		case bytecode.OpShr:
-			if x, y := regs[i.B], regs[i.C]; x.o == numberObject && y.o == numberObject && numconv.InInt64Range(x.n) && numconv.InInt64Range(y.n) {
-				setNumber(&regs[i.A], float64(int32(int64(x.n))>>(uint32(int64(y.n))&31)))
+			if x, y := regs[i.B], regs[i.C]; x.O == storage.NumberObject && y.O == storage.NumberObject && numconv.InInt64Range(x.N) && numconv.InInt64Range(y.N) {
+				storage.SetNumber(&regs[i.A], float64(int32(int64(x.N))>>(uint32(int64(y.N))&31)))
 				continue
 			}
 		case bytecode.OpUShr:
-			if x, y := regs[i.B], regs[i.C]; x.o == numberObject && y.o == numberObject && numconv.InInt64Range(x.n) && numconv.InInt64Range(y.n) {
-				setNumber(&regs[i.A], float64(uint32(int64(x.n))>>(uint32(int64(y.n))&31)))
+			if x, y := regs[i.B], regs[i.C]; x.O == storage.NumberObject && y.O == storage.NumberObject && numconv.InInt64Range(x.N) && numconv.InInt64Range(y.N) {
+				storage.SetNumber(&regs[i.A], float64(uint32(int64(x.N))>>(uint32(int64(y.N))&31)))
 				continue
 			}
 		case bytecode.OpAddK:
-			if x := regs[i.B]; x.o == numberObject {
-				setNumber(&regs[i.A], x.n+fp.consts[i.C].n)
+			if x := regs[i.B]; x.O == storage.NumberObject {
+				storage.SetNumber(&regs[i.A], x.N+fp.Consts[i.C].N)
 				continue
 			}
 		case bytecode.OpSubK:
-			if x := regs[i.B]; x.o == numberObject {
-				setNumber(&regs[i.A], x.n-fp.consts[i.C].n)
+			if x := regs[i.B]; x.O == storage.NumberObject {
+				storage.SetNumber(&regs[i.A], x.N-fp.Consts[i.C].N)
 				continue
 			}
 		case bytecode.OpMulK:
-			if x := regs[i.B]; x.o == numberObject {
-				setNumber(&regs[i.A], x.n*fp.consts[i.C].n)
+			if x := regs[i.B]; x.O == storage.NumberObject {
+				storage.SetNumber(&regs[i.A], x.N*fp.Consts[i.C].N)
 				continue
 			}
 		case bytecode.OpDivK:
-			if x := regs[i.B]; x.o == numberObject {
-				setNumber(&regs[i.A], x.n/fp.consts[i.C].n)
+			if x := regs[i.B]; x.O == storage.NumberObject {
+				storage.SetNumber(&regs[i.A], x.N/fp.Consts[i.C].N)
 				continue
 			}
 		case bytecode.OpModK:
-			if x, y := regs[i.B], fp.consts[i.C]; x.o == numberObject {
-				if xi, yi := int32(x.n), int32(y.n); xi > 0 && yi > 0 && float64(xi) == x.n && float64(yi) == y.n {
-					setNumber(&regs[i.A], float64(xi%yi))
+			if x, y := regs[i.B], fp.Consts[i.C]; x.O == storage.NumberObject {
+				if xi, yi := int32(x.N), int32(y.N); xi > 0 && yi > 0 && float64(xi) == x.N && float64(yi) == y.N {
+					storage.SetNumber(&regs[i.A], float64(xi%yi))
 					continue
 				}
 			}
 		case bytecode.OpBitAndK:
-			if x := regs[i.B]; x.o == numberObject && numconv.InInt64Range(x.n) {
-				setNumber(&regs[i.A], float64(int32(int64(x.n))&int32(fp.consts[i.C].n)))
+			if x := regs[i.B]; x.O == storage.NumberObject && numconv.InInt64Range(x.N) {
+				storage.SetNumber(&regs[i.A], float64(int32(int64(x.N))&int32(fp.Consts[i.C].N)))
 				continue
 			}
 		case bytecode.OpBitOrK:
-			if x := regs[i.B]; x.o == numberObject && numconv.InInt64Range(x.n) {
-				setNumber(&regs[i.A], float64(int32(int64(x.n))|int32(fp.consts[i.C].n)))
+			if x := regs[i.B]; x.O == storage.NumberObject && numconv.InInt64Range(x.N) {
+				storage.SetNumber(&regs[i.A], float64(int32(int64(x.N))|int32(fp.Consts[i.C].N)))
 				continue
 			}
 		case bytecode.OpShlK:
-			if x := regs[i.B]; x.o == numberObject && numconv.InInt64Range(x.n) {
-				setNumber(&regs[i.A], float64(int32(int64(x.n))<<(uint32(fp.consts[i.C].n)&31)))
+			if x := regs[i.B]; x.O == storage.NumberObject && numconv.InInt64Range(x.N) {
+				storage.SetNumber(&regs[i.A], float64(int32(int64(x.N))<<(uint32(fp.Consts[i.C].N)&31)))
 				continue
 			}
 		case bytecode.OpShrK:
-			if x := regs[i.B]; x.o == numberObject && numconv.InInt64Range(x.n) {
-				setNumber(&regs[i.A], float64(int32(int64(x.n))>>(uint32(fp.consts[i.C].n)&31)))
+			if x := regs[i.B]; x.O == storage.NumberObject && numconv.InInt64Range(x.N) {
+				storage.SetNumber(&regs[i.A], float64(int32(int64(x.N))>>(uint32(fp.Consts[i.C].N)&31)))
 				continue
 			}
 		case bytecode.OpUShrK:
-			if x := regs[i.B]; x.o == numberObject && numconv.InInt64Range(x.n) {
-				setNumber(&regs[i.A], float64(uint32(int64(x.n))>>(uint32(fp.consts[i.C].n)&31)))
+			if x := regs[i.B]; x.O == storage.NumberObject && numconv.InInt64Range(x.N) {
+				storage.SetNumber(&regs[i.A], float64(uint32(int64(x.N))>>(uint32(fp.Consts[i.C].N)&31)))
 				continue
 			}
 		case bytecode.OpNeg:
-			if x := regs[i.B]; x.o == numberObject {
-				setNumber(&regs[i.A], -x.n)
+			if x := regs[i.B]; x.O == storage.NumberObject {
+				storage.SetNumber(&regs[i.A], -x.N)
 				continue
 			}
 		case bytecode.OpInc:
-			if x := regs[i.B]; x.o == numberObject {
-				setNumber(&regs[i.A], x.n+1)
+			if x := regs[i.B]; x.O == storage.NumberObject {
+				storage.SetNumber(&regs[i.A], x.N+1)
 				continue
 			}
 		case bytecode.OpDec:
-			if x := regs[i.B]; x.o == numberObject {
-				setNumber(&regs[i.A], x.n-1)
+			if x := regs[i.B]; x.O == storage.NumberObject {
+				storage.SetNumber(&regs[i.A], x.N-1)
 				continue
 			}
 		case bytecode.OpPostInc:
-			if x := regs[i.B]; x.o == numberObject {
-				setNumber(&regs[i.A], x.n)
-				setNumber(&regs[i.B], x.n+1)
+			if x := regs[i.B]; x.O == storage.NumberObject {
+				storage.SetNumber(&regs[i.A], x.N)
+				storage.SetNumber(&regs[i.B], x.N+1)
 				continue
 			}
 		case bytecode.OpPostDec:
-			if x := regs[i.B]; x.o == numberObject {
-				setNumber(&regs[i.A], x.n)
-				setNumber(&regs[i.B], x.n-1)
+			if x := regs[i.B]; x.O == storage.NumberObject {
+				storage.SetNumber(&regs[i.A], x.N)
+				storage.SetNumber(&regs[i.B], x.N-1)
 				continue
 			}
 		case bytecode.OpLt:
-			if x, y := regs[i.B], regs[i.C]; x.o == numberObject && y.o == numberObject {
-				regs[i.A] = Bool(x.n < y.n)
+			if x, y := regs[i.B], regs[i.C]; x.O == storage.NumberObject && y.O == storage.NumberObject {
+				regs[i.A] = storage.Bool(x.N < y.N)
 				continue
 			}
 		case bytecode.OpLe:
-			if x, y := regs[i.B], regs[i.C]; x.o == numberObject && y.o == numberObject {
-				regs[i.A] = Bool(x.n <= y.n)
+			if x, y := regs[i.B], regs[i.C]; x.O == storage.NumberObject && y.O == storage.NumberObject {
+				regs[i.A] = storage.Bool(x.N <= y.N)
 				continue
 			}
 		case bytecode.OpGt:
-			if x, y := regs[i.B], regs[i.C]; x.o == numberObject && y.o == numberObject {
-				regs[i.A] = Bool(x.n > y.n)
+			if x, y := regs[i.B], regs[i.C]; x.O == storage.NumberObject && y.O == storage.NumberObject {
+				regs[i.A] = storage.Bool(x.N > y.N)
 				continue
 			}
 		case bytecode.OpGe:
-			if x, y := regs[i.B], regs[i.C]; x.o == numberObject && y.o == numberObject {
-				regs[i.A] = Bool(x.n >= y.n)
+			if x, y := regs[i.B], regs[i.C]; x.O == storage.NumberObject && y.O == storage.NumberObject {
+				regs[i.A] = storage.Bool(x.N >= y.N)
 				continue
 			}
 		case bytecode.OpEq, bytecode.OpNe:
@@ -1131,36 +1132,36 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			// interned strings, which differ in content when they are different objects.
 			x, y := regs[i.B], regs[i.C]
 			eq, known := false, true
-			if x.o == numberObject && y.o == numberObject {
-				eq = x.n == y.n
-			} else if x.o == y.o && math.Float64bits(x.n) == math.Float64bits(y.n) {
+			if x.O == storage.NumberObject && y.O == storage.NumberObject {
+				eq = x.N == y.N
+			} else if x.O == y.O && math.Float64bits(x.N) == math.Float64bits(y.N) {
 				eq = true
 			} else if xn, yn := x.IsNullish(), y.IsNullish(); xn || yn {
-				eq = xn && yn || x.isHTMLDDA() || y.isHTMLDDA()
-			} else if x.o.kind >= kindFirstObject && y.o.kind >= kindFirstObject {
-				eq = x.o == y.o
-			} else if x.o == y.o || x.o.flags&y.o.flags&objInterned == 0 {
+				eq = xn && yn || x.IsHTMLDDA() || y.IsHTMLDDA()
+			} else if x.O.Kind >= kindFirstObject && y.O.Kind >= kindFirstObject {
+				eq = x.O == y.O
+			} else if x.O == y.O || x.O.Flags&y.O.Flags&objInterned == 0 {
 				known = false
 			}
 			if known {
-				regs[i.A] = Bool(eq == (i.Op == bytecode.OpEq))
+				regs[i.A] = storage.Bool(eq == (i.Op == bytecode.OpEq))
 				continue
 			}
 		case bytecode.OpNot:
 			// ToBoolean, for the kinds it can tell without a call, as in OpJumpIf.
-			if v := regs[i.B]; v.o == numberObject {
-				regs[i.A] = Bool(v.n == 0 || v.n != v.n)
+			if v := regs[i.B]; v.O == storage.NumberObject {
+				regs[i.A] = storage.Bool(v.N == 0 || v.N != v.N)
 				continue
-			} else if o := v.o; o == nil || o.kind <= kindFalse {
-				regs[i.A] = Bool(true)
+			} else if o := v.O; o == nil || o.Kind <= kindFalse {
+				regs[i.A] = storage.Bool(true)
 				continue
-			} else if o.kind == kindTrue || o.kind >= kindObject {
+			} else if o.Kind == kindTrue || o.Kind >= kindObject {
 				// kindHTMLDDA is below kindObject and takes the slow path.
-				regs[i.A] = Bool(false)
+				regs[i.A] = storage.Bool(false)
 				continue
 			}
 		case bytecode.OpJump:
-			if int(i.A) >= pc || !ag.interrupt.Load() {
+			if int(i.A) >= pc || !ag.InterruptFlag.Load() {
 				pc = int(i.A)
 				continue
 			}
@@ -1168,11 +1169,11 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			// ToBoolean, for the kinds it can tell without a call.
 			v := regs[i.B]
 			t, known := false, true
-			if o := v.o; o == numberObject {
-				t = v.n != 0 && v.n == v.n
+			if o := v.O; o == storage.NumberObject {
+				t = v.N != 0 && v.N == v.N
 			} else if o == nil {
 				t = false
-			} else if k := o.kind; k == kindTrue {
+			} else if k := o.Kind; k == kindTrue {
 				t = true
 			} else if k <= kindFalse {
 				t = false
@@ -1189,49 +1190,49 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				continue
 			}
 		case bytecode.OpJumpIfNullish:
-			if x := regs[i.B]; x.IsNullish() || i.C != 0 && x.isHTMLDDA() {
+			if x := regs[i.B]; x.IsNullish() || i.C != 0 && x.IsHTMLDDA() {
 				pc = int(i.A)
 			}
 			continue
 		case bytecode.OpJumpIfNotNullish:
-			if x := regs[i.B]; !x.IsNullish() && (i.C == 0 || !x.isHTMLDDA()) {
+			if x := regs[i.B]; !x.IsNullish() && (i.C == 0 || !x.IsHTMLDDA()) {
 				pc = int(i.A)
 			}
 			continue
 		case bytecode.OpJumpIfUndef:
-			if regs[i.B].o == nil {
+			if regs[i.B].O == nil {
 				pc = int(i.A)
 			}
 			continue
 		case bytecode.OpJumpIfNotUndef:
-			if regs[i.B].o != nil {
+			if regs[i.B].O != nil {
 				pc = int(i.A)
 			}
 			continue
 		case bytecode.OpJumpNotLt:
-			if x, y := regs[i.B], regs[i.C]; x.o == numberObject && y.o == numberObject {
-				if !(x.n < y.n) {
+			if x, y := regs[i.B], regs[i.C]; x.O == storage.NumberObject && y.O == storage.NumberObject {
+				if !(x.N < y.N) {
 					pc = int(i.A)
 				}
 				continue
 			}
 		case bytecode.OpJumpNotLe:
-			if x, y := regs[i.B], regs[i.C]; x.o == numberObject && y.o == numberObject {
-				if !(x.n <= y.n) {
+			if x, y := regs[i.B], regs[i.C]; x.O == storage.NumberObject && y.O == storage.NumberObject {
+				if !(x.N <= y.N) {
 					pc = int(i.A)
 				}
 				continue
 			}
 		case bytecode.OpJumpNotGt:
-			if x, y := regs[i.B], regs[i.C]; x.o == numberObject && y.o == numberObject {
-				if !(x.n > y.n) {
+			if x, y := regs[i.B], regs[i.C]; x.O == storage.NumberObject && y.O == storage.NumberObject {
+				if !(x.N > y.N) {
 					pc = int(i.A)
 				}
 				continue
 			}
 		case bytecode.OpJumpNotGe:
-			if x, y := regs[i.B], regs[i.C]; x.o == numberObject && y.o == numberObject {
-				if !(x.n >= y.n) {
+			if x, y := regs[i.B], regs[i.C]; x.O == storage.NumberObject && y.O == storage.NumberObject {
+				if !(x.N >= y.N) {
 					pc = int(i.A)
 				}
 				continue
@@ -1240,15 +1241,15 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			// The same cases as OpEq.
 			x, y := regs[i.B], regs[i.C]
 			eq, known := false, true
-			if x.o == numberObject && y.o == numberObject {
-				eq = x.n == y.n
-			} else if x.o == y.o && math.Float64bits(x.n) == math.Float64bits(y.n) {
+			if x.O == storage.NumberObject && y.O == storage.NumberObject {
+				eq = x.N == y.N
+			} else if x.O == y.O && math.Float64bits(x.N) == math.Float64bits(y.N) {
 				eq = true
 			} else if xn, yn := x.IsNullish(), y.IsNullish(); xn || yn {
-				eq = xn && yn || x.isHTMLDDA() || y.isHTMLDDA()
-			} else if x.o.kind >= kindFirstObject && y.o.kind >= kindFirstObject {
-				eq = x.o == y.o
-			} else if x.o == y.o || x.o.flags&y.o.flags&objInterned == 0 {
+				eq = xn && yn || x.IsHTMLDDA() || y.IsHTMLDDA()
+			} else if x.O.Kind >= kindFirstObject && y.O.Kind >= kindFirstObject {
+				eq = x.O == y.O
+			} else if x.O == y.O || x.O.Flags&y.O.Flags&objInterned == 0 {
 				known = false
 			}
 			if known {
@@ -1260,92 +1261,92 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 		case bytecode.OpJumpNotSEq:
 			// The cases of IsStrictlyEqual that need no call: two numbers, one value twice, and two
 			// interned strings, which differ in content when they are different objects.
-			if x, y := regs[i.B], regs[i.C]; x.o == numberObject && y.o == numberObject {
-				if x.n != y.n {
+			if x, y := regs[i.B], regs[i.C]; x.O == storage.NumberObject && y.O == storage.NumberObject {
+				if x.N != y.N {
 					pc = int(i.A)
 				}
 				continue
-			} else if x.o == y.o && math.Float64bits(x.n) == math.Float64bits(y.n) {
+			} else if x.O == y.O && math.Float64bits(x.N) == math.Float64bits(y.N) {
 				continue
-			} else if x.o != y.o && x.o != nil && y.o != nil && x.o.flags&y.o.flags&objInterned != 0 {
+			} else if x.O != y.O && x.O != nil && y.O != nil && x.O.Flags&y.O.Flags&objInterned != 0 {
 				pc = int(i.A)
 				continue
 			}
 		case bytecode.OpJumpNotSNe:
 			// The same cases as OpJumpNotSEq.
-			if x, y := regs[i.B], regs[i.C]; x.o == numberObject && y.o == numberObject {
-				if x.n == y.n {
+			if x, y := regs[i.B], regs[i.C]; x.O == storage.NumberObject && y.O == storage.NumberObject {
+				if x.N == y.N {
 					pc = int(i.A)
 				}
 				continue
-			} else if x.o == y.o && math.Float64bits(x.n) == math.Float64bits(y.n) {
+			} else if x.O == y.O && math.Float64bits(x.N) == math.Float64bits(y.N) {
 				pc = int(i.A)
 				continue
-			} else if x.o != y.o && x.o != nil && y.o != nil && x.o.flags&y.o.flags&objInterned != 0 {
+			} else if x.O != y.O && x.O != nil && y.O != nil && x.O.Flags&y.O.Flags&objInterned != 0 {
 				continue
 			}
 		case bytecode.OpStrictEq, bytecode.OpStrictNe:
 			// The same cases as OpJumpNotSEq.
-			if x, y := regs[i.B], regs[i.C]; x.o == numberObject && y.o == numberObject {
-				regs[i.A] = Bool((x.n == y.n) == (i.Op == bytecode.OpStrictEq))
+			if x, y := regs[i.B], regs[i.C]; x.O == storage.NumberObject && y.O == storage.NumberObject {
+				regs[i.A] = storage.Bool((x.N == y.N) == (i.Op == bytecode.OpStrictEq))
 				continue
-			} else if x.o == y.o && math.Float64bits(x.n) == math.Float64bits(y.n) {
-				regs[i.A] = Bool(i.Op == bytecode.OpStrictEq)
+			} else if x.O == y.O && math.Float64bits(x.N) == math.Float64bits(y.N) {
+				regs[i.A] = storage.Bool(i.Op == bytecode.OpStrictEq)
 				continue
-			} else if x.o != y.o && x.o != nil && y.o != nil && x.o.flags&y.o.flags&objInterned != 0 {
-				regs[i.A] = Bool(i.Op != bytecode.OpStrictEq)
+			} else if x.O != y.O && x.O != nil && y.O != nil && x.O.Flags&y.O.Flags&objInterned != 0 {
+				regs[i.A] = storage.Bool(i.Op != bytecode.OpStrictEq)
 				continue
 			}
 		case bytecode.OpJumpNotLtK:
-			if x := regs[i.B]; x.o == numberObject {
-				if !(x.n < fp.consts[i.C].n) {
+			if x := regs[i.B]; x.O == storage.NumberObject {
+				if !(x.N < fp.Consts[i.C].N) {
 					pc = int(i.A)
 				}
 				continue
 			}
 		case bytecode.OpJumpNotLeK:
-			if x := regs[i.B]; x.o == numberObject {
-				if !(x.n <= fp.consts[i.C].n) {
+			if x := regs[i.B]; x.O == storage.NumberObject {
+				if !(x.N <= fp.Consts[i.C].N) {
 					pc = int(i.A)
 				}
 				continue
 			}
 		case bytecode.OpJumpNotGtK:
-			if x := regs[i.B]; x.o == numberObject {
-				if !(x.n > fp.consts[i.C].n) {
+			if x := regs[i.B]; x.O == storage.NumberObject {
+				if !(x.N > fp.Consts[i.C].N) {
 					pc = int(i.A)
 				}
 				continue
 			}
 		case bytecode.OpJumpNotGeK:
-			if x := regs[i.B]; x.o == numberObject {
-				if !(x.n >= fp.consts[i.C].n) {
+			if x := regs[i.B]; x.O == storage.NumberObject {
+				if !(x.N >= fp.Consts[i.C].N) {
 					pc = int(i.A)
 				}
 				continue
 			}
 		case bytecode.OpJumpNotSEqK:
-			if x := regs[i.B]; x.o != numberObject || x.n != fp.consts[i.C].n {
+			if x := regs[i.B]; x.O != storage.NumberObject || x.N != fp.Consts[i.C].N {
 				pc = int(i.A)
 			}
 			continue
 		case bytecode.OpJumpNotSNeK:
-			if x := regs[i.B]; x.o == numberObject && x.n == fp.consts[i.C].n {
+			if x := regs[i.B]; x.O == storage.NumberObject && x.N == fp.Consts[i.C].N {
 				pc = int(i.A)
 			}
 			continue
 		case bytecode.OpJumpNotSEqP:
-			if regs[i.B].o != primObjects[i.C] {
+			if regs[i.B].O != primObjects[i.C] {
 				pc = int(i.A)
 			}
 			continue
 		case bytecode.OpJumpNotSNeP:
-			if regs[i.B].o == primObjects[i.C] {
+			if regs[i.B].O == primObjects[i.C] {
 				pc = int(i.A)
 			}
 			continue
 		case bytecode.OpJumpIfInt:
-			if x := regs[i.B]; x.o == numberObject && x.n == float64(i.C) {
+			if x := regs[i.B]; x.O == storage.NumberObject && x.N == float64(i.C) {
 				pc = int(i.A)
 			}
 			continue
@@ -1353,18 +1354,18 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			// An ordinary function whose prototype property the cache holds, with the
 			// @@hasInstance of %Function.prototype%: OrdinaryHasInstance walks the prototype
 			// chain of b, unless a proxy is on it.
-			if co := regs[i.C].o; co != nil && !ag.interrupt.Load() {
-				c := &fp.caches[fp.code[pc].A]
-				if co.shape == c.shape && c.kind == cacheOwn && c.epoch == ag.protoEpoch && co.class == classFunction && co.fn != nil && co.fn.bound == nil {
-					if p := co.slots[c.slot].o; p != nil && p.kind >= kindFirstObject {
+			if co := regs[i.C].O; co != nil && !ag.InterruptFlag.Load() {
+				c := &fp.Caches[fp.Code[pc].A]
+				if co.Shape == c.Shape && c.Kind == cacheOwn && c.Epoch == ag.ProtoEpoch && co.Class == classFunction && co.Fn != nil && co.Fn.Bound == nil {
+					if p := co.Slots[c.Slot].O; p != nil && p.Kind >= kindFirstObject {
 						r, known := false, true
-						if o := regs[i.B].o; o != nil && o.kind >= kindFirstObject {
+						if o := regs[i.B].O; o != nil && o.Kind >= kindFirstObject {
 							for h := o; ; {
-								if h.class == classProxy {
+								if h.Class == classProxy {
 									known = false
 									break
 								}
-								if h = h.shape.proto; h == nil {
+								if h = h.Shape.Proto; h == nil {
 									break
 								}
 								if h == p {
@@ -1375,9 +1376,9 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 						}
 						if known {
 							if validateExec {
-								ag.active.checkInstanceofHit(fp, pc-1, regs[i.B], co, &co.slots[c.slot], r)
+								ag.active.checkInstanceofHit(fp, pc-1, regs[i.B], co, &co.Slots[c.Slot], r)
 							}
-							regs[i.A] = Bool(r)
+							regs[i.A] = storage.Bool(r)
 							pc++
 							continue
 						}
@@ -1385,23 +1386,23 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				}
 			}
 		case bytecode.OpArrayPush:
-			if o := regs[i.A].o; len(o.elems) < cap(o.elems) {
-				n := len(o.elems)
-				o.elems = o.elems[:n+1]
-				o.elems[n] = regs[i.B]
-				o.length = uint32(n + 1)
+			if o := regs[i.A].O; len(o.Elems) < cap(o.Elems) {
+				n := len(o.Elems)
+				o.Elems = o.Elems[:n+1]
+				o.Elems[n] = regs[i.B]
+				o.Length = uint32(n + 1)
 				continue
 			}
 		case bytecode.OpDefineFieldK:
-			o := regs[i.A].o
-			if c := &fp.caches[i.B]; o.shape == c.shape && c.kind == cacheAdd {
-				if n := len(o.slots); n < cap(o.slots) {
+			o := regs[i.A].O
+			if c := &fp.Caches[i.B]; o.Shape == c.Shape && c.Kind == cacheAdd {
+				if n := len(o.Slots); n < cap(o.Slots) {
 					if validateExec {
-						ag.active.checkDefineHit(fp, pc-1, o, fp.keys[i.B], c.next)
+						ag.active.checkDefineHit(fp, pc-1, o, fp.Keys[i.B], c.Next)
 					}
-					o.shape = c.next
-					o.slots = o.slots[:n+1]
-					o.slots[n] = regs[i.C]
+					o.Shape = c.Next
+					o.Slots = o.Slots[:n+1]
+					o.Slots[n] = regs[i.C]
 					continue
 				}
 			}
@@ -1414,31 +1415,31 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				a := i.A
 				v := regs[i.B]
 				regs[a+1] = v
-				o := v.o
+				o := v.O
 				if o == nil {
 					break
 				}
-				c := &fp.caches[i.C]
-				e := &c.cacheEntry
-				if o.shape != e.shape {
-					e = &c.second
-					if o.shape != e.shape {
+				c := &fp.Caches[i.C]
+				e := &c.CacheEntry
+				if o.Shape != e.Shape {
+					e = &c.Second
+					if o.Shape != e.Shape {
 						break
 					}
 				}
 				var m Value
-				if e.kind != cacheOwn {
-					if e.kind != cacheProto || e.epoch != ag.protoEpoch {
+				if e.Kind != cacheOwn {
+					if e.Kind != cacheProto || e.Epoch != ag.ProtoEpoch {
 						break
 					}
-					m = *e.ref
+					m = *e.Ref
 				} else {
-					m = o.slots[e.slot]
+					m = o.Slots[e.Slot]
 				}
 				if validateExec {
-					ag.active.checkEntryRead(fp, pc-1, v, o, fp.keys[i.C], e)
+					ag.active.checkEntryRead(fp, pc-1, v, o, fp.Keys[i.C], e)
 				}
-				n := &fp.code[pc]
+				n := &fp.Code[pc]
 				regs[a] = m
 				if n.Op != bytecode.OpCall || n.B != a {
 					continue
@@ -1446,39 +1447,39 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				i = n
 				pc++
 			}
-			if ag.interrupt.Load() {
+			if ag.InterruptFlag.Load() {
 				break
 			}
 			// f is the callee and first the register of its first argument. The this value is in
 			// the register before first, and is read only once the frame is certain, so that it
 			// takes no registers while the frame is checked.
 			b := int(i.B)
-			f, first, argc := regs[b].o, b+2, int(i.C)
+			f, first, argc := regs[b].O, b+2, int(i.C)
 			if i.Op == bytecode.OpCallCall {
-				if f != ag.active.realm.intrinsics[IntrinsicFunctionPrototypeCall] {
+				if f != ag.active.realm.Intrinsics[IntrinsicFunctionPrototypeCall] {
 					f = nil
 				} else {
-					f, first, argc = regs[b+1].o, b+3, max(argc-1, 0)
+					f, first, argc = regs[b+1].O, b+3, max(argc-1, 0)
 				}
 			}
-			if !fp.heapRegs && f != nil && f.fn != nil {
-				if c := f.fn.code; c != nil && c.inlineFrames && c.realm == fp.realm {
+			if !fp.HeapRegs && f != nil && f.Fn != nil {
+				if c := f.Fn.Code; c != nil && c.InlineFrames && c.Realm == fp.Realm {
 					n := len(ag.frames)
 					argBase := ag.frames[n-1].base + first
 					// The caller's registers already cover all the arguments.
-					end := argBase + c.nregs + 1
+					end := argBase + c.Nregs + 1
 					// The frames have room for at most maxFrames.
-					if (argc <= c.nparams || !c.needsExtra) && end+stackHeadroom <= len(ag.stack) && n < cap(ag.frames) {
+					if (argc <= c.Nparams || !c.NeedsExtra) && end+stackHeadroom <= len(ag.stack) && n < cap(ag.frames) {
 						var this Value
 						if i.Op != bytecode.OpCallUndef && (i.Op != bytecode.OpCallCall || i.C > 0) {
 							this = regs[first-1]
 						}
-						if site := c.returnedProperty; site != nil && this.IsObject() {
-							if e := site.entry(this.o.shape); e != nil && e.kind == cacheOwn {
+						if site := c.ReturnedProperty; site != nil && this.IsObject() {
+							if e := site.Entry(this.O.Shape); e != nil && e.Kind == cacheOwn {
 								if validateExec {
 									ag.active.checkReturnedProperty(c, this, e)
 								}
-								regs[i.A] = this.o.slots[e.slot]
+								regs[i.A] = this.O.Slots[e.Slot]
 								continue
 							}
 						}
@@ -1488,7 +1489,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 						// way, and a change to one of the three belongs in the others.
 						ag.frames[n-1].pc = pc
 						ag.stackHigh = max(ag.stackHigh, end)
-						if from, to := c.firstCleared(argc), c.nclear; from < to {
+						if from, to := c.FirstCleared(argc), c.Nclear; from < to {
 							clearFrameRegs(ag.stack[argBase:], from, to)
 						}
 						ag.frames = ag.frames[:n+1]
@@ -1500,7 +1501,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 						ag.sp = end
 						fp, pc = c, 0
 						regs = ag.stack[argBase:end]
-						if r := c.thisReg; r >= 0 && (!c.thisSloppy || this.o != nil && this.o.kind >= kindFirstObject) {
+						if r := c.ThisReg; r >= 0 && (!c.ThisSloppy || this.O != nil && this.O.Kind >= kindFirstObject) {
 							// Do what the first instruction does, and start after it.
 							regs[r] = this
 							pc = 1
@@ -1510,12 +1511,12 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				} else if c == nil && argc == 2 {
 					// Math.min and Math.max of two numbers. Go's min and max of floats give NaN
 					// when an argument is NaN and order -0 below +0, as the specification does.
-					if info := f.fn.info; info != nil && info.extremum != ExtremumNone {
-						if x, y := regs[first], regs[first+1]; x.o == numberObject && y.o == numberObject {
-							if info.extremum == ExtremumMin {
-								setNumber(&regs[i.A], min(x.n, y.n))
+					if info := f.Fn.Info; info != nil && info.Extremum != ExtremumNone {
+						if x, y := regs[first], regs[first+1]; x.O == storage.NumberObject && y.O == storage.NumberObject {
+							if info.Extremum == ExtremumMin {
+								storage.SetNumber(&regs[i.A], min(x.N, y.N))
 							} else {
-								setNumber(&regs[i.A], max(x.n, y.n))
+								storage.SetNumber(&regs[i.A], max(x.N, y.N))
 							}
 							continue
 						}
@@ -1534,8 +1535,8 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				r = regs[i.A]
 			}
 			n := len(ag.frames) - 1
-			if done := &ag.frames[n]; done.plainReturn && n != stop && (len(ag.openUpvals) == 0 || ag.openUpvals[len(ag.openUpvals)-1].index < done.base) {
-				if done.isNew && (r.o == nil || r.o.kind < kindFirstObject) {
+			if done := &ag.frames[n]; done.plainReturn && n != stop && (len(ag.openUpvals) == 0 || ag.openUpvals[len(ag.openUpvals)-1].Index < done.base) {
+				if done.isNew && (r.O == nil || r.O.Kind < kindFirstObject) {
 					r = done.this
 				}
 				ret := done.ret
@@ -1543,20 +1544,20 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				fr := &ag.frames[n-1]
 				fp = fr.fp
 				pc = fr.pc
-				if fp.heapRegs {
+				if fp.HeapRegs {
 					regs = fr.gen.regs
 					ag.sp = fr.base
 				} else {
-					regs = ag.stack[fr.base : fr.base+fp.nregs+1]
-					ag.sp = fr.base + fp.nregs + 1
+					regs = ag.stack[fr.base : fr.base+fp.Nregs+1]
+					ag.sp = fr.base + fp.Nregs + 1
 				}
 				regs[ret] = r
 				continue
 			}
 		case bytecode.OpGetArgsLength:
 			// The argument count, while the arguments object is not materialized.
-			if a := &regs[i.A]; regs[i.B].o == nil {
-				setNumber(a, float64(ag.frames[len(ag.frames)-1].argc))
+			if a := &regs[i.A]; regs[i.B].O == nil {
+				storage.SetNumber(a, float64(ag.frames[len(ag.frames)-1].argc))
 				continue
 			}
 		case bytecode.OpGetArgsIndex:
@@ -1564,10 +1565,10 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			// it: in a parameter register, or among the surplus arguments below the registers.
 			// The destination is read before the tests and the argument after them, as in
 			// OpGetIndex.
-			if a, k := &regs[i.A], regs[i.C]; regs[i.B].o == nil && k.o == numberObject {
+			if a, k := &regs[i.A], regs[i.C]; regs[i.B].O == nil && k.O == storage.NumberObject {
 				fr := &ag.frames[len(ag.frames)-1]
-				if j := int(k.n); float64(j) == k.n && uint(j) < uint(fr.argc) {
-					if n := fp.nparams; j < n {
+				if j := int(k.N); float64(j) == k.N && uint(j) < uint(fr.argc) {
+					if n := fp.Nparams; j < n {
 						*a = regs[j]
 					} else {
 						*a = ag.stack[fr.extraBase+j-n]
@@ -1577,19 +1578,19 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			}
 		case bytecode.OpSetIndexInt, bytecode.OpSetIndexIntStrict:
 			// The fast paths of OpSetIndex's case, in the same order, for the key b.
-			if o := regs[i.A].o; o != nil && o.objectProperties != nil {
+			if o := regs[i.A].O; o != nil && o.ObjectProperties != nil {
 				j := int(i.B)
-				if uint(j) < uint(len(o.elems)) {
-					if o.elems[j].o != holeObject {
-						o.elems[j] = regs[i.C]
+				if uint(j) < uint(len(o.Elems)) {
+					if o.Elems[j].O != storage.HoleObject {
+						o.Elems[j] = regs[i.C]
 						continue
 					}
 					break
 				}
-				if t, ok := o.ext.(*TypedArray); ok && t.numberStore && t.typ != element.Float16 {
-					if x := regs[i.C]; x.o == numberObject && !t.tracking && uint(j) < uint(t.length) && numconv.InInt64Range(x.n) {
+				if t, ok := o.Ext.(*TypedArray); ok && t.numberStore && t.typ != element.Float16 {
+					if x := regs[i.C]; x.O == storage.NumberObject && !t.tracking && uint(j) < uint(t.length) && numconv.InInt64Range(x.N) {
 						if s := t.typ.Size(); t.offset+t.length*s <= len(t.data.data) {
-							b, f := t.data.data[t.offset+j*s:], x.n
+							b, f := t.data.data[t.offset+j*s:], x.N
 							// The most common types are tested first.
 							if u := uint64(int64(f)); t.typ == element.Int32 || t.typ == element.Uint32 {
 								_ = b[3]
@@ -1639,16 +1640,16 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 					}
 					break
 				}
-				if j == len(o.elems) && j < cap(o.elems) && o.kind == kindArray && uint32(j) == o.length && o.flags == 0 && o.shape == ag.active.realm.shapes.array {
-					if a := ag.active.realm.intrinsics[IntrinsicArrayPrototype]; len(a.elems) == 0 && a.flags&objSparse == 0 {
-						if p := a.shape.proto; p == ag.active.realm.intrinsics[IntrinsicObjectPrototype] && len(p.elems) == 0 && p.flags&objSparse == 0 {
+				if j == len(o.Elems) && j < cap(o.Elems) && o.Kind == kindArray && uint32(j) == o.Length && o.Flags == 0 && o.Shape == ag.active.realm.Shapes.Array {
+					if a := ag.active.realm.Intrinsics[IntrinsicArrayPrototype]; len(a.Elems) == 0 && a.Flags&objSparse == 0 {
+						if p := a.Shape.Proto; p == ag.active.realm.Intrinsics[IntrinsicObjectPrototype] && len(p.Elems) == 0 && p.Flags&objSparse == 0 {
 							if validateExec {
 								ag.active.checkAppend(o)
 							}
 							x := regs[i.C]
-							o.elems = o.elems[:j+1]
-							o.elems[j] = x
-							o.length++
+							o.Elems = o.Elems[:j+1]
+							o.Elems[j] = x
+							o.Length++
 							continue
 						}
 					}
@@ -1658,11 +1659,11 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			// The ToBoolean of OpJumpIf. A pending interruption takes the switch below.
 			v := regs[i.B]
 			t, known := false, true
-			if o := v.o; o == numberObject {
-				t = v.n != 0 && v.n == v.n
+			if o := v.O; o == storage.NumberObject {
+				t = v.N != 0 && v.N == v.N
 			} else if o == nil {
 				t = false
-			} else if k := o.kind; k == kindTrue {
+			} else if k := o.Kind; k == kindTrue {
 				t = true
 			} else if k <= kindFalse {
 				t = false
@@ -1675,121 +1676,121 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				if !t {
 					continue
 				}
-				if !ag.interrupt.Load() {
+				if !ag.InterruptFlag.Load() {
 					pc = int(i.A)
 					continue
 				}
 			}
 		case bytecode.OpLoopLt:
-			if x, y := regs[i.B], regs[i.C]; x.o == numberObject && y.o == numberObject {
-				if !(x.n < y.n) {
+			if x, y := regs[i.B], regs[i.C]; x.O == storage.NumberObject && y.O == storage.NumberObject {
+				if !(x.N < y.N) {
 					continue
 				}
-				if !ag.interrupt.Load() {
+				if !ag.InterruptFlag.Load() {
 					pc = int(i.A)
 					continue
 				}
 			}
 		case bytecode.OpLoopLe:
-			if x, y := regs[i.B], regs[i.C]; x.o == numberObject && y.o == numberObject {
-				if !(x.n <= y.n) {
+			if x, y := regs[i.B], regs[i.C]; x.O == storage.NumberObject && y.O == storage.NumberObject {
+				if !(x.N <= y.N) {
 					continue
 				}
-				if !ag.interrupt.Load() {
+				if !ag.InterruptFlag.Load() {
 					pc = int(i.A)
 					continue
 				}
 			}
 		case bytecode.OpLoopGt:
-			if x, y := regs[i.B], regs[i.C]; x.o == numberObject && y.o == numberObject {
-				if !(x.n > y.n) {
+			if x, y := regs[i.B], regs[i.C]; x.O == storage.NumberObject && y.O == storage.NumberObject {
+				if !(x.N > y.N) {
 					continue
 				}
-				if !ag.interrupt.Load() {
+				if !ag.InterruptFlag.Load() {
 					pc = int(i.A)
 					continue
 				}
 			}
 		case bytecode.OpLoopGe:
-			if x, y := regs[i.B], regs[i.C]; x.o == numberObject && y.o == numberObject {
-				if !(x.n >= y.n) {
+			if x, y := regs[i.B], regs[i.C]; x.O == storage.NumberObject && y.O == storage.NumberObject {
+				if !(x.N >= y.N) {
 					continue
 				}
-				if !ag.interrupt.Load() {
+				if !ag.InterruptFlag.Load() {
 					pc = int(i.A)
 					continue
 				}
 			}
 		case bytecode.OpLoopLtK:
-			if x := regs[i.B]; x.o == numberObject {
-				if !(x.n < fp.consts[i.C].n) {
+			if x := regs[i.B]; x.O == storage.NumberObject {
+				if !(x.N < fp.Consts[i.C].N) {
 					continue
 				}
-				if !ag.interrupt.Load() {
+				if !ag.InterruptFlag.Load() {
 					pc = int(i.A)
 					continue
 				}
 			}
 		case bytecode.OpLoopLeK:
-			if x := regs[i.B]; x.o == numberObject {
-				if !(x.n <= fp.consts[i.C].n) {
+			if x := regs[i.B]; x.O == storage.NumberObject {
+				if !(x.N <= fp.Consts[i.C].N) {
 					continue
 				}
-				if !ag.interrupt.Load() {
+				if !ag.InterruptFlag.Load() {
 					pc = int(i.A)
 					continue
 				}
 			}
 		case bytecode.OpLoopGtK:
-			if x := regs[i.B]; x.o == numberObject {
-				if !(x.n > fp.consts[i.C].n) {
+			if x := regs[i.B]; x.O == storage.NumberObject {
+				if !(x.N > fp.Consts[i.C].N) {
 					continue
 				}
-				if !ag.interrupt.Load() {
+				if !ag.InterruptFlag.Load() {
 					pc = int(i.A)
 					continue
 				}
 			}
 		case bytecode.OpLoopGeK:
-			if x := regs[i.B]; x.o == numberObject {
-				if !(x.n >= fp.consts[i.C].n) {
+			if x := regs[i.B]; x.O == storage.NumberObject {
+				if !(x.N >= fp.Consts[i.C].N) {
 					continue
 				}
-				if !ag.interrupt.Load() {
+				if !ag.InterruptFlag.Load() {
 					pc = int(i.A)
 					continue
 				}
 			}
 		case bytecode.OpLoopSEqP:
-			if regs[i.B].o != primObjects[i.C] {
+			if regs[i.B].O != primObjects[i.C] {
 				continue
 			}
-			if !ag.interrupt.Load() {
+			if !ag.InterruptFlag.Load() {
 				pc = int(i.A)
 				continue
 			}
 		case bytecode.OpLoopSNeP:
-			if regs[i.B].o == primObjects[i.C] {
+			if regs[i.B].O == primObjects[i.C] {
 				continue
 			}
-			if !ag.interrupt.Load() {
+			if !ag.InterruptFlag.Load() {
 				pc = int(i.A)
 				continue
 			}
 		case bytecode.OpLoopNullish:
 			// The kind of an object is read only when it can be an IsHTMLDDA object.
-			if x := regs[i.B]; !x.IsNullish() && (i.C == 0 || !ag.madeHTMLDDA || !x.isHTMLDDA()) {
+			if x := regs[i.B]; !x.IsNullish() && (i.C == 0 || !ag.madeHTMLDDA || !x.IsHTMLDDA()) {
 				continue
 			}
-			if !ag.interrupt.Load() {
+			if !ag.InterruptFlag.Load() {
 				pc = int(i.A)
 				continue
 			}
 		case bytecode.OpLoopNotNullish:
-			if x := regs[i.B]; x.IsNullish() || i.C != 0 && ag.madeHTMLDDA && x.isHTMLDDA() {
+			if x := regs[i.B]; x.IsNullish() || i.C != 0 && ag.madeHTMLDDA && x.IsHTMLDDA() {
 				continue
 			}
-			if !ag.interrupt.Load() {
+			if !ag.InterruptFlag.Load() {
 				pc = int(i.A)
 				continue
 			}
@@ -1814,24 +1815,24 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 		// Every instruction that the fast paths above leave, in full.
 		switch i.Op {
 		case bytecode.OpGetUpvalChecked:
-			v := *ag.frames[len(ag.frames)-1].cl.fn.upvals[i.B].p
-			if v.o == tdzObject {
+			v := *ag.frames[len(ag.frames)-1].cl.Fn.Upvals[i.B].P
+			if v.O == tdzObject {
 				ag.frames[len(ag.frames)-1].pc = pc
-				ag.active.throwTDZ(fp.keys[i.C])
+				ag.active.throwTDZ(fp.Keys[i.C])
 			}
 			regs[i.A] = v
 		case bytecode.OpCheckTDZ:
-			if regs[i.A].o == tdzObject {
+			if regs[i.A].O == tdzObject {
 				ag.frames[len(ag.frames)-1].pc = pc
-				ag.active.throwTDZ(fp.keys[i.B])
+				ag.active.throwTDZ(fp.Keys[i.B])
 			}
 		case bytecode.OpThrowConstAssign:
 			ag.frames[len(ag.frames)-1].pc = pc
-			ag.active.ThrowTypeError("assignment to constant variable '" + wtf8.ToValidUTF8(fp.keys[i.A].str) + "'")
+			ag.active.ThrowTypeError("assignment to constant variable '" + wtf8.ToValidUTF8(fp.Keys[i.A].Text) + "'")
 		case bytecode.OpThrowError:
 			ag.frames[len(ag.frames)-1].pc = pc
 			// Error text is an interned constant.
-			ag.active.throwError(thrownErrorKinds[i.A], wtf8.ToValidUTF8(fp.consts[i.B].o.str))
+			ag.active.throwError(thrownErrorKinds[i.A], wtf8.ToValidUTF8(fp.Consts[i.B].O.Text))
 
 		case bytecode.OpGetGlobal, bytecode.OpGetGlobalStrict, bytecode.OpGetGlobalOrUndef, bytecode.OpGetGlobalOrUndefStrict:
 			goto readProperty
@@ -1846,78 +1847,78 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			if i.C >= 0 {
 				fn = regs[i.C]
 			}
-			ag.active.declareGlobalVar(fp.keys[i.A], int(i.B), fn)
+			ag.active.declareGlobalVar(fp.Keys[i.A], int(i.B), fn)
 		case bytecode.OpDeclareGlobalLex:
 			ag.frames[len(ag.frames)-1].pc = pc
-			ag.active.declareGlobalLex(fp.keys[i.A], i.B != 0)
+			ag.active.declareGlobalLex(fp.Keys[i.A], i.B != 0)
 		case bytecode.OpInitGlobalLex:
-			ag.active.initGlobalLex(fp.keys[i.B], regs[i.A])
+			ag.active.initGlobalLex(fp.Keys[i.B], regs[i.A])
 		case bytecode.OpCheckGlobalDecl:
 			ag.frames[len(ag.frames)-1].pc = pc
-			ag.active.checkGlobalDecl(fp.keys[i.A], int(i.B))
+			ag.active.checkGlobalDecl(fp.Keys[i.A], int(i.B))
 		case bytecode.OpDeclareAnnexB:
 			ag.frames[len(ag.frames)-1].pc = pc
-			regs[i.A] = Bool(ag.active.declareGlobalAnnexB(fp.keys[i.B], int(i.C)))
+			regs[i.A] = storage.Bool(ag.active.declareGlobalAnnexB(fp.Keys[i.B], int(i.C)))
 
 		case bytecode.OpCloseUpvals:
 			ag.closeFrameUpvals(&ag.frames[len(ag.frames)-1], int(i.A))
 		case bytecode.OpClosure:
-			p := fp.protos[i.B]
-			o, copies := newClosure(p)
-			fn := o.fn
-			o.kind = kindFunction
-			o.class = classFunction
-			o.flags = objExotic
-			o.shape = ag.active.realm.shapes.function
-			if p.isGenerator || p.isAsync {
-				o.shape = ag.active.functionShapeFor(p.closurePrototype())
+			p := fp.Protos[i.B]
+			o, copies := storage.NewClosure(p)
+			fn := o.Fn
+			o.Kind = kindFunction
+			o.Class = classFunction
+			o.Flags = objExotic
+			o.Shape = ag.active.realm.Shapes.Function
+			if p.IsGenerator || p.IsAsync {
+				o.Shape = ag.active.FunctionShapeFor(p.ClosurePrototype())
 			}
 			cur := &ag.frames[len(ag.frames)-1]
 			for j, d := range p.Upvals {
 				switch {
 				case !d.Local:
-					fn.upvals[j] = cur.cl.fn.upvals[d.Index]
+					fn.Upvals[j] = cur.cl.Fn.Upvals[d.Index]
 				case d.ByValue:
 					u := &copies[0]
 					copies = copies[1:]
-					u.val = regs[d.Index]
-					u.p = &u.val
-					fn.upvals[j] = u
+					u.Val = regs[d.Index]
+					u.P = &u.Val
+					fn.Upvals[j] = u
 				default:
-					fn.upvals[j] = ag.captureRegister(cur, int(d.Index))
+					fn.Upvals[j] = ag.captureRegister(cur, int(d.Index))
 				}
 			}
-			regs[i.A] = Value{o: o}
+			regs[i.A] = Value{O: o}
 
 		case bytecode.OpLoadThis:
 			regs[i.A] = ag.frames[len(ag.frames)-1].this
 		case bytecode.OpLoadThisSloppy:
 			t := ag.frames[len(ag.frames)-1].this
-			if t.o == nil || t.o.kind < kindFirstObject {
+			if t.O == nil || t.O.Kind < kindFirstObject {
 				if t.IsNullish() {
-					t = Value{o: ag.active.realm.globalThis}
+					t = Value{O: ag.active.realm.GlobalThis}
 				} else {
-					t = Value{o: ag.active.ToObject(t)}
+					t = Value{O: ag.active.ToObject(t)}
 				}
 			}
 			regs[i.A] = t
 		case bytecode.OpLoadCallee:
-			regs[i.A] = Value{o: ag.frames[len(ag.frames)-1].cl}
+			regs[i.A] = Value{O: ag.frames[len(ag.frames)-1].cl}
 		case bytecode.OpLoadNewTarget:
 			if nt := ag.frames[len(ag.frames)-1].newTarget; nt != nil {
-				regs[i.A] = Value{o: nt}
+				regs[i.A] = Value{O: nt}
 			} else {
-				regs[i.A] = Undefined
+				regs[i.A] = storage.Undefined
 			}
 		case bytecode.OpLoadHome:
-			if h := ag.frames[len(ag.frames)-1].cl.fn.home; h != nil {
-				regs[i.A] = Value{o: h}
+			if h := ag.frames[len(ag.frames)-1].cl.Fn.Home; h != nil {
+				regs[i.A] = Value{O: h}
 			} else {
-				regs[i.A] = Undefined
+				regs[i.A] = storage.Undefined
 			}
 		case bytecode.OpArguments:
 			cur := &ag.frames[len(ag.frames)-1]
-			regs[i.A] = Value{o: ag.active.newArguments(cur, i.B != 0)}
+			regs[i.A] = Value{O: ag.active.newArguments(cur, i.B != 0)}
 		case bytecode.OpRestArgs:
 			cur := &ag.frames[len(ag.frames)-1]
 			var rest *Object
@@ -1926,7 +1927,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			} else {
 				rest = ag.active.NewArray(nil)
 			}
-			regs[i.A] = Value{o: rest}
+			regs[i.A] = Value{O: rest}
 		case bytecode.OpGetArgsLength, bytecode.OpGetArgsIndex:
 			// A prototype getter must see the arguments object shared by later reads.
 			ag.frames[len(ag.frames)-1].pc = pc
@@ -1946,36 +1947,36 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			// Data properties in the cache take the fast path above. After an OpGetPropChain
 			// that ends up here, the next instruction runs on its own.
 			v := regs[i.B]
-			c := &fp.caches[i.C]
-			o := v.o
-			if o == numberObject {
+			c := &fp.Caches[i.C]
+			o := v.O
+			if o == storage.NumberObject {
 				// getNamed starts at Number.prototype for a number. Its own slot
 				// stays valid for its shape, and the method receives v as this.
-				o = ag.active.realm.intrinsics[IntrinsicNumberPrototype]
-				if c.kind == cacheOwn && c.shape == o.shape {
+				o = ag.active.realm.Intrinsics[IntrinsicNumberPrototype]
+				if c.Kind == cacheOwn && c.Shape == o.Shape {
 					if validateExec {
-						ag.active.checkEntryRead(fp, pc-1, v, o, fp.keys[i.C], &c.cacheEntry)
+						ag.active.checkEntryRead(fp, pc-1, v, o, fp.Keys[i.C], &c.CacheEntry)
 					}
-					regs[i.A] = o.slots[c.slot]
+					regs[i.A] = o.Slots[c.Slot]
 					continue
 				}
 			}
 			if o != nil {
-				if e := c.entry(o.shape); e != nil {
-					if e.kind == cacheGetter && e.epoch == ag.protoEpoch {
+				if e := c.Entry(o.Shape); e != nil {
+					if e.Kind == cacheGetter && e.Epoch == ag.ProtoEpoch {
 						if validateExec {
-							ag.active.checkGetterHit(fp, pc-1, v, fp.keys[i.C], e.holder)
+							ag.active.checkGetterHit(fp, pc-1, v, fp.Keys[i.C], e.Holder)
 						}
-						f, callThis, argc, ret = e.holder, v, 0, i.A
+						f, callThis, argc, ret = e.Holder, v, 0, i.A
 						goto callAbove
 					}
-					if e.kind == cacheOwnGetter {
+					if e.Kind == cacheOwnGetter {
 						if validateExec {
-							ag.active.checkOwnGetterHit(fp, pc-1, v, fp.keys[i.C], &o.slots[e.slot])
+							ag.active.checkOwnGetterHit(fp, pc-1, v, fp.Keys[i.C], &o.Slots[e.Slot])
 						}
-						g := o.slots[e.slot].accessor().getter
+						g := o.Slots[e.Slot].Accessor().Getter
 						if g == nil {
-							regs[i.A] = Undefined
+							regs[i.A] = storage.Undefined
 							continue
 						}
 						f, callThis, argc, ret = g, v, 0, i.A
@@ -1983,35 +1984,35 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 					}
 				}
 			}
-			receiver, name, site = v, fp.keys[i.C], c
+			receiver, name, site = v, fp.Keys[i.C], c
 			goto readProperty
 		case bytecode.OpSetProp, bytecode.OpSetPropStrict:
 			v := regs[i.A]
-			c := &fp.caches[i.B]
-			if o := v.o; o != nil {
-				if e := c.entry(o.shape); e != nil {
-					switch e.kind {
+			c := &fp.Caches[i.B]
+			if o := v.O; o != nil {
+				if e := c.Entry(o.Shape); e != nil {
+					switch e.Kind {
 					case cacheAdd:
-						if o.objectProperties != nil && e.epoch == ag.protoEpoch && o.flags&objIsProto == 0 {
+						if o.ObjectProperties != nil && e.Epoch == ag.ProtoEpoch && o.Flags&objIsProto == 0 {
 							if validateExec {
-								ag.active.checkAddHit(fp, pc-1, o, fp.keys[i.B], e.next)
+								ag.active.checkAddHit(fp, pc-1, o, fp.Keys[i.B], e.Next)
 							}
-							o.shape = e.next
-							o.appendSlot(regs[i.C])
+							o.Shape = e.Next
+							o.AppendSlot(regs[i.C])
 							continue
 						}
 					case cacheSetter:
-						if e.epoch == ag.protoEpoch {
+						if e.Epoch == ag.ProtoEpoch {
 							if validateExec {
-								ag.active.checkSetterHit(fp, pc-1, v, fp.keys[i.B], e.holder)
+								ag.active.checkSetterHit(fp, pc-1, v, fp.Keys[i.B], e.Holder)
 							}
-							setter, receiver, rhs = e.holder, v, regs[i.C]
+							setter, receiver, rhs = e.Holder, v, regs[i.C]
 							goto writeProperty
 						}
 					}
 				}
 			}
-			receiver, name, rhs, site = v, fp.keys[i.B], regs[i.C], c
+			receiver, name, rhs, site = v, fp.Keys[i.B], regs[i.C], c
 			goto writeProperty
 		case bytecode.OpGetLength:
 			v := regs[i.B]
@@ -2019,10 +2020,10 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				if validateExec {
 					ag.active.checkLengthHit(fp, pc-1, v, float64(v.StringLength()))
 				}
-				setNumber(&regs[i.A], float64(v.StringLength()))
+				storage.SetNumber(&regs[i.A], float64(v.StringLength()))
 				continue
 			}
-			receiver, name, site = v, ag.Key(KeyLength), &fp.caches[i.C]
+			receiver, name, site = v, ag.Key(KeyLength), &fp.Caches[i.C]
 			goto readProperty
 		case bytecode.OpGetIndex:
 			receiver, key = regs[i.B], regs[i.C]
@@ -2036,16 +2037,16 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			if i.Op < bytecode.OpSetIndexInt {
 				k = regs[i.B]
 			} else {
-				k = Number(float64(i.B))
+				k = storage.Number(float64(i.B))
 			}
-			if o := v.o; o != nil && o.objectProperties != nil && k.o == numberObject {
-				if j := int(k.n); j == len(o.elems) && o.kind == kindArray && uint32(j) == o.length && o.flags == 0 && float64(j) == k.n && o.shape == ag.active.realm.shapes.array && ag.active.arrayProtoPlain() {
+			if o := v.O; o != nil && o.ObjectProperties != nil && k.O == storage.NumberObject {
+				if j := int(k.N); j == len(o.Elems) && o.Kind == kindArray && uint32(j) == o.Length && o.Flags == 0 && float64(j) == k.N && o.Shape == ag.active.realm.Shapes.Array && ag.active.ArrayProtoPlain() {
 					// Appending to a plain array, as in the first switch.
 					if validateExec {
 						ag.active.checkAppend(o)
 					}
-					o.appendElem(regs[i.C])
-					o.length++
+					o.AppendElem(regs[i.C])
+					o.Length++
 					continue
 				}
 			}
@@ -2056,7 +2057,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			regs[i.A] = ag.active.superBase(regs[i.B])
 		case bytecode.OpGetSuper:
 			ag.frames[len(ag.frames)-1].pc = pc + 1
-			ext := fp.code[pc]
+			ext := fp.Code[pc]
 			pc++
 			if ext.B == 0 {
 				v, _ := ag.active.getSuper(ag.active.superBase(regs[ext.A]), regs[i.C], regs[i.B])
@@ -2070,7 +2071,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			regs[i.A] = v
 		case bytecode.OpSetSuper, bytecode.OpSetSuperStrict:
 			ag.frames[len(ag.frames)-1].pc = pc + 1
-			superBase := regs[fp.code[pc].A]
+			superBase := regs[fp.Code[pc].A]
 			pc++
 			ag.active.setSuper(superBase, regs[i.B], regs[i.C], regs[i.A], i.Op == bytecode.OpSetSuperStrict)
 			regs = ag.reload(regs, ag.frameBase(), fp)
@@ -2086,32 +2087,32 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				ag.active.ThrowTypeError("cannot use 'in' operator to search for a key in a non-object")
 			}
 			var r bool
-			if k := ag.active.QueryKey(regs[i.C]); k.missing() {
-				r = ag.active.queryMissing(o.o, k)
+			if k := ag.active.QueryKey(regs[i.C]); k.Missing() {
+				r = ag.active.queryMissing(o.O, k)
 			} else {
-				r = ag.active.HasProperty(o.o, PropKey(k))
+				r = ag.active.HasProperty(o.O, PropKey(k))
 			}
 			regs = ag.reload(regs, ag.frameBase(), fp)
-			regs[i.A] = Bool(r)
+			regs[i.A] = storage.Bool(r)
 		case bytecode.OpInstanceof:
-			site := &fp.caches[fp.code[pc].A]
+			site := &fp.Caches[fp.Code[pc].A]
 			pc++
 			ag.frames[len(ag.frames)-1].pc = pc
 			r := ag.active.instanceOf(regs[i.B], regs[i.C], site)
 			regs = ag.reload(regs, ag.frameBase(), fp)
-			regs[i.A] = Bool(r)
+			regs[i.A] = storage.Bool(r)
 		case bytecode.OpHasPrivate:
 			ag.frames[len(ag.frames)-1].pc = pc
 			o := regs[i.B]
 			if !o.IsObject() {
 				ag.active.ThrowTypeError("cannot use 'in' operator to search for a private field in a non-object")
 			}
-			_, ok := ag.active.privateStorage(o.o).shape.lookup(regs[i.C].o)
-			regs[i.A] = Bool(ok)
+			_, ok := ag.active.privateStorage(o.O).Shape.Lookup(regs[i.C].O)
+			regs[i.A] = storage.Bool(ok)
 		case bytecode.OpGetPrivate:
 			v := regs[i.B]
 			ag.frames[len(ag.frames)-1].pc = pc
-			val, getter := ag.active.getPrivate(v, regs[i.C].o)
+			val, getter := ag.active.getPrivate(v, regs[i.C].O)
 			if getter != nil {
 				f, callThis, argc, ret = getter, v, 0, i.A
 				goto callAbove
@@ -2120,19 +2121,19 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 		case bytecode.OpSetPrivate:
 			v := regs[i.A]
 			ag.frames[len(ag.frames)-1].pc = pc
-			if setter := ag.active.setPrivate(v, regs[i.B].o, regs[i.C]); setter != nil {
+			if setter := ag.active.setPrivate(v, regs[i.B].O, regs[i.C]); setter != nil {
 				val := regs[i.C]
 				argBase = ag.frames[len(ag.frames)-1].top()
 				ag.ensureStack(argBase + 1)
 				ag.stack[argBase] = val
 				regs = ag.reload(regs, ag.frameBase(), fp)
-				f, callThis, argc, ret, isNew, newTarget = setter, v, 1, int32(fp.nregs), false, nil
+				f, callThis, argc, ret, isNew, newTarget = setter, v, 1, int32(fp.Nregs), false, nil
 				goto call
 			}
 		case bytecode.OpToPropertyKey:
 			v := regs[i.B]
 			// The read and the write of a compound assignment convert an index alike.
-			if v.o != nil && (v.o.kind == kindString || v.o.kind == kindSymbol) || v.o == numberObject && i.C >= 0 && float64(uint32(v.n)) == v.n {
+			if v.O != nil && (v.O.Kind == kindString || v.O.Kind == kindSymbol) || v.O == storage.NumberObject && i.C >= 0 && float64(uint32(v.N)) == v.N {
 				regs[i.A] = v
 				continue
 			}
@@ -2149,7 +2150,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 		case bytecode.OpAdd:
 			x, y := regs[i.B], regs[i.C]
 			ag.frames[len(ag.frames)-1].pc = pc
-			if x.o != nil && y.o != nil && x.o.kind == kindString && y.o.kind == kindString {
+			if x.O != nil && y.O != nil && x.O.Kind == kindString && y.O.Kind == kindString {
 				regs[i.A] = ag.active.Concat(x, y)
 				continue
 			}
@@ -2157,8 +2158,8 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			regs = ag.reload(regs, ag.frameBase(), fp)
 			regs[i.A] = v
 		case bytecode.OpMod:
-			if x, y := regs[i.B], regs[i.C]; x.o == numberObject && y.o == numberObject {
-				regs[i.A] = Number(math.Mod(x.n, y.n))
+			if x, y := regs[i.B], regs[i.C]; x.O == storage.NumberObject && y.O == storage.NumberObject {
+				regs[i.A] = storage.Number(math.Mod(x.N, y.N))
 				continue
 			}
 			goto arith
@@ -2166,20 +2167,20 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			goto arith
 		case bytecode.OpExp:
 			x, y := regs[i.B], regs[i.C]
-			if x.o == numberObject && y.o == numberObject {
-				regs[i.A] = Number(numconv.NumberPow(x.n, y.n))
+			if x.O == storage.NumberObject && y.O == storage.NumberObject {
+				regs[i.A] = storage.Number(numconv.NumberPow(x.N, y.N))
 				continue
 			}
 			goto arith
 		case bytecode.OpAddK:
 			x := regs[i.B]
 			ag.frames[len(ag.frames)-1].pc = pc
-			v := ag.active.addValues(x, fp.consts[i.C])
+			v := ag.active.addValues(x, fp.Consts[i.C])
 			regs = ag.reload(regs, ag.frameBase(), fp)
 			regs[i.A] = v
 		case bytecode.OpModK:
-			if x := regs[i.B]; x.o == numberObject {
-				regs[i.A] = Number(math.Mod(x.n, fp.consts[i.C].n))
+			if x := regs[i.B]; x.O == storage.NumberObject {
+				regs[i.A] = storage.Number(math.Mod(x.N, fp.Consts[i.C].N))
 				continue
 			}
 			goto arithK
@@ -2193,20 +2194,20 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			regs[i.A] = v
 		case bytecode.OpPlus:
 			x := regs[i.B]
-			if x.o == numberObject {
+			if x.O == storage.NumberObject {
 				regs[i.A] = x
 				continue
 			}
 			ag.frames[len(ag.frames)-1].pc = pc
 			n := ag.active.ToNumber(x)
 			regs = ag.reload(regs, ag.frameBase(), fp)
-			regs[i.A] = Number(n)
+			regs[i.A] = storage.Number(n)
 		case bytecode.OpNot:
-			regs[i.A] = Bool(!ToBoolean(regs[i.B]))
+			regs[i.A] = storage.Bool(!storage.ToBoolean(regs[i.B]))
 		case bytecode.OpBitNot:
 			x := regs[i.B]
-			if x.o == numberObject && numconv.InInt64Range(x.n) {
-				regs[i.A] = Number(float64(^int32(int64(x.n))))
+			if x.O == storage.NumberObject && numconv.InInt64Range(x.N) {
+				regs[i.A] = storage.Number(float64(^int32(int64(x.N))))
 				continue
 			}
 			ag.frames[len(ag.frames)-1].pc = pc
@@ -2215,7 +2216,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			regs[i.A] = v
 		case bytecode.OpToNumeric:
 			x := regs[i.B]
-			if x.o == numberObject {
+			if x.O == storage.NumberObject {
 				regs[i.A] = x
 				continue
 			}
@@ -2237,7 +2238,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			regs[i.B] = ag.active.step(v, d)
 		case bytecode.OpToString:
 			x := regs[i.B]
-			if x.o != nil && x.o.kind == kindString {
+			if x.O != nil && x.O.Kind == kindString {
 				regs[i.A] = x
 				continue
 			}
@@ -2249,7 +2250,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			ag.frames[len(ag.frames)-1].pc = pc
 			regs[i.A] = ag.active.ConcatStrings(slices.Clip(regs)[i.B : i.B+i.C])
 		case bytecode.OpTypeof:
-			regs[i.A] = ag.typeofValue(regs[i.B])
+			regs[i.A] = ag.TypeofValue(regs[i.B])
 		case bytecode.OpInc, bytecode.OpDec:
 			x := regs[i.B]
 			ag.frames[len(ag.frames)-1].pc = pc
@@ -2266,37 +2267,37 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			ag.frames[len(ag.frames)-1].pc = pc
 			r := ag.active.compare(x, y, true) == cmpLess
 			regs = ag.reload(regs, ag.frameBase(), fp)
-			regs[i.A] = Bool(r)
+			regs[i.A] = storage.Bool(r)
 		case bytecode.OpLe:
 			x, y := regs[i.B], regs[i.C]
 			ag.frames[len(ag.frames)-1].pc = pc
 			c := ag.active.compare(y, x, false)
 			regs = ag.reload(regs, ag.frameBase(), fp)
-			regs[i.A] = Bool(c == cmpGreater || c == cmpEqual)
+			regs[i.A] = storage.Bool(c == cmpGreater || c == cmpEqual)
 		case bytecode.OpGt:
 			x, y := regs[i.B], regs[i.C]
 			ag.frames[len(ag.frames)-1].pc = pc
 			r := ag.active.compare(y, x, false) == cmpLess
 			regs = ag.reload(regs, ag.frameBase(), fp)
-			regs[i.A] = Bool(r)
+			regs[i.A] = storage.Bool(r)
 		case bytecode.OpGe:
 			x, y := regs[i.B], regs[i.C]
 			ag.frames[len(ag.frames)-1].pc = pc
 			c := ag.active.compare(x, y, true)
 			regs = ag.reload(regs, ag.frameBase(), fp)
-			regs[i.A] = Bool(c == cmpGreater || c == cmpEqual)
+			regs[i.A] = storage.Bool(c == cmpGreater || c == cmpEqual)
 		case bytecode.OpEq, bytecode.OpNe:
 			ag.frames[len(ag.frames)-1].pc = pc
 			r := ag.active.looseEquals(regs[i.B], regs[i.C])
 			regs = ag.reload(regs, ag.frameBase(), fp)
-			regs[i.A] = Bool(r == (i.Op == bytecode.OpEq))
+			regs[i.A] = storage.Bool(r == (i.Op == bytecode.OpEq))
 		case bytecode.OpStrictEq:
-			regs[i.A] = Bool(IsStrictlyEqual(regs[i.B], regs[i.C]))
+			regs[i.A] = storage.Bool(storage.IsStrictlyEqual(regs[i.B], regs[i.C]))
 		case bytecode.OpStrictNe:
-			regs[i.A] = Bool(!IsStrictlyEqual(regs[i.B], regs[i.C]))
+			regs[i.A] = storage.Bool(!storage.IsStrictlyEqual(regs[i.B], regs[i.C]))
 
 		case bytecode.OpJump:
-			if int(i.A) < pc && ag.interrupt.Load() {
+			if int(i.A) < pc && ag.InterruptFlag.Load() {
 				// A loop whose condition is not tested at its end jumps backwards with this
 				// instruction.
 				ag.frames[len(ag.frames)-1].pc = pc
@@ -2304,7 +2305,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			}
 			pc = int(i.A)
 		case bytecode.OpJumpIf, bytecode.OpJumpIfNot:
-			if ToBoolean(regs[i.B]) == (i.Op == bytecode.OpJumpIf) {
+			if storage.ToBoolean(regs[i.B]) == (i.Op == bytecode.OpJumpIf) {
 				pc = int(i.A)
 			}
 		case bytecode.OpJumpNotLt:
@@ -2347,80 +2348,80 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				pc = int(i.A)
 			}
 		case bytecode.OpJumpNotSEq:
-			if !IsStrictlyEqual(regs[i.B], regs[i.C]) {
+			if !storage.IsStrictlyEqual(regs[i.B], regs[i.C]) {
 				pc = int(i.A)
 			}
 		case bytecode.OpJumpNotSNe:
-			if IsStrictlyEqual(regs[i.B], regs[i.C]) {
+			if storage.IsStrictlyEqual(regs[i.B], regs[i.C]) {
 				pc = int(i.A)
 			}
 		case bytecode.OpJumpNotLtK:
 			x := regs[i.B]
-			if x.o != numberObject {
+			if x.O != storage.NumberObject {
 				ag.frames[len(ag.frames)-1].pc = pc
 				x = ag.active.ToNumeric(ag.active.ToPrimitive(x, HintNumber))
 				regs = ag.reload(regs, ag.frameBase(), fp)
-				if x.o != numberObject {
-					if ag.active.compareBigIntMixed(x, fp.consts[i.C]) != cmpLess {
+				if x.O != storage.NumberObject {
+					if ag.active.compareBigIntMixed(x, fp.Consts[i.C]) != cmpLess {
 						pc = int(i.A)
 					}
 					continue
 				}
 			}
-			if !(x.n < fp.consts[i.C].n) {
+			if !(x.N < fp.Consts[i.C].N) {
 				pc = int(i.A)
 			}
 		case bytecode.OpJumpNotLeK:
 			x := regs[i.B]
-			if x.o != numberObject {
+			if x.O != storage.NumberObject {
 				ag.frames[len(ag.frames)-1].pc = pc
 				x = ag.active.ToNumeric(ag.active.ToPrimitive(x, HintNumber))
 				regs = ag.reload(regs, ag.frameBase(), fp)
-				if x.o != numberObject {
-					if c := ag.active.compareBigIntMixed(x, fp.consts[i.C]); c != cmpLess && c != cmpEqual {
+				if x.O != storage.NumberObject {
+					if c := ag.active.compareBigIntMixed(x, fp.Consts[i.C]); c != cmpLess && c != cmpEqual {
 						pc = int(i.A)
 					}
 					continue
 				}
 			}
-			if !(x.n <= fp.consts[i.C].n) {
+			if !(x.N <= fp.Consts[i.C].N) {
 				pc = int(i.A)
 			}
 		case bytecode.OpJumpNotGtK:
 			x := regs[i.B]
-			if x.o != numberObject {
+			if x.O != storage.NumberObject {
 				ag.frames[len(ag.frames)-1].pc = pc
 				x = ag.active.ToNumeric(ag.active.ToPrimitive(x, HintNumber))
 				regs = ag.reload(regs, ag.frameBase(), fp)
-				if x.o != numberObject {
-					if ag.active.compareBigIntMixed(x, fp.consts[i.C]) != cmpGreater {
+				if x.O != storage.NumberObject {
+					if ag.active.compareBigIntMixed(x, fp.Consts[i.C]) != cmpGreater {
 						pc = int(i.A)
 					}
 					continue
 				}
 			}
-			if !(x.n > fp.consts[i.C].n) {
+			if !(x.N > fp.Consts[i.C].N) {
 				pc = int(i.A)
 			}
 		case bytecode.OpJumpNotGeK:
 			x := regs[i.B]
-			if x.o != numberObject {
+			if x.O != storage.NumberObject {
 				ag.frames[len(ag.frames)-1].pc = pc
 				x = ag.active.ToNumeric(ag.active.ToPrimitive(x, HintNumber))
 				regs = ag.reload(regs, ag.frameBase(), fp)
-				if x.o != numberObject {
-					if c := ag.active.compareBigIntMixed(x, fp.consts[i.C]); c != cmpGreater && c != cmpEqual {
+				if x.O != storage.NumberObject {
+					if c := ag.active.compareBigIntMixed(x, fp.Consts[i.C]); c != cmpGreater && c != cmpEqual {
 						pc = int(i.A)
 					}
 					continue
 				}
 			}
-			if !(x.n >= fp.consts[i.C].n) {
+			if !(x.N >= fp.Consts[i.C].N) {
 				pc = int(i.A)
 			}
 		case bytecode.OpLoopIf:
-			if ToBoolean(regs[i.B]) {
-				if ag.interrupt.Load() {
+			if storage.ToBoolean(regs[i.B]) {
+				if ag.InterruptFlag.Load() {
 					ag.frames[len(ag.frames)-1].pc = pc
 					ag.Poll()
 				}
@@ -2431,24 +2432,24 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			r := ag.active.loopHolds(i.Op, regs[i.B], regs[i.C])
 			regs = ag.reload(regs, ag.frameBase(), fp)
 			if r {
-				if ag.interrupt.Load() {
+				if ag.InterruptFlag.Load() {
 					ag.Poll()
 				}
 				pc = int(i.A)
 			}
 		case bytecode.OpLoopLtK, bytecode.OpLoopLeK, bytecode.OpLoopGtK, bytecode.OpLoopGeK:
 			ag.frames[len(ag.frames)-1].pc = pc
-			r := ag.active.loopHoldsK(i.Op, regs[i.B], fp.consts[i.C])
+			r := ag.active.loopHoldsK(i.Op, regs[i.B], fp.Consts[i.C])
 			regs = ag.reload(regs, ag.frameBase(), fp)
 			if r {
-				if ag.interrupt.Load() {
+				if ag.InterruptFlag.Load() {
 					ag.Poll()
 				}
 				pc = int(i.A)
 			}
 		case bytecode.OpLoopSEqP, bytecode.OpLoopSNeP, bytecode.OpLoopNullish, bytecode.OpLoopNotNullish:
 			if ag.loopHoldsP(i.Op, regs[i.B], i.C) {
-				if ag.interrupt.Load() {
+				if ag.InterruptFlag.Load() {
 					ag.frames[len(ag.frames)-1].pc = pc
 					ag.Poll()
 				}
@@ -2456,33 +2457,33 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			}
 
 		case bytecode.OpCallUndef:
-			regs[i.B+1] = Undefined
+			regs[i.B+1] = storage.Undefined
 			fallthrough
 		case bytecode.OpCall:
 			// Calls of ordinary functions that fit take the inline frame of the fast path above.
 			b := int(i.B)
-			f, callThis, firstArgReg, argc, ret, isNew, newTarget = regs[b].o, regs[b+1], b+2, int(i.C), i.A, false, nil
+			f, callThis, firstArgReg, argc, ret, isNew, newTarget = regs[b].O, regs[b+1], b+2, int(i.C), i.A, false, nil
 			goto callRegs
 		case bytecode.OpCallCall:
 			b := int(i.B)
-			if regs[b].o == ag.active.realm.intrinsics[IntrinsicFunctionPrototypeCall] {
-				f, callThis, firstArgReg, argc, ret, isNew, newTarget = regs[b+1].o, regs[b+2], b+3, int(i.C)-1, i.A, false, nil
+			if regs[b].O == ag.active.realm.Intrinsics[IntrinsicFunctionPrototypeCall] {
+				f, callThis, firstArgReg, argc, ret, isNew, newTarget = regs[b+1].O, regs[b+2], b+3, int(i.C)-1, i.A, false, nil
 				if argc < 0 {
-					callThis, argc = Undefined, 0
+					callThis, argc = storage.Undefined, 0
 				}
 			} else {
-				f, callThis, firstArgReg, argc, ret, isNew, newTarget = regs[b].o, regs[b+1], b+2, int(i.C), i.A, false, nil
+				f, callThis, firstArgReg, argc, ret, isNew, newTarget = regs[b].O, regs[b+1], b+2, int(i.C), i.A, false, nil
 			}
 			goto callRegs
 		case bytecode.OpApplyFwd, bytecode.OpTailApplyFwd:
-			argsReg := fp.code[pc].A
+			argsReg := fp.Code[pc].A
 			pc++
 			b := int(i.B)
-			if !regs[argsReg].IsUndefined() || regs[b].o != ag.active.realm.intrinsics[IntrinsicFunctionPrototypeApply] {
+			if !regs[argsReg].IsUndefined() || regs[b].O != ag.active.realm.Intrinsics[IntrinsicFunctionPrototypeApply] {
 				// Once exposed, the arguments object's length and indexed properties can change.
 				regs[b+2] = regs[i.C]
 				regs[b+3] = ag.active.forwardedArguments(argsReg)
-				f, callThis, firstArgReg, argc, ret, isNew, newTarget = regs[b].o, regs[b+1], b+2, 2, i.A, false, nil
+				f, callThis, firstArgReg, argc, ret, isNew, newTarget = regs[b].O, regs[b+1], b+2, 2, i.A, false, nil
 				if i.Op == bytecode.OpTailApplyFwd {
 					argBase = ag.frameBase() + firstArgReg
 					goto tailCall
@@ -2495,16 +2496,16 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				// the OpExtra that follows the instruction. This is not a fast path above, as the
 				// registers its tests take there made the loop store the values it carries
 				// before every instruction where registers are few, as on amd64.
-				if f := regs[b+1].o; !fp.heapRegs && f != nil && f.fn != nil && !ag.interrupt.Load() {
-					if c := f.fn.code; c != nil && c.inlineFrames && c.realm == fp.realm {
+				if f := regs[b+1].O; !fp.HeapRegs && f != nil && f.Fn != nil && !ag.InterruptFlag.Load() {
+					if c := f.Fn.Code; c != nil && c.InlineFrames && c.Realm == fp.Realm {
 						n := len(ag.frames)
 						cur := &ag.frames[n-1]
 						argc := cur.argc
-						argBase := cur.base + fp.nregs + 1
-						end := argBase + max(argc, c.nregs+1)
+						argBase := cur.base + fp.Nregs + 1
+						end := argBase + max(argc, c.Nregs+1)
 						// The frames have room for at most maxFrames.
-						if (argc <= fp.nparams || cur.extraBase >= 0) && (argc <= c.nparams || !c.needsExtra) && end+stackHeadroom <= len(ag.stack) && n < cap(ag.frames) {
-							k := min(argc, fp.nparams)
+						if (argc <= fp.Nparams || cur.extraBase >= 0) && (argc <= c.Nparams || !c.NeedsExtra) && end+stackHeadroom <= len(ag.stack) && n < cap(ag.frames) {
+							k := min(argc, fp.Nparams)
 							for j := range k {
 								ag.stack[argBase+j] = regs[j]
 							}
@@ -2515,7 +2516,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 							this := regs[i.C]
 							cur.pc = pc
 							ag.stackHigh = max(ag.stackHigh, end)
-							if from, to := c.firstCleared(argc), c.nclear; from < to {
+							if from, to := c.FirstCleared(argc), c.Nclear; from < to {
 								clearFrameRegs(ag.stack[argBase:], from, to)
 							}
 							ag.frames = ag.frames[:n+1]
@@ -2524,10 +2525,10 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 							fr.fp, fr.cl, fr.this, fr.newTarget, fr.gen, fr.scopes = c, f, this, nil, nil, nil
 							// The callee belongs to the current realm, which is that of the running frame.
 							fr.pc, fr.base, fr.ret, fr.isNew, fr.plainReturn, fr.argc, fr.extraBase = 0, argBase, i.A, false, true, argc, -1
-							ag.sp = argBase + c.nregs + 1
+							ag.sp = argBase + c.Nregs + 1
 							fp, pc = c, 0
 							regs = ag.stack[argBase:ag.sp]
-							if r := c.thisReg; r >= 0 && (!c.thisSloppy || this.o != nil && this.o.kind >= kindFirstObject) {
+							if r := c.ThisReg; r >= 0 && (!c.ThisSloppy || this.O != nil && this.O.Kind >= kindFirstObject) {
 								regs[r] = this
 								pc = 1
 							}
@@ -2536,17 +2537,17 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 					}
 				}
 			}
-			f, callThis = regs[b+1].o, regs[i.C]
+			f, callThis = regs[b+1].O, regs[i.C]
 			goto forward
 		case bytecode.OpCallFwd, bytecode.OpTailCallFwd:
 			b := int(i.B)
-			f, callThis = regs[b].o, regs[b+1]
+			f, callThis = regs[b].O, regs[b+1]
 			goto forward
 		case bytecode.OpCallEvalSpread:
 			// A direct eval, or the spread call of the case below for any other function.
 			pc++
 			ag.frames[len(ag.frames)-1].pc = pc
-			if v, ok := ag.active.callEval(slices.Clip(regs), i, int(fp.code[pc-1].A), -1); ok {
+			if v, ok := ag.active.callEval(slices.Clip(regs), i, int(fp.Code[pc-1].A), -1); ok {
 				regs = ag.reload(regs, ag.frameBase(), fp)
 				regs[i.A] = v
 				continue
@@ -2554,8 +2555,8 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			fallthrough
 		case bytecode.OpCallSpread, bytecode.OpNewSpread, bytecode.OpSuperSpread:
 			b := int(i.B)
-			f, callThis, ret, isNew, newTarget = regs[b].o, regs[b+1], i.A, false, nil
-			args := regs[b+2].o.elems
+			f, callThis, ret, isNew, newTarget = regs[b].O, regs[b+1], i.A, false, nil
+			args := regs[b+2].O.Elems
 			argc = len(args)
 			argBase = ag.frames[len(ag.frames)-1].top()
 			ag.ensureStack(argBase + argc)
@@ -2565,7 +2566,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			case bytecode.OpNewSpread:
 				goto construct
 			case bytecode.OpSuperSpread:
-				newTarget = regs[b+1].o
+				newTarget = regs[b+1].O
 				goto superCall
 			}
 			goto call
@@ -2573,29 +2574,29 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			b := int(i.B)
 			pc++
 			ag.frames[len(ag.frames)-1].pc = pc
-			if v, ok := ag.active.callEval(slices.Clip(regs), i, int(fp.code[pc-1].A), int(i.C)); ok {
+			if v, ok := ag.active.callEval(slices.Clip(regs), i, int(fp.Code[pc-1].A), int(i.C)); ok {
 				regs = ag.reload(regs, ag.frameBase(), fp)
 				regs[i.A] = v
 				continue
 			}
-			f, callThis, firstArgReg, argc, ret, isNew, newTarget = regs[b].o, regs[b+1], b+2, int(i.C), i.A, false, nil
+			f, callThis, firstArgReg, argc, ret, isNew, newTarget = regs[b].O, regs[b+1], b+2, int(i.C), i.A, false, nil
 			if i.Op == bytecode.OpTailCallEval {
 				argBase = ag.frameBase() + firstArgReg
 				goto tailCall
 			}
 			goto callRegs
 		case bytecode.OpTailCallUndef:
-			regs[i.B+1] = Undefined
+			regs[i.B+1] = storage.Undefined
 			fallthrough
 		case bytecode.OpTailCall:
 			b := int(i.B)
-			f, callThis, argBase, argc, ret, isNew, newTarget = regs[b].o, regs[b+1], ag.frameBase()+b+2, int(i.C), i.A, false, nil
+			f, callThis, argBase, argc, ret, isNew, newTarget = regs[b].O, regs[b+1], ag.frameBase()+b+2, int(i.C), i.A, false, nil
 			goto tailCall
 		case bytecode.OpTailCallEvalSpread:
 			// A direct eval, or the spread call of the case below for any other function.
 			pc++
 			ag.frames[len(ag.frames)-1].pc = pc
-			if v, ok := ag.active.callEval(slices.Clip(regs), i, int(fp.code[pc-1].A), -1); ok {
+			if v, ok := ag.active.callEval(slices.Clip(regs), i, int(fp.Code[pc-1].A), -1); ok {
 				regs = ag.reload(regs, ag.frameBase(), fp)
 				regs[i.A] = v
 				continue
@@ -2603,8 +2604,8 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			fallthrough
 		case bytecode.OpTailCallSpread:
 			b := int(i.B)
-			f, callThis, ret, isNew, newTarget = regs[b].o, regs[b+1], i.A, false, nil
-			args := regs[b+2].o.elems
+			f, callThis, ret, isNew, newTarget = regs[b].O, regs[b+1], i.A, false, nil
+			args := regs[b+2].O.Elems
 			argc = len(args)
 			argBase = ag.sp
 			ag.ensureStack(argBase + argc)
@@ -2612,54 +2613,54 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			goto tailCall
 		case bytecode.OpNew:
 			b := int(i.B)
-			site := fp.code[pc].A
+			site := fp.Code[pc].A
 			pc++
-			f, argc, ret = regs[b].o, int(i.C), i.A
+			f, argc, ret = regs[b].O, int(i.C), i.A
 			argBase = ag.placeCallArgs(b+2, argc)
-			if f != nil && f.fn != nil && f.fn.code != nil && f.fn.constructor && !f.fn.derived {
+			if f != nil && f.Fn != nil && f.Fn.Code != nil && f.Fn.Constructor && !f.Fn.Derived {
 				// The common case: a plain constructor function, whose prototype property is cached.
-				c := &fp.caches[site]
+				c := &fp.Caches[site]
 				var proto Value
-				if f.shape == c.shape && c.kind == cacheOwn {
+				if f.Shape == c.Shape && c.Kind == cacheOwn {
 					if validateExec {
-						ag.active.checkEntryRead(fp, pc-2, Value{o: f}, f, ag.Key(KeyPrototype), &c.cacheEntry)
+						ag.active.checkEntryRead(fp, pc-2, Value{O: f}, f, ag.Key(KeyPrototype), &c.CacheEntry)
 					}
-					proto = f.slots[c.slot]
+					proto = f.Slots[c.Slot]
 				} else {
 					ag.frames[len(ag.frames)-1].pc = pc
-					proto, _ = ag.active.getNamed(Value{o: f}, ag.Key(KeyPrototype), c)
+					proto, _ = ag.active.getNamed(Value{O: f}, ag.Key(KeyPrototype), c)
 					regs = ag.reload(regs, ag.frameBase(), fp)
 				}
-				if proto.o == nil || proto.o.kind < kindFirstObject {
-					proto = Value{o: f.fn.code.realm.intrinsics[IntrinsicObjectPrototype]}
+				if proto.O == nil || proto.O.Kind < kindFirstObject {
+					proto = Value{O: f.Fn.Code.Realm.Intrinsics[IntrinsicObjectPrototype]}
 				}
 				var shape *shape
-				if proto.o == c.holder && c.next != nil && c.next.realm == f.fn.code.realm {
+				if proto.O == c.Holder && c.Next != nil && c.Next.Realm == f.Fn.Code.Realm {
 					if validateExec {
-						ag.active.checkInstanceShape(fp, pc-2, proto.o, f.fn.code.realm, c.next)
+						ag.active.checkInstanceShape(fp, pc-2, proto.O, f.Fn.Code.Realm, c.Next)
 					}
-					shape = c.next
+					shape = c.Next
 				} else {
-					shape = ag.active.shapeForRealm(proto.o, f.fn.code.realm)
-					if c.kind == cacheOwn {
-						c.holder, c.next = proto.o, shape
+					shape = ag.active.ShapeForRealm(proto.O, f.Fn.Code.Realm)
+					if c.Kind == cacheOwn {
+						c.Holder, c.Next = proto.O, shape
 					}
 				}
-				callThis = Value{o: newInstance(shape)}
+				callThis = Value{O: storage.NewInstance(shape)}
 				isNew, newTarget = true, f
 				goto call
 			}
 			goto construct
 		case bytecode.OpSuperCall:
 			b := int(i.B)
-			f, newTarget, argc, ret = regs[b].o, regs[b+1].o, int(i.C), i.A
+			f, newTarget, argc, ret = regs[b].O, regs[b+1].O, int(i.C), i.A
 			argBase = ag.placeCallArgs(b+2, argc)
 			goto superCall
 
 		case bytecode.OpReturn, bytecode.OpReturnUndef, bytecode.OpReturnDerived:
 			// The fast switch above pops the frame the same way for the returns that need none
 			// of the calls here.
-			r := Undefined
+			r := storage.Undefined
 			if i.Op != bytecode.OpReturnUndef {
 				r = regs[i.A]
 			}
@@ -2671,11 +2672,11 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 						ag.active.throwReturnError(stop, n, pc, ErrorKindType, "derived constructors may only return object or undefined")
 					}
 					r = regs[i.B]
-					if r.o == tdzObject {
+					if r.O == tdzObject {
 						ag.active.throwReturnError(stop, n, pc, ErrorKindReference, "must call super constructor in derived class before accessing 'this' or returning from derived constructor")
 					}
 				}
-			} else if done.isNew && (r.o == nil || r.o.kind < kindFirstObject) {
+			} else if done.isNew && (r.O == nil || r.O.Kind < kindFirstObject) {
 				r = done.this
 			}
 			if g := done.gen; g != nil {
@@ -2694,7 +2695,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			regs = fr.registers(ag.stack)
 			ag.sp = fr.top()
 			regs[ret] = r
-			if fp.realm != ag.active.realmPart {
+			if fp.Realm != ag.active.realmPart {
 				goto enter
 			}
 		case bytecode.OpThrow:
@@ -2708,7 +2709,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			goto throw
 		case bytecode.OpRethrow:
 			v := regs[i.A]
-			if i.B >= 0 && v.o == closeSignal {
+			if i.B >= 0 && v.O == closeSignal {
 				v = regs[i.B]
 			}
 			ag.restoreException(v)
@@ -2726,15 +2727,15 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			*cur = frame{}
 			ag.frames = ag.frames[:n]
 			if n == stop {
-				return Value{o: o}, execReturn
+				return Value{O: o}, execReturn
 			}
 			fr := &ag.frames[n-1]
 			fp = fr.fp
 			pc = fr.pc
 			regs = fr.registers(ag.stack)
 			ag.sp = fr.top()
-			regs[ret] = Value{o: o}
-			if fp.realm != ag.active.realmPart {
+			regs[ret] = Value{O: o}
+			if fp.Realm != ag.active.realmPart {
 				goto enter
 			}
 		case bytecode.OpYield, bytecode.OpAwait:
@@ -2753,17 +2754,17 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			// A generator only ever runs as the frame its loop was started for.
 			return v, execYield
 		case bytecode.OpGenFinally:
-			if regs[i.A+1].o == closeSignal {
+			if regs[i.A+1].O == closeSignal {
 				g := ag.frames[len(ag.frames)-1].gen
 				regs[i.A+1] = g.closeValue
-				g.closeValue = Undefined
-				regs[i.A] = Number(float64(i.B))
+				g.closeValue = storage.Undefined
+				regs[i.A] = storage.Number(float64(i.B))
 			} else {
-				regs[i.A] = Number(1)
+				regs[i.A] = storage.Number(1)
 			}
 		case bytecode.OpGenResumeMode:
 			g := ag.frames[len(ag.frames)-1].gen
-			regs[i.A] = Number(float64(g.mode))
+			regs[i.A] = storage.Number(float64(g.mode))
 			g.mode = ResumeNext
 		case bytecode.OpYieldDelegateResult:
 			ag.frames[len(ag.frames)-1].pc = pc
@@ -2771,7 +2772,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			if !r.IsObject() {
 				ag.active.ThrowTypeError("iterator result " + ag.DisplayString(r) + " is not an object")
 			}
-			done := ToBoolean(ag.active.GetV(r, ag.Key(keyDone)))
+			done := storage.ToBoolean(ag.active.GetV(r, ag.Key(keyDone)))
 			regs = ag.reload(regs, ag.frameBase(), fp)
 			if !done {
 				pc = int(i.C)
@@ -2782,135 +2783,135 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			regs[i.A] = v
 
 		case bytecode.OpNewObject:
-			o, slots := newObjectWithStorage(int(i.C))
-			o.kind = kindObject
-			o.shape = ag.active.realm.shapes.object
-			o.slots = slots[:0]
-			regs[i.A] = Value{o: o}
+			o, slots := storage.NewObjectWithStorage(int(i.C))
+			o.Kind = kindObject
+			o.Shape = ag.active.realm.Shapes.Object
+			o.Slots = slots[:0]
+			regs[i.A] = Value{O: o}
 		case bytecode.OpNewArray:
-			o, elems := newObjectWithStorage(int(i.C))
-			o.kind = kindArray
-			o.class = classArray
-			o.shape = ag.active.realm.shapes.array
-			o.elems = elems[:0]
-			regs[i.A] = Value{o: o}
+			o, elems := storage.NewObjectWithStorage(int(i.C))
+			o.Kind = kindArray
+			o.Class = classArray
+			o.Shape = ag.active.realm.Shapes.Array
+			o.Elems = elems[:0]
+			regs[i.A] = Value{O: o}
 		case bytecode.OpNewArrayK:
-			regs[i.A] = Value{o: ag.active.NewArrayCopy(fp.consts[i.B : i.B+i.C])}
+			regs[i.A] = Value{O: ag.active.NewArrayCopy(fp.Consts[i.B : i.B+i.C])}
 		case bytecode.OpArrayPush:
-			o := regs[i.A].o
-			o.appendElem(regs[i.B])
-			o.length = uint32(len(o.elems))
+			o := regs[i.A].O
+			o.AppendElem(regs[i.B])
+			o.Length = uint32(len(o.Elems))
 		case bytecode.OpArrayHole:
-			o := regs[i.A].o
-			o.appendElem(hole)
-			o.length = uint32(len(o.elems))
+			o := regs[i.A].O
+			o.AppendElem(storage.Hole)
+			o.Length = uint32(len(o.Elems))
 		case bytecode.OpArraySpread:
 			ag.frames[len(ag.frames)-1].pc = pc
-			o := regs[i.A].o
+			o := regs[i.A].O
 			ag.active.appendIterable(o, regs[i.B])
 			regs = ag.reload(regs, ag.frameBase(), fp)
 		case bytecode.OpSpreadArgs:
 			ag.frames[len(ag.frames)-1].pc = pc
 			o := ag.active.spreadArgs(regs[i.B])
 			regs = ag.reload(regs, ag.frameBase(), fp)
-			regs[i.A] = Value{o: o}
+			regs[i.A] = Value{O: o}
 		case bytecode.OpRegExp:
 			ag.frames[len(ag.frames)-1].pc = pc
-			regs[i.A] = Value{o: ag.active.newRegExpLiteral(&fp.regExps[i.B])}
+			regs[i.A] = Value{O: ag.active.newRegExpLiteral(&fp.RegExps[i.B])}
 		case bytecode.OpRegExpArg:
 			ag.frames[len(ag.frames)-1].pc = pc
-			ag.active.lendRegExpLiteral(slices.Clip(regs), i.A, i.C, &fp.regExps[i.B])
+			ag.active.lendRegExpLiteral(slices.Clip(regs), i.A, i.C, &fp.RegExps[i.B])
 		case bytecode.OpRegExpMethod:
 			ag.frames[len(ag.frames)-1].pc = pc
-			m, this := ag.active.regExpLiteralMethod(&fp.regExps[i.B], fp.keys[i.C], &fp.caches[i.C])
+			m, this := ag.active.regExpLiteralMethod(&fp.RegExps[i.B], fp.Keys[i.C], &fp.Caches[i.C])
 			regs = ag.reload(regs, ag.frameBase(), fp)
-			regs[i.A], regs[i.A+1] = m, Value{o: this}
+			regs[i.A], regs[i.A+1] = m, Value{O: this}
 		case bytecode.OpTemplate:
-			regs[i.A] = Value{o: ag.active.templateObject(&fp.templates[i.B])}
+			regs[i.A] = Value{O: ag.active.templateObject(&fp.Templates[i.B])}
 		case bytecode.OpDefineField:
 			ag.frames[len(ag.frames)-1].pc = pc
-			ag.active.defineField(regs[i.A].o, regs[i.B], regs[i.C])
+			ag.active.defineField(regs[i.A].O, regs[i.B], regs[i.C])
 			regs = ag.reload(regs, ag.frameBase(), fp)
 		case bytecode.OpDefineFieldK:
-			o := regs[i.A].o
-			c := &fp.caches[i.B]
-			if o.shape == c.shape && c.kind == cacheAdd {
+			o := regs[i.A].O
+			c := &fp.Caches[i.B]
+			if o.Shape == c.Shape && c.Kind == cacheAdd {
 				if validateExec {
-					ag.active.checkDefineHit(fp, pc-1, o, fp.keys[i.B], c.next)
+					ag.active.checkDefineHit(fp, pc-1, o, fp.Keys[i.B], c.Next)
 				}
-				o.shape = c.next
-				o.appendSlot(regs[i.C])
+				o.Shape = c.Next
+				o.AppendSlot(regs[i.C])
 				continue
 			}
 			ag.frames[len(ag.frames)-1].pc = pc
-			ag.active.defineFieldK(o, fp.keys[i.B], regs[i.C], c)
+			ag.active.defineFieldK(o, fp.Keys[i.B], regs[i.C], c)
 		case bytecode.OpDefineMethod:
 			ag.frames[len(ag.frames)-1].pc = pc
-			ag.active.defineMethod(regs[i.A].o, regs[i.B], regs[i.C])
+			ag.active.defineMethod(regs[i.A].O, regs[i.B], regs[i.C])
 			regs = ag.reload(regs, ag.frameBase(), fp)
 		case bytecode.OpDefineGetter, bytecode.OpDefineSetter:
 			ag.frames[len(ag.frames)-1].pc = pc + 1
-			enumerable := fp.code[pc].A != 0
+			enumerable := fp.Code[pc].A != 0
 			pc++
-			ag.active.defineAccessor(regs[i.A].o, regs[i.B], regs[i.C].o, i.Op == bytecode.OpDefineSetter, enumerable)
+			ag.active.defineAccessor(regs[i.A].O, regs[i.B], regs[i.C].O, i.Op == bytecode.OpDefineSetter, enumerable)
 			regs = ag.reload(regs, ag.frameBase(), fp)
 		case bytecode.OpSetFuncName:
 			ag.frames[len(ag.frames)-1].pc = pc
 			ag.active.setFuncName(regs[i.A], regs[i.B], int(i.C))
 		case bytecode.OpSetHome:
-			regs[i.A].o.ownFunction().home = regs[i.B].o
+			regs[i.A].O.OwnFunction().Home = regs[i.B].O
 		case bytecode.OpCopyProps:
 			ag.frames[len(ag.frames)-1].pc = pc
-			ag.active.copyDataProperties(regs[i.A].o, regs[i.B], nil)
+			ag.active.copyDataProperties(regs[i.A].O, regs[i.B], nil)
 			regs = ag.reload(regs, ag.frameBase(), fp)
 		case bytecode.OpCopyPropsExcept:
 			ag.frames[len(ag.frames)-1].pc = pc + 1
-			n := int(fp.code[pc].A)
+			n := int(fp.Code[pc].A)
 			pc++
 			o := ag.active.NewOrdinaryObject()
 			excluded := append([]Value(nil), slices.Clip(regs)[i.C:int(i.C)+n]...)
 			ag.active.copyDataProperties(o, regs[i.B], excluded)
 			regs = ag.reload(regs, ag.frameBase(), fp)
-			regs[i.A] = Value{o: o}
+			regs[i.A] = Value{O: o}
 		case bytecode.OpSetProto:
 			if p := regs[i.B]; p.IsObject() {
-				ag.active.setProto(regs[i.A].o, p.o)
+				ag.active.SetProto(regs[i.A].O, p.O)
 			} else if p.IsNull() {
-				ag.active.setProto(regs[i.A].o, nil)
+				ag.active.SetProto(regs[i.A].O, nil)
 			}
 		case bytecode.OpClass:
 			ag.frames[len(ag.frames)-1].pc = pc
-			parent := hole
+			parent := storage.Hole
 			if i.C >= 0 {
 				parent = regs[i.C]
 			}
-			proto := ag.active.setupClass(regs[i.B].o, parent)
+			proto := ag.active.setupClass(regs[i.B].O, parent)
 			regs = ag.reload(regs, ag.frameBase(), fp)
-			regs[i.A] = Value{o: proto}
+			regs[i.A] = Value{O: proto}
 		case bytecode.OpPrivateName:
 			name := &Object{
-				kind:  kindSymbol,
-				class: classPrivateName,
-				str:   fp.keys[i.B].str,
+				Kind:  kindSymbol,
+				Class: classPrivateName,
+				Text:  fp.Keys[i.B].Text,
 			}
 			if i.C != 0 {
-				name.flags |= objFrozenLength
+				name.Flags |= objFrozenLength
 			}
-			regs[i.A] = Value{o: name}
+			regs[i.A] = Value{O: name}
 		case bytecode.OpInitFields:
-			if regs[i.A].o.fn.fields != nil {
+			if regs[i.A].O.Fn.Fields != nil {
 				ag.frames[len(ag.frames)-1].pc = pc
-				ag.active.initFields(regs[i.A].o, regs[i.B])
+				ag.active.initFields(regs[i.A].O, regs[i.B])
 				regs = ag.reload(regs, ag.frameBase(), fp)
 			}
 		case bytecode.OpAddField:
 			ag.frames[len(ag.frames)-1].pc = pc + 1
-			kind := int(fp.code[pc].A)
+			kind := int(fp.Code[pc].A)
 			pc++
-			ag.active.addClassElement(regs[i.A].o, regs[i.B], regs[i.C], kind)
+			ag.active.addClassElement(regs[i.A].O, regs[i.B], regs[i.C], kind)
 			regs = ag.reload(regs, ag.frameBase(), fp)
 		case bytecode.OpCheckThisUninit:
-			if regs[i.A].o != tdzObject {
+			if regs[i.A].O != tdzObject {
 				ag.frames[len(ag.frames)-1].pc = pc
 				ag.active.ThrowReferenceError("super constructor may only be called once")
 			}
@@ -2928,7 +2929,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			regs[i.A] = it
 		case bytecode.OpForInNext:
 			ag.frames[len(ag.frames)-1].pc = pc
-			k, ok := ag.active.forInNext(regs[i.B].o)
+			k, ok := ag.active.forInNext(regs[i.B].O)
 			regs = ag.reload(regs, ag.frameBase(), fp)
 			if !ok {
 				pc = int(i.C)
@@ -2937,9 +2938,9 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			regs[i.A] = k
 		case bytecode.OpGetIterator:
 			v := regs[i.B]
-			if i.C == bytecode.IterSync && v.o != nil && v.o.kind == kindArray && ag.active.arrayIterationPlain(v.o) {
+			if i.C == bytecode.IterSync && v.O != nil && v.O.Kind == kindArray && ag.active.ArrayIterationPlain(v.O) {
 				// A numeric iterator slot identifies an indexed array with the original next method.
-				regs[i.A] = Number(0)
+				regs[i.A] = storage.Number(0)
 				regs[i.A+1] = v
 				continue
 			}
@@ -2949,36 +2950,36 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			regs[i.A] = it
 			regs[i.A+1] = next
 		case bytecode.OpIterNext:
-			if regs[i.B].o == nil {
+			if regs[i.B].O == nil {
 				// The iterator finished earlier.
-				regs[i.A] = Undefined
+				regs[i.A] = storage.Undefined
 				pc = int(i.C)
 				continue
 			}
-			if idx := regs[i.B]; idx.o == numberObject {
-				o := regs[i.B+1].o
-				j := uint32(idx.n)
-				if j >= o.length {
+			if idx := regs[i.B]; idx.O == storage.NumberObject {
+				o := regs[i.B+1].O
+				j := uint32(idx.N)
+				if j >= o.Length {
 					// Mark the iterator as finished, so that closing it does nothing.
-					regs[i.B] = Undefined
-					regs[i.B+1] = Undefined
-					regs[i.A] = Undefined
+					regs[i.B] = storage.Undefined
+					regs[i.B+1] = storage.Undefined
+					regs[i.A] = storage.Undefined
 					pc = int(i.C)
 					continue
 				}
-				regs[i.B].n = idx.n + 1
-				if uint(j) < uint(len(o.elems)) && o.elems[j].o != holeObject {
-					regs[i.A] = o.elems[j]
+				regs[i.B].N = idx.N + 1
+				if uint(j) < uint(len(o.Elems)) && o.Elems[j].O != storage.HoleObject {
+					regs[i.A] = o.Elems[j]
 					continue
 				}
 				ag.frames[len(ag.frames)-1].pc = pc
 				// A getter that throws finishes the iterator.
-				regs[i.B] = Undefined
-				regs[i.B+1] = Undefined
+				regs[i.B] = storage.Undefined
+				regs[i.B+1] = storage.Undefined
 				v := ag.active.plainArrayIteratorIndex(o, j)
 				regs = ag.reload(regs, ag.frameBase(), fp)
-				regs[i.B] = Number(idx.n + 1)
-				regs[i.B+1] = Value{o: o}
+				regs[i.B] = storage.Number(idx.N + 1)
+				regs[i.B+1] = Value{O: o}
 				regs[i.A] = v
 				continue
 			}
@@ -2986,7 +2987,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			{
 				// An iterator whose step throws counts as finished, so that it is not closed.
 				it := regs[i.B]
-				regs[i.B] = Undefined
+				regs[i.B] = storage.Undefined
 				v, st := ag.active.iterNext(it, regs[i.B+1])
 				regs = ag.reload(regs, ag.frameBase(), fp)
 				switch st {
@@ -2994,7 +2995,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 					regs[i.B] = it
 					regs[i.A] = v
 				case iterDone:
-					regs[i.A] = Undefined
+					regs[i.A] = storage.Undefined
 					pc = int(i.C)
 				default:
 					goto throw
@@ -3005,44 +3006,44 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			// can tell. When the step has run and something can tell, the pair becomes the value of
 			// the following OpIterNext, which is skipped. Otherwise the instructions after this one
 			// step the iterator, which is already cleared when the step found it finished.
-			b := fp.code[pc].A
+			b := fp.Code[pc].A
 			pc++
 			it, next := regs[i.B], regs[i.B+1]
-			if it.o == nil {
+			if it.O == nil {
 				continue
 			}
-			if it.o == numberObject {
+			if it.O == storage.NumberObject {
 				// A plain array iterated by index, whose element is itself a plain array of at
 				// least two elements.
-				o, j := next.o, uint32(it.n)
-				if j >= o.length || uint(j) >= uint(len(o.elems)) {
+				o, j := next.O, uint32(it.N)
+				if j >= o.Length || uint(j) >= uint(len(o.Elems)) {
 					continue
 				}
-				e := o.elems[j].o
-				if e == nil || e.shape != ag.active.realm.shapes.array || e.length < 2 || len(e.elems) < 2 || e.elems[0].isHole() || e.elems[1].isHole() || !ag.pairDestructuringPlain(ag.active.realmPart) {
+				e := o.Elems[j].O
+				if e == nil || e.Shape != ag.active.realm.Shapes.Array || e.Length < 2 || len(e.Elems) < 2 || e.Elems[0].IsHole() || e.Elems[1].IsHole() || !ag.PairDestructuringPlain(ag.active.realmPart) {
 					continue
 				}
-				regs[i.B].n = it.n + 1
-				regs[i.A] = e.elems[0]
-				regs[b] = e.elems[1]
+				regs[i.B].N = it.N + 1
+				regs[i.A] = e.Elems[0]
+				regs[b] = e.Elems[1]
 				pc = int(i.C)
 				continue
 			}
-			if next.o == nil || next.o.fn == nil || ag.interrupt.Load() {
+			if next.O == nil || next.O.Fn == nil || ag.InterruptFlag.Load() {
 				continue
 			}
 			var x, y Value
 			var st PairStep
 			pairRealm := ag.active.realmPart
-			if step := iteratorPairStepOf(next.o.fn, ag.active.realmPart); step != nil {
-				x, y, st = step(IteratorState(it))
+			if step := iteratorPairStepOf(next.O.Fn, ag.active.realmPart); step != nil {
+				x, y, st = step(storage.IteratorState(it))
 				if st == PairYielded {
-					pairRealm = it.o.shape.realm
+					pairRealm = it.O.Shape.Realm
 				}
-			} else if next.o == ag.active.realm.intrinsics[IntrinsicArrayIteratorPrototypeNext] {
+			} else if next.O == ag.active.realm.Intrinsics[IntrinsicArrayIteratorPrototypeNext] {
 				// Reading an array entry can run JavaScript. A throwing step finishes the iterator.
 				ag.frames[len(ag.frames)-1].pc = pc
-				regs[i.B] = Undefined
+				regs[i.B] = storage.Undefined
 				x, y, st = ag.active.arrayIteratorPairStep(it, next)
 				regs = ag.reload(regs, ag.frameBase(), fp)
 				regs[i.B] = it
@@ -3051,9 +3052,9 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			}
 			switch st {
 			case PairYielded:
-				if !ag.pairDestructuringPlain(pairRealm) {
+				if !ag.PairDestructuringPlain(pairRealm) {
 					// The outer iterator has stepped. Supply its pair to the ordinary binding.
-					regs[fp.code[pc].A] = Value{o: pairRealm.NewArrayPair(x, y)}
+					regs[fp.Code[pc].A] = Value{O: pairRealm.NewArrayPair(x, y)}
 					pc++
 					continue
 				}
@@ -3061,7 +3062,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				regs[b] = y
 				pc = int(i.C)
 			case PairDone:
-				regs[i.B] = Undefined
+				regs[i.B] = storage.Undefined
 			}
 			// A finished iterator is left for the step after this instruction.
 		case bytecode.OpIterClose:
@@ -3069,13 +3070,13 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			if it.IsUndefined() {
 				continue
 			}
-			regs[i.A] = Undefined
+			regs[i.A] = storage.Undefined
 			ag.frames[len(ag.frames)-1].pc = pc
-			pending := i.B >= 0 && regs[i.B].o != closeSignal
-			if it.o == numberObject {
-				o := regs[i.A+1].o
-				regs[i.A+1] = Undefined
-				ag.active.closePlainArrayIterator(o, uint32(it.n), pending)
+			pending := i.B >= 0 && regs[i.B].O != closeSignal
+			if it.O == storage.NumberObject {
+				o := regs[i.A+1].O
+				regs[i.A+1] = storage.Undefined
+				ag.active.closePlainArrayIterator(o, uint32(it.N), pending)
 			} else {
 				ag.active.iteratorClose(it, pending)
 			}
@@ -3084,27 +3085,27 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			ag.frames[len(ag.frames)-1].pc = pc
 			{
 				it := regs[i.B]
-				m := ag.active.GetMethod(it, fp.keys[i.C])
+				m := ag.active.GetMethod(it, fp.Keys[i.C])
 				regs = ag.reload(regs, ag.frameBase(), fp)
 				if m == nil {
-					regs[i.A] = Undefined
-					regs[i.A+1] = False
+					regs[i.A] = storage.Undefined
+					regs[i.A+1] = storage.False
 					continue
 				}
 				r := ag.active.Call(m, it, regs[i.A])
 				regs = ag.reload(regs, ag.frameBase(), fp)
 				regs[i.A] = r
-				regs[i.A+1] = True
+				regs[i.A+1] = storage.True
 			}
 		case bytecode.OpIterReturn:
 			ag.frames[len(ag.frames)-1].pc = pc
 			{
 				it := regs[i.B]
-				regs[i.B] = Undefined
+				regs[i.B] = storage.Undefined
 				r, ok := ag.active.iterReturn(it)
 				regs = ag.reload(regs, ag.frameBase(), fp)
 				regs[i.A] = r
-				regs[i.A+1] = Bool(ok)
+				regs[i.A+1] = storage.Bool(ok)
 			}
 		case bytecode.OpIterCheckResult:
 			if !regs[i.A].IsObject() {
@@ -3144,14 +3145,14 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				regs[i.A] = v
 			}
 		case bytecode.OpDisposeError:
-			ag.active.disposeError(regs[i.A].o.ext.(*DisposeCapability), regs[i.B])
+			ag.active.disposeError(regs[i.A].O.Ext.(*DisposeCapability), regs[i.B])
 		case bytecode.OpDisposeEnd:
 			if v, thrown := endDisposeOp(regs[i.A]); thrown {
-				regs[i.A] = Undefined
+				regs[i.A] = storage.Undefined
 				ag.restoreException(v)
 				goto throw
 			}
-			regs[i.A] = Undefined
+			regs[i.A] = storage.Undefined
 
 		case bytecode.OpWith:
 			ag.frames[len(ag.frames)-1].pc = pc
@@ -3163,41 +3164,41 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			cur.leaveScopes(len(cur.scopes) - 1)
 		case bytecode.OpResolveName:
 			ag.frames[len(ag.frames)-1].pc = pc
-			o := ag.active.findScope(ag.frames[len(ag.frames)-1].cl, fp.keys[i.B], int(i.C))
+			o := ag.active.findScope(ag.frames[len(ag.frames)-1].cl, fp.Keys[i.B], int(i.C))
 			regs = ag.reload(regs, ag.frameBase(), fp)
 			if o != nil {
-				regs[i.A] = Value{o: o}
+				regs[i.A] = Value{O: o}
 			} else {
-				regs[i.A] = Undefined
+				regs[i.A] = storage.Undefined
 			}
 		case bytecode.OpGetScoped, bytecode.OpGetScopedStrict:
 			ag.frames[len(ag.frames)-1].pc = pc
-			v := ag.active.getScoped(regs[i.B].o, fp.keys[i.C], i.Op == bytecode.OpGetScopedStrict)
+			v := ag.active.getScoped(regs[i.B].O, fp.Keys[i.C], i.Op == bytecode.OpGetScopedStrict)
 			regs = ag.reload(regs, ag.frameBase(), fp)
 			regs[i.A] = v
 		case bytecode.OpSetScoped, bytecode.OpSetScopedStrict:
 			ag.frames[len(ag.frames)-1].pc = pc
-			ag.active.setScoped(regs[i.B].o, fp.keys[i.C], regs[i.A], i.Op == bytecode.OpSetScopedStrict)
+			ag.active.setScoped(regs[i.B].O, fp.Keys[i.C], regs[i.A], i.Op == bytecode.OpSetScopedStrict)
 			regs = ag.reload(regs, ag.frameBase(), fp)
 		case bytecode.OpDeleteScoped:
 			ag.frames[len(ag.frames)-1].pc = pc
-			ok := ag.active.DeleteProp(regs[i.B].o, PropKey{key: fp.keys[i.C]})
+			ok := ag.active.DeleteProp(regs[i.B].O, PropKey{Key: fp.Keys[i.C]})
 			regs = ag.reload(regs, ag.frameBase(), fp)
-			regs[i.A] = Bool(ok)
+			regs[i.A] = storage.Bool(ok)
 		case bytecode.OpDeleteName:
 			ag.frames[len(ag.frames)-1].pc = pc
-			ok := ag.active.deleteName(fp.keys[i.B])
+			ok := ag.active.deleteName(fp.Keys[i.B])
 			regs = ag.reload(regs, ag.frameBase(), fp)
-			regs[i.A] = Bool(ok)
+			regs[i.A] = storage.Bool(ok)
 		case bytecode.OpCaptureScopes:
-			regs[i.A].o.ownFunction().scopes = ag.openScopes(ag.frames[len(ag.frames)-1].cl)
+			regs[i.A].O.OwnFunction().Scopes = ag.openScopes(ag.frames[len(ag.frames)-1].cl)
 		case bytecode.OpEvalScope:
 			ag.active.pushEvalScope()
 		case bytecode.OpScopeThis:
 			regs[i.A] = scopeThis(regs[i.B])
 		case bytecode.OpDeclareEvalVar:
 			ag.frames[len(ag.frames)-1].pc = pc
-			ag.active.declareEvalVar(ag.frames[len(ag.frames)-1].cl, fp.keys[i.A], int(i.B), slices.Clip(regs), int(i.C))
+			ag.active.declareEvalVar(ag.frames[len(ag.frames)-1].cl, fp.Keys[i.A], int(i.B), slices.Clip(regs), int(i.C))
 		case bytecode.OpImport, bytecode.OpImportMeta:
 			ag.frames[len(ag.frames)-1].pc = pc
 			v := ag.active.importOp(slices.Clip(regs), i)
@@ -3211,7 +3212,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				pc++
 			}
 			ag.frames[len(ag.frames)-1].pc = pc
-			if v, ok := ag.active.decorateOp(slices.Clip(regs), i, &fp.code[pc-1]); ok {
+			if v, ok := ag.active.decorateOp(slices.Clip(regs), i, &fp.Code[pc-1]); ok {
 				regs = ag.reload(regs, ag.frameBase(), fp)
 				regs[i.A] = v
 			} else {
@@ -3235,7 +3236,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 	arithK:
 		{
 			ag.frames[len(ag.frames)-1].pc = pc
-			v := ag.active.arith(i.Op.RegOperand(), regs[i.B], fp.consts[i.C])
+			v := ag.active.arith(i.Op.RegOperand(), regs[i.B], fp.Consts[i.C])
 			regs = ag.reload(regs, ag.frameBase(), fp)
 			regs[i.A] = v
 			continue
@@ -3259,13 +3260,13 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				val, getter = ag.active.getIndex(receiver, uint32(i.C))
 			case bytecode.OpCopyPropToGlobal:
 				// The following global store owns the cache and fills it only for writable bindings.
-				val = ag.active.resolveGlobal(fp.keys[fp.code[i.C-1].B], nil)
+				val = ag.active.resolveGlobal(fp.Keys[fp.Code[i.C-1].B], nil)
 			case bytecode.OpResolveGlobal:
-				val = ag.active.resolveGlobal(fp.keys[i.B], &fp.globals[i.C])
+				val = ag.active.resolveGlobal(fp.Keys[i.B], &fp.Globals[i.C])
 			case bytecode.OpGetGlobal, bytecode.OpGetGlobalStrict, bytecode.OpGetGlobalOrUndef, bytecode.OpGetGlobalOrUndefStrict:
 				orUndef := i.Op == bytecode.OpGetGlobalOrUndef || i.Op == bytecode.OpGetGlobalOrUndefStrict
 				strict := i.Op == bytecode.OpGetGlobalStrict || i.Op == bytecode.OpGetGlobalOrUndefStrict
-				val = ag.active.getGlobal(fp.keys[i.B], &fp.globals[i.C], orUndef, strict)
+				val = ag.active.getGlobal(fp.Keys[i.B], &fp.Globals[i.C], orUndef, strict)
 			default:
 				panic("ekuma: unexpected property read opcode: " + i.Op.String())
 			}
@@ -3289,12 +3290,12 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 					var ok bool
 					setter, ok = ag.active.setNamed(receiver, name, rhs, site)
 					if !ok && i.Op == bytecode.OpSetPropStrict {
-						ag.active.throwReadOnly(receiver, PropKey{key: name})
+						ag.active.throwReadOnly(receiver, PropKey{Key: name})
 					}
 				}
 			case bytecode.OpSetGlobal, bytecode.OpSetGlobalStrict:
 				fr.pc = pc
-				ag.active.setGlobal(fp.keys[i.B], rhs, &fp.globals[i.C], i.Op == bytecode.OpSetGlobalStrict)
+				ag.active.setGlobal(fp.Keys[i.B], rhs, &fp.Globals[i.C], i.Op == bytecode.OpSetGlobalStrict)
 			case bytecode.OpSetIndex, bytecode.OpSetIndexStrict, bytecode.OpSetIndexInt, bytecode.OpSetIndexIntStrict:
 				fr.pc = pc
 				setter = ag.active.setValue(receiver, key, rhs, i.Op == bytecode.OpSetIndexStrict || i.Op == bytecode.OpSetIndexIntStrict)
@@ -3309,7 +3310,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			// Both the lookup and making room for a setter argument can move the stack.
 			regs = ag.reload(regs, base, fp)
 			if setter != nil {
-				f, callThis, argc, ret, isNew, newTarget = setter, receiver, 1, int32(fp.nregs), false, nil
+				f, callThis, argc, ret, isNew, newTarget = setter, receiver, 1, int32(fp.Nregs), false, nil
 				goto call
 			}
 			continue
@@ -3323,9 +3324,9 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 
 	forward:
 		// A call with the arguments of the running function.
-		if (i.Op == bytecode.OpCallFwd || i.Op == bytecode.OpTailCallFwd) && (!regs[i.C].IsUndefined() || !ag.arrayIterationUnmodified(ag.active.realmPart)) {
+		if (i.Op == bytecode.OpCallFwd || i.Op == bytecode.OpTailCallFwd) && (!regs[i.C].IsUndefined() || !ag.ArrayIterationUnmodified(ag.active.realmPart)) {
 			ag.frames[len(ag.frames)-1].pc = pc
-			args := ag.active.spreadArgs(ag.active.forwardedArguments(i.C)).elems
+			args := ag.active.spreadArgs(ag.active.forwardedArguments(i.C)).Elems
 			argc, ret, isNew, newTarget = len(args), i.A, false, nil
 			argBase = ag.frames[len(ag.frames)-1].top()
 			ag.ensureStack(argBase + argc)
@@ -3337,7 +3338,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			argBase = cur.top()
 			ag.ensureStack(argBase + argc)
 			regs = ag.reload(regs, cur.base, fp)
-			n := min(argc, fp.nparams)
+			n := min(argc, fp.Nparams)
 			copy(ag.stack[argBase:], slices.Clip(regs)[:n])
 			copy(ag.stack[argBase+n:], ag.extraArgs(cur))
 		}
@@ -3352,71 +3353,71 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 	call:
 		// regs is current and the arguments are on the stack from argBase on.
 		{
-			if ag.interrupt.Load() {
+			if ag.InterruptFlag.Load() {
 				ag.frames[len(ag.frames)-1].pc = pc
 				ag.Poll()
 				regs = ag.reload(regs, ag.frameBase(), fp)
 			}
-			if f == nil || f.fn == nil {
+			if f == nil || f.Fn == nil {
 				ag.frames[len(ag.frames)-1].pc = pc
 				ag.active.throwNotCallable(fp, pc, slices.Clip(regs))
 			}
-			fn := f.fn
-			if c := fn.code; c != nil && !c.isGenerator && !c.isAsync && (!fn.classConstructor || isNew || newTarget != nil) {
+			fn := f.Fn
+			if c := fn.Code; c != nil && !c.IsGenerator && !c.IsAsync && (!fn.ClassConstructor || isNew || newTarget != nil) {
 				if len(ag.frames) >= maxFrames {
 					ag.frames[len(ag.frames)-1].pc = pc
 					ag.active.ThrowRangeError("maximum call stack size exceeded")
 				}
-				if site := c.returnedProperty; site != nil && !isNew && newTarget == nil && c.realm == fp.realm && callThis.IsObject() {
-					if e := site.entry(callThis.o.shape); e != nil && e.kind == cacheOwn {
+				if site := c.ReturnedProperty; site != nil && !isNew && newTarget == nil && c.Realm == fp.Realm && callThis.IsObject() {
+					if e := site.Entry(callThis.O.Shape); e != nil && e.Kind == cacheOwn {
 						if validateExec {
 							ag.active.checkReturnedProperty(c, callThis, e)
 						}
-						regs[ret] = callThis.o.slots[e.slot]
+						regs[ret] = callThis.O.Slots[e.Slot]
 						continue
 					}
 				}
 				ag.frames[len(ag.frames)-1].pc = pc
 				base := ag.pushFrame(f, callThis, argBase, argc, ret, isNew, newTarget)
 				fp = c
-				regs = ag.stack[base : base+c.nregs+1]
+				regs = ag.stack[base : base+c.Nregs+1]
 				pc = 0
-				if r := c.thisReg; r >= 0 {
+				if r := c.ThisReg; r >= 0 {
 					// Do what the first instruction does, and start after it.
-					if t := ag.frames[len(ag.frames)-1].this; !c.thisSloppy || t.o != nil && t.o.kind >= kindFirstObject {
+					if t := ag.frames[len(ag.frames)-1].this; !c.ThisSloppy || t.O != nil && t.O.Kind >= kindFirstObject {
 						regs[r] = t
 						pc = 1
 					}
 				}
-				if fp.realm != ag.active.realmPart {
+				if fp.Realm != ag.active.realmPart {
 					goto enter
 				}
 				continue
 			}
-			if info := fn.info; info != nil {
+			if info := fn.Info; info != nil {
 				// The instructions that construct with a native function call Construct.
 				if validateExec && (isNew || newTarget != nil) {
 					panic("ekuma: construction in a call of a native function")
 				}
-				if info.native.hasFast() {
-					k := nativeFastOf(info.native)
+				if info.Native.HasFast() {
+					k := nativeFastOf(info.Native)
 					if argc == 1 && k.number1 != nil {
-						if a := ag.stack[argBase]; a.o == numberObject {
-							x := k.number1(a.n)
-							setNumber(&regs[ret], x)
+						if a := ag.stack[argBase]; a.O == storage.NumberObject {
+							x := k.number1(a.N)
+							storage.SetNumber(&regs[ret], x)
 							continue
 						}
 					} else if argc == 2 && k.number2 != nil {
-						if a, b := ag.stack[argBase], ag.stack[argBase+1]; a.o == numberObject && b.o == numberObject {
-							x := k.number2(a.n, b.n)
-							setNumber(&regs[ret], x)
+						if a, b := ag.stack[argBase], ag.stack[argBase+1]; a.O == storage.NumberObject && b.O == storage.NumberObject {
+							x := k.number2(a.N, b.N)
+							storage.SetNumber(&regs[ret], x)
 							continue
 						}
 					}
 					// Numeric kernels cannot observe the frame. Record the call for the other paths.
 					ag.frames[len(ag.frames)-1].pc = pc
-					if info.realm == ag.active.realmPart {
-						if v, ok := k.callMethod(info.realm, callThis, ag.stack[argBase:argBase+argc:argBase+argc]); ok {
+					if info.Realm == ag.active.realmPart {
+						if v, ok := k.callMethod(info.Realm, callThis, ag.stack[argBase:argBase+argc:argBase+argc]); ok {
 							regs = ag.reload(regs, ag.frameBase(), fp)
 							regs[ret] = v
 							continue
@@ -3426,7 +3427,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 					ag.frames[len(ag.frames)-1].pc = pc
 				}
 				// A native function of the current realm and a proxy are called directly.
-				if info.realm == ag.active.realmPart || info.realm == nil {
+				if info.Realm == ag.active.realmPart || info.Realm == nil {
 					ag.ensureStack(argBase + argc)
 					saved := ag.sp
 					ag.sp = argBase + argc
@@ -3439,18 +3440,18 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			} else {
 				ag.frames[len(ag.frames)-1].pc = pc
 			}
-			if fn.bound != nil && !isNew && newTarget == nil && len(fn.bound.args) == 0 {
+			if fn.Bound != nil && !isNew && newTarget == nil && len(fn.Bound.Args) == 0 {
 				f, callThis = ag.unbindPlain(f)
 				goto call
 			}
-			if c := fn.code; c != nil && c.isGenerator && !c.isAsync && fn.bound == nil {
+			if c := fn.Code; c != nil && c.IsGenerator && !c.IsAsync && fn.Bound == nil {
 				// Run the generator up to its initial suspension as an ordinary frame.
 				ag.pushGenerator(f, callThis, ag.stack[argBase:argBase+argc], ret)
 				fr := &ag.frames[len(ag.frames)-1]
 				fp = fr.fp
 				regs = fr.gen.regs
 				pc = 0
-				if fp.realm != ag.active.realmPart {
+				if fp.Realm != ag.active.realmPart {
 					goto enter
 				}
 				continue
@@ -3475,9 +3476,9 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 		{
 			fr := &ag.frames[len(ag.frames)-1]
 			fp = fr.fp
-			regs = ag.stack[fr.base : fr.base+fp.nregs+1]
+			regs = ag.stack[fr.base : fr.base+fp.Nregs+1]
 			pc = 0
-			if fp.realm != ag.active.realmPart {
+			if fp.Realm != ag.active.realmPart {
 				goto enter
 			}
 			continue
@@ -3487,7 +3488,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 		// new f(...) for anything but a plain constructor function.
 		{
 			ag.frames[len(ag.frames)-1].pc = pc
-			if f == nil || f.fn == nil || !ag.active.IsConstructor(f) {
+			if f == nil || f.Fn == nil || !ag.active.IsConstructor(f) {
 				ag.active.throwNotConstructor(fp, pc, slices.Clip(regs))
 			}
 			ag.ensureStack(argBase + argc)
@@ -3496,7 +3497,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			r := ag.active.Construct(f, ag.stack[argBase:argBase+argc:argBase+argc], f)
 			ag.sp = saved
 			regs = ag.reload(regs, ag.frameBase(), fp)
-			regs[ret] = Value{o: r}
+			regs[ret] = Value{O: r}
 			continue
 		}
 
@@ -3505,7 +3506,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 		{
 			ag.frames[len(ag.frames)-1].pc = pc
 			parent := f
-			if parent == nil || parent.fn == nil || !ag.active.IsConstructor(parent) {
+			if parent == nil || parent.Fn == nil || !ag.active.IsConstructor(parent) {
 				ag.active.ThrowTypeError("super constructor is not a constructor")
 			}
 			ag.ensureStack(argBase + argc)
@@ -3514,7 +3515,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			r := ag.active.Construct(parent, ag.stack[argBase:argBase+argc:argBase+argc], newTarget)
 			ag.sp = saved
 			regs = ag.reload(regs, ag.frameBase(), fp)
-			regs[ret] = Value{o: r}
+			regs[ret] = Value{O: r}
 			continue
 		}
 
@@ -3528,7 +3529,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			fp = fr.fp
 			pc = fr.pc
 			regs = fr.registers(ag.stack)
-			if fp.realm == ag.active.realmPart {
+			if fp.Realm == ag.active.realmPart {
 				continue
 			}
 		}
@@ -3536,7 +3537,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 	enter:
 		// The frame that runs from here on belongs to another realm than the active context.
 		// The branch on ok predicts well, where a selection would delay the loads through the context.
-		if cx, ok := fp.realm.owner.(*ExecutionContext); ok {
+		if cx, ok := fp.Realm.Owner.(*ExecutionContext); ok {
 			ag.install(cx)
 		}
 	}
@@ -3546,8 +3547,8 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 // passes its arguments to, following bound functions without bound arguments.
 func (ag *agent) unbindPlain(f *Object) (*Object, Value) {
 	var this Value
-	for b := f.fn.bound; b != nil && len(b.args) == 0; b = f.fn.bound {
-		f, this = b.target, b.this
+	for b := f.Fn.Bound; b != nil && len(b.Args) == 0; b = f.Fn.Bound {
+		f, this = b.Target, b.This
 	}
 	return f, this
 }
@@ -3559,24 +3560,24 @@ func (ag *agent) unbindPlain(f *Object) (*Object, Value) {
 // Function.prototype.apply of the running realm for its callable this value when its argument
 // list can be made without running JavaScript.
 func (cx *ExecutionContext) unbind(f *Object, this Value, argBase, argc int) (*Object, Value, int, int) {
-	for f != nil && f.fn != nil {
-		if b := f.fn.bound; b != nil {
-			if k := len(b.args); k > 0 {
+	for f != nil && f.Fn != nil {
+		if b := f.Fn.Bound; b != nil {
+			if k := len(b.Args); k > 0 {
 				cx.ensureStack(argBase + argc + k)
 				copy(cx.stack[argBase+k:], cx.stack[argBase:argBase+argc])
-				copy(cx.stack[argBase:], b.args)
+				copy(cx.stack[argBase:], b.Args)
 				argc += k
 			}
-			f, this = b.target, b.this
+			f, this = b.Target, b.This
 			continue
 		}
-		if this.o == nil || this.o.fn == nil {
+		if this.O == nil || this.O.Fn == nil {
 			break
 		}
 		// Function.prototype.call and apply end in a tail call of their this value.
 		switch f {
 		case cx.Intrinsic(IntrinsicFunctionPrototypeCall):
-			f, this = this.o, Undefined
+			f, this = this.O, storage.Undefined
 			if argc > 0 {
 				this = cx.stack[argBase]
 				argBase++
@@ -3588,12 +3589,12 @@ func (cx *ExecutionContext) unbind(f *Object, this Value, argBase, argc int) (*O
 			if argc > 1 {
 				if a := cx.stack[argBase+1]; !a.IsNullish() {
 					var ok bool
-					if list, ok = a.o.plainElems(); !ok {
+					if list, ok = a.O.PlainElems(); !ok {
 						return f, this, argBase, argc
 					}
 				}
 			}
-			f, this = this.o, Undefined
+			f, this = this.O, storage.Undefined
 			if argc > 0 {
 				this = cx.stack[argBase]
 			}
@@ -3615,19 +3616,19 @@ func (cx *ExecutionContext) unbind(f *Object, this Value, argBase, argc int) (*O
 func (cx *ExecutionContext) replaceFrame(f *Object, this Value, argBase, argc int) bool {
 	n := len(cx.frames) - 1
 	cur := &cx.frames[n]
-	if f == nil || f.fn == nil || cur.isNew || cur.newTarget != nil {
+	if f == nil || f.Fn == nil || cur.isNew || cur.newTarget != nil {
 		return false
 	}
-	if c := f.fn.code; c == nil || c.isGenerator || c.isAsync || f.fn.classConstructor {
+	if c := f.Fn.Code; c == nil || c.IsGenerator || c.IsAsync || f.Fn.ClassConstructor {
 		return false
 	}
-	if cx.interrupt.Load() {
+	if cx.InterruptFlag.Load() {
 		cx.Poll()
 	}
 	// The arguments go where the running frame's were.
 	start := cur.base
 	if cur.extraBase >= 0 {
-		start = cur.extraBase - cur.fp.nparams
+		start = cur.extraBase - cur.fp.Nparams
 	}
 	if len(cx.openUpvals) > 0 {
 		cx.closeUpvals(start)
@@ -3655,7 +3656,7 @@ func (ag *agent) reload(regs []Value, base int, fp *funcProto) []Value {
 	if validateExec {
 		ag.checkActive(fp)
 	}
-	if fp.heapRegs {
+	if fp.HeapRegs {
 		return regs
 	}
 	if validateExec {
@@ -3684,9 +3685,9 @@ func (cx *ExecutionContext) loopHolds(op bytecode.Opcode, x, y Value) bool {
 // loopHoldsK reports whether the comparison of the loop jump op, one of [bytecode.OpLoopLtK]
 // through [bytecode.OpLoopGeK], holds for x and the number k.
 func (cx *ExecutionContext) loopHoldsK(op bytecode.Opcode, x, k Value) bool {
-	if x.o != numberObject {
+	if x.O != storage.NumberObject {
 		x = cx.ToNumeric(cx.ToPrimitive(x, HintNumber))
-		if x.o != numberObject {
+		if x.O != storage.NumberObject {
 			c := cx.compareBigIntMixed(x, k)
 			switch op {
 			case bytecode.OpLoopLtK:
@@ -3702,13 +3703,13 @@ func (cx *ExecutionContext) loopHoldsK(op bytecode.Opcode, x, k Value) bool {
 	}
 	switch op {
 	case bytecode.OpLoopLtK:
-		return x.n < k.n
+		return x.N < k.N
 	case bytecode.OpLoopLeK:
-		return x.n <= k.n
+		return x.N <= k.N
 	case bytecode.OpLoopGtK:
-		return x.n > k.n
+		return x.N > k.N
 	default:
-		return x.n >= k.n
+		return x.N >= k.N
 	}
 }
 
@@ -3717,12 +3718,12 @@ func (cx *ExecutionContext) loopHoldsK(op bytecode.Opcode, x, k Value) bool {
 func (ag *agent) loopHoldsP(op bytecode.Opcode, x Value, c int32) bool {
 	switch op {
 	case bytecode.OpLoopSEqP:
-		return x.o == primObjects[c]
+		return x.O == primObjects[c]
 	case bytecode.OpLoopSNeP:
-		return x.o != primObjects[c]
+		return x.O != primObjects[c]
 	case bytecode.OpLoopNullish:
-		return x.IsNullish() || c != 0 && x.isHTMLDDA()
+		return x.IsNullish() || c != 0 && x.IsHTMLDDA()
 	default:
-		return !x.IsNullish() && (c == 0 || !x.isHTMLDDA())
+		return !x.IsNullish() && (c == 0 || !x.IsHTMLDDA())
 	}
 }

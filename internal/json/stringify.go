@@ -10,6 +10,7 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/engine"
 	"github.com/hajimehoshi/ekuma/internal/numconv"
 	"github.com/hajimehoshi/ekuma/internal/shortstrings"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
@@ -72,7 +73,7 @@ type Stringifier struct {
 func (s *Stringifier) Stringify(cx *engine.ExecutionContext, value, replacer, space engine.Value) engine.Value {
 	w := &writer{
 		cx:        cx,
-		keyToJSON: engine.NamedKey(cx.Key(engine.KeyToJSON)),
+		keyToJSON: storage.NamedKey(cx.Key(engine.KeyToJSON)),
 	}
 	// A call from a toJSON method or a replacer during another call uses storage of its own.
 	if !s.busy {
@@ -118,9 +119,9 @@ func (s *Stringifier) Stringify(cx *engine.ExecutionContext, value, replacer, sp
 			case v.IsNumber():
 				item = cx.ToPropertyKey(cx.ToStringValue(v))
 			case v.IsObject():
-				if _, ok := engine.ThisStringValue(v); ok {
+				if _, ok := storage.ThisStringValue(v); ok {
 					item = cx.ToPropertyKey(cx.ToStringValue(v))
-				} else if _, ok := engine.ThisNumberValue(v); ok {
+				} else if _, ok := storage.ThisNumberValue(v); ok {
 					item = cx.ToPropertyKey(cx.ToStringValue(v))
 				} else {
 					continue
@@ -136,9 +137,9 @@ func (s *Stringifier) Stringify(cx *engine.ExecutionContext, value, replacer, sp
 	}
 
 	if space.IsObject() {
-		if _, ok := engine.ThisNumberValue(space); ok {
-			space = engine.Number(cx.ToNumber(space))
-		} else if _, ok := engine.ThisStringValue(space); ok {
+		if _, ok := storage.ThisNumberValue(space); ok {
+			space = storage.Number(cx.ToNumber(space))
+		} else if _, ok := storage.ThisStringValue(space); ok {
 			space = cx.ToStringValue(space)
 		}
 	}
@@ -154,13 +155,13 @@ func (s *Stringifier) Stringify(cx *engine.ExecutionContext, value, replacer, sp
 	}
 
 	var holder *engine.Object
-	emptyKey := engine.NamedKey(cx.Intern(""))
+	emptyKey := storage.NamedKey(cx.Intern(""))
 	if w.replacer != nil {
 		holder = cx.NewOrdinaryObject()
 		cx.CreateDataPropertyOrThrow(holder, emptyKey, value)
 	}
 	if !w.serialize(holder, emptyKey, value) {
-		return engine.Undefined
+		return storage.Undefined
 	}
 	w.checkLength()
 	return cx.NewStringBytes(w.buf)
@@ -207,30 +208,30 @@ func (w *writer) serialize(holder *engine.Object, key engine.PropKey, value engi
 		}
 	}
 	if w.replacer != nil {
-		value = cx.Call(w.replacer, engine.ObjectValue(holder), cx.KeyValue(key), value)
+		value = cx.Call(w.replacer, storage.ObjectValue(holder), cx.KeyValue(key), value)
 	}
 	if value.IsObject() {
 		o := value.Object()
 		switch {
 		case o.IsRawJSON():
-			w.buf = append(w.buf, cx.ToString(cx.Get(o, engine.NamedKey(cx.Intern("rawJSON"))))...)
+			w.buf = append(w.buf, cx.ToString(cx.Get(o, storage.NamedKey(cx.Intern("rawJSON"))))...)
 			return true
-		case isClass(engine.ThisNumberValue(value)):
-			value = engine.Number(cx.ToNumber(value))
-		case isClass(engine.ThisStringValue(value)):
+		case isClass(storage.ThisNumberValue(value)):
+			value = storage.Number(cx.ToNumber(value))
+		case isClass(storage.ThisStringValue(value)):
 			value = cx.ToStringValue(value)
-		case isClass(engine.ThisBooleanValue(value)):
-			b, _ := engine.ThisBooleanValue(value)
-			value = engine.Bool(b)
-		case isClass(engine.ThisBigIntValue(value)):
-			value, _ = engine.ThisBigIntValue(value)
+		case isClass(storage.ThisBooleanValue(value)):
+			b, _ := storage.ThisBooleanValue(value)
+			value = storage.Bool(b)
+		case isClass(storage.ThisBigIntValue(value)):
+			value, _ = storage.ThisBigIntValue(value)
 		}
 	}
 	switch {
 	case value.IsNull():
 		w.buf = append(w.buf, "null"...)
 	case value.IsBool():
-		if engine.ToBoolean(value) {
+		if storage.ToBoolean(value) {
 			w.buf = append(w.buf, "true"...)
 		} else {
 			w.buf = append(w.buf, "false"...)
@@ -324,7 +325,7 @@ func (w *writer) serializeObject(o *engine.Object) {
 			w.checkLength()
 		}
 		k := w.keys[i]
-		v := cx.GetVCached(engine.ObjectValue(o), k, cacheAt(&w.getCaches, i))
+		v := cx.GetVCached(storage.ObjectValue(o), k, cacheAt(&w.getCaches, i))
 		mark := len(w.buf)
 		if !empty {
 			w.buf = append(w.buf, ',')

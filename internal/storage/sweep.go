@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: 0BSD
 // SPDX-FileCopyrightText: 2026 Hajime Hoshi
 
-package engine
+package storage
 
 import (
 	"maps"
@@ -14,7 +14,7 @@ import (
 // A value is found under its key for as long as anything else refers to it. Once it was
 // collected, its key is not found, and the entry is removed when the table is swept.
 type sweptTable[K comparable, V any] struct {
-	entries map[K]sweptRef[V]
+	Entries map[K]sweptRef[V]
 
 	// sweepAt is the number of entries at which the next insertion sweeps the table.
 	sweepAt int
@@ -29,7 +29,7 @@ type sweptRef[V any] struct {
 
 // get returns the value under key, or nil.
 func (t *sweptTable[K, V]) get(key K) *V {
-	r, ok := t.entries[key]
+	r, ok := t.Entries[key]
 	if !ok {
 		return nil
 	}
@@ -43,13 +43,13 @@ func (t *sweptTable[K, V]) get(key K) *V {
 // minSweep entries is not swept. The values for which keep reports true are kept alive by the
 // table; keep may be nil.
 func (t *sweptTable[K, V]) put(key K, v *V, minSweep int, keep func(*V) bool) {
-	if t.entries == nil {
-		t.entries = map[K]sweptRef[V]{}
+	if t.Entries == nil {
+		t.Entries = map[K]sweptRef[V]{}
 	}
-	if len(t.entries) >= max(t.sweepAt, minSweep) {
+	if len(t.Entries) >= max(t.sweepAt, minSweep) {
 		t.sweep(keep)
 	}
-	t.entries[key] = sweptRef[V]{strong: v}
+	t.Entries[key] = sweptRef[V]{strong: v}
 }
 
 // sweep removes the entries whose values were collected and makes the others weak, except
@@ -57,30 +57,30 @@ func (t *sweptTable[K, V]) put(key K, v *V, minSweep int, keep func(*V) bool) {
 func (t *sweptTable[K, V]) sweep(keep func(*V) bool) {
 	// A weak pointer costs far more to make than a lookup, so only the entries that live
 	// until a sweep get one.
-	n := len(t.entries)
-	for k, r := range t.entries {
+	n := len(t.Entries)
+	for k, r := range t.Entries {
 		if r.strong != nil {
 			if keep != nil && keep(r.strong) {
 				continue
 			}
-			t.entries[k] = sweptRef[V]{weak: weak.Make(r.strong)}
+			t.Entries[k] = sweptRef[V]{weak: weak.Make(r.strong)}
 			continue
 		}
 		if r.weak.Value() == nil {
-			delete(t.entries, k)
+			delete(t.Entries, k)
 		}
 	}
 	// A map keeps the memory of its largest size, so a table that lost most of its entries
 	// is copied to a new map.
-	if len(t.entries) < n/2 {
-		m := make(map[K]sweptRef[V], len(t.entries))
-		maps.Copy(m, t.entries)
-		t.entries = m
+	if len(t.Entries) < n/2 {
+		m := make(map[K]sweptRef[V], len(t.Entries))
+		maps.Copy(m, t.Entries)
+		t.Entries = m
 	}
 	// The entries made weak now are counted as alive although many may be collected by the
 	// next sweep. Growing by half before that keeps the size within about three times the
 	// number of entries that stay alive, and the time of the sweeps within a constant per
 	// insertion.
-	n = len(t.entries)
+	n = len(t.Entries)
 	t.sweepAt = n + n/2
 }

@@ -5,56 +5,15 @@ package engine
 
 import (
 	"github.com/hajimehoshi/ekuma/internal/shortstrings"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
-
-// realmPart is the storage state of a realm, which the realm embeds.
-type realmPart struct {
-	intrinsics [intrinsicCount]*Object
-
-	shapes shapeTable
-
-	arrayIter arrayIterCache
-
-	regExpOriginals regExpOriginals
-
-	global *Object
-
-	// globalThis is the global this value, which a host can set to a global proxy.
-	globalThis *Object
-
-	// globalLex holds the top-level let, const and class declarations.
-	globalLex *Object
-
-	// objectTagStrings are results of Object.prototype.toString, by tag.
-	objectTagStrings map[wtf8.String]Value
-
-	// strictCallee is the callee property of unmapped arguments objects, or the zero value
-	// until it is needed.
-	strictCallee Value
-
-	// regExpFlagStrings holds the value of the flags getter for each set of the 8 flags, once
-	// computed. It is nil until it is needed.
-	regExpFlagStrings *[1 << 8]Value
-
-	// asyncFromSyncProto is %AsyncFromSyncIteratorPrototype%, or nil until it is needed.
-	asyncFromSyncProto *Object
-
-	legacyRegExp legacyRegExpStatics
-
-	// space is the space of the agent of the realm.
-	*space
-
-	// owner is the execution context of the realm. Only executionContextOf and the
-	// interpreter loop read it.
-	owner any
-}
 
 // executionContextOf returns the execution context of the realm that embeds r.
 func executionContextOf(r *realmPart) *ExecutionContext {
 	// The two-value form compiles to no call, so that the interpreter loop makes none at a change of
 	// realm.
-	cx, _ := r.owner.(*ExecutionContext)
+	cx, _ := r.Owner.(*ExecutionContext)
 	return cx
 }
 
@@ -114,8 +73,8 @@ func (ag *agent) newRealm() *realm {
 		realmPart: &r.realmPart,
 		space:     &ag.space,
 	}
-	r.owner = &r.context
-	r.space = &ag.space
+	r.Owner = &r.context
+	r.Space = &ag.space
 	r.referrer = &scriptOrModule{
 		realm: r,
 	}
@@ -126,34 +85,34 @@ func (ag *agent) newRealm() *realm {
 // and the other objects of the agent depend on.
 func (cx *ExecutionContext) initRealmPrototypes() {
 	r := cx.realm
-	r.shapes.nullProto[ordinaryRoot] = cx.newShape(nil, cx.realmPart, ordinaryRoot)
-	r.shapes.proxy = cx.rootShape(nil, cx.realmPart, delegatedRoot)
-	objectProto := newObject(r.shapes.nullProto[ordinaryRoot])
-	r.intrinsics[IntrinsicObjectPrototype] = objectProto
-	r.shapes.object = cx.shapeFor(objectProto)
-	functionProto := newFunctionObject(cx.functionShapeFor(objectProto), &function{
-		info: &nativeInfo{
-			native: nativeFunctionPrototype,
-			realm:  cx.realmPart,
+	r.Shapes.NullProto[ordinaryRoot] = cx.NewShape(nil, cx.realmPart, ordinaryRoot)
+	r.Shapes.Proxy = cx.RootShape(nil, cx.realmPart, delegatedRoot)
+	objectProto := storage.NewObject(r.Shapes.NullProto[ordinaryRoot])
+	r.Intrinsics[IntrinsicObjectPrototype] = objectProto
+	r.Shapes.Object = cx.ShapeFor(objectProto)
+	functionProto := storage.NewFunctionObject(cx.FunctionShapeFor(objectProto), &function{
+		Info: &nativeInfo{
+			Native: nativeFunctionPrototype,
+			Realm:  cx.realmPart,
 		},
 	})
-	r.intrinsics[IntrinsicFunctionPrototype] = functionProto
-	r.shapes.function = cx.functionShapeFor(functionProto)
-	r.shapes.materializedFunction = cx.shapeFor(functionProto)
-	arrayProto := newArray(cx.rootShape(objectProto, cx.realmPart, arrayRoot), nil)
-	r.intrinsics[IntrinsicArrayPrototype] = arrayProto
-	r.shapes.array = cx.rootShape(arrayProto, cx.realmPart, arrayRoot)
+	r.Intrinsics[IntrinsicFunctionPrototype] = functionProto
+	r.Shapes.Function = cx.FunctionShapeFor(functionProto)
+	r.Shapes.MaterializedFunction = cx.ShapeFor(functionProto)
+	arrayProto := storage.NewArray(cx.RootShape(objectProto, cx.realmPart, arrayRoot), nil)
+	r.Intrinsics[IntrinsicArrayPrototype] = arrayProto
+	r.Shapes.Array = cx.RootShape(arrayProto, cx.realmPart, arrayRoot)
 	stringProto := cx.NewObject(objectProto)
-	r.intrinsics[IntrinsicStringPrototype] = stringProto
+	r.Intrinsics[IntrinsicStringPrototype] = stringProto
 	// A primitive string has its own length even when an ordinary object with the same
 	// prototype inherits its length.
-	r.shapes.string = cx.rootShape(stringProto, cx.realmPart, primitiveStringRoot)
-	r.shapes.shortStrings = new([shortstrings.MaxBytes + 1]Object)
-	for i := range r.shapes.shortStrings {
-		r.shapes.shortStrings[i] = Object{
-			kind:  kindString,
-			shape: r.shapes.string,
-			str:   wtf8.String("\x00\x00\x00\x00\x00\x00\x00\x00")[:i],
+	r.Shapes.String = cx.RootShape(stringProto, cx.realmPart, primitiveStringRoot)
+	r.Shapes.ShortStrings = new([shortstrings.MaxBytes + 1]Object)
+	for i := range r.Shapes.ShortStrings {
+		r.Shapes.ShortStrings[i] = Object{
+			Kind:  kindString,
+			Shape: r.Shapes.String,
+			Text:  wtf8.String("\x00\x00\x00\x00\x00\x00\x00\x00")[:i],
 		}
 	}
 }
@@ -161,17 +120,17 @@ func (cx *ExecutionContext) initRealmPrototypes() {
 // initRealmGlobals finishes the prototypes of the current realm and creates its global object.
 func (cx *ExecutionContext) initRealmGlobals() {
 	r := cx.realm
-	stringProto := r.intrinsics[IntrinsicStringPrototype]
-	stringProto.class = classString
-	stringProto.setExtState(cx.strings.empty.o)
-	cx.add(stringProto, cx.Key(KeyLength), Number(0), 0)
-	r.shapes.iterResult = r.shapes.object.with(cx.Key(KeyValue), FlagsData).with(cx.Key(keyDone), FlagsData)
-	r.shapes.arguments = r.shapes.object.with(cx.Key(KeyLength), FlagsHidden).with(cx.WellKnownSymbol(SymbolIterator), FlagsHidden)
+	stringProto := r.Intrinsics[IntrinsicStringPrototype]
+	stringProto.Class = classString
+	stringProto.SetExtState(cx.Strings.Empty.O)
+	cx.Add(stringProto, cx.Key(KeyLength), storage.Number(0), 0)
+	r.Shapes.IterResult = r.Shapes.Object.With(cx.Key(KeyValue), FlagsData).With(cx.Key(keyDone), FlagsData)
+	r.Shapes.Arguments = r.Shapes.Object.With(cx.Key(KeyLength), FlagsHidden).With(cx.WellKnownSymbol(SymbolIterator), FlagsHidden)
 	// Deleting a property can restore a shared shape and its cached global slot pointers.
 	// Keep the slots in place until adding a property gives the global object a private shape.
-	r.global = newGlobalObject(cx.shapeFor(r.intrinsics[IntrinsicObjectPrototype]), privateShapeThreshold)
-	r.globalThis = r.global
-	r.globalLex = newGlobalObject(cx.shapeFor(nil), 0)
+	r.Global = storage.NewGlobalObject(cx.ShapeFor(r.Intrinsics[IntrinsicObjectPrototype]), privateShapeThreshold)
+	r.GlobalThis = r.Global
+	r.GlobalLex = storage.NewGlobalObject(cx.ShapeFor(nil), 0)
 }
 
 // CreateRealm returns the context of a new realm after calling install with that context active.
@@ -191,29 +150,16 @@ func (ag *agent) CreateRealm(install func(*ExecutionContext)) *ExecutionContext 
 // GetFunctionRealm(f), and that realm is not the current one.
 func (cx *ExecutionContext) IsIntrinsicOfOtherRealm(f *Object, id Intrinsic) bool {
 	r := cx.FunctionContext(f).realm
-	return r != cx.realm && r.intrinsics[id] == f
+	return r != cx.realm && r.Intrinsics[id] == f
 }
 
 // CreationContext returns the creation realm's context for the JavaScript object o,
 // or nil for a detached global proxy.
 func CreationContext(o *Object) *ExecutionContext {
-	if r := o.creationRealm(); r != nil {
+	if r := o.CreationRealm(); r != nil {
 		return executionContextOf(r)
 	}
 	return nil
-}
-
-func (o *Object) creationRealm() *realmPart {
-	if o.class == classProxy {
-		st := o.extState().(*proxyState)
-		if st.isGlobal() {
-			if st.target == nil {
-				return nil
-			}
-			o = st.target
-		}
-	}
-	return o.shape.realm
 }
 
 // IsEnteredRealm reports whether the execution realm is the agent's entered realm.

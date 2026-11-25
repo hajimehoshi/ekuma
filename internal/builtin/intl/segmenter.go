@@ -10,6 +10,7 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/engine"
 	"github.com/hajimehoshi/ekuma/internal/intl/locale"
 	"github.com/hajimehoshi/ekuma/internal/intl/segment"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
@@ -105,18 +106,18 @@ func (d *segmentsData) segmentData(cx *engine.ExecutionContext, k int) engine.Va
 		b = wtf8.AppendRune(b, r)
 	}
 	keys := [4]engine.PropKey{
-		engine.NamedKey(cx.Intern("segment")),
-		engine.NamedKey(cx.Intern("index")),
-		engine.NamedKey(cx.Intern("input")),
+		storage.NamedKey(cx.Intern("segment")),
+		storage.NamedKey(cx.Intern("index")),
+		storage.NamedKey(cx.Intern("input")),
 	}
-	vals := [4]engine.Value{cx.NewStringBytes(b), engine.Number(float64(d.units[start])), d.str}
+	vals := [4]engine.Value{cx.NewStringBytes(b), storage.Number(float64(d.units[start])), d.str}
 	propertyCount := 3
 	if d.segmenter.granularity == "word" {
-		keys[3] = engine.NamedKey(cx.Intern("isWordLike"))
-		vals[3] = engine.Bool(d.bounds[k+1].IsWordLike())
+		keys[3] = storage.NamedKey(cx.Intern("isWordLike"))
+		vals[3] = storage.Bool(d.bounds[k+1].IsWordLike())
 		propertyCount++
 	}
-	return engine.ObjectValue(cx.NewObjectFromProperties(keys[:propertyCount], vals[:propertyCount]))
+	return storage.ObjectValue(cx.NewObjectFromProperties(keys[:propertyCount], vals[:propertyCount]))
 }
 
 // segmentIteratorData holds the internal slots of a Segment Iterator object.
@@ -150,11 +151,11 @@ func newSegmenter(cx *engine.ExecutionContext, this engine.Value, args []engine.
 		locale:      res.Locale,
 		granularity: getStringOption(cx, options, "granularity", "grapheme", "grapheme", "word", "sentence"),
 	}
-	return engine.ObjectValue(cx.NewIntlObject(proto, sd))
+	return storage.ObjectValue(cx.NewIntlObject(proto, sd))
 }
 
 func thisSegmenter(cx *engine.ExecutionContext, this engine.Value, name string) *segmenterData {
-	sd, ok := engine.IntlData(this).(*segmenterData)
+	sd, ok := storage.IntlData(this).(*segmenterData)
 	if !ok {
 		cx.ThrowTypeError("Intl.Segmenter.prototype." + name + " called on an object that is not an Intl.Segmenter")
 	}
@@ -162,7 +163,7 @@ func thisSegmenter(cx *engine.ExecutionContext, this engine.Value, name string) 
 }
 
 func thisSegments(cx *engine.ExecutionContext, this engine.Value, name string) *segmentsData {
-	d, ok := engine.IntlData(this).(*segmentsData)
+	d, ok := storage.IntlData(this).(*segmentsData)
 	if !ok {
 		cx.ThrowTypeError("%Segments.prototype%." + name + " called on an object that is not a Segments object")
 	}
@@ -193,7 +194,7 @@ func initSegmenter(cx *engine.ExecutionContext, ns *engine.Object) {
 	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Intl.Segmenter"), engine.FlagConfigurable)
 
 	method(cx, segmentsProto, "containing", 1, nativeSegmentsContaining)
-	cx.Define(segmentsProto, cx.WellKnownSymbol(engine.SymbolIterator), engine.ObjectValue(cx.NewNative("[Symbol.iterator]", 0, nativeSegmentsIterator)), engine.FlagsHidden)
+	cx.Define(segmentsProto, cx.WellKnownSymbol(engine.SymbolIterator), storage.ObjectValue(cx.NewNative("[Symbol.iterator]", 0, nativeSegmentsIterator)), engine.FlagsHidden)
 
 	method(cx, iterProto, "next", 0, nativeSegmentIteratorNext)
 	cx.Define(iterProto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Segmenter String Iterator"), engine.FlagConfigurable)
@@ -202,43 +203,43 @@ func initSegmenter(cx *engine.ExecutionContext, ns *engine.Object) {
 func segmenterResolvedOptions(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	sd := thisSegmenter(cx, this, "resolvedOptions")
 	out := cx.NewObjectFromProperties(
-		[]engine.PropKey{engine.NamedKey(cx.Intern("locale")), engine.NamedKey(cx.Intern("granularity"))},
+		[]engine.PropKey{storage.NamedKey(cx.Intern("locale")), storage.NamedKey(cx.Intern("granularity"))},
 		[]engine.Value{cx.NewString(wtf8.String(sd.locale)), cx.NewString(wtf8.String(sd.granularity))},
 	)
-	return engine.ObjectValue(out)
+	return storage.ObjectValue(out)
 }
 
 func segmenterSegment(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	sd := thisSegmenter(cx, this, "segment")
 	s := cx.ToString(arg(args, 0))
 	str := cx.NewString(s)
-	return engine.ObjectValue(cx.NewIntlObject(cx.Intrinsic(engine.IntrinsicIntlSegmentsPrototype), newSegmentsData(cx, sd, str, s)))
+	return storage.ObjectValue(cx.NewIntlObject(cx.Intrinsic(engine.IntrinsicIntlSegmentsPrototype), newSegmentsData(cx, sd, str, s)))
 }
 
 func segmentsContaining(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	d := thisSegments(cx, this, "containing")
 	n := cx.ToIntegerOrInfinity(arg(args, 0))
 	if n < 0 || n >= float64(d.length()) {
-		return engine.Undefined
+		return storage.Undefined
 	}
 	return d.segmentData(cx, d.segmentAt(cx, int(n)))
 }
 
 func segmentsIterator(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	d := thisSegments(cx, this, "[Symbol.iterator]")
-	return engine.ObjectValue(cx.NewIntlObject(cx.Intrinsic(engine.IntrinsicIntlSegmentIteratorPrototype), &segmentIteratorData{
+	return storage.ObjectValue(cx.NewIntlObject(cx.Intrinsic(engine.IntrinsicIntlSegmentIteratorPrototype), &segmentIteratorData{
 		segments: d,
 	}))
 }
 
 func segmentIteratorNext(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-	it, ok := engine.IntlData(this).(*segmentIteratorData)
+	it, ok := storage.IntlData(this).(*segmentIteratorData)
 	if !ok {
 		cx.ThrowTypeError("%SegmentIteratorPrototype%.next called on an object that is not a Segment Iterator")
 	}
 	d := it.segments
 	if it.next+1 >= len(d.boundaries(cx)) {
-		return cx.CreateIterResultObject(engine.Undefined, true)
+		return cx.CreateIterResultObject(storage.Undefined, true)
 	}
 	v := d.segmentData(cx, it.next)
 	it.next++

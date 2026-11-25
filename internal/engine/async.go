@@ -3,6 +3,10 @@
 
 package engine
 
+import (
+	"github.com/hajimehoshi/ekuma/internal/storage"
+)
+
 // asyncState is the state of an async generator beyond that of a generator.
 type asyncState struct {
 	// queue is the [[AsyncGeneratorQueue]].
@@ -56,20 +60,20 @@ func asyncGeneratorStateOf(g *generator) asyncGeneratorState {
 func (cx *ExecutionContext) callAsync(f *Object, this Value, args []Value) Value {
 	g := newGenerator(f, this, args)
 	g.async = asyncFunction
-	body := cx.contextOf(g.fp.realm)
+	body := cx.contextOf(g.fp.Realm)
 	var promise *Object
 	body.Run(func() {
 		promise = body.NewPromiseObject(body.Intrinsic(IntrinsicPromisePrototype))
 		g.object = promise
-		body.asyncFunctionResume(g, ResumeNext, Undefined)
+		body.asyncFunctionResume(g, ResumeNext, storage.Undefined)
 	})
-	return Value{o: promise}
+	return Value{O: promise}
 }
 
 // takeThrown returns the pending exception and clears it.
 func (ag *agent) takeThrown() Value {
 	e := ag.thrown
-	ag.thrown = Undefined
+	ag.thrown = storage.Undefined
 	return e
 }
 
@@ -120,7 +124,7 @@ func (cx *ExecutionContext) asyncFunctionResume(g *generator, mode ResumeMode, v
 
 // underFrame calls f, which must not throw, with the frame of g at its suspension or return.
 func (g *generator) underFrame(f func()) {
-	cx := executionContextOf(g.fp.realm)
+	cx := executionContextOf(g.fp.Realm)
 	n := len(cx.frames)
 	state := g.state
 	cx.pushGenFrame(g, 0)
@@ -151,7 +155,7 @@ func (resumer *ExecutionContext) asyncGeneratorResume(g *generator, mode ResumeM
 				return
 			}
 		} else if g.awaiting {
-			if executionContextOf(g.fp.realm).tryAwait(g, r, reactionAwait) {
+			if executionContextOf(g.fp.Realm).tryAwait(g, r, reactionAwait) {
 				return
 			}
 			mode, v = ResumeThrow, resumer.takeThrown()
@@ -169,7 +173,7 @@ func (resumer *ExecutionContext) asyncGeneratorResume(g *generator, mode ResumeM
 		mode, v = next.mode, next.value
 		if mode == ResumeReturn {
 			// AsyncGeneratorUnwrapYieldResumption awaits the value to return.
-			if executionContextOf(g.fp.realm).tryAwait(g, v, reactionAwaitReturn) {
+			if executionContextOf(g.fp.Realm).tryAwait(g, v, reactionAwaitReturn) {
 				return
 			}
 			mode, v = ResumeThrow, resumer.takeThrown()
@@ -183,7 +187,7 @@ func (cx *ExecutionContext) asyncGeneratorCompleteStep(g *generator, v Value, th
 	a := g.async
 	next := a.queue[0]
 	copy(a.queue, a.queue[1:])
-	a.queue = withoutLast(a.queue)
+	a.queue = storage.WithoutLast(a.queue)
 	if thrown {
 		cx.RejectCapability(next.capability, v)
 		return
@@ -203,7 +207,7 @@ func (cx *ExecutionContext) asyncGeneratorDrainQueue(g *generator) {
 		case ResumeThrow:
 			cx.asyncGeneratorCompleteStep(g, next.value, true, true)
 		default:
-			cx.asyncGeneratorCompleteStep(g, Undefined, false, true)
+			cx.asyncGeneratorCompleteStep(g, storage.Undefined, false, true)
 		}
 	}
 	a.draining = false
@@ -230,7 +234,7 @@ func (cx *ExecutionContext) ResumeAsyncGenerator(gen Value, mode ResumeMode, v V
 	c := cx.newIntrinsicCapability()
 	var g *generator
 	if gen.IsObject() {
-		g, _ = gen.o.extState().(*generator)
+		g, _ = gen.O.ExtState().(*generator)
 	}
 	if g == nil || g.async == nil || g.async == asyncFunction {
 		cx.RejectCapability(c, cx.NewError(ErrorKindType, "method called on an object that is not an async generator"))
@@ -246,7 +250,7 @@ func (cx *ExecutionContext) ResumeAsyncGenerator(gen Value, mode ResumeMode, v V
 	if state == asyncGenCompleted {
 		switch mode {
 		case ResumeNext:
-			cx.ResolveCapability(c, cx.CreateIterResultObject(Undefined, true))
+			cx.ResolveCapability(c, cx.CreateIterResultObject(storage.Undefined, true))
 			return c.Promise()
 		case ResumeThrow:
 			cx.RejectCapability(c, v)
@@ -268,7 +272,7 @@ func (cx *ExecutionContext) ResumeAsyncGenerator(gen Value, mode ResumeMode, v V
 		if mode == ResumeReturn {
 			// AsyncGeneratorUnwrapYieldResumption awaits the value to return.
 			g.awaiting = true
-			if executionContextOf(g.fp.realm).tryAwait(g, v, reactionAwaitReturn) {
+			if executionContextOf(g.fp.Realm).tryAwait(g, v, reactionAwaitReturn) {
 				break
 			}
 			mode, v = ResumeThrow, cx.takeThrown()
@@ -286,14 +290,14 @@ type asyncFromSyncIterator struct {
 // asyncFromSyncIterator implements CreateAsyncFromSyncIterator for the iterator it and
 // its next method, and returns the async iterator and its next method.
 func (cx *ExecutionContext) asyncFromSyncIterator(it, next Value) (Value, Value) {
-	if cx.realm.asyncFromSyncProto == nil {
+	if cx.realm.AsyncFromSyncProto == nil {
 		cx.initAsyncFromSyncIteratorPrototype()
 	}
-	o := newObjectWithState(cx.shapeFor(cx.realm.asyncFromSyncProto), classIterator, &asyncFromSyncIterator{
+	o := storage.NewObjectWithState(cx.ShapeFor(cx.realm.AsyncFromSyncProto), classIterator, &asyncFromSyncIterator{
 		iterator: it,
 		next:     next,
 	})
-	return Value{o: o}, cx.GetV(Value{o: o}, cx.Key(KeyNext))
+	return Value{O: o}, cx.GetV(Value{O: o}, cx.Key(KeyNext))
 }
 
 // CreateAsyncFromSyncIterator implements CreateAsyncFromSyncIterator for the iterator it and
@@ -305,7 +309,7 @@ func (cx *ExecutionContext) CreateAsyncFromSyncIterator(it, next Value) (Value, 
 func (cx *ExecutionContext) thisAsyncFromSyncIterator(this Value) *asyncFromSyncIterator {
 	var s *asyncFromSyncIterator
 	if this.IsObject() {
-		s, _ = this.o.extState().(*asyncFromSyncIterator)
+		s, _ = this.O.ExtState().(*asyncFromSyncIterator)
 	}
 	if s == nil {
 		cx.ThrowTypeError("method called on an object that is not an async-from-sync iterator")
@@ -316,10 +320,10 @@ func (cx *ExecutionContext) thisAsyncFromSyncIterator(this Value) *asyncFromSync
 // initAsyncFromSyncIteratorPrototype creates %AsyncFromSyncIteratorPrototype%.
 func (cx *ExecutionContext) initAsyncFromSyncIteratorPrototype() {
 	proto := cx.NewObject(cx.Intrinsic(IntrinsicAsyncIteratorPrototype))
-	cx.realm.asyncFromSyncProto = proto
-	cx.Define(proto, cx.Key(KeyNext), Value{o: cx.NewNative("next", 0, nativeAsyncFromSyncIteratorNext)}, FlagsHidden)
-	cx.Define(proto, cx.Key(KeyReturn), Value{o: cx.NewNative("return", 0, nativeAsyncFromSyncIteratorReturn)}, FlagsHidden)
-	cx.Define(proto, cx.Key(keyThrow), Value{o: cx.NewNative("throw", 0, nativeAsyncFromSyncIteratorThrow)}, FlagsHidden)
+	cx.realm.AsyncFromSyncProto = proto
+	cx.Define(proto, cx.Key(KeyNext), Value{O: cx.NewNative("next", 0, nativeAsyncFromSyncIteratorNext)}, FlagsHidden)
+	cx.Define(proto, cx.Key(KeyReturn), Value{O: cx.NewNative("return", 0, nativeAsyncFromSyncIteratorReturn)}, FlagsHidden)
+	cx.Define(proto, cx.Key(keyThrow), Value{O: cx.NewNative("throw", 0, nativeAsyncFromSyncIteratorThrow)}, FlagsHidden)
 }
 
 // asyncFromSyncIteratorNext is the code of %AsyncFromSyncIteratorPrototype%.next.
@@ -410,7 +414,7 @@ func (cx *ExecutionContext) asyncFromSyncIteratorContinuation(result Value, c *P
 	var done bool
 	var value Value
 	if !cx.IfAbruptRejectPromise(c, func() {
-		done = ToBoolean(cx.GetV(result, cx.Key(keyDone)))
+		done = storage.ToBoolean(cx.GetV(result, cx.Key(keyDone)))
 		value = cx.GetV(result, cx.Key(KeyValue))
 	}) {
 		return c.Promise()
@@ -421,7 +425,7 @@ func (cx *ExecutionContext) asyncFromSyncIteratorContinuation(result Value, c *P
 		capability: c,
 	}
 	if !done && closeOnRejection {
-		r.iterator = it.o
+		r.iterator = it.O
 	}
 	if !cx.protect(func() {
 		cx.awaitValue(value, r)
@@ -439,7 +443,7 @@ func (cx *ExecutionContext) asyncFromSyncIteratorContinuation(result Value, c *P
 // the result is the exception.
 func (cx *ExecutionContext) Completion(f func()) (Value, bool) {
 	if cx.protect(f) {
-		return Undefined, true
+		return storage.Undefined, true
 	}
 	return cx.takeThrown(), false
 }

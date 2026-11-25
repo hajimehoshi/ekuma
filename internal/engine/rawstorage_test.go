@@ -18,8 +18,8 @@ import (
 	"testing"
 )
 
-// storageFiles are the files that own raw storage, with the reasons. The fields of the structs that
-// they declare are raw.
+// storageFiles are the files of the storage package that own raw storage, with the reasons. The
+// fields of the structs that they declare are raw.
 var storageFiles = map[string]string{
 	"value.go":          "values",
 	"object.go":         "objects, shapes, inline caches and strings",
@@ -99,7 +99,7 @@ type rawAccesses struct {
 	free    bool
 }
 
-// rawUsers is the list of the declarations outside storageFiles that use raw storage.
+// rawUsers is the list of the declarations outside the storage package that use raw storage.
 const rawUsers = "rawusers.txt"
 
 // The sections of the list. A declaration is in the first one that fits.
@@ -112,7 +112,7 @@ const (
 	rawValues = "[values]"
 )
 
-// TestRawStorage tests that the declarations outside storageFiles that store to raw storage, refer
+// TestRawStorage tests that the declarations outside the storage package that store to raw storage, refer
 // to it, create it, or read properties from it are those in testdata/rawusers.txt, so that the list
 // can only shrink unless a line of it is edited.
 //
@@ -184,6 +184,9 @@ func newRawStorage(t *testing.T, prog *program) *rawStorage {
 	found := map[string]int{}
 	var structs []*types.Named
 	for _, p := range prog.engine {
+		if p.path != storagePath {
+			continue
+		}
 		for _, file := range p.files {
 			base := filepath.Base(p.fset.Position(file.Pos()).Filename)
 			if _, ok := storageFiles[base]; !ok {
@@ -276,8 +279,7 @@ func (s *rawStorage) collect(t *testing.T) map[types.Object]*rawAccesses {
 	for _, p := range s.prog.pkgs {
 		for _, file := range p.files {
 			base := filepath.Base(p.fset.Position(file.Pos()).Filename)
-			_, isStorage := storageFiles[base]
-			isStorage = isStorage && p.isEngine()
+			isStorage := p.path == storagePath
 			if p.isEngine() && slices.Contains(validationFiles, base) {
 				continue
 			}

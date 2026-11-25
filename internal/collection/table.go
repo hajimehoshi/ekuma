@@ -15,6 +15,7 @@ import (
 	"sort"
 
 	"github.com/hajimehoshi/ekuma/internal/engine"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
@@ -93,7 +94,7 @@ var deletedKey = new(engine.Object)
 
 // deletedEntry is what a deleted entry becomes.
 var deletedEntry = entry{
-	key: engine.ObjectValue(deletedKey),
+	key: storage.ObjectValue(deletedKey),
 }
 
 type entry struct {
@@ -362,7 +363,7 @@ func (t *Table) probe(k engine.Value, h uint32) (int, uint32) {
 			if sl.index < 0 {
 				return -1, s
 			}
-			if sl.hash == h && engine.IsStrictlyEqual(entryAt(small, blocks, int(sl.index)).key, k) {
+			if sl.hash == h && storage.IsStrictlyEqual(entryAt(small, blocks, int(sl.index)).key, k) {
 				return int(sl.index), 0
 			}
 		}
@@ -389,7 +390,7 @@ func (t *Table) probe(k engine.Value, h uint32) (int, uint32) {
 		if sl.hash != h {
 			continue
 		}
-		if a := entryAt(small, blocks, int(sl.index)).key; a.IsBigInt() && engine.SameValueZero(a, k) {
+		if a := entryAt(small, blocks, int(sl.index)).key; a.IsBigInt() && storage.SameValueZero(a, k) {
 			return int(sl.index), 0
 		}
 	}
@@ -409,13 +410,13 @@ func (t *Table) scan(k engine.Value) int {
 		}
 	case k.IsString():
 		for i := range entries {
-			if e := &entries[i]; engine.IsStrictlyEqual(e.key, k) {
+			if e := &entries[i]; storage.IsStrictlyEqual(e.key, k) {
 				return i
 			}
 		}
 	case k.IsBigInt():
 		for i := range entries {
-			if e := &entries[i]; e.key.IsBigInt() && engine.SameValueZero(e.key, k) {
+			if e := &entries[i]; e.key.IsBigInt() && storage.SameValueZero(e.key, k) {
 				return i
 			}
 		}
@@ -505,7 +506,7 @@ func emptySlots(slots []slot, n int) []slot {
 func (t *Table) Get(k engine.Value) (engine.Value, bool) {
 	i := t.find(k)
 	if i < 0 {
-		return engine.Undefined, false
+		return storage.Undefined, false
 	}
 	return t.at(i).value, true
 }
@@ -543,7 +544,7 @@ func (t *Table) Append(k, v engine.Value) {
 		return
 	}
 	if k.IsNumber() {
-		k = engine.Number(math.Float64frombits(numberKey(k.Number())))
+		k = storage.Number(math.Float64frombits(numberKey(k.Number())))
 	}
 	t.makeRoom()
 	*t.at(t.n) = entry{
@@ -565,7 +566,7 @@ func (t *Table) Append(k, v engine.Value) {
 func (t *Table) appendHashed(k, v engine.Value, h, s uint32) {
 	if k.IsNumber() {
 		// probeNumber compares the stored bits.
-		k = engine.Number(math.Float64frombits(numberKey(k.Number())))
+		k = storage.Number(math.Float64frombits(numberKey(k.Number())))
 	}
 	if t.makeRoom() {
 		_, _, s = t.locate(k)
@@ -828,7 +829,7 @@ func (t *Table) Next(c *Cursor) (key, value engine.Value, ok bool) {
 	if c.gen == t.gen && t.n == t.live {
 		i := c.pos
 		if i >= t.n {
-			return engine.Undefined, engine.Undefined, false
+			return storage.Undefined, storage.Undefined, false
 		}
 		e := t.at(i)
 		c.pos = i + 1
@@ -858,5 +859,5 @@ func (t *Table) nextAfterDeletion(c *Cursor) (key, value engine.Value, ok bool) 
 			return e.key, e.value, true
 		}
 	}
-	return engine.Undefined, engine.Undefined, false
+	return storage.Undefined, storage.Undefined, false
 }

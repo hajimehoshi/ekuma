@@ -46,6 +46,7 @@ import (
 	"strconv"
 
 	"github.com/hajimehoshi/ekuma/internal/engine"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 	"github.com/hajimehoshi/ekuma/internal/xerrors"
 )
 
@@ -104,7 +105,7 @@ func (e *ScriptError) Error() string {
 
 // Unwrap returns the Go error that e.Value was made from, or nil when it was not.
 func (e *ScriptError) Unwrap() error {
-	return publicInternalError(engine.GoError(e.Value.value))
+	return publicInternalError(storage.GoError(e.Value.value))
 }
 
 // publicError converts an error of the engine to the error types of this package.

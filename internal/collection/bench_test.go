@@ -10,6 +10,7 @@ import (
 
 	"github.com/hajimehoshi/ekuma/internal/collection"
 	"github.com/hajimehoshi/ekuma/internal/engine"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
@@ -22,13 +23,13 @@ func BenchmarkTableSet(b *testing.B) {
 				for i := range keys {
 					switch kind {
 					case "number":
-						keys[i] = engine.Number(float64(i))
+						keys[i] = storage.Number(float64(i))
 					case "string":
 						keys[i] = cx.NewString(wtf8.String(strconv.Itoa(i)))
 					case "bigint":
-						keys[i] = engine.BigIntFromInt64(int64(i))
+						keys[i] = storage.BigIntFromInt64(int64(i))
 					case "object":
-						keys[i] = engine.ObjectValue(cx.NewObject(nil))
+						keys[i] = storage.ObjectValue(cx.NewObject(nil))
 					}
 				}
 				b.ReportAllocs()
@@ -36,7 +37,7 @@ func BenchmarkTableSet(b *testing.B) {
 				for b.Loop() {
 					var tab collection.Table
 					for _, key := range keys {
-						tab.Set(key, engine.Undefined)
+						tab.Set(key, storage.Undefined)
 					}
 				}
 			})

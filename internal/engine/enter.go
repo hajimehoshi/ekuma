@@ -6,6 +6,7 @@ package engine
 import (
 	"crypto/subtle"
 
+	"github.com/hajimehoshi/ekuma/internal/storage"
 	"github.com/hajimehoshi/ekuma/internal/xerrors"
 )
 
@@ -83,13 +84,13 @@ func (cx *ExecutionContext) enterBoundary(f func() Value) (result Value, err err
 					cause := cx.abortCause
 					cx.abortCause = nil
 					if internal, ok := cause.(*xerrors.InternalError); ok {
-						result, err = Undefined, internal
+						result, err = storage.Undefined, internal
 					}
 					cx.abortModuleEvaluations(cause)
 					cx.dropJobs()
 				}
-				cx.raised = nil
-				cx.clearKeptObjects()
+				cx.Raised = nil
+				cx.ClearKeptObjects()
 				cx.clearStale()
 				cx.releaseStack()
 			}()
@@ -115,10 +116,10 @@ func (cx *ExecutionContext) enterBoundary(f func() Value) (result Value, err err
 				if !outermost {
 					panic(r)
 				}
-				result, err = Undefined, &InterruptedError{
-					Cause: sig.cause,
+				result, err = storage.Undefined, &InterruptedError{
+					Cause: sig.Cause,
 				}
-				cause = sig.cause
+				cause = sig.Cause
 				if cause == nil {
 					cause = err
 				}
@@ -156,7 +157,7 @@ func (cx *ExecutionContext) enterBoundary(f func() Value) (result Value, err err
 			panic(errThrow)
 		}
 	}) {
-		return Undefined, cx.takeException()
+		return storage.Undefined, cx.takeException()
 	}
 	return result, nil
 }
@@ -166,6 +167,6 @@ func (cx *ExecutionContext) reportUncaughtException(thrown Value, site throwSite
 		cx.protect(func() {
 			cx.realm.exceptionReporter(thrown, site.location())
 		})
-		cx.thrown = Undefined
+		cx.thrown = storage.Undefined
 	}
 }

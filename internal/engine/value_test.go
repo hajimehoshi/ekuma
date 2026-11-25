@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/hajimehoshi/ekuma/internal/engine"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
@@ -26,7 +27,7 @@ func TestDisplayStringLoneSurrogates(t *testing.T) {
 		},
 		{
 			name: "symbol",
-			v:    engine.ObjectValue(cx.NewSymbol(s, true)),
+			v:    storage.ObjectValue(cx.NewSymbol(s, true)),
 			want: "Symbol(a��)",
 		},
 	} {
@@ -38,7 +39,7 @@ func TestDisplayStringLoneSurrogates(t *testing.T) {
 
 func TestZeroValueUndefined(t *testing.T) {
 	var v engine.Value
-	if !v.IsUndefined() || v.IsNumber() || engine.ToBoolean(v) {
+	if !v.IsUndefined() || v.IsNumber() || storage.ToBoolean(v) {
 		t.Error("zero value must be undefined, nonnumeric, and falsy")
 	}
 }

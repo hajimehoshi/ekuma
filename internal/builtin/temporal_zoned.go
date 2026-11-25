@@ -5,6 +5,7 @@ package builtin
 
 import (
 	"github.com/hajimehoshi/ekuma/internal/engine"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 	"github.com/hajimehoshi/ekuma/internal/temporal"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
@@ -12,7 +13,7 @@ import (
 // newZonedDateTime implements CreateTemporalZonedDateTime for valid epoch nanoseconds.
 func newZonedDateTime(cx *engine.ExecutionContext, ns temporal.Int128, tz temporal.TimeZone, cal string, nt *engine.Object) engine.Value {
 	proto := cx.GetPrototypeFromConstructor(nt, engine.IntrinsicTemporalZonedDateTimePrototype)
-	return engine.ObjectValue(cx.NewTemporalObject(proto, &zonedDateTimeSlots{
+	return storage.ObjectValue(cx.NewTemporalObject(proto, &zonedDateTimeSlots{
 		ns:  ns,
 		tz:  tz,
 		cal: cal,
@@ -20,7 +21,7 @@ func newZonedDateTime(cx *engine.ExecutionContext, ns temporal.Int128, tz tempor
 }
 
 func thisZonedDateTime(cx *engine.ExecutionContext, this engine.Value, name string) *zonedDateTimeSlots {
-	s, ok := engine.TemporalData(this).(*zonedDateTimeSlots)
+	s, ok := storage.TemporalData(this).(*zonedDateTimeSlots)
 	if !ok {
 		incompatible(cx, "Temporal.ZonedDateTime.prototype."+name, this)
 	}
@@ -40,7 +41,7 @@ func toTemporalZonedDateTime(cx *engine.ExecutionContext, item, options engine.V
 	var disambiguation temporal.Disambiguation
 	var offsetOption temporal.OffsetOption
 	if item.IsObject() {
-		if s, ok := engine.TemporalData(item).(*zonedDateTimeSlots); ok {
+		if s, ok := storage.TemporalData(item).(*zonedDateTimeSlots); ok {
 			opts := getOptionsObject(cx, options)
 			getDisambiguationOption(cx, opts)
 			getOffsetOption(cx, opts, temporal.OffsetReject)
@@ -226,7 +227,7 @@ func zonedDateTimeCalendarDate(cx *engine.ExecutionContext, this engine.Value, n
 func zonedDateTimeTimeNative(name string) engine.NativeFunc {
 	return temporalNative(func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		dt := thisZonedDateTime(cx, this, name).localDateTime()
-		return engine.Number(float64(timeField(dt.Time, name)))
+		return storage.Number(float64(timeField(dt.Time, name)))
 	})
 }
 
@@ -255,7 +256,7 @@ func zonedDateTimeAddNative(name string) engine.NativeFunc {
 func zonedDateTimeUntilNative(name string) engine.NativeFunc {
 	return temporalNative(func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		s := thisZonedDateTime(cx, this, name)
-		other := toTemporalZonedDateTime(cx, arg(args, 0), engine.Undefined)
+		other := toTemporalZonedDateTime(cx, arg(args, 0), storage.Undefined)
 		checkSameCalendar(cx, s.cal, other.cal)
 		opts := getOptionsObject(cx, arg(args, 1))
 		settings := getDifferenceSettings(cx, name == "since", opts, unitGroupDateTime, nil, temporal.UnitNanosecond, temporal.UnitHour)
@@ -315,8 +316,8 @@ func zonedDateTimeFrom(cx *engine.ExecutionContext, this engine.Value, args []en
 }
 
 func zonedDateTimeCompare(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-	one := toTemporalZonedDateTime(cx, arg(args, 0), engine.Undefined)
-	two := toTemporalZonedDateTime(cx, arg(args, 1), engine.Undefined)
+	one := toTemporalZonedDateTime(cx, arg(args, 0), storage.Undefined)
+	two := toTemporalZonedDateTime(cx, arg(args, 1), storage.Undefined)
 	return compareResult(one.ns.Cmp(two.ns))
 }
 
@@ -339,12 +340,12 @@ func zonedDateTimeHoursInDay(cx *engine.ExecutionContext, this engine.Value, arg
 	tomorrow := temporal.AddDaysToISODate(today, 1)
 	start := must(s.tz.StartOfDay(today))
 	end := must(s.tz.StartOfDay(tomorrow))
-	return engine.Number(temporal.TotalTimeDuration(end.Sub(start), temporal.UnitHour))
+	return storage.Number(temporal.TotalTimeDuration(end.Sub(start), temporal.UnitHour))
 }
 
 func zonedDateTimeOffsetNanoseconds(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	s := thisZonedDateTime(cx, this, "offsetNanoseconds")
-	return engine.Number(float64(s.tz.OffsetNanosecondsFor(s.ns)))
+	return storage.Number(float64(s.tz.OffsetNanosecondsFor(s.ns)))
 }
 
 func zonedDateTimeOffset(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -380,7 +381,7 @@ func zonedDateTimeWithPlainTime(cx *engine.ExecutionContext, this engine.Value, 
 	if t := arg(args, 0); t.IsUndefined() {
 		epochNs = must(s.tz.StartOfDay(dt.Date))
 	} else {
-		tt := toTemporalTime(cx, t, engine.Undefined)
+		tt := toTemporalTime(cx, t, storage.Undefined)
 		epochNs = must(s.tz.EpochNanosecondsFor(temporal.ISODateTime{
 			Date: dt.Date,
 			Time: tt,
@@ -429,8 +430,8 @@ func zonedDateTimeRound(cx *engine.ExecutionContext, this engine.Value, args []e
 
 func zonedDateTimeEquals(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	s := thisZonedDateTime(cx, this, "equals")
-	other := toTemporalZonedDateTime(cx, arg(args, 0), engine.Undefined)
-	return engine.Bool(s.ns.Cmp(other.ns) == 0 && temporal.TimeZoneEquals(s.tz, other.tz) && calendarEquals(s.cal, other.cal))
+	other := toTemporalZonedDateTime(cx, arg(args, 0), storage.Undefined)
+	return storage.Bool(s.ns.Cmp(other.ns) == 0 && temporal.TimeZoneEquals(s.tz, other.tz) && calendarEquals(s.cal, other.cal))
 }
 
 func zonedDateTimeToString(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -460,7 +461,7 @@ func zonedDateTimeGetTimeZoneTransition(cx *engine.ExecutionContext, this engine
 	next := temporalOption(cx, opts, "direction", []string{"next", "previous"}, -1) == 0
 	t, ok := s.tz.Transition(s.ns, next)
 	if !ok {
-		return engine.Null
+		return storage.Null
 	}
 	return newZonedDateTime(cx, t, s.tz, s.cal, nil)
 }
@@ -502,7 +503,7 @@ func temporalNowTimeZone(cx *engine.ExecutionContext, v engine.Value) temporal.T
 
 func initTemporalNow(cx *engine.ExecutionContext, ns *engine.Object) {
 	now := cx.NewOrdinaryObject()
-	cx.Define(ns, cx.Intern("Now"), engine.ObjectValue(now), engine.FlagsHidden)
+	cx.Define(ns, cx.Intern("Now"), storage.ObjectValue(now), engine.FlagsHidden)
 	cx.Define(now, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Temporal.Now"), engine.FlagConfigurable)
 	method(cx, now, "timeZoneId", 0, nativeTemporalNowTimeZoneId)
 	method(cx, now, "instant", 0, nativeTemporalNowInstant)

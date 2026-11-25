@@ -9,6 +9,7 @@ import (
 
 	"github.com/hajimehoshi/ekuma/internal/builtin"
 	"github.com/hajimehoshi/ekuma/internal/engine"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 )
 
 func TestBigIntBitwiseSizeLimit(t *testing.T) {
@@ -34,7 +35,7 @@ func TestBigIntBitwiseSizeLimit(t *testing.T) {
 		got, err := runScript(cx, "bitwise", expr)
 		if err != nil {
 			t.Errorf("%s: %v", expr, err)
-		} else if !engine.ToBoolean(got) {
+		} else if !storage.ToBoolean(got) {
 			t.Errorf("%s is false", expr)
 		}
 	}

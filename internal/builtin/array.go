@@ -9,6 +9,7 @@ import (
 
 	"github.com/hajimehoshi/ekuma/internal/engine"
 	"github.com/hajimehoshi/ekuma/internal/numconv"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
@@ -19,9 +20,9 @@ const maxArrayFromPresize = 1 << 16
 // bigKey returns the property key for an integer index, which may be beyond the array indices.
 func bigKey(cx *engine.ExecutionContext, i int64) engine.PropKey {
 	if i >= 0 && i <= engine.MaxArrayIndex {
-		return engine.IndexKey(uint32(i))
+		return storage.IndexKey(uint32(i))
 	}
-	return engine.NamedKey(cx.Intern(numconv.NumberToString(float64(i))))
+	return storage.NamedKey(cx.Intern(numconv.NumberToString(float64(i))))
 }
 
 // getAt returns the property of o with the integer index i. A loop over consecutive indices
@@ -101,7 +102,7 @@ func deleteAt(cx *engine.ExecutionContext, o *engine.Object, i int64) {
 }
 
 func setLength(cx *engine.ExecutionContext, o *engine.Object, n int64) {
-	cx.Set(o, engine.NamedKey(cx.Key(engine.KeyLength)), engine.Number(float64(n)))
+	cx.Set(o, storage.NamedKey(cx.Key(engine.KeyLength)), storage.Number(float64(n)))
 }
 
 // arraySpeciesCreate implements ArraySpeciesCreate.
@@ -109,13 +110,13 @@ func arraySpeciesCreate(cx *engine.ExecutionContext, orig *engine.Object, n int6
 	if a, ok := cx.Quiet().ArraySpeciesCreatePlain(orig, n); ok {
 		return a
 	}
-	if cx.IsArray(engine.ObjectValue(orig)) {
-		c := cx.GetV(engine.ObjectValue(orig), cx.Key(engine.KeyConstructor))
+	if cx.IsArray(storage.ObjectValue(orig)) {
+		c := cx.GetV(storage.ObjectValue(orig), cx.Key(engine.KeyConstructor))
 		if c.IsObject() {
 			if c.IsCallable() && cx.IsConstructor(c.Object()) && cx.IsIntrinsicOfOtherRealm(c.Object(), engine.IntrinsicArray) {
-				c = engine.Undefined
+				c = storage.Undefined
 			} else if s := cx.GetV(c, cx.WellKnownSymbol(engine.SymbolSpecies)); s.IsNull() {
-				c = engine.Undefined
+				c = storage.Undefined
 			} else {
 				c = s
 			}
@@ -124,7 +125,7 @@ func arraySpeciesCreate(cx *engine.ExecutionContext, orig *engine.Object, n int6
 			if !c.IsCallable() || !cx.IsConstructor(c.Object()) {
 				cx.ThrowTypeError("object.constructor[Symbol.species] is not a constructor")
 			}
-			return cx.Construct(c.Object(), []engine.Value{engine.Number(float64(n))}, c.Object())
+			return cx.Construct(c.Object(), []engine.Value{storage.Number(float64(n))}, c.Object())
 		}
 	}
 	if n > engine.MaxArrayIndex+1 {
@@ -194,7 +195,7 @@ func joinRun(cx *engine.ExecutionContext, b *wtf8.Buffer, o *engine.Object, i, e
 				// The indices from i to j-1 read as undefined.
 				writeSeparators(cx, b, sep, j-1-i)
 				i = j - 1
-				e = engine.Undefined
+				e = storage.Undefined
 			} else {
 				e = getAt(cx, o, i)
 			}
@@ -359,7 +360,7 @@ func initArray(cx *engine.ExecutionContext) {
 	method(cx, proto, "keys", 0, nativeArrayKeys)
 	method(cx, proto, "entries", 0, nativeArrayEntries)
 	cx.SetIntrinsic(engine.IntrinsicArrayPrototypeValues, method(cx, proto, "values", 0, nativeArrayValues))
-	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolIterator), engine.ObjectValue(cx.Intrinsic(engine.IntrinsicArrayPrototypeValues)), engine.FlagsHidden)
+	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolIterator), storage.ObjectValue(cx.Intrinsic(engine.IntrinsicArrayPrototypeValues)), engine.FlagsHidden)
 	initArrayAdditions(cx, proto)
 }
 
@@ -374,7 +375,7 @@ func arrayConstructor(cx *engine.ExecutionContext, this engine.Value, args []eng
 			if float64(u) != n.Number() {
 				cx.ThrowRangeError("invalid array length")
 			}
-			return engine.ObjectValue(cx.ArrayCreate(u, proto))
+			return storage.ObjectValue(cx.ArrayCreate(u, proto))
 		}
 	}
 	var a *engine.Object
@@ -386,28 +387,28 @@ func arrayConstructor(cx *engine.ExecutionContext, this engine.Value, args []eng
 	if proto != cx.Intrinsic(engine.IntrinsicArrayPrototype) {
 		cx.SetPrototypeOf(a, proto)
 	}
-	return engine.ObjectValue(a)
+	return storage.ObjectValue(a)
 }
 
 func arrayIsArray(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-	return engine.Bool(cx.IsArray(arg(args, 0)))
+	return storage.Bool(cx.IsArray(arg(args, 0)))
 }
 
 func arrayIsArrayKernel(q engine.QuietContext, this, v engine.Value) (engine.Value, bool) {
 	is, ok := q.IsArrayPlain(v)
-	return engine.Bool(is), ok
+	return storage.Bool(is), ok
 }
 
 func arrayOf(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	if this.IsCallable() && cx.IsConstructor(this.Object()) && this.Object() != cx.Intrinsic(engine.IntrinsicArray) {
-		a := cx.Construct(this.Object(), []engine.Value{engine.Number(float64(len(args)))}, this.Object())
+		a := cx.Construct(this.Object(), []engine.Value{storage.Number(float64(len(args)))}, this.Object())
 		for i, v := range args {
-			cx.CreateDataPropertyOrThrow(a, engine.IndexKey(uint32(i)), v)
+			cx.CreateDataPropertyOrThrow(a, storage.IndexKey(uint32(i)), v)
 		}
 		setLength(cx, a, int64(len(args)))
-		return engine.ObjectValue(a)
+		return storage.ObjectValue(a)
 	}
-	return engine.ObjectValue(cx.NewArray(append([]engine.Value(nil), args...)))
+	return storage.ObjectValue(cx.NewArray(append([]engine.Value(nil), args...)))
 }
 
 func arrayFrom(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -420,7 +421,7 @@ func arrayFrom(cx *engine.ExecutionContext, this engine.Value, args []engine.Val
 		if mapFn.IsUndefined() {
 			return v
 		}
-		return cx.Call(mapFn.Object(), thisArg, v, engine.Number(float64(i)))
+		return cx.Call(mapFn.Object(), thisArg, v, storage.Number(float64(i)))
 	}
 	if m := cx.GetMethod(items, cx.WellKnownSymbol(engine.SymbolIterator)); m != nil {
 		// A new array is out of reach of JavaScript until it is returned, so its
@@ -435,7 +436,7 @@ func arrayFrom(cx *engine.ExecutionContext, this engine.Value, args []engine.Val
 		}
 		// The size of the source is only a guess of how many values the iterator gives,
 		// which a replaced iterator may not give at all.
-		size := engine.ElementCount(items)
+		size := storage.ElementCount(items)
 		if items.IsString() {
 			size = items.StringLength()
 		}
@@ -457,17 +458,17 @@ func arrayFrom(cx *engine.ExecutionContext, this engine.Value, args []engine.Val
 			return true
 		})
 		if st.a == nil {
-			return engine.ObjectValue(cx.NewArray(st.vals))
+			return storage.ObjectValue(cx.NewArray(st.vals))
 		}
 		setLength(cx, st.a, st.i)
-		return engine.ObjectValue(st.a)
+		return storage.ObjectValue(st.a)
 	}
 	src := cx.ToObject(items)
 	n := cx.LengthOfArrayLike(src)
 	var a *engine.Object
 	switch {
 	case custom:
-		a = cx.Construct(this.Object(), []engine.Value{engine.Number(float64(n))}, this.Object())
+		a = cx.Construct(this.Object(), []engine.Value{storage.Number(float64(n))}, this.Object())
 	case n <= engine.MaxArrayIndex+1:
 		a = cx.ArrayCreate(uint32(n), cx.Intrinsic(engine.IntrinsicArrayPrototype))
 	default:
@@ -477,13 +478,13 @@ func arrayFrom(cx *engine.ExecutionContext, this engine.Value, args []engine.Val
 		cx.CreateDataPropertyOrThrow(a, bigKey(cx, i), mapped(getAt(cx, src, i), i))
 	}
 	setLength(cx, a, n)
-	return engine.ObjectValue(a)
+	return storage.ObjectValue(a)
 }
 
 func arrayPush(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	o := cx.ToObject(this)
 	if n, ok := engine.PushElements(cx.Quiet(), o, args); ok {
-		return engine.Number(float64(n))
+		return storage.Number(float64(n))
 	}
 	n := cx.LengthOfArrayLike(o)
 	if n+int64(len(args)) > numconv.MaxSafeInteger {
@@ -494,20 +495,20 @@ func arrayPush(cx *engine.ExecutionContext, this engine.Value, args []engine.Val
 		n++
 	}
 	setLength(cx, o, n)
-	return engine.Number(float64(n))
+	return storage.Number(float64(n))
 }
 
 // arrayPushKernel is the fast path of push for a single value.
 func arrayPushKernel(q engine.QuietContext, this, v engine.Value) (engine.Value, bool) {
 	if !this.IsObject() {
-		return engine.Undefined, false
+		return storage.Undefined, false
 	}
 	vals := [...]engine.Value{v}
 	n, ok := engine.PushElements(q, this.Object(), vals[:])
 	if !ok {
-		return engine.Undefined, false
+		return storage.Undefined, false
 	}
-	return engine.Number(float64(n)), true
+	return storage.Number(float64(n)), true
 }
 
 func arrayPop(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -518,7 +519,7 @@ func arrayPop(cx *engine.ExecutionContext, this engine.Value, args []engine.Valu
 	n := cx.LengthOfArrayLike(o)
 	if n == 0 {
 		setLength(cx, o, 0)
-		return engine.Undefined
+		return storage.Undefined
 	}
 	v := getAt(cx, o, n-1)
 	deleteAt(cx, o, n-1)
@@ -528,7 +529,7 @@ func arrayPop(cx *engine.ExecutionContext, this engine.Value, args []engine.Valu
 
 func arrayPopKernel(q engine.QuietContext, this engine.Value) (engine.Value, bool) {
 	if !this.IsObject() {
-		return engine.Undefined, false
+		return storage.Undefined, false
 	}
 	return this.Object().RemoveLastElement()
 }
@@ -541,7 +542,7 @@ func arrayShift(cx *engine.ExecutionContext, this engine.Value, args []engine.Va
 	n := cx.LengthOfArrayLike(o)
 	if n == 0 {
 		setLength(cx, o, 0)
-		return engine.Undefined
+		return storage.Undefined
 	}
 	first := getAt(cx, o, 0)
 	for i := int64(1); i < n; i++ {
@@ -561,7 +562,7 @@ func arrayUnshift(cx *engine.ExecutionContext, this engine.Value, args []engine.
 	o := cx.ToObject(this)
 	k := int64(len(args))
 	if n, ok := cx.Quiet().PrependElements(o, args); ok {
-		return engine.Number(float64(n))
+		return storage.Number(float64(n))
 	}
 	n := cx.LengthOfArrayLike(o)
 	if k > 0 {
@@ -581,7 +582,7 @@ func arrayUnshift(cx *engine.ExecutionContext, this engine.Value, args []engine.
 		}
 	}
 	setLength(cx, o, n+k)
-	return engine.Number(float64(n + k))
+	return storage.Number(float64(n + k))
 }
 
 func arraySlice(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -593,7 +594,7 @@ func arraySlice(cx *engine.ExecutionContext, this engine.Value, args []engine.Va
 		end = relIndex(cx.ToIntegerOrInfinity(e), n)
 	}
 	if a, ok := cx.Quiet().CopyElementRange(o, start, end); ok {
-		return engine.ObjectValue(a)
+		return storage.ObjectValue(a)
 	}
 	a := arraySpeciesCreate(cx, o, max(end-start, 0))
 	for i := start; i < end; i++ {
@@ -605,7 +606,7 @@ func arraySlice(cx *engine.ExecutionContext, this engine.Value, args []engine.Va
 		}
 	}
 	setLength(cx, a, max(end-start, 0))
-	return engine.ObjectValue(a)
+	return storage.ObjectValue(a)
 }
 
 func arraySplice(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -626,7 +627,7 @@ func arraySplice(cx *engine.ExecutionContext, this engine.Value, args []engine.V
 		cx.ThrowTypeError("splicing elements past the maximum length")
 	}
 	if removed, ok := cx.Quiet().SpliceElements(o, n, start, del, items); ok {
-		return engine.ObjectValue(removed)
+		return storage.ObjectValue(removed)
 	}
 	a := arraySpeciesCreate(cx, o, del)
 	for i := int64(0); i < del; i++ {
@@ -665,7 +666,7 @@ func arraySplice(cx *engine.ExecutionContext, this engine.Value, args []engine.V
 		putAt(cx, o, start+int64(i), v)
 	}
 	setLength(cx, o, n-del+k)
-	return engine.ObjectValue(a)
+	return storage.ObjectValue(a)
 }
 
 func arrayConcat(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -673,14 +674,14 @@ func arrayConcat(cx *engine.ExecutionContext, this engine.Value, args []engine.V
 	a := arraySpeciesCreate(cx, o, 0)
 	n := int64(0)
 	for k := -1; k < len(args); k++ {
-		item := engine.ObjectValue(o)
+		item := storage.ObjectValue(o)
 		if k >= 0 {
 			item = args[k]
 		}
 		spreadable := false
 		if item.IsObject() {
 			if s := cx.GetV(item, cx.WellKnownSymbol(engine.SymbolIsConcatSpreadable)); !s.IsUndefined() {
-				spreadable = engine.ToBoolean(s)
+				spreadable = storage.ToBoolean(s)
 			} else {
 				spreadable = cx.IsArray(item)
 			}
@@ -712,7 +713,7 @@ func arrayConcat(cx *engine.ExecutionContext, this engine.Value, args []engine.V
 		n += l
 	}
 	setLength(cx, a, n)
-	return engine.ObjectValue(a)
+	return storage.ObjectValue(a)
 }
 
 func arrayJoin(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -727,8 +728,8 @@ func arrayJoin(cx *engine.ExecutionContext, this engine.Value, args []engine.Val
 
 func arrayToString(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	o := cx.ToObject(this)
-	if j := cx.GetV(engine.ObjectValue(o), cx.Intern("join")); j.IsCallable() {
-		return cx.Call(j.Object(), engine.ObjectValue(o))
+	if j := cx.GetV(storage.ObjectValue(o), cx.Intern("join")); j.IsCallable() {
+		return cx.Call(j.Object(), storage.ObjectValue(o))
 	}
 	return objectToString(cx, o)
 }
@@ -737,7 +738,7 @@ func arrayReverse(cx *engine.ExecutionContext, this engine.Value, args []engine.
 	o := cx.ToObject(this)
 	n := cx.LengthOfArrayLike(o)
 	if cx.Quiet().ReverseElements(o) {
-		return engine.ObjectValue(o)
+		return storage.ObjectValue(o)
 	}
 	for lo, hi := int64(0), n-1; lo < hi; lo, hi = lo+1, hi-1 {
 		lok, hok := hasAt(cx, o, lo), false
@@ -767,7 +768,7 @@ func arrayReverse(cx *engine.ExecutionContext, this engine.Value, args []engine.
 			}
 		}
 	}
-	return engine.ObjectValue(o)
+	return storage.ObjectValue(o)
 }
 
 var (
@@ -793,15 +794,15 @@ func arraySearchNative(fromEnd, same bool) engine.NativeFunc {
 		o := cx.ToObject(this)
 		n := cx.LengthOfArrayLike(o)
 		target := arg(args, 0)
-		eq := engine.IsStrictlyEqual
+		eq := storage.IsStrictlyEqual
 		if same {
-			eq = engine.SameValueZero
+			eq = storage.SameValueZero
 		}
 		if n == 0 {
 			if same {
-				return engine.False
+				return storage.False
 			}
-			return engine.Number(-1)
+			return storage.Number(-1)
 		}
 		if fromEnd {
 			from := n - 1
@@ -816,7 +817,7 @@ func arraySearchNative(fromEnd, same bool) engine.NativeFunc {
 			for i := from; i >= 0; i-- {
 				f, next := cx.Quiet().SearchElements(o, i, -1, target, false)
 				if f >= 0 {
-					return engine.Number(float64(f))
+					return storage.Number(float64(f))
 				}
 				if i = next; i < 0 {
 					break
@@ -824,7 +825,7 @@ func arraySearchNative(fromEnd, same bool) engine.NativeFunc {
 				cx.PollAt(i)
 				if e, ok := engine.Element(o, i); ok {
 					if eq(e, target) {
-						return engine.Number(float64(i))
+						return storage.Number(float64(i))
 					}
 					continue
 				}
@@ -832,19 +833,19 @@ func arraySearchNative(fromEnd, same bool) engine.NativeFunc {
 					break
 				}
 				if hasAt(cx, o, i) && eq(getAt(cx, o, i), target) {
-					return engine.Number(float64(i))
+					return storage.Number(float64(i))
 				}
 			}
-			return engine.Number(-1)
+			return storage.Number(-1)
 		}
 		from := relIndex(cx.ToIntegerOrInfinity(arg(args, 1)), n)
 		for i := from; i < n; i++ {
 			f, next := cx.Quiet().SearchElements(o, i, n, target, same)
 			if f >= 0 {
 				if same {
-					return engine.True
+					return storage.True
 				}
-				return engine.Number(float64(f))
+				return storage.Number(float64(f))
 			}
 			if i = next; i == n {
 				break
@@ -856,7 +857,7 @@ func arraySearchNative(fromEnd, same bool) engine.NativeFunc {
 					if j := cx.Quiet().SkipHoles(o, i, n); j > i {
 						// The indices from i to j-1 read as undefined.
 						if target.IsUndefined() {
-							return engine.True
+							return storage.True
 						}
 						i = j - 1
 						continue
@@ -864,13 +865,13 @@ func arraySearchNative(fromEnd, same bool) engine.NativeFunc {
 					e = getAt(cx, o, i)
 				}
 				if eq(e, target) {
-					return engine.True
+					return storage.True
 				}
 				continue
 			}
 			if e, ok := engine.Element(o, i); ok {
 				if eq(e, target) {
-					return engine.Number(float64(i))
+					return storage.Number(float64(i))
 				}
 				continue
 			}
@@ -878,31 +879,31 @@ func arraySearchNative(fromEnd, same bool) engine.NativeFunc {
 				break
 			}
 			if hasAt(cx, o, i) && eq(getAt(cx, o, i), target) {
-				return engine.Number(float64(i))
+				return storage.Number(float64(i))
 			}
 		}
 		if same {
-			return engine.False
+			return storage.False
 		}
-		return engine.Number(-1)
+		return storage.Number(-1)
 	}
 }
 
 func arrayIndexOfKernel(q engine.QuietContext, this, target engine.Value) (engine.Value, bool) {
 	found, ok := q.SearchArray(this, target, false)
-	return engine.Number(float64(found)), ok
+	return storage.Number(float64(found)), ok
 }
 
 func arrayIncludesKernel(q engine.QuietContext, this, target engine.Value) (engine.Value, bool) {
 	found, ok := q.SearchArray(this, target, true)
-	return engine.Bool(found >= 0), ok
+	return storage.Bool(found >= 0), ok
 }
 
 func arrayForEach(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	l := newEachLoop(cx, this, args, "forEach", true)
 	for {
 		if _, _, ok := l.next(); !ok {
-			return engine.Undefined
+			return storage.Undefined
 		}
 	}
 }
@@ -913,7 +914,7 @@ func arrayMap(cx *engine.ExecutionContext, this engine.Value, args []engine.Valu
 	for {
 		_, r, ok := l.next()
 		if !ok {
-			return engine.ObjectValue(a)
+			return storage.ObjectValue(a)
 		}
 		cx.CreateDataPropertyOrThrow(a, bigKey(cx, l.i), r)
 	}
@@ -926,9 +927,9 @@ func arrayFilter(cx *engine.ExecutionContext, this engine.Value, args []engine.V
 	for {
 		v, r, ok := l.next()
 		if !ok {
-			return engine.ObjectValue(a)
+			return storage.ObjectValue(a)
 		}
-		if engine.ToBoolean(r) {
+		if storage.ToBoolean(r) {
 			cx.CreateDataPropertyOrThrow(a, bigKey(cx, j), v)
 			j++
 		}
@@ -940,10 +941,10 @@ func arraySome(cx *engine.ExecutionContext, this engine.Value, args []engine.Val
 	for {
 		_, r, ok := l.next()
 		if !ok {
-			return engine.False
+			return storage.False
 		}
-		if engine.ToBoolean(r) {
-			return engine.True
+		if storage.ToBoolean(r) {
+			return storage.True
 		}
 	}
 }
@@ -953,10 +954,10 @@ func arrayEvery(cx *engine.ExecutionContext, this engine.Value, args []engine.Va
 	for {
 		_, r, ok := l.next()
 		if !ok {
-			return engine.True
+			return storage.True
 		}
-		if !engine.ToBoolean(r) {
-			return engine.False
+		if !storage.ToBoolean(r) {
+			return storage.False
 		}
 	}
 }
@@ -966,9 +967,9 @@ func arrayFind(cx *engine.ExecutionContext, this engine.Value, args []engine.Val
 	for {
 		v, r, ok := l.next()
 		if !ok {
-			return engine.Undefined
+			return storage.Undefined
 		}
-		if engine.ToBoolean(r) {
+		if storage.ToBoolean(r) {
 			return v
 		}
 	}
@@ -979,10 +980,10 @@ func arrayFindIndex(cx *engine.ExecutionContext, this engine.Value, args []engin
 	for {
 		_, r, ok := l.next()
 		if !ok {
-			return engine.Number(-1)
+			return storage.Number(-1)
 		}
-		if engine.ToBoolean(r) {
-			return engine.Number(float64(l.i))
+		if storage.ToBoolean(r) {
+			return storage.Number(float64(l.i))
 		}
 	}
 }
@@ -1003,17 +1004,17 @@ func arrayFindLastNative(name string, index bool) engine.NativeFunc {
 		cb := callback(cx, args, name)
 		for i := n - 1; i >= 0; i-- {
 			v := getAt(cx, o, i)
-			if engine.ToBoolean(cx.Call(cb, arg(args, 1), v, engine.Number(float64(i)), engine.ObjectValue(o))) {
+			if storage.ToBoolean(cx.Call(cb, arg(args, 1), v, storage.Number(float64(i)), storage.ObjectValue(o))) {
 				if index {
-					return engine.Number(float64(i))
+					return storage.Number(float64(i))
 				}
 				return v
 			}
 		}
 		if index {
-			return engine.Number(-1)
+			return storage.Number(-1)
 		}
-		return engine.Undefined
+		return storage.Undefined
 	}
 }
 
@@ -1064,7 +1065,7 @@ func arrayReduceNative(name string, right bool) engine.NativeFunc {
 					continue
 				}
 			}
-			acc = cx.Call(cb, engine.Undefined, acc, getAt(cx, o, i), engine.Number(float64(i)), engine.ObjectValue(o))
+			acc = cx.Call(cb, storage.Undefined, acc, getAt(cx, o, i), storage.Number(float64(i)), storage.ObjectValue(o))
 		}
 		return acc
 	}
@@ -1079,12 +1080,12 @@ func arrayFill(cx *engine.ExecutionContext, this engine.Value, args []engine.Val
 		end = relIndex(cx.ToIntegerOrInfinity(e), n)
 	}
 	if cx.Quiet().FillElements(o, n, start, end, arg(args, 0)) {
-		return engine.ObjectValue(o)
+		return storage.ObjectValue(o)
 	}
 	for i := start; i < end; i++ {
 		putAt(cx, o, i, arg(args, 0))
 	}
-	return engine.ObjectValue(o)
+	return storage.ObjectValue(o)
 }
 
 func arrayAt(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -1095,7 +1096,7 @@ func arrayAt(cx *engine.ExecutionContext, this engine.Value, args []engine.Value
 		i += float64(n)
 	}
 	if i < 0 || i >= float64(n) {
-		return engine.Undefined
+		return storage.Undefined
 	}
 	return getAt(cx, o, int64(i))
 }
@@ -1130,7 +1131,7 @@ func arraySort(cx *engine.ExecutionContext, this engine.Value, args []engine.Val
 		i++
 	}
 	for ; undefs > 0; undefs-- {
-		putAt(cx, o, i, engine.Undefined)
+		putAt(cx, o, i, storage.Undefined)
 		i++
 	}
 	for ; i < n; i++ {
@@ -1139,7 +1140,7 @@ func arraySort(cx *engine.ExecutionContext, this engine.Value, args []engine.Val
 		}
 		deleteAt(cx, o, i)
 	}
-	return engine.ObjectValue(o)
+	return storage.ObjectValue(o)
 }
 
 func arrayFlat(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -1152,7 +1153,7 @@ func arrayFlat(cx *engine.ExecutionContext, this engine.Value, args []engine.Val
 	a := arraySpeciesCreate(cx, o, 0)
 	var n int64
 	flattenIntoArray(cx, a, o, l, depth, &n)
-	return engine.ObjectValue(a)
+	return storage.ObjectValue(a)
 }
 
 func arrayFlatMap(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -1168,7 +1169,7 @@ func arrayFlatMap(cx *engine.ExecutionContext, this engine.Value, args []engine.
 		if !hasAt(cx, o, i) {
 			continue
 		}
-		v := cx.Call(cb, arg(args, 1), getAt(cx, o, i), engine.Number(float64(i)), engine.ObjectValue(o))
+		v := cx.Call(cb, arg(args, 1), getAt(cx, o, i), storage.Number(float64(i)), storage.ObjectValue(o))
 		if cx.IsArray(v) {
 			flattenIntoArray(cx, a, v.Object(), cx.LengthOfArrayLike(v.Object()), 0, &n)
 			continue
@@ -1176,19 +1177,19 @@ func arrayFlatMap(cx *engine.ExecutionContext, this engine.Value, args []engine.
 		cx.CreateDataPropertyOrThrow(a, bigKey(cx, n), v)
 		n++
 	}
-	return engine.ObjectValue(a)
+	return storage.ObjectValue(a)
 }
 
 func arrayKeys(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-	return engine.ObjectValue(cx.NewArrayIterator(cx.ToObject(this), engine.IterateKeys))
+	return storage.ObjectValue(cx.NewArrayIterator(cx.ToObject(this), engine.IterateKeys))
 }
 
 func arrayEntries(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-	return engine.ObjectValue(cx.NewArrayIterator(cx.ToObject(this), engine.IterateEntries))
+	return storage.ObjectValue(cx.NewArrayIterator(cx.ToObject(this), engine.IterateEntries))
 }
 
 func arrayValues(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-	return engine.ObjectValue(cx.NewArrayIterator(cx.ToObject(this), engine.IterateValues))
+	return storage.ObjectValue(cx.NewArrayIterator(cx.ToObject(this), engine.IterateValues))
 }
 
 // newArrayOfLength checks that n is a valid array length as ArrayCreate does, and returns the storage
@@ -1225,9 +1226,9 @@ func initArrayAdditions(cx *engine.ExecutionContext, proto *engine.Object) {
 		"at", "copyWithin", "entries", "fill", "find", "findIndex", "findLast", "findLastIndex",
 		"flat", "flatMap", "includes", "keys", "toReversed", "toSorted", "toSpliced", "values",
 	} {
-		cx.Define(unscopables, cx.Intern(name), engine.True, engine.FlagsData)
+		cx.Define(unscopables, cx.Intern(name), storage.True, engine.FlagsData)
 	}
-	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolUnscopables), engine.ObjectValue(unscopables), engine.FlagConfigurable)
+	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolUnscopables), storage.ObjectValue(unscopables), engine.FlagConfigurable)
 }
 
 func arrayCopyWithin(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -1259,7 +1260,7 @@ func arrayCopyWithin(cx *engine.ExecutionContext, this engine.Value, args []engi
 		from += dir
 		to += dir
 	}
-	return engine.ObjectValue(o)
+	return storage.ObjectValue(o)
 }
 
 func arrayToLocaleString(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -1420,7 +1421,7 @@ func sortValues(cx *engine.ExecutionContext, vals []engine.Value, cmp engine.Val
 		return
 	}
 	mergeSort(vals, func(a, b engine.Value) int {
-		if cx.ToNumber(cx.Call(cmp.Object(), engine.Undefined, a, b)) < 0 {
+		if cx.ToNumber(cx.Call(cmp.Object(), storage.Undefined, a, b)) < 0 {
 			return -1
 		}
 		return 0
@@ -1514,7 +1515,7 @@ func insertionSort[E any](s []E, compare func(a, b E) int) {
 
 // compareStringValues compares the strings a and b by their code units.
 func compareStringValues(a, b engine.Value) int {
-	return engine.CompareStrings(a, b)
+	return storage.CompareStrings(a, b)
 }
 
 // keyedValue is a value with the string it sorts by.
@@ -1659,8 +1660,8 @@ func (l *eachLoop) next() (v, r engine.Value, ok bool) {
 		}
 		l.i = i
 		v := getAt(cx, o, i)
-		return v, cx.Call(l.cb, l.thisArg, v, engine.Number(float64(i)), engine.ObjectValue(o)), true
+		return v, cx.Call(l.cb, l.thisArg, v, storage.Number(float64(i)), storage.ObjectValue(o)), true
 	}
 	l.i = l.n
-	return engine.Undefined, engine.Undefined, false
+	return storage.Undefined, storage.Undefined, false
 }

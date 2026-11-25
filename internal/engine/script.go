@@ -10,6 +10,7 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/compiler"
 	"github.com/hajimehoshi/ekuma/internal/numconv"
 	"github.com/hajimehoshi/ekuma/internal/parser"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
@@ -73,7 +74,7 @@ func (cx *ExecutionContext) NewScript(code *bytecode.Func) *Script {
 // ScriptEvaluation evaluates s and runs pending jobs. completed reports whether
 // the script returned normally before the job checkpoint.
 func (s *Script) ScriptEvaluation() (Value, bool, error) {
-	cx := executionContextOf(s.code.realm)
+	cx := executionContextOf(s.code.Realm)
 	var completed bool
 	value, err := cx.enter(func() Value {
 		v := s.CallScript()
@@ -85,11 +86,11 @@ func (s *Script) ScriptEvaluation() (Value, bool, error) {
 
 // CallScript evaluates s from a running host function and propagates its exception.
 func (s *Script) CallScript() Value {
-	cx := executionContextOf(s.code.realm)
+	cx := executionContextOf(s.code.Realm)
 	previous := cx.enteredRealm
 	cx.enteredRealm = cx.realm
 	defer func() { cx.enteredRealm = previous }()
-	return cx.Call(cx.newScriptFunction(s.code), Value{o: cx.realm.globalThis})
+	return cx.Call(cx.newScriptFunction(s.code), Value{O: cx.realm.GlobalThis})
 }
 
 // compileScriptCode parses and compiles the script src. The error is a [*SyntaxError] when src is
@@ -176,5 +177,5 @@ func toSyntaxError(file string, err error) error {
 
 // newScriptFunction returns the function that runs the script fp.
 func (cx *ExecutionContext) newScriptFunction(fp *funcProto) *Object {
-	return newFunctionObject(cx.realm.shapes.function, &function{code: fp})
+	return storage.NewFunctionObject(cx.realm.Shapes.Function, &function{Code: fp})
 }

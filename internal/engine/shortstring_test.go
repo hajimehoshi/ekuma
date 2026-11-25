@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/hajimehoshi/ekuma/internal/engine"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
@@ -25,13 +26,13 @@ func BenchmarkShortString(b *testing.B) {
 			b.Run("Equal", func(b *testing.B) {
 				other := cx.NewString(s)
 				for b.Loop() {
-					engine.IsStrictlyEqual(v, other)
+					storage.IsStrictlyEqual(v, other)
 				}
 			})
 			b.Run("DifferentLength", func(b *testing.B) {
 				other := cx.NewString("ab")
 				for b.Loop() {
-					engine.IsStrictlyEqual(v, other)
+					storage.IsStrictlyEqual(v, other)
 				}
 			})
 			b.Run("Length", func(b *testing.B) {
@@ -133,7 +134,7 @@ func TestSubstringEquals(t *testing.T) {
 			v := cx.NewString(tc.text)
 			pattern := cx.NewString(tc.pattern)
 			if tc.internPattern {
-				pattern = engine.ObjectValue(cx.Intern(tc.pattern))
+				pattern = storage.ObjectValue(cx.Intern(tc.pattern))
 			}
 			if got := v.SubstringEquals(tc.start, tc.end, pattern); got != tc.want {
 				t.Errorf("SubstringEquals() = %t, want %t", got, tc.want)
@@ -152,7 +153,7 @@ func TestShortStringOrdering(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !engine.ToBoolean(v) {
+	if !storage.ToBoolean(v) {
 		t.Error("strings did not follow UTF-16 ordering")
 	}
 }
@@ -244,7 +245,7 @@ func TestStringValueBoundaries(t *testing.T) {
 			if got := v.Str(); got != tc.want {
 				t.Errorf("Str() = %q, want %q", got, tc.want)
 			}
-			if !engine.IsStrictlyEqual(v, cx.NewString(tc.want)) {
+			if !storage.IsStrictlyEqual(v, cx.NewString(tc.want)) {
 				t.Error("value differs from NewString")
 			}
 		})
@@ -261,7 +262,7 @@ func TestInternedStringValue(t *testing.T) {
 	}{
 		{
 			name:  "interned",
-			value: engine.ObjectValue(cx.Intern(text)),
+			value: storage.ObjectValue(cx.Intern(text)),
 		},
 		{
 			name:  "shared",
@@ -269,7 +270,7 @@ func TestInternedStringValue(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			if !engine.IsStrictlyEqual(tc.value, v) {
+			if !storage.IsStrictlyEqual(tc.value, v) {
 				t.Error("interned value differs from NewString")
 			}
 		})
@@ -336,7 +337,7 @@ func TestShortStringToNumber(t *testing.T) {
 		},
 	} {
 		t.Run(string(tc.text), func(t *testing.T) {
-			for _, value := range []engine.Value{cx.NewString(tc.text), engine.ObjectValue(cx.Intern(tc.text))} {
+			for _, value := range []engine.Value{cx.NewString(tc.text), storage.ObjectValue(cx.Intern(tc.text))} {
 				got := cx.ToNumber(value)
 				if math.IsNaN(tc.want) {
 					if !math.IsNaN(got) {

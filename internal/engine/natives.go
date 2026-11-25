@@ -3,6 +3,10 @@
 
 package engine
 
+import (
+	"github.com/hajimehoshi/ekuma/internal/storage"
+)
+
 // The native functions of the engine itself.
 var (
 	nativeFunctionPrototype      = RegisterNative(functionPrototype)
@@ -38,10 +42,10 @@ func init() {
 	nativeAsyncFromSyncIteratorNext = RegisterNative(asyncFromSyncIteratorNext)
 	nativeAsyncFromSyncIteratorReturn = RegisterNative(asyncFromSyncIteratorReturn)
 	nativeAsyncFromSyncIteratorThrow = RegisterNative(asyncFromSyncIteratorThrow)
-	proxyInfo.native = RegisterNative(proxyFunction)
+	storage.ProxyInfo.Native = RegisterNative(proxyFunction)
 }
 
 // functionPrototype is the code of %Function.prototype%.
 func functionPrototype(cx *ExecutionContext, this Value, args []Value) Value {
-	return Undefined
+	return storage.Undefined
 }

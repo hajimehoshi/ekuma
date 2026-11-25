@@ -11,6 +11,7 @@ import (
 
 	"github.com/hajimehoshi/ekuma/internal/bytecode"
 	"github.com/hajimehoshi/ekuma/internal/engine"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 )
 
 func compareShortcut(t *testing.T, op bytecode.Opcode, setup, scenario, want string, normal, generic []int) {
@@ -333,7 +334,7 @@ func TestValidationRejectsStaleRegisters(t *testing.T) {
 			name: "write before the reload",
 			use: func(r *engine.Registers) {
 				r.EnsureStack()
-				r.Set(0, engine.True)
+				r.Set(0, storage.True)
 				r.Reload()
 			},
 		},
@@ -344,7 +345,7 @@ func TestValidationRejectsStaleRegisters(t *testing.T) {
 				r.Reload()
 				r.EnsureStack()
 				r.EnsureStack()
-				r.Set(0, engine.True)
+				r.Set(0, storage.True)
 				r.Reload()
 			},
 		},

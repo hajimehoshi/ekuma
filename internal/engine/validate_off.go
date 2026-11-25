@@ -5,9 +5,9 @@
 
 package engine
 
-// validateExec says whether the interpreter checks the code that it runs, as validate_on.go
-// describes.
-const validateExec = false
+import (
+	"github.com/hajimehoshi/ekuma/internal/storage"
+)
 
 type execChecks struct{}
 
@@ -26,8 +26,6 @@ func (ag *agent) abandonStack() {}
 func (ag *agent) checkIdleStack() {}
 
 func (ag *agent) holdStack() {}
-
-func checkValue(v Value) {}
 
 func (ag *agent) holdArgs(args []Value) int {
 	return 0
@@ -67,22 +65,8 @@ func (cx *ExecutionContext) checkInstanceofHit(*funcProto, int, Value, *Object, 
 
 func (cx *ExecutionContext) checkInstanceShape(*funcProto, int, *Object, *realmPart, *shape) {}
 
-func (r *realmPart) checkArrayIteration() {}
-
-func (r *realmPart) checkNoIteratorReturn() {}
-
-func (r *realmPart) checkPlainArray(*Object) {}
-
-func (r *realmPart) checkUnmodifiedRegExp(*Object) {}
-
-func (r *realmPart) checkRegExpShape(*Object) {}
-
-func (s *shape) checkEnumerable() {}
-
-func (c *sparseIndexCache) checkSparseIndices(*shape) {}
-
 func (cx *ExecutionContext) checkReturnedProperty(*funcProto, Value, *cacheEntry) {}
 
 func (cx *ExecutionContext) checkAppend(*Object) {}
 
-func (r *realmPart) checkArrayProtoPlain() {}
+const validateExec = storage.ValidateExec

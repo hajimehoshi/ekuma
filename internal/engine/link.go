@@ -6,93 +6,12 @@ package engine
 import (
 	"github.com/hajimehoshi/ekuma/internal/bytecode"
 	"github.com/hajimehoshi/ekuma/internal/numconv"
-	"github.com/hajimehoshi/ekuma/internal/wtf8"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 )
-
-// funcProto is the compiled code of a function in the form the interpreter runs,
-// shared by all closures made from it.
-type funcProto struct {
-	*bytecode.Func
-
-	name   wtf8.String
-	code   []bytecode.Instr
-	consts []Value
-	keys   []*Object
-
-	// caches holds the inline caches, and is nil until a frame of the function is pushed.
-	caches []propCache
-	protos []*funcProto
-
-	templates []templateSite
-	regExps   []regExpSite
-
-	// ncopied is the number of the upvalues that are copies of the variables, by
-	// [bytecode.UpvalDesc.ByValue].
-	ncopied int
-
-	length  int
-	nparams int
-	nclear  int
-	nregs   int
-
-	// clearFrom is the first register from nparams on that a new frame clears. The first
-	// instructions write the registers between nparams and clearFrom before anything reads them.
-	clearFrom int
-
-	strict             bool
-	isGenerator        bool
-	isAsync            bool
-	isConstructor      bool
-	isClassConstructor bool
-	isDerived          bool
-	needsExtra         bool
-
-	// legacyCallerArguments says whether the functions have the own properties caller and arguments
-	// that implementations add to non-strict ordinary functions.
-	legacyCallerArguments bool
-
-	// script is the [[ScriptOrModule]] of the functions. Only scriptOrModuleOf reads it.
-	script any
-
-	// realm is the [[Realm]] of the functions. Each frame enters the context of the realm of its
-	// linked code, including a replacement tail frame.
-	realm *realmPart
-
-	// thisReg is the register that the first instruction loads this into, or -1 when the
-	// first instruction does not load this. thisSloppy says whether it converts this the way
-	// a non-strict function sees it.
-	thisReg    int32
-	thisSloppy bool
-
-	// heapRegs says whether the frames of the functions keep their registers in their
-	// generator instead of on the stack.
-	heapRegs bool
-
-	// inlineFrames says whether the fast paths of the interpreter loop may push frames of the
-	// functions: the inline caches exist, and the functions are neither generators, async
-	// functions nor class constructors.
-	inlineFrames bool
-
-	// returnedProperty is the cache for x when the function starts with return this.x.
-	returnedProperty *propCache
-
-	// globals holds the inline caches of global variables, which prepare allocates with
-	// caches. It comes after the fields that calls read.
-	globals []globalCache
-
-	// plainFunction is the initial state of ordinary closures without upvalues.
-	plainFunction *function
-}
 
 // scriptOrModuleOf returns the [[ScriptOrModule]] of the functions.
 func scriptOrModuleOf(p *funcProto) *scriptOrModule {
-	return p.script.(*scriptOrModule)
-}
-
-type templateSite struct {
-	cooked []Value
-	raw    []Value
-	object *Object
+	return p.Script.(*scriptOrModule)
 }
 
 // link converts the compiled function f and the functions nested in it to their runtime form.
@@ -114,48 +33,48 @@ func (cx *ExecutionContext) linkFunc(f *bytecode.Func, script *scriptOrModule, c
 	legacy := !f.Strict && !f.IsArrow && !f.IsMethod && !f.IsGenerator && !f.IsAsync && !f.IsClassConstructor
 	p := &funcProto{
 		Func:               f,
-		name:               f.Name,
-		code:               f.Code,
-		consts:             make([]Value, len(f.Consts)),
-		keys:               make([]*Object, len(f.Keys)),
-		protos:             make([]*funcProto, len(f.Protos)),
-		templates:          make([]templateSite, len(f.Templates)),
-		regExps:            make([]regExpSite, len(f.RegExps)),
-		length:             f.Length,
-		nparams:            f.NumParams,
-		nclear:             f.NumClear,
-		nregs:              f.NumRegs,
-		strict:             f.Strict,
-		isGenerator:        f.IsGenerator,
-		isAsync:            f.IsAsync,
-		isConstructor:      f.IsConstructor,
-		isClassConstructor: f.IsClassConstructor,
-		isDerived:          f.IsDerived,
+		Name:               f.Name,
+		Code:               f.Code,
+		Consts:             make([]Value, len(f.Consts)),
+		Keys:               make([]*Object, len(f.Keys)),
+		Protos:             make([]*funcProto, len(f.Protos)),
+		Templates:          make([]templateSite, len(f.Templates)),
+		RegExps:            make([]regExpSite, len(f.RegExps)),
+		Length:             f.Length,
+		Nparams:            f.NumParams,
+		Nclear:             f.NumClear,
+		Nregs:              f.NumRegs,
+		Strict:             f.Strict,
+		IsGenerator:        f.IsGenerator,
+		IsAsync:            f.IsAsync,
+		IsConstructor:      f.IsConstructor,
+		IsClassConstructor: f.IsClassConstructor,
+		IsDerived:          f.IsDerived,
 
 		// The arguments property of a non-strict function shows all the arguments of its calls.
-		needsExtra:            f.NeedsExtra || legacy,
-		legacyCallerArguments: legacy,
+		NeedsExtra:            f.NeedsExtra || legacy,
+		LegacyCallerArguments: legacy,
 
-		script: script,
-		realm:  cx.realmPart,
+		Script: script,
+		Realm:  cx.realmPart,
 
-		thisReg:  -1,
-		heapRegs: f.IsGenerator || f.IsAsync,
+		ThisReg:  -1,
+		HeapRegs: f.IsGenerator || f.IsAsync,
 	}
 	if len(f.Code) > 0 {
 		switch i := f.Code[0]; i.Op {
 		case bytecode.OpLoadThis:
-			p.thisReg = i.A
+			p.ThisReg = i.A
 		case bytecode.OpLoadThisSloppy:
-			p.thisReg, p.thisSloppy = i.A, true
+			p.ThisReg, p.ThisSloppy = i.A, true
 		}
 	}
-	p.clearFrom = f.NumParams
+	p.ClearFrom = f.NumParams
 	for _, i := range f.Code {
 		switch i.Op {
 		case bytecode.OpLoadThis, bytecode.OpLoadThisSloppy, bytecode.OpLoadNewTarget, bytecode.OpLoadHome, bytecode.OpLoadCallee, bytecode.OpLoadTDZ:
-			if int(i.A) == p.clearFrom {
-				p.clearFrom++
+			if int(i.A) == p.ClearFrom {
+				p.ClearFrom++
 				continue
 			}
 		}
@@ -164,17 +83,17 @@ func (cx *ExecutionContext) linkFunc(f *bytecode.Func, script *scriptOrModule, c
 	for i, c := range f.Consts {
 		switch c.Kind {
 		case bytecode.ConstUndefined:
-			p.consts[i] = Undefined
+			p.Consts[i] = storage.Undefined
 		case bytecode.ConstNull:
-			p.consts[i] = Null
+			p.Consts[i] = storage.Null
 		case bytecode.ConstFalse:
-			p.consts[i] = False
+			p.Consts[i] = storage.False
 		case bytecode.ConstTrue:
-			p.consts[i] = True
+			p.Consts[i] = storage.True
 		case bytecode.ConstNumber:
-			p.consts[i] = Number(c.Num)
+			p.Consts[i] = storage.Number(c.Num)
 		case bytecode.ConstString:
-			p.consts[i] = ObjectValue(cx.Intern(c.Str))
+			p.Consts[i] = storage.ObjectValue(cx.Intern(c.Str))
 		case bytecode.ConstBigInt:
 			// A script may be linked when no JavaScript runs, which an interruption
 			// cannot stop.
@@ -183,37 +102,37 @@ func (cx *ExecutionContext) linkFunc(f *bytecode.Func, script *scriptOrModule, c
 				poll = cx.Poll
 			}
 			n, _ := numconv.ParseBigInt(string(c.Str), 10, poll)
-			p.consts[i] = NewBigInt(n)
+			p.Consts[i] = storage.NewBigInt(n)
 		}
 	}
 	for i, k := range f.Keys {
-		p.keys[i] = cx.Intern(k)
+		p.Keys[i] = cx.Intern(k)
 	}
 	for _, d := range f.Upvals {
 		if d.ByValue {
-			p.ncopied++
+			p.Ncopied++
 		}
 	}
 	for i, q := range f.Protos {
-		p.protos[i] = cx.linkFunc(q, script, consume)
+		p.Protos[i] = cx.linkFunc(q, script, consume)
 	}
 	for i, r := range f.RegExps {
-		p.regExps[i].literal = r
+		p.RegExps[i].Literal = r
 	}
 	for i, t := range f.Templates {
 		site := templateSite{
-			cooked: make([]Value, len(t.Cooked)),
-			raw:    make([]Value, len(t.Raw)),
+			Cooked: make([]Value, len(t.Cooked)),
+			Raw:    make([]Value, len(t.Raw)),
 		}
 		for j, s := range t.Cooked {
 			if t.HasCooked[j] {
-				site.cooked[j] = cx.NewString(s)
+				site.Cooked[j] = cx.NewString(s)
 			}
 		}
 		for j, s := range t.Raw {
-			site.raw[j] = cx.NewString(s)
+			site.Raw[j] = cx.NewString(s)
 		}
-		p.templates[i] = site
+		p.Templates[i] = site
 	}
 	if consume {
 		// The runtime form replaces them.
@@ -221,27 +140,4 @@ func (cx *ExecutionContext) linkFunc(f *bytecode.Func, script *scriptOrModule, c
 		f.Keys = nil
 	}
 	return p
-}
-
-// firstCleared returns the first register that a new frame of p for argc arguments clears.
-func (p *funcProto) firstCleared(argc int) int {
-	if argc < p.nparams {
-		return argc
-	}
-	return p.clearFrom
-}
-
-// prepare allocates the inline caches of p, which a frame of p needs.
-func (p *funcProto) prepare() {
-	if p.caches == nil {
-		p.caches = make([]propCache, p.NumCaches)
-		p.globals = make([]globalCache, p.NumGlobalCaches)
-		p.inlineFrames = !p.heapRegs && !p.isClassConstructor
-		if p.inlineFrames && p.thisReg >= 0 && len(p.code) >= 3 {
-			get, ret := p.code[1], p.code[2]
-			if get.Op == bytecode.OpGetProp && get.B == p.thisReg && ret.Op == bytecode.OpReturn && ret.A == get.A {
-				p.returnedProperty = &p.caches[get.C]
-			}
-		}
-	}
 }

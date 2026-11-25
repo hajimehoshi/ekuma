@@ -5,6 +5,7 @@ package builtin
 
 import (
 	"github.com/hajimehoshi/ekuma/internal/engine"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 )
 
 func initWeak(cx *engine.ExecutionContext) {
@@ -62,36 +63,36 @@ func weakMapConstructor(cx *engine.ExecutionContext, this engine.Value, args []e
 	m := cx.NewWeakMapObject(cx.GetPrototypeFromConstructor(nt, engine.IntrinsicWeakMapPrototype))
 	iterable := arg(args, 0)
 	if iterable.IsNullish() {
-		return engine.ObjectValue(m)
+		return storage.ObjectValue(m)
 	}
 	adder := adderOf(cx, m, cx.Key(engine.KeySet))
 	var fast func(k, v engine.Value)
 	if adder == cx.Intrinsic(engine.IntrinsicWeakMapPrototypeSet) {
-		t := engine.WeakMapData(engine.ObjectValue(m))
+		t := engine.WeakMapData(storage.ObjectValue(m))
 		fast = func(k, v engine.Value) {
 			if !cx.CanBeHeldWeakly(k) {
 				// The TypeError belongs to the native set call.
-				cx.Call(adder, engine.ObjectValue(m), k, v)
+				cx.Call(adder, storage.ObjectValue(m), k, v)
 				return
 			}
 			t.Set(k, v)
 		}
 	}
 	addEntriesFromIterable(cx, m, iterable, adder, fast)
-	return engine.ObjectValue(m)
+	return storage.ObjectValue(m)
 }
 
 func weakMapDelete(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	t := thisWeakMap(cx, this, "delete")
 	k := arg(args, 0)
-	return engine.Bool(cx.CanBeHeldWeakly(k) && t.Delete(k))
+	return storage.Bool(cx.CanBeHeldWeakly(k) && t.Delete(k))
 }
 
 func weakMapGet(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	t := thisWeakMap(cx, this, "get")
 	k := arg(args, 0)
 	if !cx.CanBeHeldWeakly(k) {
-		return engine.Undefined
+		return storage.Undefined
 	}
 	v, _ := t.Get(k)
 	return v
@@ -100,7 +101,7 @@ func weakMapGet(cx *engine.ExecutionContext, this engine.Value, args []engine.Va
 func weakMapHas(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	t := thisWeakMap(cx, this, "has")
 	k := arg(args, 0)
-	return engine.Bool(cx.CanBeHeldWeakly(k) && t.Has(k))
+	return storage.Bool(cx.CanBeHeldWeakly(k) && t.Has(k))
 }
 
 func weakMapSet(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -132,7 +133,7 @@ func weakMapGetOrInsertComputed(cx *engine.ExecutionContext, this engine.Value, 
 	if old, ok := t.Get(k); ok {
 		return old
 	}
-	v := cx.Call(cb.Object(), engine.Undefined, k)
+	v := cx.Call(cb.Object(), storage.Undefined, k)
 	t.Set(k, v)
 	return v
 }
@@ -172,41 +173,41 @@ func weakSetConstructor(cx *engine.ExecutionContext, this engine.Value, args []e
 	s := cx.NewWeakSetObject(cx.GetPrototypeFromConstructor(nt, engine.IntrinsicWeakSetPrototype))
 	iterable := arg(args, 0)
 	if iterable.IsNullish() {
-		return engine.ObjectValue(s)
+		return storage.ObjectValue(s)
 	}
 	adder := adderOf(cx, s, cx.Key(engine.KeyAdd))
 	original := adder == cx.Intrinsic(engine.IntrinsicWeakSetPrototypeAdd)
-	t := engine.WeakSetData(engine.ObjectValue(s))
+	t := engine.WeakSetData(storage.ObjectValue(s))
 	cx.Iterate(iterable, func(e engine.Value) bool {
 		if original && cx.CanBeHeldWeakly(e) {
-			t.Set(e, engine.True)
+			t.Set(e, storage.True)
 		} else {
 			// This includes the TypeError of the original method.
-			cx.Call(adder, engine.ObjectValue(s), e)
+			cx.Call(adder, storage.ObjectValue(s), e)
 		}
 		return true
 	})
-	return engine.ObjectValue(s)
+	return storage.ObjectValue(s)
 }
 
 func weakSetAdd(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	t := thisWeakSet(cx, this, "add")
 	v := arg(args, 0)
 	requireHoldable(cx, v, "in weak set")
-	t.Set(v, engine.True)
+	t.Set(v, storage.True)
 	return this
 }
 
 func weakSetDelete(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	t := thisWeakSet(cx, this, "delete")
 	v := arg(args, 0)
-	return engine.Bool(cx.CanBeHeldWeakly(v) && t.Delete(v))
+	return storage.Bool(cx.CanBeHeldWeakly(v) && t.Delete(v))
 }
 
 func weakSetHas(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	t := thisWeakSet(cx, this, "has")
 	v := arg(args, 0)
-	return engine.Bool(cx.CanBeHeldWeakly(v) && t.Has(v))
+	return storage.Bool(cx.CanBeHeldWeakly(v) && t.Has(v))
 }
 
 var (
@@ -231,7 +232,7 @@ func weakRefConstructor(cx *engine.ExecutionContext, this engine.Value, args []e
 	requireHoldable(cx, target, "as WeakRef target")
 	r := cx.NewWeakRefObject(cx.GetPrototypeFromConstructor(nt, engine.IntrinsicWeakRefPrototype), target)
 	cx.AddToKeptObjects(target.Object())
-	return engine.ObjectValue(r)
+	return storage.ObjectValue(r)
 }
 
 func weakRefDeref(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -275,14 +276,14 @@ func finalizationRegistryConstructor(cx *engine.ExecutionContext, this engine.Va
 	if !cb.IsCallable() {
 		cx.ThrowTypeError(cx.DisplayString(cb) + " is not a function")
 	}
-	return engine.ObjectValue(cx.NewFinalizationRegistryObject(cx.GetPrototypeFromConstructor(nt, engine.IntrinsicFinalizationRegistryPrototype), cb.Object()))
+	return storage.ObjectValue(cx.NewFinalizationRegistryObject(cx.GetPrototypeFromConstructor(nt, engine.IntrinsicFinalizationRegistryPrototype), cb.Object()))
 }
 
 func finalizationRegistryRegister(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	r := thisFinalizationRegistry(cx, this, "register")
 	target, held, token := arg(args, 0), arg(args, 1), arg(args, 2)
 	requireHoldable(cx, target, "as FinalizationRegistry target")
-	if engine.SameValue(target, held) {
+	if storage.SameValue(target, held) {
 		cx.ThrowTypeError("the target and the held value of a FinalizationRegistry registration must differ")
 	}
 	if !cx.CanBeHeldWeakly(token) {
@@ -291,12 +292,12 @@ func finalizationRegistryRegister(cx *engine.ExecutionContext, this engine.Value
 		}
 	}
 	r.Register(target, held, token)
-	return engine.Undefined
+	return storage.Undefined
 }
 
 func finalizationRegistryUnregister(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	r := thisFinalizationRegistry(cx, this, "unregister")
 	token := arg(args, 0)
 	requireHoldable(cx, token, "as unregister token")
-	return engine.Bool(r.Unregister(token, cx.Poll))
+	return storage.Bool(r.Unregister(token, cx.Poll))
 }

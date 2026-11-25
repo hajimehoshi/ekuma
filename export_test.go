@@ -9,6 +9,7 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/compiler"
 	"github.com/hajimehoshi/ekuma/internal/engine"
 	"github.com/hajimehoshi/ekuma/internal/parser"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 	"github.com/hajimehoshi/ekuma/internal/xerrors"
 )
@@ -26,7 +27,7 @@ func InvokeInRealm(ctx context.Context, r *Realm, f Value) error {
 func SetExceptionReporter(r *Realm, report Value) {
 	cx := r.cx
 	r.in(func() {
-		key := engine.NamedKey(cx.Key(engine.KeyToString))
+		key := storage.NamedKey(cx.Key(engine.KeyToString))
 		objectToString := cx.Get(r.cx.Intrinsic(engine.IntrinsicObjectPrototype), key)
 		errorToString := cx.Get(r.cx.Intrinsic(engine.IntrinsicErrorPrototype), key)
 		cx.SetExceptionReporter(func(thrown engine.Value, loc engine.ExceptionLocation) {
@@ -35,8 +36,8 @@ func SetExceptionReporter(r *Realm, report Value) {
 				source = cx.StringFromGo(loc.File)
 			}
 			description := cx.ExceptionDescription(thrown, objectToString, errorToString)
-			cx.Call(report.value.Object(), engine.Undefined, thrown, source,
-				engine.Number(float64(loc.Line)), engine.Number(float64(max(loc.Column, 1))), description, cx.NewString(loc.SourceLine))
+			cx.Call(report.value.Object(), storage.Undefined, thrown, source,
+				storage.Number(float64(loc.Line)), storage.Number(float64(max(loc.Column, 1))), description, cx.NewString(loc.SourceLine))
 		})
 	})
 }
@@ -144,19 +145,19 @@ var nativeV8GlobalConstructor = engine.RegisterNative(v8GlobalConstructor)
 
 func v8GlobalConstructor(cx *engine.ExecutionContext, this engine.Value, _ []engine.Value) engine.Value {
 	if target := cx.GetNewTarget(); target != nil {
-		return engine.ObjectValue(cx.NewObject(cx.GetPrototypeFromConstructor(target, engine.IntrinsicObjectPrototype)))
+		return storage.ObjectValue(cx.NewObject(cx.GetPrototypeFromConstructor(target, engine.IntrinsicObjectPrototype)))
 	}
 	if this.IsNullish() {
 		return cx.GetV(cx.GlobalObject(), cx.Intern("globalThis"))
 	}
-	return engine.ObjectValue(cx.ToObject(this))
+	return storage.ObjectValue(cx.ToObject(this))
 }
 
 func newV8GlobalPrototype(cx *engine.ExecutionContext) *engine.Object {
 	proto := cx.NewObject(cx.Intrinsic(engine.IntrinsicObjectPrototype))
 	ctor := cx.NewNativeConstructor("", 0, nativeV8GlobalConstructor)
-	cx.Define(ctor, cx.Key(engine.KeyPrototype), engine.ObjectValue(proto), engine.FlagWritable)
-	cx.Define(proto, cx.Key(engine.KeyConstructor), engine.ObjectValue(ctor), engine.FlagsHidden)
+	cx.Define(ctor, cx.Key(engine.KeyPrototype), storage.ObjectValue(proto), engine.FlagWritable)
+	cx.Define(proto, cx.Key(engine.KeyConstructor), storage.ObjectValue(ctor), engine.FlagsHidden)
 	return proto
 }
 
@@ -194,7 +195,7 @@ func NewRealmShared(vm *VM) Value {
 			flags |= engine.FlagConfigurable
 		}
 		targets[target] = flags
-		if !engine.SameValue(shared, d.Value()) {
+		if !storage.SameValue(shared, d.Value()) {
 			shared = d.Value()
 			// A frozen Realm still observes writes made through another realm.
 			for other, flags := range targets {
@@ -228,7 +229,7 @@ func NewHTMLDDA(r *Realm) Value {
 	var v engine.Value
 	r.in(func() {
 		v = r.cx.NewHTMLDDA(func(*engine.ExecutionContext, engine.Value, []engine.Value) engine.Value {
-			return engine.Null
+			return storage.Null
 		})
 	})
 	return fromEngine(v)
@@ -236,7 +237,7 @@ func NewHTMLDDA(r *Realm) Value {
 
 // AbstractModuleSource returns %AbstractModuleSource% of r.
 func AbstractModuleSource(r *Realm) Value {
-	return fromEngine(engine.ObjectValue(r.cx.Intrinsic(engine.IntrinsicAbstractModuleSource)))
+	return fromEngine(storage.ObjectValue(r.cx.Intrinsic(engine.IntrinsicAbstractModuleSource)))
 }
 
 // NewSourceModule returns a module of r whose only export is a default of undefined and

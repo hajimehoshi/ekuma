@@ -5,6 +5,7 @@ package builtin
 
 import (
 	"github.com/hajimehoshi/ekuma/internal/engine"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 )
 
 var (
@@ -14,7 +15,7 @@ var (
 
 func initProxy(cx *engine.ExecutionContext) {
 	ctor := cx.NewNativeConstructor("Proxy", 2, nativeProxyConstructor)
-	cx.Define(cx.GlobalObject().Object(), cx.Intern("Proxy"), engine.ObjectValue(ctor), engine.FlagsHidden)
+	cx.Define(cx.GlobalObject().Object(), cx.Intern("Proxy"), storage.ObjectValue(ctor), engine.FlagsHidden)
 
 	method(cx, ctor, "revocable", 2, nativeProxyRevocable)
 }
@@ -23,7 +24,7 @@ func proxyConstructor(cx *engine.ExecutionContext, this engine.Value, args []eng
 	if cx.GetNewTarget() == nil {
 		cx.ThrowTypeError("constructor Proxy requires 'new'")
 	}
-	return engine.ObjectValue(cx.ProxyCreate(arg(args, 0), arg(args, 1)))
+	return storage.ObjectValue(cx.ProxyCreate(arg(args, 0), arg(args, 1)))
 }
 
 var nativeProxyRevoke = engine.RegisterNative(proxyRevoke)
@@ -34,10 +35,10 @@ func proxyRevocable(cx *engine.ExecutionContext, this engine.Value, args []engin
 		revocableProxy: p,
 	})
 	r := cx.NewObjectFromProperties(
-		[]engine.PropKey{engine.NamedKey(cx.Intern("proxy")), engine.NamedKey(cx.Intern("revoke"))},
-		[]engine.Value{engine.ObjectValue(p), engine.ObjectValue(revoke)},
+		[]engine.PropKey{storage.NamedKey(cx.Intern("proxy")), storage.NamedKey(cx.Intern("revoke"))},
+		[]engine.Value{storage.ObjectValue(p), storage.ObjectValue(revoke)},
 	)
-	return engine.ObjectValue(r)
+	return storage.ObjectValue(r)
 }
 
 // proxyRevocation is the state of a proxy revocation function.
@@ -53,5 +54,5 @@ func proxyRevoke(cx *engine.ExecutionContext, this engine.Value, args []engine.V
 		engine.RevokeProxy(p)
 		r.revocableProxy = nil
 	}
-	return engine.Undefined
+	return storage.Undefined
 }

@@ -12,6 +12,7 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/intl/number"
 	"github.com/hajimehoshi/ekuma/internal/intl/plural"
 	"github.com/hajimehoshi/ekuma/internal/intl/reltime"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
@@ -67,12 +68,12 @@ func newRelativeTimeFormat(cx *engine.ExecutionContext, this engine.Value, args 
 		SignDisplay:     "auto",
 		Digits:          defaultDigits(),
 	})
-	return engine.ObjectValue(cx.NewIntlObject(proto, rtf))
+	return storage.ObjectValue(cx.NewIntlObject(proto, rtf))
 }
 
 // thisRelativeTimeFormat implements RequireInternalSlot for an Intl.RelativeTimeFormat.
 func thisRelativeTimeFormat(cx *engine.ExecutionContext, this engine.Value, name string) *relativeTimeFormatData {
-	rtf, ok := engine.IntlData(this).(*relativeTimeFormatData)
+	rtf, ok := storage.IntlData(this).(*relativeTimeFormatData)
 	if !ok {
 		cx.ThrowTypeError("Intl.RelativeTimeFormat.prototype." + name + " called on an object that is not an Intl.RelativeTimeFormat")
 	}
@@ -101,7 +102,7 @@ func (rtf *relativeTimeFormatData) partition(cx *engine.ExecutionContext, value 
 	}
 	patterns := reltime.PatternsOf(rtf.dataLocale, unit, rtf.style)
 	if rtf.numeric == "auto" {
-		if s, ok := patterns.Named(string(cx.ToString(engine.Number(value)))); ok {
+		if s, ok := patterns.Named(string(cx.ToString(storage.Number(value)))); ok {
 			return []relativeTimePart{{typ: "literal", value: s}}
 		}
 	}
@@ -180,9 +181,9 @@ func relativeTimeFormatResolvedOptions(cx *engine.ExecutionContext, this engine.
 // "value", and "unit" for the parts with a unit.
 func unitPartsArray(cx *engine.ExecutionContext, n int, part func(i int) (typ, value, unit string)) engine.Value {
 	keys := [...]engine.PropKey{
-		engine.NamedKey(cx.Intern("type")),
-		engine.NamedKey(cx.Intern("value")),
-		engine.NamedKey(cx.Intern("unit")),
+		storage.NamedKey(cx.Intern("type")),
+		storage.NamedKey(cx.Intern("value")),
+		storage.NamedKey(cx.Intern("unit")),
 	}
 	vals := make([]engine.Value, n)
 	for i := range n {
@@ -193,7 +194,7 @@ func unitPartsArray(cx *engine.ExecutionContext, n int, part func(i int) (typ, v
 			props[2] = cx.NewString(wtf8.String(unit))
 			propertyCount++
 		}
-		vals[i] = engine.ObjectValue(cx.NewObjectFromProperties(keys[:propertyCount], props[:propertyCount]))
+		vals[i] = storage.ObjectValue(cx.NewObjectFromProperties(keys[:propertyCount], props[:propertyCount]))
 	}
 	return cx.NewArrayOf(vals)
 }

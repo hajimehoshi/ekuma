@@ -7,6 +7,7 @@ import (
 	"context"
 
 	"github.com/hajimehoshi/ekuma/internal/engine"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 )
 
 // PromiseResolver resolves or rejects the promise that [Realm.NewPromise] returns with it, as
@@ -55,9 +56,9 @@ func (r *PromiseResolver) settle(ctx context.Context, x any, reject bool) error 
 		cx := r.realm.context()
 		v := vm.valueOf(cx, x)
 		if reject {
-			return engine.Undefined, cx.HostReject(r.c, v)
+			return storage.Undefined, cx.HostReject(r.c, v)
 		}
-		return engine.Undefined, cx.HostResolve(r.c, v)
+		return storage.Undefined, cx.HostResolve(r.c, v)
 	})
 	return err
 }

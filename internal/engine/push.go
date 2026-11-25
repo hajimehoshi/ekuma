@@ -24,7 +24,7 @@ func PushElements(q QuietContext, o *Object, vals []Value) (uint32, bool) {
 	// Sample single-element pushes so earlier array lengths at this call site can
 	// guide how much space to reserve.
 	if ok && len(vals) == 1 && n > minElems && n <= maxPresizedElems {
-		if n == minElems+1 || int(n) == cap(o.elems) || n%pushSampleInterval == 0 {
+		if n == minElems+1 || int(n) == cap(o.Elems) || n%pushSampleInterval == 0 {
 			observePush(q, o)
 		}
 	}
@@ -41,9 +41,9 @@ func (ag *agent) observePush(o *Object) {
 	if len(ag.frames) == 0 {
 		return
 	}
-	n := len(o.elems)
+	n := len(o.Elems)
 	fr := &ag.frames[len(ag.frames)-1]
-	state := fr.cl.extState()
+	state := fr.cl.ExtState()
 	h, _ := state.(*pushSizeHint)
 	if h == nil || h.pc != fr.pc {
 		if n < 2*pushSampleInterval {
@@ -54,7 +54,7 @@ func (ag *agent) observePush(o *Object) {
 				return
 			}
 			h = new(pushSizeHint)
-			fr.cl.setExtState(h)
+			fr.cl.SetExtState(h)
 		}
 		*h = pushSizeHint{
 			pc: fr.pc,
@@ -66,12 +66,12 @@ func (ag *agent) observePush(o *Object) {
 	if n >= 2*pushSampleInterval {
 		// The final length can fall between samples. Limit the allowance
 		// to space the array already acquired.
-		h.current = uint16(min(n+pushSampleInterval-1, cap(o.elems), maxPresizedElems))
+		h.current = uint16(min(n+pushSampleInterval-1, cap(o.Elems), maxPresizedElems))
 	}
-	if n == cap(o.elems) {
+	if n == cap(o.Elems) {
 		// Bound the cost of a short result following larger ones.
 		if room := min(int(h.target), 8*n); room > n {
-			o.moveElemsTo(room)
+			o.MoveElemsTo(room)
 		}
 	}
 }

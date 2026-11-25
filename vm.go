@@ -18,6 +18,7 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/datetime"
 	"github.com/hajimehoshi/ekuma/internal/engine"
 	"github.com/hajimehoshi/ekuma/internal/localetag"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
@@ -153,46 +154,46 @@ func (vm *VM) valueOf(cx *engine.ExecutionContext, x any) engine.Value {
 	case Value:
 		return vm.acceptValue(x)
 	case nil:
-		return engine.Null
+		return storage.Null
 	case bool:
-		return engine.Bool(x)
+		return storage.Bool(x)
 	case int:
-		return engine.Number(float64(x))
+		return storage.Number(float64(x))
 	case int8:
-		return engine.Number(float64(x))
+		return storage.Number(float64(x))
 	case int16:
-		return engine.Number(float64(x))
+		return storage.Number(float64(x))
 	case int32:
-		return engine.Number(float64(x))
+		return storage.Number(float64(x))
 	case int64:
-		return engine.Number(float64(x))
+		return storage.Number(float64(x))
 	case uint:
-		return engine.Number(float64(x))
+		return storage.Number(float64(x))
 	case uint8:
-		return engine.Number(float64(x))
+		return storage.Number(float64(x))
 	case uint16:
-		return engine.Number(float64(x))
+		return storage.Number(float64(x))
 	case uint32:
-		return engine.Number(float64(x))
+		return storage.Number(float64(x))
 	case uint64:
-		return engine.Number(float64(x))
+		return storage.Number(float64(x))
 	case uintptr:
-		return engine.Number(float64(x))
+		return storage.Number(float64(x))
 	case float32:
-		return engine.Number(float64(x))
+		return storage.Number(float64(x))
 	case float64:
-		return engine.Number(x)
+		return storage.Number(x)
 	case *big.Int:
 		if x == nil {
 			panic("ekuma: ValueOf: nil *big.Int")
 		}
 		if x.IsInt64() {
-			return engine.BigIntFromInt64(x.Int64())
+			return storage.BigIntFromInt64(x.Int64())
 		}
 		if x.BitLen() > engine.MaxBigIntBits {
 			panic(fmt.Sprintf("ekuma: ValueOf: BigInt of %d bits, more than %d", x.BitLen(), engine.MaxBigIntBits))
 		}
-		return engine.NewBigInt(new(big.Int).Set(x))
+		return storage.NewBigInt(new(big.Int).Set(x))
 	case string:
 		return cx.StringFromGo(x)
 	case func(Value, []Value) (any, error):
@@ -226,7 +227,7 @@ func (vm *VM) objectOf(cx *engine.ExecutionContext, x any) engine.Value {
 			panic("ekuma: ValueOf: invalid *SharedDataBlock")
 		}
 		proto := cx.Intrinsic(engine.IntrinsicSharedArrayBufferPrototype)
-		return engine.ObjectValue(cx.NewSharedArrayBufferObject(proto, x.b))
+		return storage.ObjectValue(cx.NewSharedArrayBufferObject(proto, x.b))
 	case []any:
 		if len(x) > 0 {
 			defer vm.leaveContainer(vm.enterContainer(containerID{elem0: &x[0], len: len(x)}))
@@ -293,7 +294,7 @@ func funcOf(cx *engine.ExecutionContext, name string, f Func) engine.Value {
 	if f == nil {
 		panic("ekuma: FuncOf: nil Func")
 	}
-	return engine.ObjectValue(cx.NewNativeWithState(wtf8.FromValidUTF8(name), 0, nativeHostFunction, f))
+	return storage.ObjectValue(cx.NewNativeWithState(wtf8.FromValidUTF8(name), 0, nativeHostFunction, f))
 }
 
 // nativeHostFunction leads to the code that makes its function objects.
@@ -399,9 +400,9 @@ func (vm *VM) AwaitJobs(ctx context.Context) (bool, error) {
 	_, err := vm.run(ctx, func() (engine.Value, error) {
 		var err error
 		if waited, err = vm.e.AwaitJobs(); !waited {
-			return engine.Undefined, err
+			return storage.Undefined, err
 		}
-		return engine.Undefined, vm.hostContext().RunJobs()
+		return storage.Undefined, vm.hostContext().RunJobs()
 	})
 	return waited, err
 }

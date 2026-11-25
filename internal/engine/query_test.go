@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/hajimehoshi/ekuma/internal/engine"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 )
 
 func TestQueryOfMissingKeyNotInterned(t *testing.T) {
@@ -96,7 +97,7 @@ func TestQueryKeyThroughProxy(t *testing.T) {
 			if err != nil {
 				t.Fatalf("runScript: %v", err)
 			}
-			if !engine.ToBoolean(v) {
+			if !storage.ToBoolean(v) {
 				t.Errorf("got no TypeError for a trap result that violates an invariant")
 			}
 		})

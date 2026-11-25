@@ -8,6 +8,7 @@ import (
 
 	"github.com/hajimehoshi/ekuma/internal/element"
 	"github.com/hajimehoshi/ekuma/internal/engine"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 )
 
 // The engine makes the accesses to a shared data block atomic, as other agents may access it.
@@ -52,7 +53,7 @@ func toAtomicValue(cx *engine.ExecutionContext, typ element.Type, v engine.Value
 	if typ.IsBigInt() {
 		return cx.ToBigInt(v)
 	}
-	return engine.Number(cx.ToIntegerOrInfinity(v))
+	return storage.Number(cx.ToIntegerOrInfinity(v))
 }
 
 // doWait implements DoWait.
@@ -71,7 +72,7 @@ func doWait(cx *engine.ExecutionContext, async bool, args []engine.Value) engine
 	if typ.IsBigInt() {
 		v = cx.ToBigInt(arg(args, 2))
 	} else {
-		v = engine.Number(float64(cx.ToInt32(arg(args, 2))))
+		v = storage.Number(float64(cx.ToInt32(arg(args, 2))))
 	}
 	q := cx.ToNumber(arg(args, 3))
 	timeout := math.Inf(1)
@@ -92,10 +93,10 @@ func doWait(cx *engine.ExecutionContext, async bool, args []engine.Value) engine
 // waitResult returns the result object of Atomics.waitAsync.
 func waitResult(cx *engine.ExecutionContext, async bool, value engine.Value) engine.Value {
 	o := cx.NewObjectFromProperties(
-		[]engine.PropKey{engine.NamedKey(cx.Intern("async")), engine.NamedKey(cx.Intern("value"))},
-		[]engine.Value{engine.Bool(async), value},
+		[]engine.PropKey{storage.NamedKey(cx.Intern("async")), storage.NamedKey(cx.Intern("value"))},
+		[]engine.Value{storage.Bool(async), value},
 	)
-	return engine.ObjectValue(o)
+	return storage.ObjectValue(o)
 }
 
 var (
@@ -111,7 +112,7 @@ var (
 
 func initAtomics(cx *engine.ExecutionContext) {
 	atomics := cx.NewOrdinaryObject()
-	cx.Define(cx.GlobalObject().Object(), cx.Intern("Atomics"), engine.ObjectValue(atomics), engine.FlagsHidden)
+	cx.Define(cx.GlobalObject().Object(), cx.Intern("Atomics"), storage.ObjectValue(atomics), engine.FlagsHidden)
 	cx.Define(atomics, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Atomics"), engine.FlagConfigurable)
 
 	method(cx, atomics, "add", 3, nativeAtomicsAdd)
@@ -169,9 +170,9 @@ func atomicsCompareExchange(cx *engine.ExecutionContext, this engine.Value, args
 func atomicsIsLockFree(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	switch cx.ToIntegerOrInfinity(arg(args, 0)) {
 	case 1, 2, 4, 8:
-		return engine.True
+		return storage.True
 	}
-	return engine.False
+	return storage.False
 }
 
 func atomicsLoad(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -208,10 +209,10 @@ func atomicsNotify(cx *engine.ExecutionContext, this engine.Value, args []engine
 	}
 	b := t.ArrayBuffer()
 	if !b.IsShared() {
-		return engine.Number(0)
+		return storage.Number(0)
 	}
 	byteIndex := t.ByteOffset() + i*t.ElementType().Size()
-	return engine.Number(float64(cx.NotifyWaiters(b, byteIndex, c)))
+	return storage.Number(float64(cx.NotifyWaiters(b, byteIndex, c)))
 }
 
 func atomicsPause(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -220,5 +221,5 @@ func atomicsPause(cx *engine.ExecutionContext, this engine.Value, args []engine.
 			cx.ThrowTypeError("Atomics.pause: the argument must be an integral number")
 		}
 	}
-	return engine.Undefined
+	return storage.Undefined
 }
