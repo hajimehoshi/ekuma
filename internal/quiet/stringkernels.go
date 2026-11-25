@@ -8,7 +8,6 @@ import (
 
 	"github.com/hajimehoshi/ekuma/internal/numconv"
 	"github.com/hajimehoshi/ekuma/internal/storage"
-	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 func StringConstructorKernel(q Context, this, x storage.Value) (storage.Value, bool) {
@@ -82,11 +81,6 @@ func StringSubstringKernel2(q Context, this, start, end storage.Value) (storage.
 		return storage.Undefined, false
 	}
 	return SubstringOf(q, this, start.Number(), end.Number()), true
-}
-
-type StringIterator struct {
-	Str wtf8.String
-	pos int
 }
 
 // CodeUnitAt returns the code unit of the string s at the index i, or NaN when s has none there.

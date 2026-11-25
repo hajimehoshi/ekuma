@@ -8,6 +8,20 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
+// IterationKind identifies what an iterator yields.
+type IterationKind uint8
+
+const (
+	IterateKeys IterationKind = iota
+	IterateValues
+	IterateEntries
+)
+
+type StringIterator struct {
+	Str wtf8.String
+	pos int
+}
+
 func StringIteratorStep(q Context, _ *storage.Object, it *StringIterator) (storage.Value, bool) {
 	if it.pos >= len(it.Str) {
 		return storage.Undefined, false

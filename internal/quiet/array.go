@@ -8,6 +8,15 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
+// IsArrayPlain is IsArray of v when v is not a proxy. It reports false as ok for a proxy.
+func (q Context) IsArrayPlain(v storage.Value) (is, ok bool) {
+	o := v.O
+	if o != nil && o.Class == storage.ClassProxy {
+		return false, false
+	}
+	return o != nil && o.Kind == storage.KindArray, true
+}
+
 // ArraySpeciesCreatePlain returns a new array of the length n with the prototype
 // %Array.prototype% when that is what ArraySpeciesCreate for o creates, because o is an array
 // with the original constructor of the current realm. It reports false otherwise.
