@@ -157,14 +157,14 @@ func IsArrayPlain(v Value) (is, ok bool) {
 // FunctionContext returns the context of GetFunctionRealm(f).
 func (cx *ExecutionContext) FunctionContext(f *Object) *ExecutionContext {
 	if r := cx.functionRealmOrNil(f); r != nil {
-		return &r.context
+		return r.executionContext()
 	}
 	cx.throwRevoked("GetFunctionRealm")
 	return nil
 }
 
 // functionRealmOrNil returns the function's realm, or nil for a revoked proxy.
-func (cx *ExecutionContext) functionRealmOrNil(f *Object) *realm {
+func (cx *ExecutionContext) functionRealmOrNil(f *Object) *realmPart {
 	for {
 		switch {
 		case f.fn != nil && f.fn.bound != nil:
@@ -176,11 +176,11 @@ func (cx *ExecutionContext) functionRealmOrNil(f *Object) *realm {
 			}
 			f = st.target
 		case f.fn != nil && f.fn.code != nil:
-			return f.fn.code.context.realm
+			return f.fn.code.context.realmPart
 		case f.fn != nil && f.fn.info != nil:
 			return f.fn.info.realm
 		default:
-			return cx.realm
+			return cx.realmPart
 		}
 	}
 }

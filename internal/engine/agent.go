@@ -93,7 +93,7 @@ type nativeInfo struct {
 	fast *nativeFast
 
 	// realm is the [[Realm]] of the function, or nil for a proxy.
-	realm *realm
+	realm *realmPart
 }
 
 // proxyInfo describes every callable proxy. It must not be modified.
@@ -168,7 +168,7 @@ func (f *function) frameless() bool {
 }
 
 // iteratorFast returns the forms of the native function f of realm r, or nil.
-func (f *function) iteratorFast(r *realm) *nativeFast {
+func (f *function) iteratorFast(r *realmPart) *nativeFast {
 	if f.info == nil || f.info.realm != r {
 		return nil
 	}
@@ -176,7 +176,7 @@ func (f *function) iteratorFast(r *realm) *nativeFast {
 }
 
 // iteratorPairStep returns the pair step of the next method f of a built-in iterator in realm r, or nil.
-func (f *function) iteratorPairStep(r *realm) IteratorPairStepFunc {
+func (f *function) iteratorPairStep(r *realmPart) IteratorPairStepFunc {
 	if f.info == nil || f.info.realm != r || f.info.fast == nil {
 		return nil
 	}
@@ -490,8 +490,8 @@ func (cx *ExecutionContext) growNatives() {
 
 // callNative dispatches a native call or construction. A proxy inherits its caller's context.
 func (cx *ExecutionContext) callNative(f *Object, this Value, args []Value, newTarget *Object) Value {
-	if r := f.fn.info.realm; r != nil {
-		cx = &r.context
+	if r := f.fn.info.realm; r != nil && r != cx.realmPart {
+		cx = r.executionContext()
 	}
 	if previous := cx.activate(); previous != cx {
 		defer previous.activate()

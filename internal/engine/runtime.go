@@ -1544,7 +1544,7 @@ func (cx *ExecutionContext) NewNativeWithState(name wtf8.String, length int, f N
 			name:   name,
 			length: int32(length),
 			fast:   f.fast(),
-			realm:  cx.realm,
+			realm:  cx.realmPart,
 		},
 	}
 	n.fn = &n.state

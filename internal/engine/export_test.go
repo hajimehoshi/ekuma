@@ -434,7 +434,7 @@ func ObserveNative(f Value, observe func()) {
 	if info.native == nativeObserved {
 		code = observer(f.o)
 	}
-	observers.Set(f, info.realm.context.NewFunction("", func(cx *ExecutionContext, this Value, args []Value) Value {
+	observers.Set(f, info.realm.executionContext().NewFunction("", func(cx *ExecutionContext, this Value, args []Value) Value {
 		observe()
 		return code(cx, this, args)
 	}))

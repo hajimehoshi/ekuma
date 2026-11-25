@@ -311,7 +311,7 @@ var stepDeclined = &Object{kind: kindHole}
 func (cx *ExecutionContext) iterNext(it, next Value) (Value, int) {
 	f := next.o
 	if f != nil && f.fn != nil {
-		if fast := f.fn.iteratorFast(cx.realm); fast != nil {
+		if fast := f.fn.iteratorFast(cx.realmPart); fast != nil {
 			if fast.step != nil {
 				if cx.interrupt.Load() {
 					cx.Poll()
@@ -393,7 +393,7 @@ func (cx *ExecutionContext) IteratorStepValue(it, next Value) (Value, bool) {
 // without the result: it reports false when the iterator is done.
 func (cx *ExecutionContext) IteratorStep(it, next Value) bool {
 	if f := next.o; f != nil && f.fn != nil {
-		if fast := f.fn.iteratorFast(cx.realm); fast != nil {
+		if fast := f.fn.iteratorFast(cx.realmPart); fast != nil {
 			if fast.step != nil {
 				if cx.interrupt.Load() {
 					cx.Poll()

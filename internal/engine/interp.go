@@ -3020,7 +3020,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			var x, y Value
 			var st PairStep
 			pairRealm := ag.active.realmPart
-			if step := next.o.fn.iteratorPairStep(ag.active.realm); step != nil {
+			if step := next.o.fn.iteratorPairStep(ag.active.realmPart); step != nil {
 				x, y, st = step(IteratorState(it))
 				if st == PairYielded {
 					pairRealm = it.o.shape.realm
@@ -3397,7 +3397,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				}
 				// Numeric kernels cannot observe the frame. Record the call for the other paths.
 				ag.frames[len(ag.frames)-1].pc = pc
-				if k != nil && info.realm == ag.active.realm {
+				if k != nil && info.realm == ag.active.realmPart {
 					if v, ok := k.callMethod(ag.active, callThis, ag.stack[argBase:argBase+argc:argBase+argc]); ok {
 						regs = ag.reload(regs, ag.frameBase(), fp)
 						regs[ret] = v
@@ -3405,7 +3405,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 					}
 				}
 				// A native function of the current realm and a proxy are called directly.
-				if info.realm == ag.active.realm || info.realm == nil {
+				if info.realm == ag.active.realmPart || info.realm == nil {
 					ag.ensureStack(argBase + argc)
 					saved := ag.sp
 					ag.sp = argBase + argc

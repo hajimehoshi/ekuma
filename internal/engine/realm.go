@@ -128,7 +128,7 @@ func (cx *ExecutionContext) initRealmPrototypes() {
 		fn: &function{
 			info: &nativeInfo{
 				native: nativeFunctionPrototype,
-				realm:  r,
+				realm:  cx.realmPart,
 			},
 		},
 	}).init()

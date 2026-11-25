@@ -292,7 +292,7 @@ func (ag *agent) CapabilityReject(c *PromiseCapability) Value {
 func (c *PromiseCapability) resolvingRealm() *realmPart {
 	if c.resolve != nil {
 		// A thenable job creates its own resolving functions in the job's realm.
-		return &c.resolve.fn.info.realm.realmPart
+		return c.resolve.fn.info.realm
 	}
 	return c.promise.creationRealm()
 }
@@ -423,7 +423,7 @@ func (cx *ExecutionContext) resolvePromiseWithThen(p *Object, resolution, then V
 func (cx *ExecutionContext) enqueueThenableJob(p *Object, thenable, then Value) {
 	cx.enqueuePromiseJob(job{
 		kind:             jobThenable,
-		context:          &cx.promiseJobRealm(then.o).context,
+		context:          cx.promiseJobContext(then.o),
 		continuationData: cx.continuationData,
 		argument:         thenable,
 		promise:          p,
@@ -526,7 +526,7 @@ func (cx *ExecutionContext) enqueueReactionJob(r *pendingReaction, arg Value, re
 		if callback == nil {
 			callback = other
 		}
-		jobContext = &cx.promiseJobRealm(callback).context
+		jobContext = cx.promiseJobContext(callback)
 	}
 	cx.enqueuePromiseJob(job{
 		kind:             jobReaction,
@@ -809,15 +809,15 @@ func (q *jobQueue) dequeue() job {
 	return j
 }
 
-// promiseJobRealm implements the GetFunctionRealm step of both promise job constructors.
-func (cx *ExecutionContext) promiseJobRealm(callback *Object) *realm {
+// promiseJobContext implements the GetFunctionRealm step of both promise job constructors.
+func (cx *ExecutionContext) promiseJobContext(callback *Object) *ExecutionContext {
 	if cx.trackJobRealms && callback != nil {
 		if r := cx.functionRealmOrNil(callback); r != nil {
-			return r
+			return r.executionContext()
 		}
 		// A revoked proxy gets its TypeError from the realm creating the job.
 	}
-	return cx.realm
+	return cx
 }
 
 func (ag *agent) enqueuePromiseJob(j job) {
