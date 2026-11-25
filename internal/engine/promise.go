@@ -997,6 +997,9 @@ func (cx *ExecutionContext) runJobs() {
 // report.
 func (cx *ExecutionContext) notifyRejectedPromises() bool {
 	t := &cx.rejections
+	if len(t.promises) == 0 {
+		return false
+	}
 	// Promises rejected by the reports are added to a new list, and reported next.
 	promises := t.takeForReport()
 	for _, p := range promises {
