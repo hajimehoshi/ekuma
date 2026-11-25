@@ -2559,6 +2559,52 @@ func TestRepeatedCopyInterrupt(t *testing.T) {
 	}
 }
 
+// TestMoveWithHoles checks methods that move the elements of an array with runs of holes of
+// several lengths, on an array of a subclass, against the same methods on an ordinary object, for
+// which every index is visited.
+func TestMoveWithHoles(t *testing.T) {
+	const src = `class Sub extends Array {}
+		// Alternating runs of elements and holes of the given lengths.
+		function fill(o, runs) {
+			var n = 0;
+			runs.forEach((len, j) => {
+				for (var i = 0; i < len; i++, n++) {
+					if (j % 2 === 0) o[n] = n;
+				}
+			});
+			o.length = n;
+			return o;
+		}
+		var calls = {
+			shift: o => Array.prototype.shift.call(o),
+			unshift: o => Array.prototype.unshift.call(o, ...new Array(150).fill("u")),
+			remove: o => Array.prototype.splice.call(o, 3, 150),
+			insert: o => Array.prototype.splice.call(o, 3, 10, ...new Array(140).fill("s")),
+			copyForward: o => Array.prototype.copyWithin.call(o, 100, 3),
+			copyBackward: o => Array.prototype.copyWithin.call(o, 3, 100),
+		};
+		var show = o => o.length + ":" + Object.keys(o).map(k => k + "=" + o[k]).join();
+		var bad = [];
+		for (var runs of [[5, 255, 1], [5, 256, 1], [5, 257, 1], [1, 127, 2, 130, 1], [1, 200, 1, 64, 1, 64, 100], [200, 500, 3], [3, 300, 200, 300], [1, 1, 1, 900, 1]]) {
+			for (var name in calls) {
+				var a = fill(new Sub(), runs), o = fill({}, runs);
+				calls[name](a);
+				calls[name](o);
+				var got = show(a), want = o.length + ":" + Object.keys(o).filter(k => k !== "length").map(k => k + "=" + o[k]).join();
+				if (got !== want) bad.push(name + " " + runs);
+			}
+		}
+		bad.join("; ")`
+	var vm ekuma.VM
+	v, err := runScript(t.Context(), &vm, "holes", src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := v.String(); got != "" {
+		t.Errorf("different results: %s", got)
+	}
+}
+
 // TestBigIntInterrupt checks that a context stops long operations on huge BigInts promptly.
 func TestBigIntInterrupt(t *testing.T) {
 	var vm ekuma.VM

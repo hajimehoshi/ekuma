@@ -69,15 +69,28 @@ func holeSteps(cx *engine.ExecutionContext, o *engine.Object, i, count, dir int6
 	return i - cx.Quiet().SkipHolesBackward(o, i, i-count)
 }
 
+// minMoveRun is the number of steps of the first look ahead of moveSteps.
+const minMoveRun = 256
+
 // moveSteps returns how many steps, at most count, of a loop that moves the property at src to dst,
 // or deletes the property at dst when src has none, change nothing. Both indices move by dir (1 or
 // -1).
 func moveSteps(cx *engine.ExecutionContext, o *engine.Object, src, dst, count, dir int64) int64 {
-	m := holeSteps(cx, o, src, count, dir)
-	if m == 0 {
-		return 0
+	// A long run of holes at one index can meet a property at the other, so each look ahead is
+	// limited in proportion to the steps found so far.
+	n := int64(0)
+	for run := int64(minMoveRun); n < count; run *= 8 {
+		c := min(run, count-n)
+		m := holeSteps(cx, o, src+dir*n, c, dir)
+		if m > 0 {
+			m = holeSteps(cx, o, dst+dir*n, m, dir)
+		}
+		n += m
+		if m < c {
+			break
+		}
 	}
-	return min(m, holeSteps(cx, o, dst, m, dir))
+	return n
 }
 
 // putAt sets the property of o with the integer index i to v. A loop over consecutive indices
