@@ -24,16 +24,32 @@ type SetIterator struct {
 	Kind   IterationKind
 }
 
-// mapOf returns the [[MapData]] of this, or nil when this is not a Map object.
-func mapOf(this storage.Value) *collection.Table {
-	t, _ := storage.MapData(this).(*collection.Table)
-	return t
+// MapData returns the [[MapData]] of this, or nil when this is not a Map object.
+func MapData(this storage.Value) *collection.Table {
+	if this.IsObject() && this.O.Class == storage.ClassMap {
+		t, _ := this.O.ExtState().(*collection.Table)
+		return t
+	}
+	return nil
 }
 
-// setOf returns the [[SetData]] of this, or nil when this is not a Set object.
-func setOf(this storage.Value) *collection.Table {
-	t, _ := storage.SetData(this).(*collection.Table)
-	return t
+// SetData returns the [[SetData]] of this, or nil when this is not a Set object.
+func SetData(this storage.Value) *collection.Table {
+	if this.IsObject() && this.O.Class == storage.ClassSet {
+		t, _ := this.O.ExtState().(*collection.Table)
+		return t
+	}
+	return nil
+}
+
+// NewMapObject returns a Map object with the prototype proto whose [[MapData]] is data.
+func (q Context) NewMapObject(proto *storage.Object, data *collection.Table) *storage.Object {
+	return storage.NewObjectWithState(q.Realm.ShapeFor(proto), storage.ClassMap, data)
+}
+
+// NewSetObject returns a Set object with the prototype proto whose [[SetData]] is data.
+func (q Context) NewSetObject(proto *storage.Object, data *collection.Table) *storage.Object {
+	return storage.NewObjectWithState(q.Realm.ShapeFor(proto), storage.ClassSet, data)
 }
 
 // iterationUnobservable reports whether iterating the Map or Set o calls the method iter as its
@@ -45,7 +61,7 @@ func iterationUnobservable(q Context, o, proto, iter, iterProto, next *storage.O
 // NewMapCopy returns the Map that the constructor makes with proto from iterable when that calls
 // the original methods of a Map only. It reports false otherwise.
 func NewMapCopy(q Context, proto *storage.Object, iterable storage.Value) (*storage.Object, bool) {
-	src := mapOf(iterable)
+	src := MapData(iterable)
 	if src == nil || proto != q.Intrinsic(storage.IntrinsicMapPrototype) {
 		return nil, false
 	}
@@ -61,7 +77,7 @@ func NewMapCopy(q Context, proto *storage.Object, iterable storage.Value) (*stor
 // NewSetCopy returns the Set that the constructor makes with proto from iterable when that calls
 // the original methods of a Set only. It reports false otherwise.
 func NewSetCopy(q Context, proto *storage.Object, iterable storage.Value) (*storage.Object, bool) {
-	src := setOf(iterable)
+	src := SetData(iterable)
 	if src == nil || proto != q.Intrinsic(storage.IntrinsicSetPrototype) {
 		return nil, false
 	}
@@ -75,14 +91,14 @@ func NewSetCopy(q Context, proto *storage.Object, iterable storage.Value) (*stor
 }
 
 func MapDeleteKernel(q Context, this, k storage.Value) (storage.Value, bool) {
-	if t := mapOf(this); t != nil {
+	if t := MapData(this); t != nil {
 		return storage.Bool(t.Delete(k)), true
 	}
 	return storage.Undefined, false
 }
 
 func MapGetKernel(q Context, this, k storage.Value) (storage.Value, bool) {
-	if t := mapOf(this); t != nil {
+	if t := MapData(this); t != nil {
 		v, _ := t.Get(k)
 		return v, true
 	}
@@ -90,14 +106,14 @@ func MapGetKernel(q Context, this, k storage.Value) (storage.Value, bool) {
 }
 
 func MapHasKernel(q Context, this, k storage.Value) (storage.Value, bool) {
-	if t := mapOf(this); t != nil {
+	if t := MapData(this); t != nil {
 		return storage.Bool(t.Has(k)), true
 	}
 	return storage.Undefined, false
 }
 
 func MapSetKernel(q Context, this, k, v storage.Value) (storage.Value, bool) {
-	if t := mapOf(this); t != nil {
+	if t := MapData(this); t != nil {
 		t.Set(k, v)
 		return this, true
 	}
@@ -105,7 +121,7 @@ func MapSetKernel(q Context, this, k, v storage.Value) (storage.Value, bool) {
 }
 
 func MapSizeKernel(q Context, this storage.Value) (storage.Value, bool) {
-	if t := mapOf(this); t != nil {
+	if t := MapData(this); t != nil {
 		return storage.Number(float64(t.Size())), true
 	}
 	return storage.Undefined, false
@@ -149,7 +165,7 @@ func MapIteratorPairStep(state any) (storage.Value, storage.Value, PairStep) {
 }
 
 func SetAddKernel(q Context, this, v storage.Value) (storage.Value, bool) {
-	t := setOf(this)
+	t := SetData(this)
 	if t == nil {
 		return storage.Undefined, false
 	}
@@ -160,21 +176,21 @@ func SetAddKernel(q Context, this, v storage.Value) (storage.Value, bool) {
 }
 
 func SetDeleteKernel(q Context, this, v storage.Value) (storage.Value, bool) {
-	if t := setOf(this); t != nil {
+	if t := SetData(this); t != nil {
 		return storage.Bool(t.Delete(v)), true
 	}
 	return storage.Undefined, false
 }
 
 func SetHasKernel(q Context, this, v storage.Value) (storage.Value, bool) {
-	if t := setOf(this); t != nil {
+	if t := SetData(this); t != nil {
 		return storage.Bool(t.Has(v)), true
 	}
 	return storage.Undefined, false
 }
 
 func SetSizeKernel(q Context, this storage.Value) (storage.Value, bool) {
-	if t := setOf(this); t != nil {
+	if t := SetData(this); t != nil {
 		return storage.Number(float64(t.Size())), true
 	}
 	return storage.Undefined, false

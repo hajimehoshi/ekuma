@@ -3,32 +3,6 @@
 
 package storage
 
-// NewMapObject returns a Map object with the prototype proto whose [[MapData]] is data.
-func (r *RealmPart) NewMapObject(proto *Object, data any) *Object {
-	return NewObjectWithState(r.ShapeFor(proto), ClassMap, data)
-}
-
-// MapData returns the [[MapData]] of the Map object v, or nil when v is not a Map object.
-func MapData(v Value) any {
-	if v.IsObject() && v.O.Class == ClassMap {
-		return v.O.ExtState()
-	}
-	return nil
-}
-
-// NewSetObject returns a Set object with the prototype proto whose [[SetData]] is data.
-func (r *RealmPart) NewSetObject(proto *Object, data any) *Object {
-	return NewObjectWithState(r.ShapeFor(proto), ClassSet, data)
-}
-
-// SetData returns the [[SetData]] of the Set object v, or nil when v is not a Set object.
-func SetData(v Value) any {
-	if v.IsObject() && v.O.Class == ClassSet {
-		return v.O.ExtState()
-	}
-	return nil
-}
-
 // TemporalData returns the internal slots of the Temporal object v, or nil when v is not one.
 func TemporalData(v Value) any {
 	if v.IsObject() && v.O.Class == ClassTemporal {

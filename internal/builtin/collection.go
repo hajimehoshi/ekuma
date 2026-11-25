@@ -12,7 +12,7 @@ import (
 )
 
 func thisMap(cx *engine.ExecutionContext, this storage.Value, name string) *collection.Table {
-	t, _ := storage.MapData(this).(*collection.Table)
+	t := quiet.MapData(this)
 	if t == nil {
 		cx.ThrowTypeError("Map.prototype." + name + " called on incompatible receiver " + cx.DisplayString(this))
 	}
@@ -20,7 +20,7 @@ func thisMap(cx *engine.ExecutionContext, this storage.Value, name string) *coll
 }
 
 func thisSet(cx *engine.ExecutionContext, this storage.Value, name string) *collection.Table {
-	t, _ := storage.SetData(this).(*collection.Table)
+	t := quiet.SetData(this)
 	if t == nil {
 		cx.ThrowTypeError("Set.prototype." + name + " called on incompatible receiver " + cx.DisplayString(this))
 	}
@@ -195,7 +195,7 @@ func mapConstructor(cx *engine.ExecutionContext, this storage.Value, args []stor
 		}
 	}
 	t := &collection.Table{}
-	m := cx.NewMapObject(targetProto, t)
+	m := cx.Quiet().NewMapObject(targetProto, t)
 	if iterable.IsNullish() {
 		return storage.ObjectValue(m)
 	}
@@ -227,7 +227,7 @@ func mapGroupBy(cx *engine.ExecutionContext, this storage.Value, args []storage.
 		}
 		appendToGroup(cx, g.Object(), v)
 	})
-	return storage.ObjectValue(cx.NewMapObject(cx.Intrinsic(storage.IntrinsicMapPrototype), t))
+	return storage.ObjectValue(cx.Quiet().NewMapObject(cx.Intrinsic(storage.IntrinsicMapPrototype), t))
 }
 
 func mapClear(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
@@ -363,7 +363,7 @@ func getSetRecord(cx *engine.ExecutionContext, v storage.Value) setRecord {
 		keys: keys.Object(),
 	}
 	if r.has == cx.Intrinsic(storage.IntrinsicSetPrototypeHas) {
-		r.table, _ = storage.SetData(v).(*collection.Table)
+		r.table = quiet.SetData(v)
 	}
 	return r
 }
@@ -398,7 +398,7 @@ func (r *setRecord) eachKey(cx *engine.ExecutionContext, f func(storage.Value) b
 }
 
 func newSet(cx *engine.ExecutionContext, t *collection.Table) storage.Value {
-	return storage.ObjectValue(cx.NewSetObject(cx.Intrinsic(storage.IntrinsicSetPrototype), t))
+	return storage.ObjectValue(cx.Quiet().NewSetObject(cx.Intrinsic(storage.IntrinsicSetPrototype), t))
 }
 
 // The kernels of the methods are the methods for a Set object.
@@ -483,7 +483,7 @@ func setConstructor(cx *engine.ExecutionContext, this storage.Value, args []stor
 		}
 	}
 	t := &collection.Table{}
-	s := cx.NewSetObject(targetProto, t)
+	s := cx.Quiet().NewSetObject(targetProto, t)
 	if iterable.IsNullish() {
 		return storage.ObjectValue(s)
 	}

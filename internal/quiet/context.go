@@ -76,16 +76,6 @@ func (q Context) WellKnownSymbol(s storage.WellKnownSymbol) *storage.Object {
 	return q.Realm.WellKnownSymbol(s)
 }
 
-// NewMapObject is [storage.RealmPart.NewMapObject].
-func (q Context) NewMapObject(proto *storage.Object, data any) *storage.Object {
-	return q.Realm.NewMapObject(proto, data)
-}
-
-// NewSetObject is [storage.RealmPart.NewSetObject].
-func (q Context) NewSetObject(proto *storage.Object, data any) *storage.Object {
-	return q.Realm.NewSetObject(proto, data)
-}
-
 // NumberToString returns Number::toString of n as a string value.
 func (q Context) NumberToString(n float64) storage.Value {
 	return q.Realm.NumberToString(n)

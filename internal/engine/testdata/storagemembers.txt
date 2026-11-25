@@ -20,7 +20,6 @@ IntlData
 IsError
 IsStrictlyEqual
 IteratorState
-MapData
 NamedKey
 NewBigInt
 Null
@@ -28,7 +27,6 @@ Number
 ObjectValue
 SameValue
 SameValueZero
-SetData
 SetDateValue
 SetValueInBuffer
 SymbolDescription
@@ -109,9 +107,7 @@ RealmPart.NewArrayPair
 RealmPart.NewDataViewObject
 RealmPart.NewHostArrayBufferObject
 RealmPart.NewImmutableArrayBufferFromBytes
-RealmPart.NewMapObject
 RealmPart.NewObject
-RealmPart.NewSetObject
 RealmPart.NewSharedArrayBufferObject
 RealmPart.NewString
 RealmPart.NewTypedArrayObject

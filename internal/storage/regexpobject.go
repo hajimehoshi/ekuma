@@ -9,7 +9,7 @@ import (
 
 // NewRegExpObject returns a new RegExp object with the shape s, whose only property is lastIndex,
 // and the internal state state.
-func NewRegExpObject(s *Shape, state any) *Object {
+func NewRegExpObject(s *Shape, state *RegExpState) *Object {
 	o, slots := NewObjectWithStorage(1)
 	o.Kind = KindObject
 	o.Class = ClassRegExp
