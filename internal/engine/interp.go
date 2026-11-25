@@ -3395,31 +3395,36 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				continue
 			}
 			if info := fn.info; info != nil {
-				var k *nativeFast
-				if !isNew && newTarget == nil {
-					k = info.fast
+				// The instructions that construct with a native function call Construct.
+				if validateExec && (isNew || newTarget != nil) {
+					panic("ekuma: construction in a call of a native function")
 				}
-				if k != nil {
-					a := ag.stack[argBase : argBase+argc : argBase+argc]
-					if argc == 1 && k.number1 != nil && a[0].o == numberObject {
-						x := k.number1(a[0].n)
-						setNumber(&regs[ret], x)
-						continue
+				if info.native.hasFast() {
+					k := info.native.fast()
+					if argc == 1 && k.number1 != nil {
+						if a := ag.stack[argBase]; a.o == numberObject {
+							x := k.number1(a.n)
+							setNumber(&regs[ret], x)
+							continue
+						}
+					} else if argc == 2 && k.number2 != nil {
+						if a, b := ag.stack[argBase], ag.stack[argBase+1]; a.o == numberObject && b.o == numberObject {
+							x := k.number2(a.n, b.n)
+							setNumber(&regs[ret], x)
+							continue
+						}
 					}
-					if argc == 2 && k.number2 != nil && a[0].o == numberObject && a[1].o == numberObject {
-						x := k.number2(a[0].n, a[1].n)
-						setNumber(&regs[ret], x)
-						continue
+					// Numeric kernels cannot observe the frame. Record the call for the other paths.
+					ag.frames[len(ag.frames)-1].pc = pc
+					if info.realm == ag.active.realmPart {
+						if v, ok := k.callMethod(ag.active, callThis, ag.stack[argBase:argBase+argc:argBase+argc]); ok {
+							regs = ag.reload(regs, ag.frameBase(), fp)
+							regs[ret] = v
+							continue
+						}
 					}
-				}
-				// Numeric kernels cannot observe the frame. Record the call for the other paths.
-				ag.frames[len(ag.frames)-1].pc = pc
-				if k != nil && info.realm == ag.active.realmPart {
-					if v, ok := k.callMethod(ag.active, callThis, ag.stack[argBase:argBase+argc:argBase+argc]); ok {
-						regs = ag.reload(regs, ag.frameBase(), fp)
-						regs[ret] = v
-						continue
-					}
+				} else {
+					ag.frames[len(ag.frames)-1].pc = pc
 				}
 				// A native function of the current realm and a proxy are called directly.
 				if info.realm == ag.active.realmPart || info.realm == nil {

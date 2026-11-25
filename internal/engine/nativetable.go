@@ -7,9 +7,15 @@ package engine
 // two, so that masking an index keeps it in range.
 const nativeTableSize = 1 << 10
 
+// maxNativeFasts is the number of entries of the table of the fast forms. Every uint8 is in range.
+const maxNativeFasts = 1 << 8
+
 // Native identifies a registered native function. The zero value identifies none.
 type Native struct {
 	index uint16
+
+	// fastIndex is the index of what callers use instead of calling the function, or 0.
+	fastIndex uint8
 }
 
 // nativeTable holds the registered native functions. It does not change after the initialization
@@ -18,13 +24,16 @@ var nativeTable struct {
 	// codes holds the code of the functions by the index of their [Native].
 	codes [nativeTableSize]NativeFunc
 
-	// fasts holds what callers use instead of calling the functions by the index of their
-	// [Native], or nil.
-	fasts [nativeTableSize]*nativeFast
+	// fasts holds what callers use instead of calling the functions by the fastIndex of their
+	// [Native]. The entry at index 0 is nil.
+	fasts [maxNativeFasts]*nativeFast
 
 	// count is the number of registered functions. The entry at index 0 is that of the
 	// zero Native, whose calls panic.
 	count int
+
+	// fastCount is the number of registered functions with fast forms.
+	fastCount int
 }
 
 func init() {
@@ -48,11 +57,25 @@ func registerNative(f NativeFunc, fast *nativeFast) Native {
 		panic("engine: too many native functions")
 	}
 	nativeTable.codes[i] = f
-	nativeTable.fasts[i] = fast
 	nativeTable.count = i
 	return Native{
-		index: uint16(i),
+		index:     uint16(i),
+		fastIndex: addNativeFast(fast),
 	}
+}
+
+// addNativeFast adds fast, which may be nil, to the table and returns its index.
+func addNativeFast(fast *nativeFast) uint8 {
+	if fast == nil {
+		return 0
+	}
+	i := nativeTable.fastCount + 1
+	if i >= maxNativeFasts {
+		panic("engine: too many native functions with fast forms")
+	}
+	nativeTable.fasts[i] = fast
+	nativeTable.fastCount = i
+	return uint8(i)
 }
 
 // code returns the code of n.
@@ -60,9 +83,15 @@ func (n Native) code() NativeFunc {
 	return nativeTable.codes[n.index%nativeTableSize]
 }
 
+// hasFast reports whether fast returns something.
+func (n Native) hasFast() bool {
+	// Widening the index as fast does lets the compiler share its register.
+	return uint(n.fastIndex) != 0
+}
+
 // fast returns what the callers of n use instead of calling it, or nil.
 func (n Native) fast() *nativeFast {
-	return nativeTable.fasts[n.index%nativeTableSize]
+	return nativeTable.fasts[uint(n.fastIndex)]
 }
 
 // Kernels are the kernels of a native function. Any of them may be nil.

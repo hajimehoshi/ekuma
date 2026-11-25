@@ -282,9 +282,14 @@ func Shortcuts(t *testing.T, cx *ExecutionContext, holders []*Object, observe fu
 			}
 		}
 	}
+	count := nativeTable.fastCount
+	t.Cleanup(func() {
+		clear(nativeTable.fasts[count+1:])
+		nativeTable.fastCount = count
+	})
 	var shortcuts []*Shortcut
 	for _, o := range objects {
-		if o.fn == nil || o.fn.info == nil || o.fn.info.fast == nil && o.fn.info.extremum == ExtremumNone {
+		if o.fn == nil || o.fn.info == nil || o.fn.info.native.fast() == nil && o.fn.info.extremum == ExtremumNone {
 			continue
 		}
 		s := &Shortcut{
@@ -327,7 +332,7 @@ func (s *Shortcut) wrap(t *testing.T, observe func(s *Shortcut, form, event stri
 	if fn.info.extremum != ExtremumNone {
 		s.Forms = append(s.Forms, "extremum")
 	}
-	fast := fn.info.fast
+	fast := fn.info.native.fast()
 	if fast == nil {
 		return
 	}
@@ -412,7 +417,7 @@ func (s *Shortcut) wrap(t *testing.T, observe func(s *Shortcut, form, event stri
 			t.Fatalf("%s has a form %s that the test does not know", s.Name, form)
 		}
 	}
-	fn.info.fast = &wrapped
+	fn.info.native.fastIndex = addNativeFast(&wrapped)
 }
 
 // observers maps the functions of [ObserveNative] to functions that observe the calls of the code
@@ -432,14 +437,14 @@ func observer(f *Object) NativeFunc {
 func ObserveNative(f Value, observe func()) {
 	info := f.o.fn.changeableInfo()
 	code := info.native.code()
-	if info.native == nativeObserved {
+	if info.native.index == nativeObserved.index {
 		code = observer(f.o)
 	}
 	observers.Set(f, info.realm.executionContext().NewFunction("", func(cx *ExecutionContext, this Value, args []Value) Value {
 		observe()
 		return code(cx, this, args)
 	}))
-	info.native = nativeObserved
+	info.native.index = nativeObserved.index
 }
 
 // NewGoConstructor returns a function with the code f that can be called with new.

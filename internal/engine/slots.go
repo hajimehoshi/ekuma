@@ -204,7 +204,7 @@ func SetDateValue(v Value, tv float64) {
 // IteratorState returns the state of the built-in iterator object v,
 // or nil when v is not such an object.
 func IteratorState(v Value) any {
-	if v.IsObject() && v.o.class == classIterator {
+	if v.o != nil && v.o.class == classIterator {
 		return v.o.extState()
 	}
 	return nil

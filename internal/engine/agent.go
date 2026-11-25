@@ -88,10 +88,6 @@ type nativeInfo struct {
 	prototype      Intrinsic
 	fixedPrototype bool
 
-	// fast holds the forms of the function that its callers use instead of calling it, or is
-	// nil.
-	fast *nativeFast
-
 	// realm is the [[Realm]] of the function, or nil for a proxy.
 	realm *realmPart
 }
@@ -167,20 +163,18 @@ func (f *function) frameless() bool {
 	return f != nil && f.info != nil && f.info.frameless
 }
 
-// iteratorFast returns the forms of the native function f of realm r, or nil.
-func (f *function) iteratorFast(r *realmPart) *nativeFast {
-	if f.info == nil || f.info.realm != r {
-		return nil
-	}
-	return f.info.fast
+// hasIteratorFast reports whether f is a native function of the realm of cx with fast forms.
+func (cx *ExecutionContext) hasIteratorFast(f *function) bool {
+	return f.info != nil && f.info.native.hasFast() && f.info.realm == cx.realmPart
 }
 
 // iteratorPairStep returns the pair step of the next method f of a built-in iterator in realm r, or nil.
 func (f *function) iteratorPairStep(r *realmPart) IteratorPairStepFunc {
-	if f.info == nil || f.info.realm != r || f.info.fast == nil {
+	info := f.info
+	if info == nil || !info.native.hasFast() || info.realm != r {
 		return nil
 	}
-	return f.info.fast.pairStep
+	return info.native.fast().pairStep
 }
 
 type boundFunc struct {

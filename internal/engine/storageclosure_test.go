@@ -6,7 +6,6 @@ package engine_test
 import (
 	"go/types"
 	"slices"
-	"strings"
 	"testing"
 )
 
@@ -21,14 +20,7 @@ var nonStorageTypes = []string{
 	"job", "Module", "waiterData",
 }
 
-// storageClosureExceptions are the fields that may lead from storage to the rest of the engine,
-// with the reasons.
-var storageClosureExceptions = map[string]string{
-	"nativeInfo.fast": "copy of the fast forms in the native table",
-}
-
-// TestStorageClosure tests that the types of storage do not lead to the rest of the engine, except
-// through storageClosureExceptions, and that each exception still leads there.
+// TestStorageClosure tests that the types of storage do not lead to the rest of the engine.
 //
 // A type leads to the types of its fields and elements, its type arguments, and the types in its
 // function signatures and in the methods of its interfaces, also in other packages. The types that
@@ -47,31 +39,17 @@ func TestStorageClosure(t *testing.T) {
 	for _, name := range nonStorageTypes {
 		forbidden = append(forbidden, prog.typ(t, name))
 	}
-	exceptions := map[*types.Var]string{}
-	for name := range storageClosureExceptions {
-		typ, field, _ := strings.Cut(name, ".")
-		exceptions[prog.field(t, typ, field)] = name
-	}
-
-	for _, path := range forbiddenEdges(roots, forbidden, exceptions) {
+	for _, path := range forbiddenEdges(roots, forbidden) {
 		t.Errorf("storage leads to the engine: %s", path)
 	}
-	if t.Failed() {
-		// A path that is no exception can share what an exception leads to.
-		return
-	}
-	for f, name := range exceptions {
-		delete(exceptions, f)
-		if len(forbiddenEdges(roots, forbidden, exceptions)) == 0 {
-			t.Errorf("exception %s no longer leads to the engine", name)
-		}
-		exceptions[f] = name
+	if len(forbiddenEdges([]*types.Named{prog.typ(t, "nativeFast")}, forbidden)) == 0 {
+		t.Error("nativeFast, which is no storage, does not lead to the engine")
 	}
 }
 
-// forbiddenEdges returns a path for each place in the types reachable from roots, without the
-// fields in excluded, that names a type in forbidden. Paths do not continue through forbidden.
-func forbiddenEdges(roots, forbidden []*types.Named, excluded map[*types.Var]string) []string {
+// forbiddenEdges returns a path for each place in the types reachable from roots that names a type
+// in forbidden. Paths do not continue through forbidden.
+func forbiddenEdges(roots, forbidden []*types.Named) []string {
 	type item struct {
 		typ  *types.Named
 		path string
@@ -120,9 +98,6 @@ func forbiddenEdges(roots, forbidden []*types.Named, excluded map[*types.Var]str
 			visit(typ.Elem(), path, owner)
 		case *types.Struct:
 			for f := range typ.Fields() {
-				if _, ok := excluded[f.Origin()]; ok {
-					continue
-				}
 				name := owner + "." + f.Name()
 				visit(f.Type(), path+" -> "+name, name)
 			}

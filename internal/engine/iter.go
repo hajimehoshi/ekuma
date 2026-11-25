@@ -310,26 +310,24 @@ var stepDeclined = &Object{kind: kindHole}
 // the iterator result, whose reading would have no observable effect.
 func (cx *ExecutionContext) iterNext(it, next Value) (Value, int) {
 	f := next.o
-	if f != nil && f.fn != nil {
-		if fast := f.fn.iteratorFast(cx.realmPart); fast != nil {
-			if fast.step != nil {
-				if cx.interrupt.Load() {
-					cx.Poll()
-				}
-				v, ok := fast.step(cx, it)
-				if ok {
-					return v, iterValue
-				}
-				if v.o != stepDeclined {
-					return Undefined, iterDone
-				}
-			} else if fast.framedStep != nil {
-				v, ok := cx.stepFramed(f, fast.framedStep, it)
-				if !ok {
-					return Undefined, iterDone
-				}
+	if f != nil && f.fn != nil && cx.hasIteratorFast(f.fn) {
+		if fast := f.fn.info.native.fast(); fast.step != nil {
+			if cx.interrupt.Load() {
+				cx.Poll()
+			}
+			v, ok := fast.step(cx, it)
+			if ok {
 				return v, iterValue
 			}
+			if v.o != stepDeclined {
+				return Undefined, iterDone
+			}
+		} else if fast.framedStep != nil {
+			v, ok := cx.stepFramed(f, fast.framedStep, it)
+			if !ok {
+				return Undefined, iterDone
+			}
+			return v, iterValue
 		}
 	}
 	var r Value
@@ -392,19 +390,17 @@ func (cx *ExecutionContext) IteratorStepValue(it, next Value) (Value, bool) {
 // IteratorStep implements IteratorStep for the iterator it and its next method next,
 // without the result: it reports false when the iterator is done.
 func (cx *ExecutionContext) IteratorStep(it, next Value) bool {
-	if f := next.o; f != nil && f.fn != nil {
-		if fast := f.fn.iteratorFast(cx.realmPart); fast != nil {
-			if fast.step != nil {
-				if cx.interrupt.Load() {
-					cx.Poll()
-				}
-				if v, ok := fast.step(cx, it); ok || v.o != stepDeclined {
-					return ok
-				}
-			} else if fast.framedStep != nil {
-				_, ok := cx.stepFramed(f, fast.framedStep, it)
+	if f := next.o; f != nil && f.fn != nil && cx.hasIteratorFast(f.fn) {
+		if fast := f.fn.info.native.fast(); fast.step != nil {
+			if cx.interrupt.Load() {
+				cx.Poll()
+			}
+			if v, ok := fast.step(cx, it); ok || v.o != stepDeclined {
 				return ok
 			}
+		} else if fast.framedStep != nil {
+			_, ok := cx.stepFramed(f, fast.framedStep, it)
+			return ok
 		}
 	}
 	r := cx.CallValue(next, it)
@@ -567,7 +563,7 @@ func (cx *ExecutionContext) plainArrayIteratorIndex(o *Object, i uint32) Value {
 	if cx.interrupt.Load() {
 		cx.Poll()
 	}
-	return next.fn.info.fast.arrayIndex(cx, o, i)
+	return next.fn.info.native.fast().arrayIndex(cx, o, i)
 }
 
 // IterateRecord is [ExecutionContext.Iterate] for the iterator record of the iterator it and its next method
