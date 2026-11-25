@@ -17,6 +17,8 @@ func (ag *agent) leaveChecks() {}
 
 func (ag *agent) checkStep(fp *funcProto, pc int, regs []Value) {}
 
+func (ag *agent) checkActive(fp *funcProto) {}
+
 func (ag *agent) moveStack() {}
 
 func (ag *agent) abandonStack() {}

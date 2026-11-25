@@ -153,6 +153,7 @@ func (ag *agent) checkStep(fp *funcProto, pc int, regs []Value) {
 			panic(validationFailure(fp, pc, fmt.Sprintf("register %d has a value read from stale registers", r)))
 		}
 	}
+	ag.checkActive(fp)
 	ag.holdStack()
 	// The frames after the running one have ended.
 	c.forget(n + 1)
@@ -440,6 +441,13 @@ func (ag *agent) hasOpenUpval(s *execStep, r int) bool {
 func validationFailure(fp *funcProto, pc int, msg string) string {
 	in := fp.code[pc]
 	return fmt.Sprintf("ekumavalidate: %s at %d of %s (%s): %s", in.Op, pc, fp.name, fp.File, msg)
+}
+
+// checkActive checks that the active context is that of the running frame, whose code is fp.
+func (ag *agent) checkActive(fp *funcProto) {
+	if ag.active != fp.context {
+		panic(fmt.Sprintf("ekumavalidate: active context is not that of the running frame of %s", fp.name))
+	}
 }
 
 // sameBits reports whether a and b are the same bits.

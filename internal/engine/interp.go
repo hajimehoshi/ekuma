@@ -467,6 +467,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 	fr := &ag.frames[len(ag.frames)-1]
 	fp := fr.fp
 	pc := fr.pc
+	// The active context is that of the running frame wherever exec reads it.
 	fp.context.activate()
 	if validateExec {
 		ag.enterChecks()
@@ -519,7 +520,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			c := &fp.globals[i.C]
 			if h := c.holder; h != nil && h.shape == c.shape {
 				if validateExec {
-					fp.context.checkGlobalHit(fp, pc-1, fp.keys[i.B], c, false)
+					ag.active.checkGlobalHit(fp, pc-1, fp.keys[i.B], c, false)
 				}
 				regs[i.A] = *c.ref
 				continue
@@ -529,7 +530,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			c := &fp.globals[i.C]
 			if h := c.holder; h != nil && h.shape == c.shape {
 				if validateExec {
-					fp.context.checkGlobalHit(fp, pc-1, fp.keys[i.B], c, true)
+					ag.active.checkGlobalHit(fp, pc-1, fp.keys[i.B], c, true)
 				}
 				*c.ref = regs[i.A]
 				continue
@@ -546,7 +547,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				break
 			}
 			if validateExec {
-				fp.context.checkGlobalHit(fp, int(i.C-1), fp.keys[fp.code[i.C-1].B], g, true)
+				ag.active.checkGlobalHit(fp, int(i.C-1), fp.keys[fp.code[i.C-1].B], g, true)
 			}
 			regs[i.A] = Value{}
 			c := &fp.caches[fp.code[pc].C]
@@ -573,7 +574,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				continue
 			}
 			if validateExec {
-				fp.context.checkEntryRead(fp, pc, regs[i.B], o, fp.keys[fp.code[pc].C], &c.cacheEntry)
+				ag.active.checkEntryRead(fp, pc, regs[i.B], o, fp.keys[fp.code[pc].C], &c.cacheEntry)
 			}
 			regs[i.A+1] = v
 			*g.ref = v
@@ -585,7 +586,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				break
 			}
 			if validateExec {
-				fp.context.checkGlobalExists(fp, pc-1, fp.keys[i.B], c)
+				ag.active.checkGlobalExists(fp, pc-1, fp.keys[i.B], c)
 			}
 			regs[i.A] = Value{}
 			// A named read may supply the value of the assignment.
@@ -593,7 +594,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				c := &fp.caches[n.C]
 				if o := regs[n.B].o; o != nil && c.kind == cacheOwn && c.shape == o.shape {
 					if validateExec {
-						fp.context.checkEntryRead(fp, pc, regs[n.B], o, fp.keys[n.C], &c.cacheEntry)
+						ag.active.checkEntryRead(fp, pc, regs[n.B], o, fp.keys[n.C], &c.cacheEntry)
 					}
 					regs[n.A] = o.slots[c.slot]
 					pc++
@@ -617,13 +618,13 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 						break
 					}
 					if validateExec {
-						fp.context.checkEntryRead(fp, pc-1, regs[i.B], o, fp.keys[i.C], e)
+						ag.active.checkEntryRead(fp, pc-1, regs[i.B], o, fp.keys[i.C], e)
 					}
 					regs[a] = *e.ref
 					continue
 				}
 				if validateExec {
-					fp.context.checkEntryRead(fp, pc-1, regs[i.B], o, fp.keys[i.C], e)
+					ag.active.checkEntryRead(fp, pc-1, regs[i.B], o, fp.keys[i.C], e)
 				}
 				regs[a] = o.slots[e.slot]
 				continue
@@ -648,7 +649,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 					w = o.slots[e.slot]
 				}
 				if validateExec {
-					fp.context.checkEntryRead(fp, pc-1, regs[i.B], o, fp.keys[i.C], e)
+					ag.active.checkEntryRead(fp, pc-1, regs[i.B], o, fp.keys[i.C], e)
 				}
 				regs[a] = w
 				// Consume the next named read of w if its cache supplies a data property.
@@ -667,12 +668,12 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 							continue
 						}
 						if validateExec {
-							fp.context.checkEntryRead(fp, pc, w, o, fp.keys[n.C], e)
+							ag.active.checkEntryRead(fp, pc, w, o, fp.keys[n.C], e)
 						}
 						regs[n.A] = *e.ref
 					} else {
 						if validateExec {
-							fp.context.checkEntryRead(fp, pc, w, o, fp.keys[n.C], e)
+							ag.active.checkEntryRead(fp, pc, w, o, fp.keys[n.C], e)
 						}
 						regs[n.A] = o.slots[e.slot]
 					}
@@ -692,7 +693,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				}
 				if e.kind == cacheOwn {
 					if validateExec {
-						fp.context.checkStoreHit(fp, pc-1, regs[i.A], fp.keys[i.B], &o.slots[e.slot])
+						ag.active.checkStoreHit(fp, pc-1, regs[i.A], fp.keys[i.B], &o.slots[e.slot])
 					}
 					o.slots[e.slot] = regs[i.C]
 					continue
@@ -700,7 +701,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				if e.kind == cacheAdd && o.objectProperties != nil && e.epoch == ag.protoEpoch && o.flags&objIsProto == 0 {
 					if n := len(o.slots); n < cap(o.slots) {
 						if validateExec {
-							fp.context.checkAddHit(fp, pc-1, o, fp.keys[i.B], e.next)
+							ag.active.checkAddHit(fp, pc-1, o, fp.keys[i.B], e.next)
 						}
 						o.shape = e.next
 						o.slots = o.slots[:n+1]
@@ -712,7 +713,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 		case bytecode.OpGetLength:
 			if o := regs[i.B].o; o != nil && o.kind == kindArray {
 				if validateExec {
-					fp.context.checkLengthHit(fp, pc-1, regs[i.B], float64(o.length))
+					ag.active.checkLengthHit(fp, pc-1, regs[i.B], float64(o.length))
 				}
 				setNumber(&regs[i.A], float64(o.length))
 				continue
@@ -723,7 +724,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				// The length of a string known to be ASCII, as in Value.StringLength.
 				if o.kind == kindString && o.flags&(objASCIIKnown|objASCII) == objASCIIKnown|objASCII {
 					if validateExec {
-						fp.context.checkLengthHit(fp, pc-1, regs[i.B], float64(len(o.str)))
+						ag.active.checkLengthHit(fp, pc-1, regs[i.B], float64(len(o.str)))
 					}
 					setNumber(&regs[a], float64(len(o.str)))
 					continue
@@ -733,9 +734,9 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				// shared or detached buffer is empty, so only an empty view of one passes the
 				// bounds check.
 				if t, ok := o.ext.(*TypedArray); ok && !t.tracking && t.offset+t.length*t.typ.Size() <= len(t.data.data) {
-					if o.shape == c.shape && c.kind == cacheGetter && c.epoch == ag.protoEpoch && c.holder == fp.context.realm.intrinsics[IntrinsicTypedArrayPrototypeLengthGetter] {
+					if o.shape == c.shape && c.kind == cacheGetter && c.epoch == ag.protoEpoch && c.holder == ag.active.realm.intrinsics[IntrinsicTypedArrayPrototypeLengthGetter] {
 						if validateExec {
-							fp.context.checkTypedArrayLengthHit(fp, pc-1, regs[i.B], float64(t.length))
+							ag.active.checkTypedArrayLengthHit(fp, pc-1, regs[i.B], float64(t.length))
 						}
 						setNumber(&regs[a], float64(t.length))
 						continue
@@ -749,14 +750,14 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				if o.shape == e.shape {
 					if e.kind == cacheOwn {
 						if validateExec {
-							fp.context.checkEntryRead(fp, pc-1, regs[i.B], o, ag.Key(KeyLength), e)
+							ag.active.checkEntryRead(fp, pc-1, regs[i.B], o, ag.Key(KeyLength), e)
 						}
 						regs[a] = o.slots[e.slot]
 						continue
 					}
 					if e.kind == cacheProto && e.epoch == ag.protoEpoch {
 						if validateExec {
-							fp.context.checkEntryRead(fp, pc-1, regs[i.B], o, ag.Key(KeyLength), e)
+							ag.active.checkEntryRead(fp, pc-1, regs[i.B], o, ag.Key(KeyLength), e)
 						}
 						regs[a] = *e.ref
 						continue
@@ -950,9 +951,9 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				// An append to a plain array that has room for it, as in the switch below, with the
 				// conditions of arrayProtoPlain written out.
 				if j := int(k.n); j == len(o.elems) && j < cap(o.elems) &&
-					o.kind == kindArray && uint32(j) == o.length && o.flags == 0 && float64(j) == k.n && o.shape == fp.context.realm.shapes.array {
-					if a := fp.context.realm.intrinsics[IntrinsicArrayPrototype]; len(a.elems) == 0 && a.flags&objSparse == 0 {
-						if p := a.shape.proto; p == fp.context.realm.intrinsics[IntrinsicObjectPrototype] && len(p.elems) == 0 && p.flags&objSparse == 0 {
+					o.kind == kindArray && uint32(j) == o.length && o.flags == 0 && float64(j) == k.n && o.shape == ag.active.realm.shapes.array {
+					if a := ag.active.realm.intrinsics[IntrinsicArrayPrototype]; len(a.elems) == 0 && a.flags&objSparse == 0 {
+						if p := a.shape.proto; p == ag.active.realm.intrinsics[IntrinsicObjectPrototype] && len(p.elems) == 0 && p.flags&objSparse == 0 {
 							// Reading x first keeps i.C from being read again after the
 							// store to the length.
 							x := regs[i.C]
@@ -1370,7 +1371,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 						}
 						if known {
 							if validateExec {
-								fp.context.checkInstanceofHit(fp, pc-1, regs[i.B], co, &co.slots[c.slot], r)
+								ag.active.checkInstanceofHit(fp, pc-1, regs[i.B], co, &co.slots[c.slot], r)
 							}
 							regs[i.A] = Bool(r)
 							pc++
@@ -1392,7 +1393,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			if c := &fp.caches[i.B]; o.shape == c.shape && c.kind == cacheAdd {
 				if n := len(o.slots); n < cap(o.slots) {
 					if validateExec {
-						fp.context.checkDefineHit(fp, pc-1, o, fp.keys[i.B], c.next)
+						ag.active.checkDefineHit(fp, pc-1, o, fp.keys[i.B], c.next)
 					}
 					o.shape = c.next
 					o.slots = o.slots[:n+1]
@@ -1431,7 +1432,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 					m = o.slots[e.slot]
 				}
 				if validateExec {
-					fp.context.checkEntryRead(fp, pc-1, v, o, fp.keys[i.C], e)
+					ag.active.checkEntryRead(fp, pc-1, v, o, fp.keys[i.C], e)
 				}
 				n := &fp.code[pc]
 				regs[a] = m
@@ -1450,14 +1451,14 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			b := int(i.B)
 			f, first, argc := regs[b].o, b+2, int(i.C)
 			if i.Op == bytecode.OpCallCall {
-				if f != fp.context.realm.intrinsics[IntrinsicFunctionPrototypeCall] {
+				if f != ag.active.realm.intrinsics[IntrinsicFunctionPrototypeCall] {
 					f = nil
 				} else {
 					f, first, argc = regs[b+1].o, b+3, max(argc-1, 0)
 				}
 			}
 			if !fp.heapRegs && f != nil && f.fn != nil {
-				if c := f.fn.code; c != nil && c.inlineFrames && c.context == fp.context {
+				if c := f.fn.code; c != nil && c.inlineFrames && c.context == ag.active {
 					n := len(ag.frames)
 					argBase := ag.frames[n-1].base + first
 					// The caller's registers already cover all the arguments.
@@ -1634,9 +1635,9 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 					}
 					break
 				}
-				if j == len(o.elems) && j < cap(o.elems) && o.kind == kindArray && uint32(j) == o.length && o.flags == 0 && o.shape == fp.context.realm.shapes.array {
-					if a := fp.context.realm.intrinsics[IntrinsicArrayPrototype]; len(a.elems) == 0 && a.flags&objSparse == 0 {
-						if p := a.shape.proto; p == fp.context.realm.intrinsics[IntrinsicObjectPrototype] && len(p.elems) == 0 && p.flags&objSparse == 0 {
+				if j == len(o.elems) && j < cap(o.elems) && o.kind == kindArray && uint32(j) == o.length && o.flags == 0 && o.shape == ag.active.realm.shapes.array {
+					if a := ag.active.realm.intrinsics[IntrinsicArrayPrototype]; len(a.elems) == 0 && a.flags&objSparse == 0 {
+						if p := a.shape.proto; p == ag.active.realm.intrinsics[IntrinsicObjectPrototype] && len(p.elems) == 0 && p.flags&objSparse == 0 {
 							x := regs[i.C]
 							o.elems = o.elems[:j+1]
 							o.elems[j] = x
@@ -1809,21 +1810,21 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			v := *ag.frames[len(ag.frames)-1].cl.fn.upvals[i.B].p
 			if v.o == tdzObject {
 				ag.frames[len(ag.frames)-1].pc = pc
-				fp.context.throwTDZ(fp.keys[i.C])
+				ag.active.throwTDZ(fp.keys[i.C])
 			}
 			regs[i.A] = v
 		case bytecode.OpCheckTDZ:
 			if regs[i.A].o == tdzObject {
 				ag.frames[len(ag.frames)-1].pc = pc
-				fp.context.throwTDZ(fp.keys[i.B])
+				ag.active.throwTDZ(fp.keys[i.B])
 			}
 		case bytecode.OpThrowConstAssign:
 			ag.frames[len(ag.frames)-1].pc = pc
-			fp.context.ThrowTypeError("assignment to constant variable '" + wtf8.ToValidUTF8(fp.keys[i.A].str) + "'")
+			ag.active.ThrowTypeError("assignment to constant variable '" + wtf8.ToValidUTF8(fp.keys[i.A].str) + "'")
 		case bytecode.OpThrowError:
 			ag.frames[len(ag.frames)-1].pc = pc
 			// Error text is an interned constant.
-			fp.context.throwError(thrownErrorKinds[i.A], wtf8.ToValidUTF8(fp.consts[i.B].o.str))
+			ag.active.throwError(thrownErrorKinds[i.A], wtf8.ToValidUTF8(fp.consts[i.B].o.str))
 
 		case bytecode.OpGetGlobal, bytecode.OpGetGlobalStrict, bytecode.OpGetGlobalOrUndef, bytecode.OpGetGlobalOrUndefStrict:
 			goto readProperty
@@ -1838,18 +1839,18 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			if i.C >= 0 {
 				fn = regs[i.C]
 			}
-			fp.context.declareGlobalVar(fp.keys[i.A], int(i.B), fn)
+			ag.active.declareGlobalVar(fp.keys[i.A], int(i.B), fn)
 		case bytecode.OpDeclareGlobalLex:
 			ag.frames[len(ag.frames)-1].pc = pc
-			fp.context.declareGlobalLex(fp.keys[i.A], i.B != 0)
+			ag.active.declareGlobalLex(fp.keys[i.A], i.B != 0)
 		case bytecode.OpInitGlobalLex:
-			fp.context.initGlobalLex(fp.keys[i.B], regs[i.A])
+			ag.active.initGlobalLex(fp.keys[i.B], regs[i.A])
 		case bytecode.OpCheckGlobalDecl:
 			ag.frames[len(ag.frames)-1].pc = pc
-			fp.context.checkGlobalDecl(fp.keys[i.A], int(i.B))
+			ag.active.checkGlobalDecl(fp.keys[i.A], int(i.B))
 		case bytecode.OpDeclareAnnexB:
 			ag.frames[len(ag.frames)-1].pc = pc
-			regs[i.A] = Bool(fp.context.declareGlobalAnnexB(fp.keys[i.B], int(i.C)))
+			regs[i.A] = Bool(ag.active.declareGlobalAnnexB(fp.keys[i.B], int(i.C)))
 
 		case bytecode.OpCloseUpvals:
 			ag.closeFrameUpvals(&ag.frames[len(ag.frames)-1], int(i.A))
@@ -1860,9 +1861,9 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			o.kind = kindFunction
 			o.class = classFunction
 			o.flags = objExotic
-			o.shape = fp.context.realm.shapes.function
+			o.shape = ag.active.realm.shapes.function
 			if p.isGenerator || p.isAsync {
-				o.shape = fp.context.functionShapeFor(p.closurePrototype())
+				o.shape = ag.active.functionShapeFor(p.closurePrototype())
 			}
 			cur := &ag.frames[len(ag.frames)-1]
 			for j, d := range p.Upvals {
@@ -1887,9 +1888,9 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			t := ag.frames[len(ag.frames)-1].this
 			if t.o == nil || t.o.kind < kindFirstObject {
 				if t.IsNullish() {
-					t = Value{o: fp.context.realm.globalThis}
+					t = Value{o: ag.active.realm.globalThis}
 				} else {
-					t = Value{o: fp.context.ToObject(t)}
+					t = Value{o: ag.active.ToObject(t)}
 				}
 			}
 			regs[i.A] = t
@@ -1909,20 +1910,20 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			}
 		case bytecode.OpArguments:
 			cur := &ag.frames[len(ag.frames)-1]
-			regs[i.A] = Value{o: fp.context.newArguments(cur, i.B != 0)}
+			regs[i.A] = Value{o: ag.active.newArguments(cur, i.B != 0)}
 		case bytecode.OpRestArgs:
 			cur := &ag.frames[len(ag.frames)-1]
 			var rest *Object
 			if int(i.B) < cur.argc {
-				rest = fp.context.restArray(cur, int(i.B))
+				rest = ag.active.restArray(cur, int(i.B))
 			} else {
-				rest = fp.context.NewArray(nil)
+				rest = ag.active.NewArray(nil)
 			}
 			regs[i.A] = Value{o: rest}
 		case bytecode.OpGetArgsLength, bytecode.OpGetArgsIndex:
 			// A prototype getter must see the arguments object shared by later reads.
 			ag.frames[len(ag.frames)-1].pc = pc
-			receiver = fp.context.forwardedArguments(i.B)
+			receiver = ag.active.forwardedArguments(i.B)
 			if i.Op == bytecode.OpGetArgsLength {
 				name = ag.Key(KeyLength)
 			} else {
@@ -1943,10 +1944,10 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			if o == numberObject {
 				// getNamed starts at Number.prototype for a number. Its own slot
 				// stays valid for its shape, and the method receives v as this.
-				o = fp.context.realm.intrinsics[IntrinsicNumberPrototype]
+				o = ag.active.realm.intrinsics[IntrinsicNumberPrototype]
 				if c.kind == cacheOwn && c.shape == o.shape {
 					if validateExec {
-						fp.context.checkEntryRead(fp, pc-1, v, o, fp.keys[i.C], &c.cacheEntry)
+						ag.active.checkEntryRead(fp, pc-1, v, o, fp.keys[i.C], &c.cacheEntry)
 					}
 					regs[i.A] = o.slots[c.slot]
 					continue
@@ -1956,14 +1957,14 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				if e := c.entry(o.shape); e != nil {
 					if e.kind == cacheGetter && e.epoch == ag.protoEpoch {
 						if validateExec {
-							fp.context.checkGetterHit(fp, pc-1, v, fp.keys[i.C], e.holder)
+							ag.active.checkGetterHit(fp, pc-1, v, fp.keys[i.C], e.holder)
 						}
 						f, callThis, argc, ret = e.holder, v, 0, i.A
 						goto callAbove
 					}
 					if e.kind == cacheOwnGetter {
 						if validateExec {
-							fp.context.checkOwnGetterHit(fp, pc-1, v, fp.keys[i.C], &o.slots[e.slot])
+							ag.active.checkOwnGetterHit(fp, pc-1, v, fp.keys[i.C], &o.slots[e.slot])
 						}
 						g := o.slots[e.slot].accessor().getter
 						if g == nil {
@@ -1986,7 +1987,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 					case cacheAdd:
 						if o.objectProperties != nil && e.epoch == ag.protoEpoch && o.flags&objIsProto == 0 {
 							if validateExec {
-								fp.context.checkAddHit(fp, pc-1, o, fp.keys[i.B], e.next)
+								ag.active.checkAddHit(fp, pc-1, o, fp.keys[i.B], e.next)
 							}
 							o.shape = e.next
 							o.appendSlot(regs[i.C])
@@ -1995,7 +1996,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 					case cacheSetter:
 						if e.epoch == ag.protoEpoch {
 							if validateExec {
-								fp.context.checkSetterHit(fp, pc-1, v, fp.keys[i.B], e.holder)
+								ag.active.checkSetterHit(fp, pc-1, v, fp.keys[i.B], e.holder)
 							}
 							setter, receiver, rhs = e.holder, v, regs[i.C]
 							goto writeProperty
@@ -2009,7 +2010,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			v := regs[i.B]
 			if v.IsString() {
 				if validateExec {
-					fp.context.checkLengthHit(fp, pc-1, v, float64(v.StringLength()))
+					ag.active.checkLengthHit(fp, pc-1, v, float64(v.StringLength()))
 				}
 				setNumber(&regs[i.A], float64(v.StringLength()))
 				continue
@@ -2031,7 +2032,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				k = Number(float64(i.B))
 			}
 			if o := v.o; o != nil && o.objectProperties != nil && k.o == numberObject {
-				if j := int(k.n); j == len(o.elems) && o.kind == kindArray && uint32(j) == o.length && o.flags == 0 && float64(j) == k.n && o.shape == fp.context.realm.shapes.array && fp.context.arrayProtoPlain() {
+				if j := int(k.n); j == len(o.elems) && o.kind == kindArray && uint32(j) == o.length && o.flags == 0 && float64(j) == k.n && o.shape == ag.active.realm.shapes.array && ag.active.arrayProtoPlain() {
 					// Appending to a plain array.
 					o.appendElem(regs[i.C])
 					o.length++
@@ -2042,43 +2043,43 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			goto writeProperty
 		case bytecode.OpSuperBase:
 			ag.frames[len(ag.frames)-1].pc = pc
-			regs[i.A] = fp.context.superBase(regs[i.B])
+			regs[i.A] = ag.active.superBase(regs[i.B])
 		case bytecode.OpGetSuper:
 			ag.frames[len(ag.frames)-1].pc = pc + 1
 			ext := fp.code[pc]
 			pc++
 			if ext.B == 0 {
-				v, _ := fp.context.getSuper(fp.context.superBase(regs[ext.A]), regs[i.C], regs[i.B])
+				v, _ := ag.active.getSuper(ag.active.superBase(regs[ext.A]), regs[i.C], regs[i.B])
 				regs = ag.reload(regs, ag.frameBase(), fp)
 				regs[i.A] = v
 				continue
 			}
-			v, key := fp.context.getSuper(regs[ext.A], regs[i.C], regs[i.B])
+			v, key := ag.active.getSuper(regs[ext.A], regs[i.C], regs[i.B])
 			regs = ag.reload(regs, ag.frameBase(), fp)
-			regs[i.C] = fp.context.KeyValue(key)
+			regs[i.C] = ag.active.KeyValue(key)
 			regs[i.A] = v
 		case bytecode.OpSetSuper, bytecode.OpSetSuperStrict:
 			ag.frames[len(ag.frames)-1].pc = pc + 1
 			superBase := regs[fp.code[pc].A]
 			pc++
-			fp.context.setSuper(superBase, regs[i.B], regs[i.C], regs[i.A], i.Op == bytecode.OpSetSuperStrict)
+			ag.active.setSuper(superBase, regs[i.B], regs[i.C], regs[i.A], i.Op == bytecode.OpSetSuperStrict)
 			regs = ag.reload(regs, ag.frameBase(), fp)
 		case bytecode.OpDeleteProp, bytecode.OpDeletePropStrict:
 			ag.frames[len(ag.frames)-1].pc = pc
-			v := fp.context.deleteValue(regs[i.B], regs[i.C], i.Op == bytecode.OpDeletePropStrict)
+			v := ag.active.deleteValue(regs[i.B], regs[i.C], i.Op == bytecode.OpDeletePropStrict)
 			regs = ag.reload(regs, ag.frameBase(), fp)
 			regs[i.A] = v
 		case bytecode.OpIn:
 			ag.frames[len(ag.frames)-1].pc = pc
 			o := regs[i.B]
 			if !o.IsObject() {
-				fp.context.ThrowTypeError("cannot use 'in' operator to search for a key in a non-object")
+				ag.active.ThrowTypeError("cannot use 'in' operator to search for a key in a non-object")
 			}
 			var r bool
-			if k := fp.context.QueryKey(regs[i.C]); k.missing() {
-				r = fp.context.queryMissing(o.o, k)
+			if k := ag.active.QueryKey(regs[i.C]); k.missing() {
+				r = ag.active.queryMissing(o.o, k)
 			} else {
-				r = fp.context.HasProperty(o.o, PropKey(k))
+				r = ag.active.HasProperty(o.o, PropKey(k))
 			}
 			regs = ag.reload(regs, ag.frameBase(), fp)
 			regs[i.A] = Bool(r)
@@ -2086,21 +2087,21 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			site := &fp.caches[fp.code[pc].A]
 			pc++
 			ag.frames[len(ag.frames)-1].pc = pc
-			r := fp.context.instanceOf(regs[i.B], regs[i.C], site)
+			r := ag.active.instanceOf(regs[i.B], regs[i.C], site)
 			regs = ag.reload(regs, ag.frameBase(), fp)
 			regs[i.A] = Bool(r)
 		case bytecode.OpHasPrivate:
 			ag.frames[len(ag.frames)-1].pc = pc
 			o := regs[i.B]
 			if !o.IsObject() {
-				fp.context.ThrowTypeError("cannot use 'in' operator to search for a private field in a non-object")
+				ag.active.ThrowTypeError("cannot use 'in' operator to search for a private field in a non-object")
 			}
-			_, ok := fp.context.privateStorage(o.o).shape.lookup(regs[i.C].o)
+			_, ok := ag.active.privateStorage(o.o).shape.lookup(regs[i.C].o)
 			regs[i.A] = Bool(ok)
 		case bytecode.OpGetPrivate:
 			v := regs[i.B]
 			ag.frames[len(ag.frames)-1].pc = pc
-			val, getter := fp.context.getPrivate(v, regs[i.C].o)
+			val, getter := ag.active.getPrivate(v, regs[i.C].o)
 			if getter != nil {
 				f, callThis, argc, ret = getter, v, 0, i.A
 				goto callAbove
@@ -2109,7 +2110,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 		case bytecode.OpSetPrivate:
 			v := regs[i.A]
 			ag.frames[len(ag.frames)-1].pc = pc
-			if setter := fp.context.setPrivate(v, regs[i.B].o, regs[i.C]); setter != nil {
+			if setter := ag.active.setPrivate(v, regs[i.B].o, regs[i.C]); setter != nil {
 				val := regs[i.C]
 				argBase = ag.frames[len(ag.frames)-1].top()
 				ag.ensureStack(argBase + 1)
@@ -2128,10 +2129,10 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			ag.frames[len(ag.frames)-1].pc = pc
 			if i.C >= 0 {
 				if b := regs[i.C]; b.IsNullish() {
-					fp.context.ThrowTypeError("cannot read properties of " + ag.DisplayString(b) + " (reading '" + ag.DisplayString(v) + "')")
+					ag.active.ThrowTypeError("cannot read properties of " + ag.DisplayString(b) + " (reading '" + ag.DisplayString(v) + "')")
 				}
 			}
-			k := fp.context.KeyValue(fp.context.ToPropertyKey(v))
+			k := ag.active.KeyValue(ag.active.ToPropertyKey(v))
 			regs = ag.reload(regs, ag.frameBase(), fp)
 			regs[i.A] = k
 
@@ -2139,10 +2140,10 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			x, y := regs[i.B], regs[i.C]
 			ag.frames[len(ag.frames)-1].pc = pc
 			if x.o != nil && y.o != nil && x.o.kind == kindString && y.o.kind == kindString {
-				regs[i.A] = fp.context.Concat(x, y)
+				regs[i.A] = ag.active.Concat(x, y)
 				continue
 			}
-			v := fp.context.addValues(x, y)
+			v := ag.active.addValues(x, y)
 			regs = ag.reload(regs, ag.frameBase(), fp)
 			regs[i.A] = v
 		case bytecode.OpMod:
@@ -2163,7 +2164,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 		case bytecode.OpAddK:
 			x := regs[i.B]
 			ag.frames[len(ag.frames)-1].pc = pc
-			v := fp.context.addValues(x, fp.consts[i.C])
+			v := ag.active.addValues(x, fp.consts[i.C])
 			regs = ag.reload(regs, ag.frameBase(), fp)
 			regs[i.A] = v
 		case bytecode.OpModK:
@@ -2177,7 +2178,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 		case bytecode.OpNeg:
 			x := regs[i.B]
 			ag.frames[len(ag.frames)-1].pc = pc
-			v := fp.context.negate(x)
+			v := ag.active.negate(x)
 			regs = ag.reload(regs, ag.frameBase(), fp)
 			regs[i.A] = v
 		case bytecode.OpPlus:
@@ -2187,7 +2188,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				continue
 			}
 			ag.frames[len(ag.frames)-1].pc = pc
-			n := fp.context.ToNumber(x)
+			n := ag.active.ToNumber(x)
 			regs = ag.reload(regs, ag.frameBase(), fp)
 			regs[i.A] = Number(n)
 		case bytecode.OpNot:
@@ -2199,7 +2200,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				continue
 			}
 			ag.frames[len(ag.frames)-1].pc = pc
-			v := fp.context.bitNot(x)
+			v := ag.active.bitNot(x)
 			regs = ag.reload(regs, ag.frameBase(), fp)
 			regs[i.A] = v
 		case bytecode.OpToNumeric:
@@ -2209,13 +2210,13 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				continue
 			}
 			ag.frames[len(ag.frames)-1].pc = pc
-			v := fp.context.ToNumeric(x)
+			v := ag.active.ToNumeric(x)
 			regs = ag.reload(regs, ag.frameBase(), fp)
 			regs[i.A] = v
 		case bytecode.OpPostInc, bytecode.OpPostDec:
 			x := regs[i.B]
 			ag.frames[len(ag.frames)-1].pc = pc
-			v := fp.context.ToNumeric(x)
+			v := ag.active.ToNumeric(x)
 			regs = ag.reload(regs, ag.frameBase(), fp)
 			regs[i.A] = v
 			d := int64(1)
@@ -2223,7 +2224,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				d = -1
 			}
 			// Stepping a number or a BigInt runs no JavaScript.
-			regs[i.B] = fp.context.step(v, d)
+			regs[i.B] = ag.active.step(v, d)
 		case bytecode.OpToString:
 			x := regs[i.B]
 			if x.o != nil && x.o.kind == kindString {
@@ -2231,12 +2232,12 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				continue
 			}
 			ag.frames[len(ag.frames)-1].pc = pc
-			v := fp.context.ToStringValue(x)
+			v := ag.active.ToStringValue(x)
 			regs = ag.reload(regs, ag.frameBase(), fp)
 			regs[i.A] = v
 		case bytecode.OpConcat:
 			ag.frames[len(ag.frames)-1].pc = pc
-			regs[i.A] = fp.context.ConcatStrings(slices.Clip(regs)[i.B : i.B+i.C])
+			regs[i.A] = ag.active.ConcatStrings(slices.Clip(regs)[i.B : i.B+i.C])
 		case bytecode.OpTypeof:
 			regs[i.A] = ag.typeofValue(regs[i.B])
 		case bytecode.OpInc, bytecode.OpDec:
@@ -2246,37 +2247,37 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			if i.Op == bytecode.OpDec {
 				d = -1
 			}
-			v := fp.context.step(x, d)
+			v := ag.active.step(x, d)
 			regs = ag.reload(regs, ag.frameBase(), fp)
 			regs[i.A] = v
 
 		case bytecode.OpLt:
 			x, y := regs[i.B], regs[i.C]
 			ag.frames[len(ag.frames)-1].pc = pc
-			r := fp.context.compare(x, y, true) == cmpLess
+			r := ag.active.compare(x, y, true) == cmpLess
 			regs = ag.reload(regs, ag.frameBase(), fp)
 			regs[i.A] = Bool(r)
 		case bytecode.OpLe:
 			x, y := regs[i.B], regs[i.C]
 			ag.frames[len(ag.frames)-1].pc = pc
-			c := fp.context.compare(y, x, false)
+			c := ag.active.compare(y, x, false)
 			regs = ag.reload(regs, ag.frameBase(), fp)
 			regs[i.A] = Bool(c == cmpGreater || c == cmpEqual)
 		case bytecode.OpGt:
 			x, y := regs[i.B], regs[i.C]
 			ag.frames[len(ag.frames)-1].pc = pc
-			r := fp.context.compare(y, x, false) == cmpLess
+			r := ag.active.compare(y, x, false) == cmpLess
 			regs = ag.reload(regs, ag.frameBase(), fp)
 			regs[i.A] = Bool(r)
 		case bytecode.OpGe:
 			x, y := regs[i.B], regs[i.C]
 			ag.frames[len(ag.frames)-1].pc = pc
-			c := fp.context.compare(x, y, true)
+			c := ag.active.compare(x, y, true)
 			regs = ag.reload(regs, ag.frameBase(), fp)
 			regs[i.A] = Bool(c == cmpGreater || c == cmpEqual)
 		case bytecode.OpEq, bytecode.OpNe:
 			ag.frames[len(ag.frames)-1].pc = pc
-			r := fp.context.looseEquals(regs[i.B], regs[i.C])
+			r := ag.active.looseEquals(regs[i.B], regs[i.C])
 			regs = ag.reload(regs, ag.frameBase(), fp)
 			regs[i.A] = Bool(r == (i.Op == bytecode.OpEq))
 		case bytecode.OpStrictEq:
@@ -2299,7 +2300,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 		case bytecode.OpJumpNotLt:
 			x, y := regs[i.B], regs[i.C]
 			ag.frames[len(ag.frames)-1].pc = pc
-			r := fp.context.compare(x, y, true) == cmpLess
+			r := ag.active.compare(x, y, true) == cmpLess
 			regs = ag.reload(regs, ag.frameBase(), fp)
 			if !r {
 				pc = int(i.A)
@@ -2307,7 +2308,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 		case bytecode.OpJumpNotLe:
 			x, y := regs[i.B], regs[i.C]
 			ag.frames[len(ag.frames)-1].pc = pc
-			c := fp.context.compare(y, x, false)
+			c := ag.active.compare(y, x, false)
 			regs = ag.reload(regs, ag.frameBase(), fp)
 			if !(c == cmpGreater || c == cmpEqual) {
 				pc = int(i.A)
@@ -2315,7 +2316,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 		case bytecode.OpJumpNotGt:
 			x, y := regs[i.B], regs[i.C]
 			ag.frames[len(ag.frames)-1].pc = pc
-			r := fp.context.compare(y, x, false) == cmpLess
+			r := ag.active.compare(y, x, false) == cmpLess
 			regs = ag.reload(regs, ag.frameBase(), fp)
 			if !r {
 				pc = int(i.A)
@@ -2323,14 +2324,14 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 		case bytecode.OpJumpNotGe:
 			x, y := regs[i.B], regs[i.C]
 			ag.frames[len(ag.frames)-1].pc = pc
-			c := fp.context.compare(x, y, true)
+			c := ag.active.compare(x, y, true)
 			regs = ag.reload(regs, ag.frameBase(), fp)
 			if !(c == cmpGreater || c == cmpEqual) {
 				pc = int(i.A)
 			}
 		case bytecode.OpJumpNotEq, bytecode.OpJumpNotNe:
 			ag.frames[len(ag.frames)-1].pc = pc
-			r := fp.context.looseEquals(regs[i.B], regs[i.C])
+			r := ag.active.looseEquals(regs[i.B], regs[i.C])
 			regs = ag.reload(regs, ag.frameBase(), fp)
 			if r != (i.Op == bytecode.OpJumpNotEq) {
 				pc = int(i.A)
@@ -2347,10 +2348,10 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			x := regs[i.B]
 			if x.o != numberObject {
 				ag.frames[len(ag.frames)-1].pc = pc
-				x = fp.context.ToNumeric(fp.context.ToPrimitive(x, HintNumber))
+				x = ag.active.ToNumeric(ag.active.ToPrimitive(x, HintNumber))
 				regs = ag.reload(regs, ag.frameBase(), fp)
 				if x.o != numberObject {
-					if fp.context.compareBigIntMixed(x, fp.consts[i.C]) != cmpLess {
+					if ag.active.compareBigIntMixed(x, fp.consts[i.C]) != cmpLess {
 						pc = int(i.A)
 					}
 					continue
@@ -2363,10 +2364,10 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			x := regs[i.B]
 			if x.o != numberObject {
 				ag.frames[len(ag.frames)-1].pc = pc
-				x = fp.context.ToNumeric(fp.context.ToPrimitive(x, HintNumber))
+				x = ag.active.ToNumeric(ag.active.ToPrimitive(x, HintNumber))
 				regs = ag.reload(regs, ag.frameBase(), fp)
 				if x.o != numberObject {
-					if c := fp.context.compareBigIntMixed(x, fp.consts[i.C]); c != cmpLess && c != cmpEqual {
+					if c := ag.active.compareBigIntMixed(x, fp.consts[i.C]); c != cmpLess && c != cmpEqual {
 						pc = int(i.A)
 					}
 					continue
@@ -2379,10 +2380,10 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			x := regs[i.B]
 			if x.o != numberObject {
 				ag.frames[len(ag.frames)-1].pc = pc
-				x = fp.context.ToNumeric(fp.context.ToPrimitive(x, HintNumber))
+				x = ag.active.ToNumeric(ag.active.ToPrimitive(x, HintNumber))
 				regs = ag.reload(regs, ag.frameBase(), fp)
 				if x.o != numberObject {
-					if fp.context.compareBigIntMixed(x, fp.consts[i.C]) != cmpGreater {
+					if ag.active.compareBigIntMixed(x, fp.consts[i.C]) != cmpGreater {
 						pc = int(i.A)
 					}
 					continue
@@ -2395,10 +2396,10 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			x := regs[i.B]
 			if x.o != numberObject {
 				ag.frames[len(ag.frames)-1].pc = pc
-				x = fp.context.ToNumeric(fp.context.ToPrimitive(x, HintNumber))
+				x = ag.active.ToNumeric(ag.active.ToPrimitive(x, HintNumber))
 				regs = ag.reload(regs, ag.frameBase(), fp)
 				if x.o != numberObject {
-					if c := fp.context.compareBigIntMixed(x, fp.consts[i.C]); c != cmpGreater && c != cmpEqual {
+					if c := ag.active.compareBigIntMixed(x, fp.consts[i.C]); c != cmpGreater && c != cmpEqual {
 						pc = int(i.A)
 					}
 					continue
@@ -2417,7 +2418,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			}
 		case bytecode.OpLoopLt, bytecode.OpLoopLe, bytecode.OpLoopGt, bytecode.OpLoopGe:
 			ag.frames[len(ag.frames)-1].pc = pc
-			r := fp.context.loopHolds(i.Op, regs[i.B], regs[i.C])
+			r := ag.active.loopHolds(i.Op, regs[i.B], regs[i.C])
 			regs = ag.reload(regs, ag.frameBase(), fp)
 			if r {
 				if ag.interrupt.Load() {
@@ -2427,7 +2428,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			}
 		case bytecode.OpLoopLtK, bytecode.OpLoopLeK, bytecode.OpLoopGtK, bytecode.OpLoopGeK:
 			ag.frames[len(ag.frames)-1].pc = pc
-			r := fp.context.loopHoldsK(i.Op, regs[i.B], fp.consts[i.C])
+			r := ag.active.loopHoldsK(i.Op, regs[i.B], fp.consts[i.C])
 			regs = ag.reload(regs, ag.frameBase(), fp)
 			if r {
 				if ag.interrupt.Load() {
@@ -2454,7 +2455,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			goto callRegs
 		case bytecode.OpCallCall:
 			b := int(i.B)
-			if regs[b].o == fp.context.realm.intrinsics[IntrinsicFunctionPrototypeCall] {
+			if regs[b].o == ag.active.realm.intrinsics[IntrinsicFunctionPrototypeCall] {
 				f, callThis, firstArgReg, argc, ret, isNew, newTarget = regs[b+1].o, regs[b+2], b+3, int(i.C)-1, i.A, false, nil
 				if argc < 0 {
 					callThis, argc = Undefined, 0
@@ -2467,10 +2468,10 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			argsReg := fp.code[pc].A
 			pc++
 			b := int(i.B)
-			if !regs[argsReg].IsUndefined() || regs[b].o != fp.context.realm.intrinsics[IntrinsicFunctionPrototypeApply] {
+			if !regs[argsReg].IsUndefined() || regs[b].o != ag.active.realm.intrinsics[IntrinsicFunctionPrototypeApply] {
 				// Once exposed, the arguments object's length and indexed properties can change.
 				regs[b+2] = regs[i.C]
-				regs[b+3] = fp.context.forwardedArguments(argsReg)
+				regs[b+3] = ag.active.forwardedArguments(argsReg)
 				f, callThis, firstArgReg, argc, ret, isNew, newTarget = regs[b].o, regs[b+1], b+2, 2, i.A, false, nil
 				if i.Op == bytecode.OpTailApplyFwd {
 					argBase = ag.frameBase() + firstArgReg
@@ -2485,7 +2486,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				// registers its tests take there made the loop store the values it carries
 				// before every instruction where registers are few, as on amd64.
 				if f := regs[b+1].o; !fp.heapRegs && f != nil && f.fn != nil && !ag.interrupt.Load() {
-					if c := f.fn.code; c != nil && c.inlineFrames && c.context == fp.context {
+					if c := f.fn.code; c != nil && c.inlineFrames && c.context == ag.active {
 						n := len(ag.frames)
 						cur := &ag.frames[n-1]
 						argc := cur.argc
@@ -2535,7 +2536,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			// A direct eval, or the spread call of the case below for any other function.
 			pc++
 			ag.frames[len(ag.frames)-1].pc = pc
-			if v, ok := fp.context.callEval(slices.Clip(regs), i, int(fp.code[pc-1].A), -1); ok {
+			if v, ok := ag.active.callEval(slices.Clip(regs), i, int(fp.code[pc-1].A), -1); ok {
 				regs = ag.reload(regs, ag.frameBase(), fp)
 				regs[i.A] = v
 				continue
@@ -2562,7 +2563,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			b := int(i.B)
 			pc++
 			ag.frames[len(ag.frames)-1].pc = pc
-			if v, ok := fp.context.callEval(slices.Clip(regs), i, int(fp.code[pc-1].A), int(i.C)); ok {
+			if v, ok := ag.active.callEval(slices.Clip(regs), i, int(fp.code[pc-1].A), int(i.C)); ok {
 				regs = ag.reload(regs, ag.frameBase(), fp)
 				regs[i.A] = v
 				continue
@@ -2584,7 +2585,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			// A direct eval, or the spread call of the case below for any other function.
 			pc++
 			ag.frames[len(ag.frames)-1].pc = pc
-			if v, ok := fp.context.callEval(slices.Clip(regs), i, int(fp.code[pc-1].A), -1); ok {
+			if v, ok := ag.active.callEval(slices.Clip(regs), i, int(fp.code[pc-1].A), -1); ok {
 				regs = ag.reload(regs, ag.frameBase(), fp)
 				regs[i.A] = v
 				continue
@@ -2611,12 +2612,12 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				var proto Value
 				if f.shape == c.shape && c.kind == cacheOwn {
 					if validateExec {
-						fp.context.checkEntryRead(fp, pc-2, Value{o: f}, f, ag.Key(KeyPrototype), &c.cacheEntry)
+						ag.active.checkEntryRead(fp, pc-2, Value{o: f}, f, ag.Key(KeyPrototype), &c.cacheEntry)
 					}
 					proto = f.slots[c.slot]
 				} else {
 					ag.frames[len(ag.frames)-1].pc = pc
-					proto, _ = fp.context.getNamed(Value{o: f}, ag.Key(KeyPrototype), c)
+					proto, _ = ag.active.getNamed(Value{o: f}, ag.Key(KeyPrototype), c)
 					regs = ag.reload(regs, ag.frameBase(), fp)
 				}
 				if proto.o == nil || proto.o.kind < kindFirstObject {
@@ -2625,11 +2626,11 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				var shape *shape
 				if proto.o == c.holder && c.next != nil && c.next.realm == f.fn.code.context.realm {
 					if validateExec {
-						fp.context.checkInstanceShape(fp, pc-2, proto.o, f.fn.code.context.realm, c.next)
+						ag.active.checkInstanceShape(fp, pc-2, proto.o, f.fn.code.context.realm, c.next)
 					}
 					shape = c.next
 				} else {
-					shape = fp.context.shapeForRealm(proto.o, f.fn.code.context.realm)
+					shape = ag.active.shapeForRealm(proto.o, f.fn.code.context.realm)
 					if c.kind == cacheOwn {
 						c.holder, c.next = proto.o, shape
 					}
@@ -2657,11 +2658,11 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			if i.Op == bytecode.OpReturnDerived {
 				if !r.IsObject() {
 					if !r.IsUndefined() {
-						fp.context.throwReturnError(stop, n, pc, ErrorKindType, "derived constructors may only return object or undefined")
+						ag.active.throwReturnError(stop, n, pc, ErrorKindType, "derived constructors may only return object or undefined")
 					}
 					r = regs[i.B]
 					if r.o == tdzObject {
-						fp.context.throwReturnError(stop, n, pc, ErrorKindReference, "must call super constructor in derived class before accessing 'this' or returning from derived constructor")
+						ag.active.throwReturnError(stop, n, pc, ErrorKindReference, "must call super constructor in derived class before accessing 'this' or returning from derived constructor")
 					}
 				}
 			} else if done.isNew && (r.o == nil || r.o.kind < kindFirstObject) {
@@ -2708,7 +2709,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			g.pc = pc
 			g.scopes = cur.scopes
 			g.state = genSuspendedStart
-			o := fp.context.newGeneratorObject(g)
+			o := ag.active.newGeneratorObject(g)
 			ret = cur.ret
 			*cur = frame{}
 			ag.frames = ag.frames[:n]
@@ -2754,33 +2755,33 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			ag.frames[len(ag.frames)-1].pc = pc
 			r := regs[i.B]
 			if !r.IsObject() {
-				fp.context.ThrowTypeError("iterator result " + ag.DisplayString(r) + " is not an object")
+				ag.active.ThrowTypeError("iterator result " + ag.DisplayString(r) + " is not an object")
 			}
-			done := ToBoolean(fp.context.GetV(r, ag.Key(keyDone)))
+			done := ToBoolean(ag.active.GetV(r, ag.Key(keyDone)))
 			regs = ag.reload(regs, ag.frameBase(), fp)
 			if !done {
 				pc = int(i.C)
 				continue
 			}
-			v := fp.context.GetV(r, ag.Key(KeyValue))
+			v := ag.active.GetV(r, ag.Key(KeyValue))
 			regs = ag.reload(regs, ag.frameBase(), fp)
 			regs[i.A] = v
 
 		case bytecode.OpNewObject:
 			o, slots := newObjectWithStorage(int(i.C))
 			o.kind = kindObject
-			o.shape = fp.context.realm.shapes.object
+			o.shape = ag.active.realm.shapes.object
 			o.slots = slots[:0]
 			regs[i.A] = Value{o: o}
 		case bytecode.OpNewArray:
 			o, elems := newObjectWithStorage(int(i.C))
 			o.kind = kindArray
 			o.class = classArray
-			o.shape = fp.context.realm.shapes.array
+			o.shape = ag.active.realm.shapes.array
 			o.elems = elems[:0]
 			regs[i.A] = Value{o: o}
 		case bytecode.OpNewArrayK:
-			regs[i.A] = Value{o: fp.context.NewArrayCopy(fp.consts[i.B : i.B+i.C])}
+			regs[i.A] = Value{o: ag.active.NewArrayCopy(fp.consts[i.B : i.B+i.C])}
 		case bytecode.OpArrayPush:
 			o := regs[i.A].o
 			o.appendElem(regs[i.B])
@@ -2792,76 +2793,76 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 		case bytecode.OpArraySpread:
 			ag.frames[len(ag.frames)-1].pc = pc
 			o := regs[i.A].o
-			fp.context.appendIterable(o, regs[i.B])
+			ag.active.appendIterable(o, regs[i.B])
 			regs = ag.reload(regs, ag.frameBase(), fp)
 		case bytecode.OpSpreadArgs:
 			ag.frames[len(ag.frames)-1].pc = pc
-			o := fp.context.spreadArgs(regs[i.B])
+			o := ag.active.spreadArgs(regs[i.B])
 			regs = ag.reload(regs, ag.frameBase(), fp)
 			regs[i.A] = Value{o: o}
 		case bytecode.OpRegExp:
 			ag.frames[len(ag.frames)-1].pc = pc
-			regs[i.A] = Value{o: fp.context.newRegExpLiteral(&fp.regExps[i.B])}
+			regs[i.A] = Value{o: ag.active.newRegExpLiteral(&fp.regExps[i.B])}
 		case bytecode.OpRegExpArg:
 			ag.frames[len(ag.frames)-1].pc = pc
-			fp.context.lendRegExpLiteral(slices.Clip(regs), i.A, i.C, &fp.regExps[i.B])
+			ag.active.lendRegExpLiteral(slices.Clip(regs), i.A, i.C, &fp.regExps[i.B])
 		case bytecode.OpRegExpMethod:
 			ag.frames[len(ag.frames)-1].pc = pc
-			m, this := fp.context.regExpLiteralMethod(&fp.regExps[i.B], fp.keys[i.C], &fp.caches[i.C])
+			m, this := ag.active.regExpLiteralMethod(&fp.regExps[i.B], fp.keys[i.C], &fp.caches[i.C])
 			regs = ag.reload(regs, ag.frameBase(), fp)
 			regs[i.A], regs[i.A+1] = m, Value{o: this}
 		case bytecode.OpTemplate:
-			regs[i.A] = Value{o: fp.context.templateObject(&fp.templates[i.B])}
+			regs[i.A] = Value{o: ag.active.templateObject(&fp.templates[i.B])}
 		case bytecode.OpDefineField:
 			ag.frames[len(ag.frames)-1].pc = pc
-			fp.context.defineField(regs[i.A].o, regs[i.B], regs[i.C])
+			ag.active.defineField(regs[i.A].o, regs[i.B], regs[i.C])
 			regs = ag.reload(regs, ag.frameBase(), fp)
 		case bytecode.OpDefineFieldK:
 			o := regs[i.A].o
 			c := &fp.caches[i.B]
 			if o.shape == c.shape && c.kind == cacheAdd {
 				if validateExec {
-					fp.context.checkDefineHit(fp, pc-1, o, fp.keys[i.B], c.next)
+					ag.active.checkDefineHit(fp, pc-1, o, fp.keys[i.B], c.next)
 				}
 				o.shape = c.next
 				o.appendSlot(regs[i.C])
 				continue
 			}
 			ag.frames[len(ag.frames)-1].pc = pc
-			fp.context.defineFieldK(o, fp.keys[i.B], regs[i.C], c)
+			ag.active.defineFieldK(o, fp.keys[i.B], regs[i.C], c)
 		case bytecode.OpDefineMethod:
 			ag.frames[len(ag.frames)-1].pc = pc
-			fp.context.defineMethod(regs[i.A].o, regs[i.B], regs[i.C])
+			ag.active.defineMethod(regs[i.A].o, regs[i.B], regs[i.C])
 			regs = ag.reload(regs, ag.frameBase(), fp)
 		case bytecode.OpDefineGetter, bytecode.OpDefineSetter:
 			ag.frames[len(ag.frames)-1].pc = pc + 1
 			enumerable := fp.code[pc].A != 0
 			pc++
-			fp.context.defineAccessor(regs[i.A].o, regs[i.B], regs[i.C].o, i.Op == bytecode.OpDefineSetter, enumerable)
+			ag.active.defineAccessor(regs[i.A].o, regs[i.B], regs[i.C].o, i.Op == bytecode.OpDefineSetter, enumerable)
 			regs = ag.reload(regs, ag.frameBase(), fp)
 		case bytecode.OpSetFuncName:
 			ag.frames[len(ag.frames)-1].pc = pc
-			fp.context.setFuncName(regs[i.A], regs[i.B], int(i.C))
+			ag.active.setFuncName(regs[i.A], regs[i.B], int(i.C))
 		case bytecode.OpSetHome:
 			regs[i.A].o.ownFunction().home = regs[i.B].o
 		case bytecode.OpCopyProps:
 			ag.frames[len(ag.frames)-1].pc = pc
-			fp.context.copyDataProperties(regs[i.A].o, regs[i.B], nil)
+			ag.active.copyDataProperties(regs[i.A].o, regs[i.B], nil)
 			regs = ag.reload(regs, ag.frameBase(), fp)
 		case bytecode.OpCopyPropsExcept:
 			ag.frames[len(ag.frames)-1].pc = pc + 1
 			n := int(fp.code[pc].A)
 			pc++
-			o := fp.context.NewOrdinaryObject()
+			o := ag.active.NewOrdinaryObject()
 			excluded := append([]Value(nil), slices.Clip(regs)[i.C:int(i.C)+n]...)
-			fp.context.copyDataProperties(o, regs[i.B], excluded)
+			ag.active.copyDataProperties(o, regs[i.B], excluded)
 			regs = ag.reload(regs, ag.frameBase(), fp)
 			regs[i.A] = Value{o: o}
 		case bytecode.OpSetProto:
 			if p := regs[i.B]; p.IsObject() {
-				fp.context.setProto(regs[i.A].o, p.o)
+				ag.active.setProto(regs[i.A].o, p.o)
 			} else if p.IsNull() {
-				fp.context.setProto(regs[i.A].o, nil)
+				ag.active.setProto(regs[i.A].o, nil)
 			}
 		case bytecode.OpClass:
 			ag.frames[len(ag.frames)-1].pc = pc
@@ -2869,7 +2870,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			if i.C >= 0 {
 				parent = regs[i.C]
 			}
-			proto := fp.context.setupClass(regs[i.B].o, parent)
+			proto := ag.active.setupClass(regs[i.B].o, parent)
 			regs = ag.reload(regs, ag.frameBase(), fp)
 			regs[i.A] = Value{o: proto}
 		case bytecode.OpPrivateName:
@@ -2885,35 +2886,35 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 		case bytecode.OpInitFields:
 			if regs[i.A].o.fn.fields != nil {
 				ag.frames[len(ag.frames)-1].pc = pc
-				fp.context.initFields(regs[i.A].o, regs[i.B])
+				ag.active.initFields(regs[i.A].o, regs[i.B])
 				regs = ag.reload(regs, ag.frameBase(), fp)
 			}
 		case bytecode.OpAddField:
 			ag.frames[len(ag.frames)-1].pc = pc + 1
 			kind := int(fp.code[pc].A)
 			pc++
-			fp.context.addClassElement(regs[i.A].o, regs[i.B], regs[i.C], kind)
+			ag.active.addClassElement(regs[i.A].o, regs[i.B], regs[i.C], kind)
 			regs = ag.reload(regs, ag.frameBase(), fp)
 		case bytecode.OpCheckThisUninit:
 			if regs[i.A].o != tdzObject {
 				ag.frames[len(ag.frames)-1].pc = pc
-				fp.context.ThrowReferenceError("super constructor may only be called once")
+				ag.active.ThrowReferenceError("super constructor may only be called once")
 			}
 		case bytecode.OpRequireCoercible:
 			ag.frames[len(ag.frames)-1].pc = pc
 			if regs[i.A].IsUndefined() {
-				fp.context.ThrowTypeError("cannot destructure 'undefined' as it is undefined")
+				ag.active.ThrowTypeError("cannot destructure 'undefined' as it is undefined")
 			}
-			fp.context.ThrowTypeError("cannot destructure 'null' as it is null")
+			ag.active.ThrowTypeError("cannot destructure 'null' as it is null")
 
 		case bytecode.OpForIn:
 			ag.frames[len(ag.frames)-1].pc = pc
-			it := fp.context.newForIn(regs[i.B])
+			it := ag.active.newForIn(regs[i.B])
 			regs = ag.reload(regs, ag.frameBase(), fp)
 			regs[i.A] = it
 		case bytecode.OpForInNext:
 			ag.frames[len(ag.frames)-1].pc = pc
-			k, ok := fp.context.forInNext(regs[i.B].o)
+			k, ok := ag.active.forInNext(regs[i.B].o)
 			regs = ag.reload(regs, ag.frameBase(), fp)
 			if !ok {
 				pc = int(i.C)
@@ -2922,14 +2923,14 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			regs[i.A] = k
 		case bytecode.OpGetIterator:
 			v := regs[i.B]
-			if i.C == bytecode.IterSync && v.o != nil && v.o.kind == kindArray && fp.context.arrayIterationPlain(v.o) {
+			if i.C == bytecode.IterSync && v.o != nil && v.o.kind == kindArray && ag.active.arrayIterationPlain(v.o) {
 				// A numeric iterator slot identifies an indexed array with the original next method.
 				regs[i.A] = Number(0)
 				regs[i.A+1] = v
 				continue
 			}
 			ag.frames[len(ag.frames)-1].pc = pc
-			it, next := fp.context.getIterator(v, i.C == bytecode.IterAsync)
+			it, next := ag.active.getIterator(v, i.C == bytecode.IterAsync)
 			regs = ag.reload(regs, ag.frameBase(), fp)
 			regs[i.A] = it
 			regs[i.A+1] = next
@@ -2960,7 +2961,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				// A getter that throws finishes the iterator.
 				regs[i.B] = Undefined
 				regs[i.B+1] = Undefined
-				v := fp.context.plainArrayIteratorIndex(o, j)
+				v := ag.active.plainArrayIteratorIndex(o, j)
 				regs = ag.reload(regs, ag.frameBase(), fp)
 				regs[i.B] = Number(idx.n + 1)
 				regs[i.B+1] = Value{o: o}
@@ -2972,7 +2973,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				// An iterator whose step throws counts as finished, so that it is not closed.
 				it := regs[i.B]
 				regs[i.B] = Undefined
-				v, st := fp.context.iterNext(it, regs[i.B+1])
+				v, st := ag.active.iterNext(it, regs[i.B+1])
 				regs = ag.reload(regs, ag.frameBase(), fp)
 				switch st {
 				case iterValue:
@@ -3004,7 +3005,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 					continue
 				}
 				e := o.elems[j].o
-				if e == nil || e.shape != fp.context.realm.shapes.array || e.length < 2 || len(e.elems) < 2 || e.elems[0].isHole() || e.elems[1].isHole() || !ag.pairDestructuringPlain(fp.context.realm) {
+				if e == nil || e.shape != ag.active.realm.shapes.array || e.length < 2 || len(e.elems) < 2 || e.elems[0].isHole() || e.elems[1].isHole() || !ag.pairDestructuringPlain(ag.active.realm) {
 					continue
 				}
 				regs[i.B].n = it.n + 1
@@ -3018,17 +3019,17 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			}
 			var x, y Value
 			var st PairStep
-			pairRealm := fp.context.realm
-			if step := next.o.fn.iteratorPairStep(fp.context.realm); step != nil {
+			pairRealm := ag.active.realm
+			if step := next.o.fn.iteratorPairStep(ag.active.realm); step != nil {
 				x, y, st = step(IteratorState(it))
 				if st == PairYielded {
 					pairRealm = it.o.shape.realm
 				}
-			} else if next.o == fp.context.realm.intrinsics[IntrinsicArrayIteratorPrototypeNext] {
+			} else if next.o == ag.active.realm.intrinsics[IntrinsicArrayIteratorPrototypeNext] {
 				// Reading an array entry can run JavaScript. A throwing step finishes the iterator.
 				ag.frames[len(ag.frames)-1].pc = pc
 				regs[i.B] = Undefined
-				x, y, st = fp.context.arrayIteratorPairStep(it, next)
+				x, y, st = ag.active.arrayIteratorPairStep(it, next)
 				regs = ag.reload(regs, ag.frameBase(), fp)
 				regs[i.B] = it
 			} else {
@@ -3060,23 +3061,23 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			if it.o == numberObject {
 				o := regs[i.A+1].o
 				regs[i.A+1] = Undefined
-				fp.context.closePlainArrayIterator(o, uint32(it.n), pending)
+				ag.active.closePlainArrayIterator(o, uint32(it.n), pending)
 			} else {
-				fp.context.iteratorClose(it, pending)
+				ag.active.iteratorClose(it, pending)
 			}
 			regs = ag.reload(regs, ag.frameBase(), fp)
 		case bytecode.OpIterCall:
 			ag.frames[len(ag.frames)-1].pc = pc
 			{
 				it := regs[i.B]
-				m := fp.context.GetMethod(it, fp.keys[i.C])
+				m := ag.active.GetMethod(it, fp.keys[i.C])
 				regs = ag.reload(regs, ag.frameBase(), fp)
 				if m == nil {
 					regs[i.A] = Undefined
 					regs[i.A+1] = False
 					continue
 				}
-				r := fp.context.Call(m, it, regs[i.A])
+				r := ag.active.Call(m, it, regs[i.A])
 				regs = ag.reload(regs, ag.frameBase(), fp)
 				regs[i.A] = r
 				regs[i.A+1] = True
@@ -3086,7 +3087,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			{
 				it := regs[i.B]
 				regs[i.B] = Undefined
-				r, ok := fp.context.iterReturn(it)
+				r, ok := ag.active.iterReturn(it)
 				regs = ag.reload(regs, ag.frameBase(), fp)
 				regs[i.A] = r
 				regs[i.A+1] = Bool(ok)
@@ -3094,12 +3095,12 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 		case bytecode.OpIterCheckResult:
 			if !regs[i.A].IsObject() {
 				ag.frames[len(ag.frames)-1].pc = pc
-				fp.context.throwNotIterResult(regs[i.A])
+				ag.active.throwNotIterResult(regs[i.A])
 			}
 		case bytecode.OpIterResultValue:
 			ag.frames[len(ag.frames)-1].pc = pc
 			{
-				v, done := fp.context.iterResultValue(regs[i.B])
+				v, done := ag.active.iterResultValue(regs[i.B])
 				regs = ag.reload(regs, ag.frameBase(), fp)
 				if done {
 					pc = int(i.C)
@@ -3111,7 +3112,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 		case bytecode.OpUsing:
 			ag.frames[len(ag.frames)-1].pc = pc
 			{
-				dc := fp.context.addDisposableOp(regs[i.B], regs[i.A], DisposeHint(i.C))
+				dc := ag.active.addDisposableOp(regs[i.B], regs[i.A], DisposeHint(i.C))
 				regs = ag.reload(regs, ag.frameBase(), fp)
 				regs[i.A] = dc
 			}
@@ -3120,7 +3121,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 		case bytecode.OpDisposeStep:
 			ag.frames[len(ag.frames)-1].pc = pc
 			{
-				v, await := fp.context.disposeStepOp(regs[i.B])
+				v, await := ag.active.disposeStepOp(regs[i.B])
 				regs = ag.reload(regs, ag.frameBase(), fp)
 				if !await {
 					pc = int(i.C)
@@ -3129,7 +3130,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				regs[i.A] = v
 			}
 		case bytecode.OpDisposeError:
-			fp.context.disposeError(regs[i.A].o.ext.(*DisposeCapability), regs[i.B])
+			ag.active.disposeError(regs[i.A].o.ext.(*DisposeCapability), regs[i.B])
 		case bytecode.OpDisposeEnd:
 			if v, thrown := endDisposeOp(regs[i.A]); thrown {
 				regs[i.A] = Undefined
@@ -3140,7 +3141,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 
 		case bytecode.OpWith:
 			ag.frames[len(ag.frames)-1].pc = pc
-			o := fp.context.ToObject(regs[i.A])
+			o := ag.active.ToObject(regs[i.A])
 			cur := &ag.frames[len(ag.frames)-1]
 			cur.scopes = append(cur.scopes, o)
 		case bytecode.OpPopScope:
@@ -3148,7 +3149,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			cur.leaveScopes(len(cur.scopes) - 1)
 		case bytecode.OpResolveName:
 			ag.frames[len(ag.frames)-1].pc = pc
-			o := fp.context.findScope(ag.frames[len(ag.frames)-1].cl, fp.keys[i.B], int(i.C))
+			o := ag.active.findScope(ag.frames[len(ag.frames)-1].cl, fp.keys[i.B], int(i.C))
 			regs = ag.reload(regs, ag.frameBase(), fp)
 			if o != nil {
 				regs[i.A] = Value{o: o}
@@ -3157,46 +3158,46 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			}
 		case bytecode.OpGetScoped, bytecode.OpGetScopedStrict:
 			ag.frames[len(ag.frames)-1].pc = pc
-			v := fp.context.getScoped(regs[i.B].o, fp.keys[i.C], i.Op == bytecode.OpGetScopedStrict)
+			v := ag.active.getScoped(regs[i.B].o, fp.keys[i.C], i.Op == bytecode.OpGetScopedStrict)
 			regs = ag.reload(regs, ag.frameBase(), fp)
 			regs[i.A] = v
 		case bytecode.OpSetScoped, bytecode.OpSetScopedStrict:
 			ag.frames[len(ag.frames)-1].pc = pc
-			fp.context.setScoped(regs[i.B].o, fp.keys[i.C], regs[i.A], i.Op == bytecode.OpSetScopedStrict)
+			ag.active.setScoped(regs[i.B].o, fp.keys[i.C], regs[i.A], i.Op == bytecode.OpSetScopedStrict)
 			regs = ag.reload(regs, ag.frameBase(), fp)
 		case bytecode.OpDeleteScoped:
 			ag.frames[len(ag.frames)-1].pc = pc
-			ok := fp.context.DeleteProp(regs[i.B].o, PropKey{key: fp.keys[i.C]})
+			ok := ag.active.DeleteProp(regs[i.B].o, PropKey{key: fp.keys[i.C]})
 			regs = ag.reload(regs, ag.frameBase(), fp)
 			regs[i.A] = Bool(ok)
 		case bytecode.OpDeleteName:
 			ag.frames[len(ag.frames)-1].pc = pc
-			ok := fp.context.deleteName(fp.keys[i.B])
+			ok := ag.active.deleteName(fp.keys[i.B])
 			regs = ag.reload(regs, ag.frameBase(), fp)
 			regs[i.A] = Bool(ok)
 		case bytecode.OpCaptureScopes:
 			regs[i.A].o.ownFunction().scopes = ag.openScopes(ag.frames[len(ag.frames)-1].cl)
 		case bytecode.OpEvalScope:
-			fp.context.pushEvalScope()
+			ag.active.pushEvalScope()
 		case bytecode.OpScopeThis:
 			regs[i.A] = scopeThis(regs[i.B])
 		case bytecode.OpDeclareEvalVar:
 			ag.frames[len(ag.frames)-1].pc = pc
-			fp.context.declareEvalVar(ag.frames[len(ag.frames)-1].cl, fp.keys[i.A], int(i.B), slices.Clip(regs), int(i.C))
+			ag.active.declareEvalVar(ag.frames[len(ag.frames)-1].cl, fp.keys[i.A], int(i.B), slices.Clip(regs), int(i.C))
 		case bytecode.OpImport, bytecode.OpImportMeta:
 			ag.frames[len(ag.frames)-1].pc = pc
-			v := fp.context.importOp(slices.Clip(regs), i)
+			v := ag.active.importOp(slices.Clip(regs), i)
 			regs = ag.reload(regs, ag.frameBase(), fp)
 			regs[i.A] = v
 		case bytecode.OpAutoAccessor:
-			fp.context.autoAccessorOp(slices.Clip(regs), i)
+			ag.active.autoAccessorOp(slices.Clip(regs), i)
 		case bytecode.OpDecorateBegin, bytecode.OpDecorateAdd, bytecode.OpDecorateClass, bytecode.OpDecorateElement, bytecode.OpDecorateApply, bytecode.OpDecorateFinish:
 			if i.Op == bytecode.OpDecorateElement {
 				// Past the OpExtra, which holds the Elem kind.
 				pc++
 			}
 			ag.frames[len(ag.frames)-1].pc = pc
-			if v, ok := fp.context.decorateOp(slices.Clip(regs), i, &fp.code[pc-1]); ok {
+			if v, ok := ag.active.decorateOp(slices.Clip(regs), i, &fp.code[pc-1]); ok {
 				regs = ag.reload(regs, ag.frameBase(), fp)
 				regs[i.A] = v
 			} else {
@@ -3211,7 +3212,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 	arith:
 		{
 			ag.frames[len(ag.frames)-1].pc = pc
-			v := fp.context.arith(i.Op, regs[i.B], regs[i.C])
+			v := ag.active.arith(i.Op, regs[i.B], regs[i.C])
 			regs = ag.reload(regs, ag.frameBase(), fp)
 			regs[i.A] = v
 			continue
@@ -3220,7 +3221,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 	arithK:
 		{
 			ag.frames[len(ag.frames)-1].pc = pc
-			v := fp.context.arith(i.Op.RegOperand(), regs[i.B], fp.consts[i.C])
+			v := ag.active.arith(i.Op.RegOperand(), regs[i.B], fp.consts[i.C])
 			regs = ag.reload(regs, ag.frameBase(), fp)
 			regs[i.A] = v
 			continue
@@ -3235,22 +3236,22 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			var getter *Object
 			switch i.Op {
 			case bytecode.OpGetProp, bytecode.OpGetPropChain, bytecode.OpGetMethod, bytecode.OpGetLength:
-				val, getter = fp.context.getNamedAtSite(receiver, name, site)
+				val, getter = ag.active.getNamedAtSite(receiver, name, site)
 			case bytecode.OpGetArgsLength:
-				val, getter = fp.context.getNamed(receiver, name, nil)
+				val, getter = ag.active.getNamed(receiver, name, nil)
 			case bytecode.OpGetIndex, bytecode.OpGetArgsIndex:
-				val, getter = fp.context.getValue(receiver, key)
+				val, getter = ag.active.getValue(receiver, key)
 			case bytecode.OpGetIndexInt:
-				val, getter = fp.context.getIndex(receiver, uint32(i.C))
+				val, getter = ag.active.getIndex(receiver, uint32(i.C))
 			case bytecode.OpCopyPropToGlobal:
 				// The following global store owns the cache and fills it only for writable bindings.
-				val = fp.context.resolveGlobal(fp.keys[fp.code[i.C-1].B], nil)
+				val = ag.active.resolveGlobal(fp.keys[fp.code[i.C-1].B], nil)
 			case bytecode.OpResolveGlobal:
-				val = fp.context.resolveGlobal(fp.keys[i.B], &fp.globals[i.C])
+				val = ag.active.resolveGlobal(fp.keys[i.B], &fp.globals[i.C])
 			case bytecode.OpGetGlobal, bytecode.OpGetGlobalStrict, bytecode.OpGetGlobalOrUndef, bytecode.OpGetGlobalOrUndefStrict:
 				orUndef := i.Op == bytecode.OpGetGlobalOrUndef || i.Op == bytecode.OpGetGlobalOrUndefStrict
 				strict := i.Op == bytecode.OpGetGlobalStrict || i.Op == bytecode.OpGetGlobalOrUndefStrict
-				val = fp.context.getGlobal(fp.keys[i.B], &fp.globals[i.C], orUndef, strict)
+				val = ag.active.getGlobal(fp.keys[i.B], &fp.globals[i.C], orUndef, strict)
 			default:
 				panic("ekuma: unexpected property read opcode: " + i.Op.String())
 			}
@@ -3272,17 +3273,17 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				if setter == nil {
 					fr.pc = pc
 					var ok bool
-					setter, ok = fp.context.setNamed(receiver, name, rhs, site)
+					setter, ok = ag.active.setNamed(receiver, name, rhs, site)
 					if !ok && i.Op == bytecode.OpSetPropStrict {
-						fp.context.throwReadOnly(receiver, PropKey{key: name})
+						ag.active.throwReadOnly(receiver, PropKey{key: name})
 					}
 				}
 			case bytecode.OpSetGlobal, bytecode.OpSetGlobalStrict:
 				fr.pc = pc
-				fp.context.setGlobal(fp.keys[i.B], rhs, &fp.globals[i.C], i.Op == bytecode.OpSetGlobalStrict)
+				ag.active.setGlobal(fp.keys[i.B], rhs, &fp.globals[i.C], i.Op == bytecode.OpSetGlobalStrict)
 			case bytecode.OpSetIndex, bytecode.OpSetIndexStrict, bytecode.OpSetIndexInt, bytecode.OpSetIndexIntStrict:
 				fr.pc = pc
-				setter = fp.context.setValue(receiver, key, rhs, i.Op == bytecode.OpSetIndexStrict || i.Op == bytecode.OpSetIndexIntStrict)
+				setter = ag.active.setValue(receiver, key, rhs, i.Op == bytecode.OpSetIndexStrict || i.Op == bytecode.OpSetIndexIntStrict)
 			default:
 				panic("ekuma: unexpected property write opcode: " + i.Op.String())
 			}
@@ -3308,9 +3309,9 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 
 	forward:
 		// A call with the arguments of the running function.
-		if (i.Op == bytecode.OpCallFwd || i.Op == bytecode.OpTailCallFwd) && (!regs[i.C].IsUndefined() || !ag.arrayIterationUnmodified(fp.context.realm)) {
+		if (i.Op == bytecode.OpCallFwd || i.Op == bytecode.OpTailCallFwd) && (!regs[i.C].IsUndefined() || !ag.arrayIterationUnmodified(ag.active.realm)) {
 			ag.frames[len(ag.frames)-1].pc = pc
-			args := fp.context.spreadArgs(fp.context.forwardedArguments(i.C)).elems
+			args := ag.active.spreadArgs(ag.active.forwardedArguments(i.C)).elems
 			argc, ret, isNew, newTarget = len(args), i.A, false, nil
 			argBase = ag.frames[len(ag.frames)-1].top()
 			ag.ensureStack(argBase + argc)
@@ -3344,15 +3345,15 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			}
 			if f == nil || f.fn == nil {
 				ag.frames[len(ag.frames)-1].pc = pc
-				ag.throwNotCallable(fp, pc, slices.Clip(regs))
+				ag.active.throwNotCallable(fp, pc, slices.Clip(regs))
 			}
 			fn := f.fn
 			if c := fn.code; c != nil && !c.isGenerator && !c.isAsync && (!fn.classConstructor || isNew || newTarget != nil) {
 				if len(ag.frames) >= maxFrames {
 					ag.frames[len(ag.frames)-1].pc = pc
-					fp.context.ThrowRangeError("maximum call stack size exceeded")
+					ag.active.ThrowRangeError("maximum call stack size exceeded")
 				}
-				if site := c.returnedProperty; site != nil && !isNew && newTarget == nil && c.context == fp.context && callThis.IsObject() {
+				if site := c.returnedProperty; site != nil && !isNew && newTarget == nil && c.context == ag.active && callThis.IsObject() {
 					if e := site.entry(callThis.o.shape); e != nil && e.kind == cacheOwn {
 						if validateExec {
 							c.checkReturnedProperty(callThis, e)
@@ -3396,19 +3397,19 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				}
 				// Numeric kernels cannot observe the frame. Record the call for the other paths.
 				ag.frames[len(ag.frames)-1].pc = pc
-				if k != nil && info.realm == fp.context.realm {
-					if v, ok := k.callMethod(fp.context, callThis, ag.stack[argBase:argBase+argc:argBase+argc]); ok {
+				if k != nil && info.realm == ag.active.realm {
+					if v, ok := k.callMethod(ag.active, callThis, ag.stack[argBase:argBase+argc:argBase+argc]); ok {
 						regs = ag.reload(regs, ag.frameBase(), fp)
 						regs[ret] = v
 						continue
 					}
 				}
 				// A native function of the current realm and a proxy are called directly.
-				if info.realm == fp.context.realm || info.realm == nil {
+				if info.realm == ag.active.realm || info.realm == nil {
 					ag.ensureStack(argBase + argc)
 					saved := ag.sp
 					ag.sp = argBase + argc
-					r := fp.context.invokeNative(f, callThis, ag.stack[argBase:argBase+argc:argBase+argc], nil)
+					r := ag.active.invokeNative(f, callThis, ag.stack[argBase:argBase+argc:argBase+argc], nil)
 					ag.sp = saved
 					regs = ag.reload(regs, ag.frameBase(), fp)
 					regs[ret] = r
@@ -3434,7 +3435,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			ag.ensureStack(argBase + argc)
 			saved := ag.sp
 			ag.sp = argBase + argc
-			r := fp.context.callSlow(f, callThis, ag.stack[argBase:argBase+argc:argBase+argc], isNew, newTarget)
+			r := ag.active.callSlow(f, callThis, ag.stack[argBase:argBase+argc:argBase+argc], isNew, newTarget)
 			ag.sp = saved
 			regs = ag.reload(regs, ag.frameBase(), fp)
 			regs[ret] = r
@@ -3444,7 +3445,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 	tailCall:
 		// A call in tail position, whose arguments are on the stack from argBase on.
 		ag.frames[len(ag.frames)-1].pc = pc
-		if f, callThis, argBase, argc = fp.context.unbind(f, callThis, argBase, argc); !fp.context.replaceFrame(f, callThis, argBase, argc) {
+		if f, callThis, argBase, argc = ag.active.unbind(f, callThis, argBase, argc); !ag.active.replaceFrame(f, callThis, argBase, argc) {
 			regs = ag.reload(regs, ag.frameBase(), fp)
 			goto call
 		}
@@ -3461,13 +3462,13 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 		// new f(...) for anything but a plain constructor function.
 		{
 			ag.frames[len(ag.frames)-1].pc = pc
-			if f == nil || f.fn == nil || !fp.context.IsConstructor(f) {
-				ag.throwNotConstructor(fp, pc, slices.Clip(regs))
+			if f == nil || f.fn == nil || !ag.active.IsConstructor(f) {
+				ag.active.throwNotConstructor(fp, pc, slices.Clip(regs))
 			}
 			ag.ensureStack(argBase + argc)
 			saved := ag.sp
 			ag.sp = argBase + argc
-			r := fp.context.Construct(f, ag.stack[argBase:argBase+argc:argBase+argc], f)
+			r := ag.active.Construct(f, ag.stack[argBase:argBase+argc:argBase+argc], f)
 			ag.sp = saved
 			regs = ag.reload(regs, ag.frameBase(), fp)
 			regs[ret] = Value{o: r}
@@ -3479,13 +3480,13 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 		{
 			ag.frames[len(ag.frames)-1].pc = pc
 			parent := f
-			if parent == nil || parent.fn == nil || !fp.context.IsConstructor(parent) {
-				fp.context.ThrowTypeError("super constructor is not a constructor")
+			if parent == nil || parent.fn == nil || !ag.active.IsConstructor(parent) {
+				ag.active.ThrowTypeError("super constructor is not a constructor")
 			}
 			ag.ensureStack(argBase + argc)
 			saved := ag.sp
 			ag.sp = argBase + argc
-			r := fp.context.Construct(parent, ag.stack[argBase:argBase+argc:argBase+argc], newTarget)
+			r := ag.active.Construct(parent, ag.stack[argBase:argBase+argc:argBase+argc], newTarget)
 			ag.sp = saved
 			regs = ag.reload(regs, ag.frameBase(), fp)
 			regs[ret] = Value{o: r}
@@ -3617,6 +3618,9 @@ func (ag *agent) frameBase() int {
 
 // reload returns the registers of the running frame after a call that may have moved the stack.
 func (ag *agent) reload(regs []Value, base int, fp *funcProto) []Value {
+	if validateExec {
+		ag.checkActive(fp)
+	}
 	if fp.heapRegs {
 		return regs
 	}

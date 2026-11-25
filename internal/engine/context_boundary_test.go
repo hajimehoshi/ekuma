@@ -5,7 +5,9 @@ package engine_test
 
 import (
 	"go/ast"
+	"go/token"
 	"go/types"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -15,7 +17,8 @@ func TestExecutionContextBoundary(t *testing.T) {
 	executionContext := prog.typ(t, "ExecutionContext")
 	host, realm, agent := prog.typ(t, "Host"), prog.typ(t, "realm"), prog.typ(t, "agent")
 
-	// Only dispatch, restoration and the host entry point may observe the active binding.
+	// Only dispatch, restoration and the host entry point may observe the active binding. The
+	// interpreter loop also reads it where the active context is that of the running frame.
 	for _, typ := range prog.forms(executionContext) {
 		if method, _, _ := types.LookupFieldOrMethod(types.NewPointer(typ), true, typ.Obj().Pkg(), "ActiveContext"); method != nil {
 			t.Error("ExecutionContext exposes the active context to built-ins")
@@ -27,6 +30,7 @@ func TestExecutionContextBoundary(t *testing.T) {
 			objs: []types.Object{prog.field(t, "agent", "active")},
 			owners: []string{
 				"ExecutionContext.activate", "Host.ActiveContext", "ExecutionContext.runFrame", "ExecutionContext.protect",
+				"agent.exec", "agent.checkActive",
 			},
 		},
 		useRule{
@@ -39,6 +43,8 @@ func TestExecutionContextBoundary(t *testing.T) {
 			},
 		},
 	)
+
+	checkActiveReads(t, prog)
 
 	for _, p := range prog.pkgs {
 		if path := strings.TrimPrefix(p.path, modulePath+"/internal/"); path != "json" && path != "builtin" && !strings.HasPrefix(path, "builtin/") {
@@ -118,4 +124,47 @@ func TestFrameRegisterBoundary(t *testing.T) {
 			owners: []string{"agent.captureRegister"},
 		},
 	)
+}
+
+// checkActiveReads tests that the interpreter loop uses the active context in place, so that no copy
+// of it outlives a change of the running frame, and installs contexts only through activate.
+func checkActiveReads(t *testing.T, prog *program) {
+	active := prog.field(t, "agent", "active")
+	var reads int
+	for _, p := range prog.pkgs {
+		for _, file := range p.files {
+			for _, decl := range file.Decls {
+				if prog.owner(&p, decl, []string{"agent.exec"}) != "agent.exec" {
+					continue
+				}
+				var stack []ast.Node
+				ast.Inspect(decl, func(n ast.Node) bool {
+					if n == nil {
+						stack = stack[:len(stack)-1]
+						return true
+					}
+					if sel, ok := n.(*ast.SelectorExpr); ok && p.info.Uses[sel.Sel] == active {
+						reads++
+						inPlace := false
+						switch parent := stack[len(stack)-1].(type) {
+						case *ast.SelectorExpr:
+							inPlace = true
+						case *ast.BinaryExpr:
+							inPlace = parent.Op == token.EQL || parent.Op == token.NEQ
+						case *ast.CallExpr:
+							inPlace = slices.Contains(parent.Args, ast.Expr(sel))
+						}
+						if !inPlace {
+							t.Errorf("%v: the interpreter loop stores the active context", p.fset.Position(sel.Pos()))
+						}
+					}
+					stack = append(stack, n)
+					return true
+				})
+			}
+		}
+	}
+	if reads == 0 {
+		t.Error("the interpreter loop never reads the active context")
+	}
 }

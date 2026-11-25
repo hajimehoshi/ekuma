@@ -57,24 +57,24 @@ func (ag *agent) calleeName(fp *funcProto, pc int) wtf8.String {
 
 // throwNotCallable throws the TypeError for the call instruction of fp that ends before pc,
 // whose callee is not a function.
-func (ag *agent) throwNotCallable(fp *funcProto, pc int, regs []Value) {
+func (cx *ExecutionContext) throwNotCallable(fp *funcProto, pc int, regs []Value) {
 	pc = callAt(fp, pc)
-	name := wtf8.ToValidUTF8(ag.calleeName(fp, pc))
+	name := wtf8.ToValidUTF8(cx.calleeName(fp, pc))
 	if name == "" {
-		name = ag.DisplayString(regs[fp.code[pc].B])
+		name = cx.DisplayString(regs[fp.code[pc].B])
 	}
-	fp.context.ThrowTypeError(name + " is not a function")
+	cx.ThrowTypeError(name + " is not a function")
 }
 
 // throwNotConstructor throws the TypeError for the call instruction of fp that ends before pc,
 // whose callee is not a constructor.
-func (ag *agent) throwNotConstructor(fp *funcProto, pc int, regs []Value) {
+func (cx *ExecutionContext) throwNotConstructor(fp *funcProto, pc int, regs []Value) {
 	pc = callAt(fp, pc)
-	name := wtf8.ToValidUTF8(ag.calleeName(fp, pc))
+	name := wtf8.ToValidUTF8(cx.calleeName(fp, pc))
 	if name == "" {
-		name = ag.DisplayString(regs[fp.code[pc].B])
+		name = cx.DisplayString(regs[fp.code[pc].B])
 	}
-	fp.context.ThrowTypeError(name + " is not a constructor")
+	cx.ThrowTypeError(name + " is not a constructor")
 }
 
 // getGlobal reads the global variable key, as strict code does when strict is set. When it does
