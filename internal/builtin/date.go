@@ -52,13 +52,21 @@ func makeDate(c *[dateComponentCount]float64) float64 {
 	return datetime.MakeDate(day, datetime.MakeTime(c[dateHours], c[dateMinutes], c[dateSeconds], c[dateMilliseconds]))
 }
 
+// dateTimeZoneName is the function that [SetDateTimeZoneName] sets, or nil.
+var dateTimeZoneName func(cx *engine.ExecutionContext, tz datetime.TimeZone, t, offset int64) string
+
+// SetDateTimeZoneName sets the function that returns the name of the time zone tz in Date
+// strings for the time value t with the UTC offset offset, or empty for the default name. It
+// must be called before any VM is created, typically from an init function.
+func SetDateTimeZoneName(name func(cx *engine.ExecutionContext, tz datetime.TimeZone, t, offset int64) string) {
+	dateTimeZoneName = name
+}
+
 // dateStringOffset returns the local UTC offset and the display name for Date strings.
 func dateStringOffset(cx *engine.ExecutionContext, tz datetime.TimeZone, tv float64) (float64, string) {
 	offset, name := tz.Offset(tv)
-	if ext, ok := cx.RealmExtension().(interface {
-		DateTimeZoneName(cx *engine.ExecutionContext, tz datetime.TimeZone, t, offset int64) string
-	}); ok {
-		if s := ext.DateTimeZoneName(cx, tz, int64(tv), int64(offset)); s != "" {
+	if dateTimeZoneName != nil {
+		if s := dateTimeZoneName(cx, tz, int64(tv), int64(offset)); s != "" {
 			name = s
 		}
 	}

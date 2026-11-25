@@ -31,12 +31,12 @@ func getOptionsObject(cx *engine.ExecutionContext, v engine.Value, name string) 
 }
 
 // newListFormat implements the Intl.ListFormat constructor.
-func (r *realm) newListFormat(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func newListFormat(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	nt := cx.GetNewTarget()
 	if nt == nil {
 		cx.ThrowTypeError("constructor Intl.ListFormat requires 'new'")
 	}
-	proto := protoFor(cx, nt, func(r *realm) *engine.Object { return r.listFormatProto })
+	proto := cx.GetPrototypeFromConstructor(nt, engine.IntrinsicIntlListFormatPrototype)
 	requested := canonicalizeLocaleList(cx, arg(args, 0))
 	options := getOptionsObject(cx, arg(args, 1), "Intl.ListFormat")
 	bestFit := localeMatcher(cx, options)
@@ -82,13 +82,8 @@ func stringListFromIterable(cx *engine.ExecutionContext, v engine.Value) []strin
 }
 
 // initListFormat defines Intl.ListFormat.
-func (r *realm) initListFormat(cx *engine.ExecutionContext) {
-	proto := cx.NewObject(cx.Intrinsic(engine.IntrinsicObjectPrototype))
-	ctor := cx.NewNativeConstructor("ListFormat", 0, r.newListFormat)
-	cx.Define(ctor, cx.Key(engine.KeyPrototype), engine.ObjectValue(proto), 0)
-	cx.Define(proto, cx.Key(engine.KeyConstructor), engine.ObjectValue(ctor), engine.FlagsHidden)
-	cx.Define(r.ns, cx.Intern("ListFormat"), engine.ObjectValue(ctor), engine.FlagsHidden)
-	r.listFormatProto = proto
+func initListFormat(cx *engine.ExecutionContext, ns *engine.Object) {
+	ctor, proto := constructor(cx, ns, "ListFormat", 0, engine.IntrinsicIntlListFormatPrototype, newListFormat)
 
 	method(cx, ctor, "supportedLocalesOf", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		return supportedLocalesOf(cx, args)

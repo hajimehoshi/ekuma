@@ -1510,8 +1510,12 @@ func (cx *ExecutionContext) GetPrototypeFromConstructor(ctor *Object, defaultPro
 		}
 		r = cx.FunctionContext(ctor).realm
 	}
-	if IntrinsicTemporalInstantPrototype <= defaultProto && defaultProto <= IntrinsicTemporalZonedDateTimePrototype {
-		if ns := r.intrinsics[IntrinsicTemporal]; ns != nil {
+	if IntrinsicTemporalInstantPrototype <= defaultProto && defaultProto <= IntrinsicIntlSegmenterPrototype {
+		ns := r.intrinsics[IntrinsicTemporal]
+		if defaultProto >= IntrinsicIntlCollatorPrototype {
+			ns = r.intrinsics[IntrinsicIntl]
+		}
+		if ns != nil {
 			cx.InitLazyObject(ns)
 		}
 	}

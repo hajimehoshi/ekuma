@@ -639,6 +639,9 @@ type agent struct {
 
 	defaultLocale string
 
+	// availableDefaultLocale is the locale of [agent.SetAvailableDefaultLocale], or empty.
+	availableDefaultLocale string
+
 	// randomSource gives the numbers of Math.random, or is nil for the global source of
 	// math/rand/v2.
 	randomSource rand.Source
@@ -775,6 +778,12 @@ const (
 
 	IntrinsicTemporal
 
+	IntrinsicIntl
+	IntrinsicIntlDateTimeFormat
+	IntrinsicIntlNumberFormat
+	IntrinsicIntlSegmentsPrototype
+	IntrinsicIntlSegmentIteratorPrototype
+
 	// The Temporal namespace initializes this range of prototypes.
 	IntrinsicTemporalInstantPrototype
 	IntrinsicTemporalDurationPrototype
@@ -784,6 +793,18 @@ const (
 	IntrinsicTemporalPlainYearMonthPrototype
 	IntrinsicTemporalPlainMonthDayPrototype
 	IntrinsicTemporalZonedDateTimePrototype
+
+	// The Intl namespace initializes this range of prototypes.
+	IntrinsicIntlCollatorPrototype
+	IntrinsicIntlDateTimeFormatPrototype
+	IntrinsicIntlDisplayNamesPrototype
+	IntrinsicIntlDurationFormatPrototype
+	IntrinsicIntlListFormatPrototype
+	IntrinsicIntlLocalePrototype
+	IntrinsicIntlNumberFormatPrototype
+	IntrinsicIntlPluralRulesPrototype
+	IntrinsicIntlRelativeTimeFormatPrototype
+	IntrinsicIntlSegmenterPrototype
 
 	// The prototypes of the native error types are in the order of [ErrorKind].
 	IntrinsicErrorPrototype

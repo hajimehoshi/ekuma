@@ -41,12 +41,12 @@ func defaultDigits() number.Digits {
 }
 
 // newRelativeTimeFormat implements the Intl.RelativeTimeFormat constructor.
-func (r *realm) newRelativeTimeFormat(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func newRelativeTimeFormat(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	nt := cx.GetNewTarget()
 	if nt == nil {
 		cx.ThrowTypeError("constructor Intl.RelativeTimeFormat requires 'new'")
 	}
-	proto := protoFor(cx, nt, func(r *realm) *engine.Object { return r.relativeTimeFormatProto })
+	proto := cx.GetPrototypeFromConstructor(nt, engine.IntrinsicIntlRelativeTimeFormatPrototype)
 	requested := canonicalizeLocaleList(cx, arg(args, 0))
 	options := optionsObject(cx, arg(args, 1))
 	res := resolveNumberingSystemLocale(cx, requested, options)
@@ -137,13 +137,8 @@ func (rtf *relativeTimeFormatData) partitionArgs(cx *engine.ExecutionContext, ar
 }
 
 // initRelativeTimeFormat defines Intl.RelativeTimeFormat.
-func (r *realm) initRelativeTimeFormat(cx *engine.ExecutionContext) {
-	proto := cx.NewObject(cx.Intrinsic(engine.IntrinsicObjectPrototype))
-	ctor := cx.NewNativeConstructor("RelativeTimeFormat", 0, r.newRelativeTimeFormat)
-	cx.Define(ctor, cx.Key(engine.KeyPrototype), engine.ObjectValue(proto), 0)
-	cx.Define(proto, cx.Key(engine.KeyConstructor), engine.ObjectValue(ctor), engine.FlagsHidden)
-	cx.Define(r.ns, cx.Intern("RelativeTimeFormat"), engine.ObjectValue(ctor), engine.FlagsHidden)
-	r.relativeTimeFormatProto = proto
+func initRelativeTimeFormat(cx *engine.ExecutionContext, ns *engine.Object) {
+	ctor, proto := constructor(cx, ns, "RelativeTimeFormat", 0, engine.IntrinsicIntlRelativeTimeFormatPrototype, newRelativeTimeFormat)
 
 	method(cx, ctor, "supportedLocalesOf", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		return supportedLocalesOf(cx, args)

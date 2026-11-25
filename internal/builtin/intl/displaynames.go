@@ -24,12 +24,12 @@ type displayNamesData struct {
 }
 
 // newDisplayNames implements the Intl.DisplayNames constructor.
-func (r *realm) newDisplayNames(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func newDisplayNames(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	nt := cx.GetNewTarget()
 	if nt == nil {
 		cx.ThrowTypeError("constructor Intl.DisplayNames requires 'new'")
 	}
-	proto := protoFor(cx, nt, func(r *realm) *engine.Object { return r.displayNamesProto })
+	proto := cx.GetPrototypeFromConstructor(nt, engine.IntrinsicIntlDisplayNamesPrototype)
 	requested := canonicalizeLocaleList(cx, arg(args, 0))
 	// GetOptionsObject, with the options required.
 	o := arg(args, 1)
@@ -134,13 +134,8 @@ func isASCII(s string) bool {
 }
 
 // initDisplayNames defines Intl.DisplayNames.
-func (r *realm) initDisplayNames(cx *engine.ExecutionContext) {
-	proto := cx.NewObject(cx.Intrinsic(engine.IntrinsicObjectPrototype))
-	ctor := cx.NewNativeConstructor("DisplayNames", 2, r.newDisplayNames)
-	cx.Define(ctor, cx.Key(engine.KeyPrototype), engine.ObjectValue(proto), 0)
-	cx.Define(proto, cx.Key(engine.KeyConstructor), engine.ObjectValue(ctor), engine.FlagsHidden)
-	cx.Define(r.ns, cx.Intern("DisplayNames"), engine.ObjectValue(ctor), engine.FlagsHidden)
-	r.displayNamesProto = proto
+func initDisplayNames(cx *engine.ExecutionContext, ns *engine.Object) {
+	ctor, proto := constructor(cx, ns, "DisplayNames", 2, engine.IntrinsicIntlDisplayNamesPrototype, newDisplayNames)
 
 	method(cx, ctor, "supportedLocalesOf", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		return supportedLocalesOf(cx, args)

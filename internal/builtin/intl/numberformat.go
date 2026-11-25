@@ -332,22 +332,18 @@ func toIntlMathematicalValue(cx *engine.ExecutionContext, v engine.Value) number
 }
 
 // newNumberFormat implements the Intl.NumberFormat constructor.
-func (r *realm) newNumberFormat(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func newNumberFormat(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	nt := cx.GetNewTarget()
-	newTarget := nt
-	if newTarget == nil {
-		newTarget = r.numberFormatCtor
-	}
-	proto := protoFor(cx, newTarget, func(r *realm) *engine.Object { return r.numberFormatProto })
+	proto := cx.GetPrototypeFromConstructor(nt, engine.IntrinsicIntlNumberFormatPrototype)
 	nf := cx.NewIntlObject(proto, createNumberFormat(cx, arg(args, 0), arg(args, 1)))
 	// ChainNumberFormat.
-	if nt == nil && cx.OrdinaryHasInstance(engine.ObjectValue(r.numberFormatCtor), this) {
+	if nt == nil && cx.OrdinaryHasInstance(engine.ObjectValue(cx.Intrinsic(engine.IntrinsicIntlNumberFormat)), this) {
 		var d engine.PropDesc
 		d.SetValue(engine.ObjectValue(nf))
 		d.SetWritable(false)
 		d.SetEnumerable(false)
 		d.SetConfigurable(false)
-		cx.DefinePropertyOrThrow(this.Object(), engine.NamedKey(r.fallbackSymbol), d)
+		cx.DefinePropertyOrThrow(this.Object(), engine.NamedKey(cx.IntlFallbackSymbol()), d)
 		return this
 	}
 	return engine.ObjectValue(nf)
@@ -355,15 +351,15 @@ func (r *realm) newNumberFormat(cx *engine.ExecutionContext, this engine.Value, 
 
 // unwrapNumberFormat implements UnwrapNumberFormat followed by the check of the internal
 // slot.
-func (r *realm) unwrapNumberFormat(cx *engine.ExecutionContext, this engine.Value, name string) *numberFormatData {
+func unwrapNumberFormat(cx *engine.ExecutionContext, this engine.Value, name string) *numberFormatData {
 	if !this.IsObject() {
 		cx.ThrowTypeError("Intl.NumberFormat.prototype." + name + " called on a value that is not an object")
 	}
 	if nf, ok := engine.IntlData(this).(*numberFormatData); ok {
 		return nf
 	}
-	if cx.OrdinaryHasInstance(engine.ObjectValue(r.numberFormatCtor), this) {
-		if nf, ok := engine.IntlData(cx.Get(this.Object(), engine.NamedKey(r.fallbackSymbol))).(*numberFormatData); ok {
+	if cx.OrdinaryHasInstance(engine.ObjectValue(cx.Intrinsic(engine.IntrinsicIntlNumberFormat)), this) {
+		if nf, ok := engine.IntlData(cx.Get(this.Object(), engine.NamedKey(cx.IntlFallbackSymbol()))).(*numberFormatData); ok {
 			return nf
 		}
 	}
@@ -428,24 +424,19 @@ func numberFormatFunction(cx *engine.ExecutionContext, this engine.Value, args [
 }
 
 // initNumberFormat defines Intl.NumberFormat.
-func (r *realm) initNumberFormat(cx *engine.ExecutionContext) {
-	proto := cx.NewObject(cx.Intrinsic(engine.IntrinsicObjectPrototype))
-	ctor := cx.NewNativeConstructor("NumberFormat", 0, r.newNumberFormat)
-	cx.Define(ctor, cx.Key(engine.KeyPrototype), engine.ObjectValue(proto), 0)
-	cx.Define(proto, cx.Key(engine.KeyConstructor), engine.ObjectValue(ctor), engine.FlagsHidden)
-	cx.Define(r.ns, cx.Intern("NumberFormat"), engine.ObjectValue(ctor), engine.FlagsHidden)
-	r.numberFormatProto = proto
-	r.numberFormatCtor = ctor
+func initNumberFormat(cx *engine.ExecutionContext, ns *engine.Object) {
+	ctor, proto := constructor(cx, ns, "NumberFormat", 0, engine.IntrinsicIntlNumberFormatPrototype, newNumberFormat)
+	cx.SetIntrinsic(engine.IntrinsicIntlNumberFormat, ctor)
 
 	method(cx, ctor, "supportedLocalesOf", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		return supportedLocalesOf(cx, args)
 	})
 	method(cx, proto, "resolvedOptions", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		nf := r.unwrapNumberFormat(cx, this, "resolvedOptions")
+		nf := unwrapNumberFormat(cx, this, "resolvedOptions")
 		return nf.resolvedOptions(cx)
 	})
 	getter(cx, proto, "format", func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		nf := r.unwrapNumberFormat(cx, this, "format")
+		nf := unwrapNumberFormat(cx, this, "format")
 		if nf.boundFormat == nil {
 			nf.boundFormat = cx.NewNativeWithState("", 1, numberFormatFunction, nf)
 		}

@@ -38,12 +38,12 @@ func (pr *pluralRulesData) resolvePlural(n number.Decimal) (string, string) {
 }
 
 // newPluralRules implements the Intl.PluralRules constructor.
-func (r *realm) newPluralRules(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func newPluralRules(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	nt := cx.GetNewTarget()
 	if nt == nil {
 		cx.ThrowTypeError("constructor Intl.PluralRules requires 'new'")
 	}
-	proto := protoFor(cx, nt, func(r *realm) *engine.Object { return r.pluralRulesProto })
+	proto := cx.GetPrototypeFromConstructor(nt, engine.IntrinsicIntlPluralRulesPrototype)
 	requested := canonicalizeLocaleList(cx, arg(args, 0))
 	options := optionsObject(cx, arg(args, 1))
 	bestFit := localeMatcher(cx, options)
@@ -72,13 +72,8 @@ func thisPluralRules(cx *engine.ExecutionContext, this engine.Value, name string
 }
 
 // initPluralRules defines Intl.PluralRules.
-func (r *realm) initPluralRules(cx *engine.ExecutionContext) {
-	proto := cx.NewObject(cx.Intrinsic(engine.IntrinsicObjectPrototype))
-	ctor := cx.NewNativeConstructor("PluralRules", 0, r.newPluralRules)
-	cx.Define(ctor, cx.Key(engine.KeyPrototype), engine.ObjectValue(proto), 0)
-	cx.Define(proto, cx.Key(engine.KeyConstructor), engine.ObjectValue(ctor), engine.FlagsHidden)
-	cx.Define(r.ns, cx.Intern("PluralRules"), engine.ObjectValue(ctor), engine.FlagsHidden)
-	r.pluralRulesProto = proto
+func initPluralRules(cx *engine.ExecutionContext, ns *engine.Object) {
+	ctor, proto := constructor(cx, ns, "PluralRules", 0, engine.IntrinsicIntlPluralRulesPrototype, newPluralRules)
 
 	method(cx, ctor, "supportedLocalesOf", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		return supportedLocalesOf(cx, args)

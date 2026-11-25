@@ -64,8 +64,8 @@ type realm struct {
 	// hostDefined is the [[HostDefined]] field of the realm.
 	hostDefined any
 
-	// extension is the state of the built-in extension in the realm.
-	extension any
+	// intlFallbackSymbol is the [[FallbackSymbol]] of %Intl%, or nil until it is needed.
+	intlFallbackSymbol *Object
 
 	// strictCallee is the callee property of unmapped arguments objects, or the zero value
 	// until it is needed.
@@ -215,14 +215,4 @@ func (cx *ExecutionContext) SetRealmHostDefined(v any) {
 // RealmHostDefined returns the [[HostDefined]] field of the execution realm.
 func (cx *ExecutionContext) RealmHostDefined() any {
 	return cx.realm.hostDefined
-}
-
-// SetRealmExtension sets the state of the built-in extension of the current realm to v.
-func (cx *ExecutionContext) SetRealmExtension(v any) {
-	cx.realm.extension = v
-}
-
-// RealmExtension returns the state of the built-in extension of the execution realm.
-func (cx *ExecutionContext) RealmExtension() any {
-	return cx.realm.extension
 }

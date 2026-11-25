@@ -101,12 +101,12 @@ func weekdayToString(s string) string {
 }
 
 // newLocale implements the Intl.Locale constructor.
-func (r *realm) newLocale(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func newLocale(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	nt := cx.GetNewTarget()
 	if nt == nil {
 		cx.ThrowTypeError("constructor Intl.Locale requires 'new'")
 	}
-	proto := protoFor(cx, nt, func(r *realm) *engine.Object { return r.localeProto })
+	proto := cx.GetPrototypeFromConstructor(nt, engine.IntrinsicIntlLocalePrototype)
 	tagV := arg(args, 0)
 	if !tagV.IsString() && !tagV.IsObject() {
 		cx.ThrowTypeError("the tag of Intl.Locale must be a string or an object, not " + cx.DisplayString(tagV))
@@ -198,33 +198,29 @@ func (r *realm) newLocale(cx *engine.ExecutionContext, this engine.Value, args [
 	return engine.ObjectValue(cx.NewIntlObject(proto, newLocaleData(t.CanonicalizePolled(cx.Poll))))
 }
 
-// initLocale defines Intl.Locale.
-func (r *realm) initLocale(cx *engine.ExecutionContext) {
-	proto := cx.NewObject(cx.Intrinsic(engine.IntrinsicObjectPrototype))
-	ctor := cx.NewNativeConstructor("Locale", 1, r.newLocale)
-	cx.Define(ctor, cx.Key(engine.KeyPrototype), engine.ObjectValue(proto), 0)
-	cx.Define(proto, cx.Key(engine.KeyConstructor), engine.ObjectValue(ctor), engine.FlagsHidden)
-	cx.Define(r.ns, cx.Intern("Locale"), engine.ObjectValue(ctor), engine.FlagsHidden)
-	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Intl.Locale"), engine.FlagConfigurable)
-	r.localeProto = proto
-	r.localeCtor = ctor
+// localeFromTag returns a new Intl.Locale for t.
+func localeFromTag(cx *engine.ExecutionContext, t locale.Tag) engine.Value {
+	return engine.ObjectValue(cx.NewIntlObject(cx.Intrinsic(engine.IntrinsicIntlLocalePrototype), newLocaleData(t)))
+}
 
-	newLocale := func(cx *engine.ExecutionContext, t locale.Tag) engine.Value {
-		return engine.ObjectValue(cx.NewIntlObject(r.localeProto, newLocaleData(t)))
-	}
+// initLocale defines Intl.Locale.
+func initLocale(cx *engine.ExecutionContext, ns *engine.Object) {
+	_, proto := constructor(cx, ns, "Locale", 1, engine.IntrinsicIntlLocalePrototype, newLocale)
+	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Intl.Locale"), engine.FlagConfigurable)
+
 	method(cx, proto, "maximize", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		t := thisLocale(cx, this, "maximize").tag
 		if max, ok := locale.AddLikelySubtags(t.LanguageID); ok {
 			t.LanguageID = max
 		}
-		return newLocale(cx, t)
+		return localeFromTag(cx, t)
 	})
 	method(cx, proto, "minimize", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		t := thisLocale(cx, this, "minimize").tag
 		if min, ok := locale.RemoveLikelySubtags(t.LanguageID); ok {
 			t.LanguageID = min
 		}
-		return newLocale(cx, t)
+		return localeFromTag(cx, t)
 	})
 	method(cx, proto, "toString", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		return cx.NewString(wtf8.String(thisLocale(cx, this, "toString").String()))

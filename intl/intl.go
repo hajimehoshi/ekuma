@@ -32,5 +32,6 @@ import (
 
 func init() {
 	temporal.SetCalendars(calendar.Temporal)
+	builtin.SetDateTimeZoneName(intlbuiltin.DateTimeZoneName)
 	builtin.RegisterExtension(intlbuiltin.Install)
 }

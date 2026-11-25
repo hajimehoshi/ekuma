@@ -157,12 +157,12 @@ func toDurationRecord(cx *engine.ExecutionContext, v engine.Value) duration.Dura
 }
 
 // newDurationFormat implements the Intl.DurationFormat constructor.
-func (r *realm) newDurationFormat(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func newDurationFormat(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	nt := cx.GetNewTarget()
 	if nt == nil {
 		cx.ThrowTypeError("constructor Intl.DurationFormat requires 'new'")
 	}
-	proto := protoFor(cx, nt, func(r *realm) *engine.Object { return r.durationFormatProto })
+	proto := cx.GetPrototypeFromConstructor(nt, engine.IntrinsicIntlDurationFormatPrototype)
 	return engine.ObjectValue(cx.NewIntlObject(proto, createDurationFormat(cx, arg(args, 0), arg(args, 1))))
 }
 
@@ -185,13 +185,8 @@ func (df *durationFormatData) format(d duration.Duration) string {
 }
 
 // initDurationFormat defines Intl.DurationFormat.
-func (r *realm) initDurationFormat(cx *engine.ExecutionContext) {
-	proto := cx.NewObject(cx.Intrinsic(engine.IntrinsicObjectPrototype))
-	ctor := cx.NewNativeConstructor("DurationFormat", 0, r.newDurationFormat)
-	cx.Define(ctor, cx.Key(engine.KeyPrototype), engine.ObjectValue(proto), 0)
-	cx.Define(proto, cx.Key(engine.KeyConstructor), engine.ObjectValue(ctor), engine.FlagsHidden)
-	cx.Define(r.ns, cx.Intern("DurationFormat"), engine.ObjectValue(ctor), engine.FlagsHidden)
-	r.durationFormatProto = proto
+func initDurationFormat(cx *engine.ExecutionContext, ns *engine.Object) {
+	ctor, proto := constructor(cx, ns, "DurationFormat", 0, engine.IntrinsicIntlDurationFormatPrototype, newDurationFormat)
 
 	method(cx, ctor, "supportedLocalesOf", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		return supportedLocalesOf(cx, args)

@@ -14,51 +14,11 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
-// realm holds the Intl objects of a realm.
-type realm struct {
-	// ns is the Intl namespace, whose contents are created when they are first needed.
-	ns *engine.Object
-
-	defaultLocaleTag string
-	defaultLocale    string
-
-	localeProto *engine.Object
-	localeCtor  *engine.Object
-
-	numberFormatProto *engine.Object
-	numberFormatCtor  *engine.Object
-	pluralRulesProto  *engine.Object
-
-	dateTimeFormatProto *engine.Object
-	dateTimeFormatCtor  *engine.Object
-
-	collatorProto        *engine.Object
-	segmenterProto       *engine.Object
-	segmentsProto        *engine.Object
-	segmentIteratorProto *engine.Object
-	collatorCtor         *engine.Object
-	// defaultCollator is the collator of String.prototype.localeCompare without locales and
-	// options.
-	defaultCollator       *collatorData
-	defaultCollatorLocale string
-
-	listFormatProto         *engine.Object
-	relativeTimeFormatProto *engine.Object
-	displayNamesProto       *engine.Object
-	durationFormatProto     *engine.Object
-
-	// fallbackSymbol is the [[FallbackSymbol]] of Intl.
-	fallbackSymbol *engine.Object
-}
-
 // Install defines the Intl namespace in the realm of cx.
 func Install(cx *engine.ExecutionContext) {
-	r := &realm{}
-	r.ns = cx.NewLazyObject(cx.Intrinsic(engine.IntrinsicObjectPrototype), func(cx *engine.ExecutionContext, ns *engine.Object) {
-		r.init(cx)
-	})
-	cx.SetRealmExtension(r)
-	cx.Define(cx.GlobalObject().Object(), cx.Intern("Intl"), engine.ObjectValue(r.ns), engine.FlagsHidden)
+	ns := cx.NewLazyObject(cx.Intrinsic(engine.IntrinsicObjectPrototype), initNamespace)
+	cx.SetIntrinsic(engine.IntrinsicIntl, ns)
+	cx.Define(cx.GlobalObject().Object(), cx.Intern("Intl"), engine.ObjectValue(ns), engine.FlagsHidden)
 	initToLocaleString(cx)
 	initDateToLocaleString(cx)
 	initTemporalToLocaleString(cx)
@@ -67,9 +27,8 @@ func Install(cx *engine.ExecutionContext) {
 	initArrayToLocaleString(cx)
 }
 
-// init defines the properties of the Intl namespace.
-func (r *realm) init(cx *engine.ExecutionContext) {
-	ns := r.ns
+// initNamespace defines the properties of the Intl namespace ns.
+func initNamespace(cx *engine.ExecutionContext, ns *engine.Object) {
 	cx.Define(ns, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Intl"), engine.FlagConfigurable)
 	method(cx, ns, "getCanonicalLocales", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		return stringArray(cx, canonicalizeLocaleList(cx, arg(args, 0)))
@@ -97,33 +56,16 @@ func (r *realm) init(cx *engine.ExecutionContext) {
 		}
 		return stringArray(cx, values)
 	})
-	r.fallbackSymbol = cx.NewSymbol("IntlLegacyConstructedSymbol", true)
-	r.initLocale(cx)
-	r.initNumberFormat(cx)
-	r.initPluralRules(cx)
-	r.initDateTimeFormat(cx)
-	r.initCollator(cx)
-	r.initSegmenter(cx)
-	r.initListFormat(cx)
-	r.initRelativeTimeFormat(cx)
-	r.initDisplayNames(cx)
-	r.initDurationFormat(cx)
-}
-
-// realmOf returns the Intl objects of the realm of the function f.
-func realmOf(cx *engine.ExecutionContext, f *engine.Object) *realm {
-	r := cx.FunctionContext(f).RealmExtension().(*realm)
-	cx.InitLazyObject(r.ns)
-	return r
-}
-
-// protoFor implements GetPrototypeFromConstructor for the constructor newTarget, with proto
-// selecting the fallback prototype of a realm.
-func protoFor(cx *engine.ExecutionContext, newTarget *engine.Object, proto func(r *realm) *engine.Object) *engine.Object {
-	if p := cx.GetV(engine.ObjectValue(newTarget), cx.Key(engine.KeyPrototype)); p.IsObject() {
-		return p.Object()
-	}
-	return proto(realmOf(cx, newTarget))
+	initLocale(cx, ns)
+	initNumberFormat(cx, ns)
+	initPluralRules(cx, ns)
+	initDateTimeFormat(cx, ns)
+	initCollator(cx, ns)
+	initSegmenter(cx, ns)
+	initListFormat(cx, ns)
+	initRelativeTimeFormat(cx, ns)
+	initDisplayNames(cx, ns)
+	initDurationFormat(cx, ns)
 }
 
 // sanctionedUnits are the sanctioned single unit identifiers of ECMA-402, sorted.
@@ -192,6 +134,18 @@ func checkStringLength(cx *engine.ExecutionContext, n int) {
 	}
 }
 
+// constructor creates the constructor function name with the intrinsic prototype protoID, and
+// defines it on the Intl namespace ns.
+func constructor(cx *engine.ExecutionContext, ns *engine.Object, name wtf8.String, length int, protoID engine.Intrinsic, f engine.NativeFunc) (ctor, proto *engine.Object) {
+	proto = cx.NewObject(cx.Intrinsic(engine.IntrinsicObjectPrototype))
+	cx.SetIntrinsic(protoID, proto)
+	ctor = cx.NewNativeConstructor(name, length, f)
+	cx.DefineConstructorPrototype(ctor, protoID)
+	cx.Define(proto, cx.Key(engine.KeyConstructor), engine.ObjectValue(ctor), engine.FlagsHidden)
+	cx.Define(ns, cx.Intern(name), engine.ObjectValue(ctor), engine.FlagsHidden)
+	return ctor, proto
+}
+
 // method defines the non-enumerable function name on o.
 func method(cx *engine.ExecutionContext, o *engine.Object, name string, length int, f engine.NativeFunc) {
 	cx.Define(o, cx.Intern(wtf8.String(name)), engine.ObjectValue(cx.NewNative(wtf8.String(name), length, f)), engine.FlagsHidden)
@@ -234,20 +188,18 @@ func getOption(cx *engine.ExecutionContext, options *engine.Object, name string,
 	return s, true
 }
 
+// defaultLocale implements DefaultLocale.
 func defaultLocale(cx *engine.ExecutionContext) string {
-	r := cx.RealmExtension().(*realm)
-	tag := cx.DefaultLocale()
-	if r.defaultLocale != "" && r.defaultLocaleTag == tag {
-		return r.defaultLocale
+	if l := cx.AvailableDefaultLocale(); l != "" {
+		return l
 	}
-	var resolved string
-	if t, ok := locale.Parse(tag); ok {
-		resolved, _ = locale.BestAvailableLocale(t.Canonicalize().WithoutUnicode().String())
+	var l string
+	if t, ok := locale.Parse(cx.DefaultLocale()); ok {
+		l, _ = locale.BestAvailableLocale(t.Canonicalize().WithoutUnicode().String())
 	}
-	if resolved == "" {
-		resolved = locale.Default()
+	if l == "" {
+		l = locale.Default()
 	}
-	r.defaultLocaleTag = tag
-	r.defaultLocale = resolved
-	return resolved
+	cx.SetAvailableDefaultLocale(l)
+	return l
 }

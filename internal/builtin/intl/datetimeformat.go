@@ -44,7 +44,7 @@ type dateTimeFormatData struct {
 }
 
 // DateTimeZoneName returns the localized name for Date strings, or empty if unavailable.
-func (*realm) DateTimeZoneName(cx *engine.ExecutionContext, tz datetime.TimeZone, t, offset int64) string {
+func DateTimeZoneName(cx *engine.ExecutionContext, tz datetime.TimeZone, t, offset int64) string {
 	return date.DateTimeZoneName(defaultLocale(cx), tz, t, offset)
 }
 
@@ -503,22 +503,18 @@ func (dtf *dateTimeFormatData) partitionDateTimeRangePattern(cx *engine.Executio
 }
 
 // newDateTimeFormat implements the Intl.DateTimeFormat constructor.
-func (r *realm) newDateTimeFormat(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+func newDateTimeFormat(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	nt := cx.GetNewTarget()
-	newTarget := nt
-	if newTarget == nil {
-		newTarget = r.dateTimeFormatCtor
-	}
-	proto := protoFor(cx, newTarget, func(r *realm) *engine.Object { return r.dateTimeFormatProto })
+	proto := cx.GetPrototypeFromConstructor(nt, engine.IntrinsicIntlDateTimeFormatPrototype)
 	dtf := cx.NewIntlObject(proto, createDateTimeFormat(cx, arg(args, 0), arg(args, 1), date.Any, date.Date, nil))
 	// ChainDateTimeFormat.
-	if nt == nil && cx.OrdinaryHasInstance(engine.ObjectValue(r.dateTimeFormatCtor), this) {
+	if nt == nil && cx.OrdinaryHasInstance(engine.ObjectValue(cx.Intrinsic(engine.IntrinsicIntlDateTimeFormat)), this) {
 		var d engine.PropDesc
 		d.SetValue(engine.ObjectValue(dtf))
 		d.SetWritable(false)
 		d.SetEnumerable(false)
 		d.SetConfigurable(false)
-		cx.DefinePropertyOrThrow(this.Object(), engine.NamedKey(r.fallbackSymbol), d)
+		cx.DefinePropertyOrThrow(this.Object(), engine.NamedKey(cx.IntlFallbackSymbol()), d)
 		return this
 	}
 	return engine.ObjectValue(dtf)
@@ -526,15 +522,15 @@ func (r *realm) newDateTimeFormat(cx *engine.ExecutionContext, this engine.Value
 
 // unwrapDateTimeFormat implements UnwrapDateTimeFormat followed by the check of the internal
 // slot.
-func (r *realm) unwrapDateTimeFormat(cx *engine.ExecutionContext, this engine.Value, name string) *dateTimeFormatData {
+func unwrapDateTimeFormat(cx *engine.ExecutionContext, this engine.Value, name string) *dateTimeFormatData {
 	if !this.IsObject() {
 		cx.ThrowTypeError("Intl.DateTimeFormat.prototype." + name + " called on a value that is not an object")
 	}
 	if dtf, ok := engine.IntlData(this).(*dateTimeFormatData); ok {
 		return dtf
 	}
-	if cx.OrdinaryHasInstance(engine.ObjectValue(r.dateTimeFormatCtor), this) {
-		if dtf, ok := engine.IntlData(cx.Get(this.Object(), engine.NamedKey(r.fallbackSymbol))).(*dateTimeFormatData); ok {
+	if cx.OrdinaryHasInstance(engine.ObjectValue(cx.Intrinsic(engine.IntrinsicIntlDateTimeFormat)), this) {
+		if dtf, ok := engine.IntlData(cx.Get(this.Object(), engine.NamedKey(cx.IntlFallbackSymbol()))).(*dateTimeFormatData); ok {
 			return dtf
 		}
 	}
@@ -569,23 +565,18 @@ func dateTimeFormatFunction(cx *engine.ExecutionContext, this engine.Value, args
 }
 
 // initDateTimeFormat defines Intl.DateTimeFormat.
-func (r *realm) initDateTimeFormat(cx *engine.ExecutionContext) {
-	proto := cx.NewObject(cx.Intrinsic(engine.IntrinsicObjectPrototype))
-	ctor := cx.NewNativeConstructor("DateTimeFormat", 0, r.newDateTimeFormat)
-	cx.Define(ctor, cx.Key(engine.KeyPrototype), engine.ObjectValue(proto), 0)
-	cx.Define(proto, cx.Key(engine.KeyConstructor), engine.ObjectValue(ctor), engine.FlagsHidden)
-	cx.Define(r.ns, cx.Intern("DateTimeFormat"), engine.ObjectValue(ctor), engine.FlagsHidden)
-	r.dateTimeFormatProto = proto
-	r.dateTimeFormatCtor = ctor
+func initDateTimeFormat(cx *engine.ExecutionContext, ns *engine.Object) {
+	ctor, proto := constructor(cx, ns, "DateTimeFormat", 0, engine.IntrinsicIntlDateTimeFormatPrototype, newDateTimeFormat)
+	cx.SetIntrinsic(engine.IntrinsicIntlDateTimeFormat, ctor)
 
 	method(cx, ctor, "supportedLocalesOf", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		return supportedLocalesOf(cx, args)
 	})
 	method(cx, proto, "resolvedOptions", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		return r.unwrapDateTimeFormat(cx, this, "resolvedOptions").resolvedOptions(cx)
+		return unwrapDateTimeFormat(cx, this, "resolvedOptions").resolvedOptions(cx)
 	})
 	getter(cx, proto, "format", func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		dtf := r.unwrapDateTimeFormat(cx, this, "format")
+		dtf := unwrapDateTimeFormat(cx, this, "format")
 		if dtf.boundFormat == nil {
 			dtf.boundFormat = cx.NewNativeWithState("", 1, dateTimeFormatFunction, dtf)
 		}
