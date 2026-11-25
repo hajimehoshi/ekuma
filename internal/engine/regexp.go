@@ -22,7 +22,7 @@ type regExpState struct {
 	lent bool
 
 	// realm is the [[Realm]] of the object.
-	realm *realm
+	realm *realmPart
 }
 
 // regExpSite is a regular expression literal of a function.
@@ -54,7 +54,7 @@ func (cx *ExecutionContext) RegExpAlloc(newTarget *Object) *Object {
 	}
 	return cx.newRegExpObject(s, &regExpState{
 		legacy: legacy,
-		realm:  cx.realm,
+		realm:  cx.realmPart,
 	})
 }
 
@@ -137,7 +137,7 @@ func (cx *ExecutionContext) regExpLiteralState(site *regExpSite) *regExpState {
 			source:  site.literal.Pattern,
 			flags:   site.literal.Flags,
 			legacy:  true,
-			realm:   cx.realm,
+			realm:   cx.realmPart,
 		}
 	}
 	return site.state
@@ -266,7 +266,7 @@ func (o *Object) RegExpLegacyFeaturesEnabled() bool {
 
 // IsRegExpOfCurrentRealm reports whether the [[Realm]] of the RegExp object o is the current realm.
 func (cx *ExecutionContext) IsRegExpOfCurrentRealm(o *Object) bool {
-	return o.extState().(*regExpState).realm == cx.realm
+	return o.extState().(*regExpState).realm == cx.realmPart
 }
 
 // MatchRegExp matches re against the string s at the code unit index start, or after it unless re
@@ -322,7 +322,7 @@ type legacyRegExpStatics struct {
 // the current realm.
 func (q QuietContext) RecordRegExpMatch(r *Object, s Value, caps []int) {
 	st := r.extState().(*regExpState)
-	if st.realm != q.cx.realm {
+	if st.realm != q.cx.realmPart {
 		return
 	}
 	if st.legacy {
