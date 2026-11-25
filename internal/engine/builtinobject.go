@@ -77,19 +77,6 @@ func newProxyObject(s *shape, state any, fn *function) *Object {
 	}).init()
 }
 
-// newRegExpObject returns a new RegExp object with the shape s, whose only property is lastIndex,
-// and the internal state state.
-func newRegExpObject(s *shape, state any) *Object {
-	o, slots := newObjectWithStorage(1)
-	o.kind = kindObject
-	o.class = classRegExp
-	o.shape = s
-	o.initSlots(slots)
-	o.slots[0] = Number(0)
-	o.ext = state
-	return o
-}
-
 // newGlobalObject returns a new object for global bindings with the shape s and room for n
 // properties. The inline caches of global variables point into its slots.
 func newGlobalObject(s *shape, n int) *Object {
@@ -97,4 +84,69 @@ func newGlobalObject(s *shape, n int) *Object {
 	o.initSlots(make([]Value, 0, n))
 	o.pinned = pinnedGlobalSlots
 	return o
+}
+
+// iterResult is an iterator result object together with the storage of its two properties,
+// so that creating one is a single allocation.
+type iterResult struct {
+	propertyObject
+	props [2]Value
+}
+
+// CreateIterResultObject creates an iterator result in the realm r.
+func (r *realmPart) CreateIterResultObject(v Value, done bool) Value {
+	result := &iterResult{
+		kind:   kindObject,
+		pinned: pinnedSlots,
+		shape:  r.shapes.iterResult,
+		props:  [2]Value{v, Bool(done)},
+	}
+	result.slots = result.props[:]
+	return Value{o: result.init()}
+}
+
+// newArgumentsObject returns an arguments object of args followed by extra, without its callee.
+func (r *realmPart) newArgumentsObject(args, extra []Value) *Object {
+	argc := len(args) + len(extra)
+	var a *argumentsObject
+	var elems []Value
+	switch argc {
+	case 0:
+		a, elems = &argumentsObject{}, []Value{}
+	case 1:
+		w := &argumentsObjectWith[[1]Value]{}
+		a, elems = &w.argumentsObject, w.elems[:0]
+	case 2:
+		w := &argumentsObjectWith[[2]Value]{}
+		a, elems = &w.argumentsObject, w.elems[:0]
+	case 3:
+		w := &argumentsObjectWith[[3]Value]{}
+		a, elems = &w.argumentsObject, w.elems[:0]
+	case 4:
+		w := &argumentsObjectWith[[4]Value]{}
+		a, elems = &w.argumentsObject, w.elems[:0]
+	default:
+		a, elems = &argumentsObject{}, make([]Value, 0, argc)
+	}
+	elems = append(elems, args...)
+	elems = append(elems, extra...)
+	o := a.initWithClass(r.shapes.arguments, classArguments)
+	a.elems = elems
+	a.storage = [3]Value{Number(float64(argc)), {o: r.Intrinsic(IntrinsicArrayPrototypeValues)}}
+	a.slots = a.storage[:2]
+	a.pinned = pinnedSlots | pinnedElems
+	return o
+}
+
+// argumentsObjectWith is an arguments object together with the storage S of its elements.
+type argumentsObjectWith[S any] struct {
+	argumentsObject
+	elems S
+}
+
+// argumentsObject is an arguments object together with the storage of its length,
+// its iterator and its callee, so that creating one is a single allocation.
+type argumentsObject struct {
+	propertyObject
+	storage [3]Value
 }

@@ -503,47 +503,6 @@ func (call defaultHasInstanceCall) run(cx *ExecutionContext, v Value, site *prop
 	return result
 }
 
-// inheritsHasInstance reports whether the @@hasInstance property of c is the one that it
-// inherits from %Function.prototype% of the current realm. A false result does not mean the
-// opposite.
-func (cx *ExecutionContext) inheritsHasInstance(c *Object) bool {
-	// The property of %Function.prototype% is neither writable nor configurable, so only the
-	// objects before it on the chain can hide it.
-	fp := cx.Intrinsic(IntrinsicFunctionPrototype)
-	key := cx.WellKnownSymbol(SymbolHasInstance)
-	for h := c; h != fp; h = h.shape.proto {
-		// The properties that an unmaterialized function lacks have string keys.
-		if h == nil || h.class != classFunction && (h.class != classObject || h.flags&objExotic != 0) {
-			return false
-		}
-		if _, ok := h.shape.lookup(key); ok {
-			return false
-		}
-	}
-	return true
-}
-
-// ownFunctionPrototypeSlot returns the own prototype slot of an ordinary function, or nil.
-func (cx *ExecutionContext) ownFunctionPrototypeSlot(ctor *Object, site *propCache) *Value {
-	if ctor.class != classFunction {
-		return nil
-	}
-	if ctor.flags&objExotic != 0 {
-		cx.materialize(ctor)
-	}
-	p, ok := ctor.shape.lookup(cx.Key(KeyPrototype))
-	if !ok {
-		return nil
-	}
-	slot := &ctor.slots[p.slot]
-	if site != nil && ctor.flags&objExotic == 0 && slot.IsObject() {
-		// Caching the constructor's own prototype slot also relies on @@hasInstance staying inherited.
-		site.setInherited(ctor.shape, cacheOwn, cx.protoEpoch)
-		site.slot = p.slot
-	}
-	return slot
-}
-
 // OrdinaryHasInstance implements OrdinaryHasInstance.
 func (cx *ExecutionContext) OrdinaryHasInstance(c, v Value) bool {
 	if !c.IsCallable() {
@@ -1110,79 +1069,6 @@ keys:
 	}
 }
 
-// takeDataProperties gives the empty ordinary object dst the properties of from and reports
-// true when creating them on dst one by one would give dst the shape and the elements of from.
-// Otherwise it does nothing and reports false.
-func (dst *Object) takeDataProperties(from *Object) bool {
-	s := takenShape(dst, from)
-	if s == nil || containsHole(from.elems) {
-		return false
-	}
-	dst.shape = s
-	dst.fillSlots(from.slots[:s.count])
-	// The keys of the elements come first, in index order, so the elements of dst are those of
-	// from.
-	if len(from.elems) != 0 {
-		dst.initElems(slices.Clone(from.elems))
-	}
-	return true
-}
-
-// AssignDataProperties copies the own enumerable properties of from to the empty object to as
-// Object.assign does, when that is known to run no code, and reports whether it did.
-func (q QuietContext) AssignDataProperties(to, from *Object) bool {
-	s := takenShape(to, from)
-	if s == nil || len(from.elems) != 0 {
-		return false
-	}
-	// Set creates an own data property when the prototype lookup finds a writable data property or no property.
-	for t := s; t.parent != nil; t = t.parent {
-		switch r := q.lookupNamed(to.shape.proto, t.key); r.kind {
-		case lookupAbsent:
-		case lookupSlot:
-			if r.prop.flags&(FlagAccessor|FlagWritable) != FlagWritable {
-				return false
-			}
-		default:
-			return false
-		}
-	}
-	to.shape = s
-	to.fillSlots(from.slots[:s.count])
-	return true
-}
-
-// takenShape returns the shape that dst, an empty ordinary object, would have after creating
-// the properties of from other than its elements on it one by one, when that shape is the shape
-// of from and from has only enumerable, writable and configurable data properties with string
-// keys besides its elements. Otherwise it returns nil.
-func takenShape(dst, from *Object) *shape {
-	if dst.kind != kindObject || dst.class != classObject || dst.flags&(objNotExtensible|objIsProto|objExotic|objSparse) != 0 || dst.shape.count != 0 || len(dst.elems) != 0 {
-		return nil
-	}
-	// An ordinary object that is not sparse has the properties with array index keys in its
-	// elements, and the others in insertion order, which is the order of its slots.
-	if from.kind != kindObject || from.class != classObject || from.flags&(objExotic|objSparse) != 0 {
-		return nil
-	}
-	s := from.shape
-	if s.private || s.flatBased || s.count == 0 {
-		return nil
-	}
-	t := s
-	for ; t.parent != nil; t = t.parent {
-		if t.flags != FlagsData || t.key.kind != kindString {
-			return nil
-		}
-	}
-	// The root fixes the prototype, so the shape of dst would be reached through the same
-	// transitions.
-	if t != dst.shape {
-		return nil
-	}
-	return s
-}
-
 // setupClass makes the function ctor a class constructor that extends parent,
 // which is hole for a class without an extends clause. It returns the prototype object.
 func (cx *ExecutionContext) setupClass(ctor *Object, parent Value) *Object {
@@ -1208,11 +1094,8 @@ func (cx *ExecutionContext) setupClass(ctor *Object, parent Value) *Object {
 		}
 	}
 	proto := cx.NewObject(protoParent)
-	fn := ctor.ownFunction()
-	fn.materialized = true
+	fn := ctor.startMaterialized(cx.shapeFor(ctorParent))
 	fn.home = proto
-	ctor.flags &^= objExotic
-	ctor.shape = cx.shapeFor(ctorParent)
 	cx.add(ctor, cx.Key(KeyLength), Number(float64(fn.code.length)), FlagConfigurable)
 	cx.add(ctor, cx.Key(KeyName), cx.NewString(fn.code.name), FlagConfigurable)
 	cx.add(ctor, cx.Key(KeyPrototype), Value{o: proto}, 0)
@@ -1245,94 +1128,10 @@ func (p *funcProto) closurePrototype() *Object {
 	return p.realm.intrinsics[IntrinsicFunctionPrototype]
 }
 
-// arrayIterationPlain reports whether o uses the original array values and next methods.
-// Reading an element can still invoke a getter.
-func (r *realmPart) arrayIterationPlain(o *Object) bool {
-	if validateExec {
-		r.checkPlainArray(o)
-	}
-	return o.shape == r.shapes.array && r.arrayIterationUnmodified(r)
-}
-
-// arrayIterationUnmodified reports whether %Array.prototype%[@@iterator] and
-// %ArrayIteratorPrototype%.next are the original functions.
-func (sp *space) arrayIterationUnmodified(r *realmPart) bool {
-	c := &r.arrayIter
-	if c.epoch != sp.protoEpoch || !c.checked {
-		c.checked = true
-		c.epoch = sp.protoEpoch
-		q := r.quiet()
-		c.iter = q.lookupDataSlot(r.intrinsics[IntrinsicArrayPrototype], sp.WellKnownSymbol(SymbolIterator))
-		c.next = q.lookupDataSlot(r.intrinsics[IntrinsicArrayIteratorPrototype], sp.Key(KeyNext))
-		c.found = c.iter.holder != nil && c.next.holder != nil
-		c.noReturn = sp.noArrayIteratorReturn(r.intrinsics[IntrinsicArrayIteratorPrototype])
-	}
-	if validateExec {
-		r.checkArrayIteration()
-	}
-	// Assigning to an existing data property does not move protoEpoch, so the values are
-	// compared on every call.
-	return c.found && c.iter.value().o == r.intrinsics[IntrinsicArrayPrototypeValues] &&
-		c.next.value().o == r.intrinsics[IntrinsicArrayIteratorPrototypeNext]
-}
-
 // pairDestructuringPlain reports whether destructuring a new array of two elements into two
 // bindings runs nothing that JavaScript could observe.
 func (sp *space) pairDestructuringPlain(r *realmPart) bool {
 	return sp.arrayIterationUnmodified(r) && r.arrayIter.noReturn
-}
-
-// noArrayIteratorReturn reports whether array iterators have no return method, which closing
-// one calls. The prototypes that it looks at count as prototypes from then on, so that adding a
-// property to one moves protoEpoch.
-func (sp *space) noArrayIteratorReturn(proto *Object) bool {
-	key := sp.Key(KeyReturn)
-	for p := proto; p != nil; p = p.shape.proto {
-		p.flags |= objIsProto
-		if _, ok := p.getOwn(key); ok || p.flags&objExotic != 0 {
-			return false
-		}
-	}
-	return true
-}
-
-// arrayIterCache is what arrayIterationPlain found for arrays with the initial shape.
-type arrayIterCache struct {
-	// iter and next are the data properties that iterating such an array reads.
-	iter dataSlot
-	next dataSlot
-
-	// epoch is the value of agent.protoEpoch at which iter and next were found.
-	epoch   uint32
-	checked bool
-	// found reports whether iter and next were found as data properties.
-	found bool
-	// noReturn reports whether array iterators had no return method at epoch.
-	noReturn bool
-}
-
-// dataSlot is the slot of a data property in the object that holds it.
-type dataSlot struct {
-	holder *Object
-	slot   int32
-}
-
-// lookupDataSlot returns the named data slot on o or its prototypes, or a zero slot
-// if the lookup cannot establish one without running code.
-func (q QuietContext) lookupDataSlot(o, key *Object) dataSlot {
-	r := q.lookupNamed(o, key)
-	if r.kind != lookupSlot || r.prop.flags&FlagAccessor != 0 {
-		return dataSlot{}
-	}
-	return dataSlot{
-		holder: r.holder,
-		slot:   r.prop.slot,
-	}
-}
-
-// value returns the current value of the slot.
-func (d *dataSlot) value() Value {
-	return d.holder.slots[d.slot]
 }
 
 // Call calls the callable object f.

@@ -881,3 +881,20 @@ func (d *DataView) Lock() ([]byte, bool) {
 func (d *DataView) Unlock() {
 	d.data.Unlock()
 }
+
+// Element returns the own property of o with the integer index i when reading it
+// cannot run any JavaScript. It reports false when that is not known.
+func (o *Object) Element(i int64) (Value, bool) {
+	if o.objectProperties != nil && i >= 0 && i < int64(len(o.elems)) {
+		if e := o.elems[i]; !e.isHole() {
+			return e, true
+		}
+	}
+	if o.class == classTypedArray && i >= 0 && i <= MaxArrayIndex {
+		t := o.extState().(*TypedArray)
+		if b, ok := t.element(uint32(i)); ok {
+			return loadElement(t.typ, b), true
+		}
+	}
+	return Value{}, false
+}

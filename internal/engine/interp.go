@@ -218,16 +218,6 @@ func (ag *agent) pushFrame(f *Object, this Value, base, argc int, ret int32, isN
 	return base
 }
 
-// setNumber stores the number n in the register r.
-func setNumber(r *Value, n float64) {
-	// Over a number only n changes. Leaving the object pointer as it is needs no write barrier
-	// while the garbage collector marks.
-	if r.o != numberObject {
-		r.o = numberObject
-	}
-	r.n = n
-}
-
 func clearFrameRegs(regs []Value, first, end int) {
 	for j := first; j < end; j++ {
 		regs[j] = Value{}

@@ -367,3 +367,13 @@ func stringIndex(s wtf8.String) (uint32, bool) {
 	}
 	return uint32(n), true
 }
+
+// setNumber stores the number n in the register r.
+func setNumber(r *Value, n float64) {
+	// Over a number only n changes. Leaving the object pointer as it is needs no write barrier
+	// while the garbage collector marks.
+	if r.o != numberObject {
+		r.o = numberObject
+	}
+	r.n = n
+}

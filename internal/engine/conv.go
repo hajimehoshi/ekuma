@@ -186,20 +186,6 @@ func (cx *ExecutionContext) toStringValue(v Value) Value {
 	return cx.NewString(cx.ToString(v))
 }
 
-// NumberToString returns Number::toString of n as a string value.
-func (q QuietContext) NumberToString(n float64) Value {
-	r := q.realm
-	var buf [32]byte
-	text := numconv.AppendNumber(buf[:0], n)
-	if len(text) == 1 {
-		return r.strings.character(text[0])
-	}
-	if len(text) <= shortstrings.MaxBytes {
-		return r.shortString(wtf8.String(text))
-	}
-	return r.NewString(wtf8.String(text))
-}
-
 // ToObject implements ToObject.
 func (cx *ExecutionContext) ToObject(v Value) *Object {
 	o := v.o
@@ -495,3 +481,11 @@ func (cx *ExecutionContext) addValues(a, b Value) Value {
 // MaxStringLength is the largest length a string may have, in bytes.
 // It is smaller where an int has 32 bits.
 const MaxStringLength = 1<<(27+3*(strconv.IntSize/64)) - 1
+
+// LengthOfArrayLike implements LengthOfArrayLike.
+func (cx *ExecutionContext) LengthOfArrayLike(o *Object) int64 {
+	if o.kind == kindArray {
+		return int64(o.length)
+	}
+	return numconv.ToLength(cx.ToNumber(cx.GetV(Value{o: o}, cx.Key(KeyLength))))
+}

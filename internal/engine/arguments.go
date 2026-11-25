@@ -25,7 +25,7 @@ func (cx *ExecutionContext) forwardedArguments(argsReg int32) Value {
 // newArguments returns the arguments object of the frame fr.
 // A mapped object links the indices below both the argument count and the parameter count to the parameters.
 func (cx *ExecutionContext) newArguments(fr *frame, mapped bool) *Object {
-	o := cx.newArgumentsObject(fr)
+	o := cx.newArgumentsObject(cx.frameRegs(fr)[:min(fr.argc, fr.fp.nparams)], cx.extraArgs(fr))
 	if !mapped {
 		if cx.realm.strictCallee.o == nil {
 			// An accessor pair is never changed in place, so the objects share it.
@@ -54,53 +54,6 @@ func (cx *ExecutionContext) newArguments(fr *frame, mapped bool) *Object {
 	}
 	cx.add(o, cx.Key(keyCallee), Value{o: fr.cl}, FlagsHidden)
 	return o
-}
-
-// newArgumentsObject returns an arguments object without callee whose elements are the arguments
-// of the frame fr.
-func (cx *ExecutionContext) newArgumentsObject(fr *frame) *Object {
-	var a *argumentsObject
-	var elems []Value
-	switch fr.argc {
-	case 0:
-		a, elems = &argumentsObject{}, []Value{}
-	case 1:
-		w := &argumentsObjectWith[[1]Value]{}
-		a, elems = &w.argumentsObject, w.elems[:0]
-	case 2:
-		w := &argumentsObjectWith[[2]Value]{}
-		a, elems = &w.argumentsObject, w.elems[:0]
-	case 3:
-		w := &argumentsObjectWith[[3]Value]{}
-		a, elems = &w.argumentsObject, w.elems[:0]
-	case 4:
-		w := &argumentsObjectWith[[4]Value]{}
-		a, elems = &w.argumentsObject, w.elems[:0]
-	default:
-		a, elems = &argumentsObject{}, make([]Value, 0, fr.argc)
-	}
-	n := min(fr.argc, fr.fp.nparams)
-	elems = append(elems, cx.frameRegs(fr)[:n]...)
-	elems = append(elems, cx.extraArgs(fr)...)
-	o := a.initWithClass(cx.realm.shapes.arguments, classArguments)
-	a.elems = elems
-	a.storage = [3]Value{Number(float64(fr.argc)), {o: cx.Intrinsic(IntrinsicArrayPrototypeValues)}}
-	a.slots = a.storage[:2]
-	a.pinned = pinnedSlots | pinnedElems
-	return o
-}
-
-// argumentsObjectWith is an arguments object together with the storage S of its elements.
-type argumentsObjectWith[S any] struct {
-	argumentsObject
-	elems S
-}
-
-// argumentsObject is an arguments object together with the storage of its length,
-// its iterator and its callee, so that creating one is a single allocation.
-type argumentsObject struct {
-	propertyObject
-	storage [3]Value
 }
 
 // mappedParam returns the storage of the parameter that the index property i of o is mapped to,

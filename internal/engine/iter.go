@@ -626,25 +626,6 @@ func (cx *ExecutionContext) appendIterable(o *Object, v Value) {
 	})
 }
 
-// iterResult is an iterator result object together with the storage of its two properties,
-// so that creating one is a single allocation.
-type iterResult struct {
-	propertyObject
-	props [2]Value
-}
-
-// CreateIterResultObject creates an iterator result in the execution realm.
-func (cx *ExecutionContext) CreateIterResultObject(v Value, done bool) Value {
-	result := &iterResult{
-		kind:   kindObject,
-		pinned: pinnedSlots,
-		shape:  cx.realm.shapes.iterResult,
-		props:  [2]Value{v, Bool(done)},
-	}
-	result.slots = result.props[:]
-	return Value{o: result.init()}
-}
-
 // forIn is a for-in iterator object together with the state of its loop, so that creating
 // one is a single allocation.
 type forIn struct {
@@ -819,18 +800,9 @@ func (cx *ExecutionContext) templateObject(t *templateSite) *Object {
 	if t.object != nil {
 		return t.object
 	}
-	freeze := func(vals []Value) *Object {
-		a := cx.NewArray(nil)
-		for i, v := range vals {
-			cx.add(a, cx.indexName(uint32(i)), v, FlagEnumerable)
-		}
-		a.length = uint32(len(vals))
-		a.flags |= objSparse | objFrozenLength | objNotExtensible
-		return a
-	}
-	raw := freeze(t.raw)
+	raw := cx.newTemplateArray(t.raw)
 	raw.makePrivate()
-	o := freeze(t.cooked)
+	o := cx.newTemplateArray(t.cooked)
 	cx.add(o, cx.Key(KeyRaw), Value{o: raw}, 0)
 	o.makePrivate()
 	t.object = o

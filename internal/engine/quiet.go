@@ -87,29 +87,6 @@ func (q QuietContext) NewSetObject(proto *Object, data any) *Object {
 	return q.realm.NewSetObject(proto, data)
 }
 
-// HasOwnMethod reports whether method is the value of the own data property key of o. It can
-// report false for an object with internal methods of its own.
-func (q QuietContext) HasOwnMethod(o, key, method *Object) bool {
-	if o.flags&objExotic != 0 {
-		return false
-	}
-	p, ok := o.shape.lookup(key)
-	return ok && p.flags&FlagAccessor == 0 && o.slots[p.slot].o == method
-}
-
-// InheritsMethod reports whether o has no own property key, its prototype is proto, and method
-// is the value of the own data property key of proto. It can report false for an object with
-// internal methods of its own.
-func (q QuietContext) InheritsMethod(o, proto, key, method *Object) bool {
-	if o.flags&objExotic != 0 || o.shape.proto != proto {
-		return false
-	}
-	if _, ok := o.shape.lookup(key); ok {
-		return false
-	}
-	return q.HasOwnMethod(proto, key, method)
-}
-
 // hasPropertyPlain is HasProperty of o and the named key when finding out runs no code. ok is
 // false otherwise.
 func (q QuietContext) hasPropertyPlain(o, key *Object) (has, ok bool) {
@@ -142,50 +119,7 @@ func (q QuietContext) delegates(o *Object) bool {
 // GetVWithoutCall is GetV(v, key) when that runs no code and does not throw. ok is false
 // otherwise.
 func (q QuietContext) GetVWithoutCall(v Value, key *Object) (val Value, ok bool) {
-	return q.getVWithoutCall(v, key, nil)
-}
-
-// getVWithoutCall is GetVWithoutCall, which fills c, which may be nil, when the lookup can be
-// repeated from the cache.
-func (q QuietContext) getVWithoutCall(v Value, key *Object, c *propCache) (val Value, ok bool) {
-	start := v.o
-	switch {
-	case v.IsObject():
-	case v.IsNumber():
-		start = q.realm.Intrinsic(IntrinsicNumberPrototype)
-	case v.IsBool():
-		start = q.realm.Intrinsic(IntrinsicBooleanPrototype)
-	case v.IsSymbol():
-		start = q.realm.Intrinsic(IntrinsicSymbolPrototype)
-	case v.IsBigInt():
-		start = q.realm.Intrinsic(IntrinsicBigIntPrototype)
-	case v.IsString() && key != q.realm.Key(KeyLength):
-		start = q.realm.Intrinsic(IntrinsicStringPrototype)
-	default:
-		return Undefined, false
-	}
-	r := q.realm.lookup(start, key)
-	switch r.kind {
-	case lookupAbsent, lookupNumericMiss:
-		if c != nil {
-			// Both misses are stable for this shape and prototype epoch.
-			c.keep(start.shape)
-			c.setInherited(start.shape, cacheProto, q.realm.protoEpoch)
-			c.ref = &q.realm.missHolder.slots[0]
-		}
-		return Undefined, true
-	case lookupLength:
-		return r.length(v), true
-	case lookupSlot:
-		if r.prop.flags&FlagAccessor == 0 {
-			if c != nil {
-				c.keep(start.shape)
-			}
-			val, _ = q.realm.readNamedSlot(start, r.holder, r.prop, c)
-			return val, true
-		}
-	}
-	return Undefined, false
+	return q.realm.getVWithoutCall(v, key, nil)
 }
 
 // quietJobs provides the promise operations that run no script or host code. Their context stays
@@ -199,4 +133,28 @@ func (cx *ExecutionContext) quietJobs() quietJobs {
 	return quietJobs{
 		cx: cx,
 	}
+}
+
+// HasOwnMethod reports whether method is the value of the own data property key of o. It can
+// report false for an object with internal methods of its own.
+func (q QuietContext) HasOwnMethod(o, key, method *Object) bool {
+	return o.hasOwnMethod(key, method)
+}
+
+// InheritsMethod reports whether o has no own property key, its prototype is proto, and method
+// is the value of the own data property key of proto. It can report false for an object with
+// internal methods of its own.
+func (q QuietContext) InheritsMethod(o, proto, key, method *Object) bool {
+	return o.inheritsMethod(proto, key, method)
+}
+
+// AssignDataProperties copies the own enumerable properties of from to the empty object to as
+// Object.assign does, when that is known to run no code, and reports whether it did.
+func (q QuietContext) AssignDataProperties(to, from *Object) bool {
+	return q.realm.assignDataProperties(to, from)
+}
+
+// NumberToString returns Number::toString of n as a string value.
+func (q QuietContext) NumberToString(n float64) Value {
+	return q.realm.numberToString(n)
 }

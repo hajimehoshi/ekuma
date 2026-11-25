@@ -27,15 +27,15 @@ var objectStorageExceptions = map[string]storageException{
 		count:  7,
 		reason: "adds within the capacity and creates objects; calls in exec cost more than inlined stores",
 	},
-	"QuietContext.AppendElements": {
+	"realmPart.appendElements": {
 		count:  1,
 		reason: "appends within the room that reserveElems made; a helper costs each push a spill",
 	},
-	"QuietContext.AppendElementsOf": {
+	"realmPart.appendElementsOf": {
 		count:  1,
 		reason: "calls leaveElems itself; a helper is not inlined",
 	},
-	"QuietContext.PrependElements": {
+	"realmPart.prependElements": {
 		count:  2,
 		reason: "calls leaveElems itself; a helper is not inlined",
 	},
@@ -43,7 +43,7 @@ var objectStorageExceptions = map[string]storageException{
 		count:  1,
 		reason: "clears the removed element itself; a helper is not inlined",
 	},
-	"QuietContext.SpliceElements": {
+	"realmPart.spliceElements": {
 		count:  1,
 		reason: "calls leaveElems and clears the tail itself; a helper is not inlined",
 	},
@@ -51,11 +51,11 @@ var objectStorageExceptions = map[string]storageException{
 		count:  1,
 		reason: "clears the tail itself with polls; a helper is not inlined",
 	},
-	"ExecutionContext.DefineMatchResultProperties": {
+	"realmPart.DefineMatchResultProperties": {
 		count:  1,
 		reason: "fills the slots of a new array; a helper copies the values twice",
 	},
-	"ExecutionContext.DefineMatchResultPropertiesWithIndices": {
+	"realmPart.DefineMatchResultPropertiesWithIndices": {
 		count:  1,
 		reason: "fills the slots of a new array; a helper copies the values twice",
 	},
@@ -67,7 +67,7 @@ var objectStorageExceptions = map[string]storageException{
 		count:  1,
 		reason: "creates the object; a helper adds a write barrier sequence",
 	},
-	"ExecutionContext.CreateIterResultObject": {
+	"realmPart.CreateIterResultObject": {
 		count:  1,
 		reason: "creates the object; a helper adds a write barrier sequence",
 	},
@@ -75,7 +75,7 @@ var objectStorageExceptions = map[string]storageException{
 		count:  1,
 		reason: "creates the object; a helper adds a write barrier sequence",
 	},
-	"ExecutionContext.newArgumentsObject": {
+	"realmPart.newArgumentsObject": {
 		count:  2,
 		reason: "creates the object; a helper adds a write barrier sequence",
 	},

@@ -5,7 +5,6 @@ package engine
 
 import (
 	"cmp"
-	"math/bits"
 	"slices"
 	"strconv"
 
@@ -114,62 +113,6 @@ func (cx *ExecutionContext) getMissing(v Value, k QueryKey) (Value, *Object) {
 	return cx.getNamed(v, cx.propKey(k).key, nil)
 }
 
-// materialize creates the properties that a function has from the start but that are only
-// stored once something looks at them.
-func (r *realmPart) materialize(o *Object) {
-	if o.fn.materialized {
-		return
-	}
-	f := o.ownFunction()
-	f.materialized = true
-	o.flags &^= objExotic
-	if r := o.shape.realm; o.shape == r.shapes.function {
-		o.shape = r.shapes.materializedFunction
-	} else {
-		r.rebuildShape(o, o.shape.proto, ordinaryRoot)
-	}
-	if c := f.code; c != nil {
-		r.add(o, r.Key(KeyLength), Number(float64(c.length)), FlagConfigurable)
-		r.add(o, r.Key(KeyName), r.SharedString(c.name), FlagConfigurable)
-		if c.legacyCallerArguments {
-			// Accessors, as the values change while the properties are neither writable nor
-			// configurable.
-			r.add(o, r.Key(keyArguments), newAccessor(c.realm.intrinsics[IntrinsicFunctionArgumentsGetter], nil), FlagAccessor)
-			r.add(o, r.Key(keyCaller), newAccessor(c.realm.intrinsics[IntrinsicFunctionCallerGetter], nil), FlagAccessor)
-		}
-		switch {
-		case c.isGenerator:
-			proto := c.realm.intrinsics[IntrinsicGeneratorPrototype]
-			if c.isAsync {
-				proto = c.realm.intrinsics[IntrinsicAsyncGeneratorPrototype]
-			}
-			p := newObject(r.shapeForRealm(proto, c.realm))
-			r.add(o, r.Key(KeyPrototype), Value{o: p}, FlagWritable)
-		case f.constructor:
-			proto := c.realm.intrinsics[IntrinsicObjectPrototype]
-			p := newObject(r.shapeForRealm(proto, c.realm))
-			r.add(p, r.Key(KeyConstructor), Value{o: o}, FlagsHidden)
-			flags := FlagWritable
-			if f.classConstructor {
-				flags = 0
-			}
-			r.add(o, r.Key(KeyPrototype), Value{o: p}, flags)
-		}
-		return
-	}
-	var length int32
-	if f.info != nil {
-		length = f.info.length
-	}
-	r.add(o, r.Key(KeyLength), Number(float64(length)), FlagConfigurable)
-	r.add(o, r.Key(KeyName), r.SharedString(f.nativeName()), FlagConfigurable)
-}
-
-// isLazyKey reports whether key names a property that materialize creates.
-func (sp *space) isLazyKey(key *Object) bool {
-	return key == sp.Key(KeyPrototype) || key == sp.Key(KeyName) || key == sp.Key(KeyLength) || key == sp.Key(keyCaller) || key == sp.Key(keyArguments)
-}
-
 // resolve prepares the exotic object o for an operation on its named properties.
 func (cx *ExecutionContext) resolve(o *Object) {
 	if o.fn != nil && !o.fn.materialized {
@@ -206,78 +149,11 @@ func (ag *agent) InitLazyObject(o *Object) {
 		return
 	}
 	init := o.extState().(func(*ExecutionContext, *Object))
-	o.class = classObject
-	o.setExtState(nil)
-	o.flags &^= objExotic
 	cx := o.CreationContext()
-	cx.rebuildShape(o, o.shape.proto, ordinaryRoot)
+	cx.endLazy(o)
 	cx.Run(func() {
 		init(cx, o)
 	})
-}
-
-type namedLookupKind uint8
-
-const (
-	lookupAbsent      namedLookupKind = iota // The chain ended. A miss or property addition can be cached.
-	lookupSlot                               // A slot supplies the value or accessor.
-	lookupLength                             // The implicit length of an array or string has no slot.
-	lookupNumericMiss                        // A typed array answers undefined on reads and handles stores itself.
-	lookupDelegate                           // The holder must perform each operation.
-)
-
-type namedLookup struct {
-	kind   namedLookupKind
-	holder *Object
-	prop   prop
-}
-
-func (r namedLookup) length(receiver Value) Value {
-	if r.holder.kind == kindString {
-		return Number(float64(receiver.StringLength()))
-	}
-	return Number(float64(r.holder.length))
-}
-
-// lookup finds the named property key on o and its prototype chain.
-func (r *realmPart) lookup(o *Object, key *Object) namedLookup {
-	for h := o; h != nil; h = h.shape.proto {
-		switch h.shape.family {
-		case delegatedRoot:
-			return namedLookup{
-				kind:   lookupDelegate,
-				holder: h,
-			}
-		case arrayRoot, primitiveStringRoot:
-			if key == r.Key(KeyLength) {
-				return namedLookup{
-					kind:   lookupLength,
-					holder: h,
-				}
-			}
-		case typedArrayRoot:
-			if isCanonicalNumericString(key) {
-				return namedLookup{
-					kind:   lookupNumericMiss,
-					holder: h,
-				}
-			}
-		case lazyFunctionRoot:
-			if r.isLazyKey(key) {
-				r.materialize(h)
-			}
-		}
-		if p, ok := h.shape.lookup(key); ok {
-			return namedLookup{
-				kind:   lookupSlot,
-				holder: h,
-				prop:   p,
-			}
-		}
-	}
-	return namedLookup{
-		kind: lookupAbsent,
-	}
 }
 
 // protoStart returns the object at which a property lookup on the value v starts.
@@ -336,39 +212,6 @@ func (cx *ExecutionContext) getNamedAtSite(v Value, key *Object, c *propCache) (
 	return cx.getNamed(v, key, c)
 }
 
-// rememberRead records the location of p for subsequent reads from start's shape.
-func (c *propCache) rememberRead(cx *ExecutionContext, start, holder *Object, p prop) {
-	s := start.shape
-	if s.readID == 0 {
-		if cx.lastReadShapeID == ^uint32(0) {
-			return
-		}
-		cx.lastReadShapeID++
-		s.readID = cx.lastReadShapeID
-	}
-	r := c.reads
-	if r == nil {
-		r = &namedReads{
-			shapes: make(map[uint32]namedRead),
-		}
-		c.reads = r
-	}
-	if r.space != cx.space || r.epoch != cx.protoEpoch || len(r.shapes) >= 64 {
-		clear(r.shapes)
-		r.space = cx.space
-		r.epoch = cx.protoEpoch
-	}
-	var depth int32
-	for h := start; h != holder; h = h.shape.proto {
-		depth++
-	}
-	r.shapes[s.readID] = namedRead{
-		depth: depth,
-		count: s.count,
-		prop:  p,
-	}
-}
-
 // getNamed returns the named property key of v. When the property is an accessor with a getter,
 // getNamed returns the getter instead and the caller has to call it with v as this.
 // getNamed fills c, which may be nil, when the lookup can be repeated from the cache.
@@ -408,45 +251,11 @@ func (cx *ExecutionContext) getNamed(v Value, key *Object, c *propCache) (val Va
 	case lookupSlot:
 		if c != nil && c.keep(start.shape) && start == v.o && start.kind == kindObject && start.class == classObject && start.flags&objExotic == 0 &&
 			s == start.shape && s.space == cx.space && epoch == cx.protoEpoch {
-			c.rememberRead(cx, start, r.holder, r.prop)
+			c.rememberRead(cx.space, start, r.holder, r.prop)
 		}
 		return cx.readNamedSlot(start, r.holder, r.prop, c)
 	}
 	panic("engine: unknown named lookup result")
-}
-
-// readNamedSlot reads p and returns its getter separately for the caller to invoke.
-func (sp *space) readNamedSlot(start, holder *Object, p prop, c *propCache) (val Value, getter *Object) {
-	val = holder.slots[p.slot]
-	if p.flags&FlagAccessor != 0 {
-		// Objects of one shape can hold different own accessors, and replacing an own accessor
-		// keeps the shape, so the cache of an own accessor remembers its slot, not its getter.
-		if c != nil && holder == start {
-			c.shape = start.shape
-			c.kind = cacheOwnGetter
-			c.slot = p.slot
-		}
-		g := val.accessor().getter
-		if g == nil {
-			return Undefined, nil
-		}
-		if c != nil && holder != start {
-			c.setInherited(start.shape, cacheGetter, sp.protoEpoch)
-			c.holder = g
-		}
-		return Undefined, g
-	}
-	if c != nil {
-		if holder == start {
-			c.shape = start.shape
-			c.slot = p.slot
-			c.kind = cacheOwn
-		} else {
-			c.setInherited(start.shape, cacheProto, sp.protoEpoch)
-			c.ref = &holder.slots[p.slot]
-		}
-	}
-	return val, nil
 }
 
 // GetV returns the named property key of v, calling a getter.
@@ -817,139 +626,9 @@ func (cx *ExecutionContext) getProp(o *Object, k PropKey, receiver Value) Value 
 	return Undefined
 }
 
-// growElems reports whether storing the index i should extend elems.
-func growElems(elems []Value, i uint32) bool {
-	n := int64(len(elems))
-	return int64(i) < int64(cap(elems)) || int64(i) <= n+n/2+16
-}
-
 // denseFactor is the largest number of slots per element for which [ExecutionContext.densify] moves the array
 // index properties of an object into elems.
 const denseFactor = 4
-
-// addIndex creates the data property with the array index i on o, which has no such own property.
-// It reports false when o does not allow it.
-func (cx *ExecutionContext) addIndex(o *Object, i uint32, val Value, flags uint8) bool {
-	if o.flags&objNotExtensible != 0 {
-		return false
-	}
-	if o.kind == kindArray && i >= o.length {
-		if o.flags&objFrozenLength != 0 {
-			return false
-		}
-		o.length = i + 1
-	}
-	n := len(o.elems)
-	if flags == FlagsData {
-		if uint(i) < uint(n) {
-			o.elems[i] = val
-			return true
-		}
-		if growElems(o.elems, i) {
-			o.reserveElems(int(i) + 1 - n)
-			for uint32(len(o.elems)) < i {
-				o.pushElem(hole)
-			}
-			o.pushElem(val)
-			// The elements may have reached the indices in the shape. Checking only when their
-			// number passes a power of two bounds the cost of the checks by that of the growth.
-			if o.flags&objSparse != 0 && bits.Len(uint(n)) != bits.Len(uint(len(o.elems))) {
-				cx.densify(o)
-			}
-			return true
-		}
-	}
-	o.flags |= objSparse
-	cx.add(o, cx.indexName(i), val, flags)
-	// Checking only when the number of properties in the shape reaches a power of two bounds
-	// the cost of the checks by that of the additions. The elements would need more than i
-	// slots.
-	if c := int64(o.shape.count); flags == FlagsData && c&(c-1) == 0 && (int64(len(o.elems))+c)*denseFactor > int64(i) {
-		cx.densify(o)
-	}
-	return true
-}
-
-// densify moves the array index properties of o from its shape to elems, and clears objSparse,
-// when they are all writable, enumerable and configurable data properties and elems would have
-// at most denseFactor slots per element.
-func (cx *ExecutionContext) densify(o *Object) {
-	if o.kind != kindArray && o.class != classObject || o.flags&(objExotic|objNotExtensible) != 0 {
-		return
-	}
-	// The new shape adds the named properties to root, which keeps its own properties, if any,
-	// in the first base slots.
-	s := o.shape
-	var root *shape
-	var base int
-	if s.private {
-		root = cx.rootShape(s.proto, s.realm, s.family)
-	} else {
-		root = s
-		for root.parent != nil {
-			root = root.parent
-		}
-		base = int(root.count)
-	}
-	keys := s.keys()
-	var count int64
-	end := int64(len(o.elems))
-	for j, k := range keys {
-		if k.kind != kindString {
-			continue
-		}
-		i, ok := stringIndex(k.str)
-		if !ok {
-			continue
-		}
-		if j < base {
-			return
-		}
-		if p, _ := s.lookup(k); p.flags != FlagsData {
-			return
-		}
-		count++
-		end = max(end, int64(i)+1)
-	}
-	if (int64(len(o.elems))+count)*denseFactor < end {
-		return
-	}
-	present := count
-	for _, e := range o.elems {
-		if !e.isHole() {
-			present++
-		}
-	}
-	if present*denseFactor < end {
-		return
-	}
-
-	o.reserveElems(int(end) - len(o.elems))
-	for int64(len(o.elems)) < end {
-		o.pushElem(hole)
-	}
-	o.shape = root
-	slots := o.detachSlots(base, len(o.slots)-int(count))
-	for _, k := range keys[base:] {
-		p, _ := s.lookup(k)
-		if k.kind == kindString {
-			if i, ok := stringIndex(k.str); ok {
-				o.elems[i] = slots[p.slot]
-				continue
-			}
-		}
-		cx.add(o, k, slots[p.slot], p.flags)
-	}
-	o.leaveSlots(slots)
-	o.flags &^= objSparse
-	if o.kind != kindArray {
-		// The shape may be one that o had before, with other slots. The inline caches of
-		// global variables point into the slots of the global object while it keeps its
-		// shape, so o gets a new one.
-		o.makePrivate()
-	}
-	cx.touchProto(o)
-}
 
 // setArrayLength implements ArraySetLength for a length that is already converted.
 // It reports false when an element could not be deleted or the length is not writable.
@@ -1260,26 +939,6 @@ func (cx *ExecutionContext) defineOwnProperty(o *Object, k PropKey, d PropDesc) 
 	return true
 }
 
-// replaceOwn stores the value and attributes of the existing own property k of o.
-func (r *realmPart) replaceOwn(o *Object, k PropKey, val Value, flags uint8) {
-	name := k.key
-	if name == nil {
-		if int64(k.idx) < int64(len(o.elems)) && !o.elems[k.idx].isHole() {
-			if flags == FlagsData {
-				o.elems[k.idx] = val
-				return
-			}
-			// The property no longer fits in elems.
-			o.elems[k.idx] = hole
-			o.flags |= objSparse
-			r.add(o, r.indexName(k.idx), val, flags)
-			return
-		}
-		name = r.indexName(k.idx)
-	}
-	r.Define(o, name, val, flags)
-}
-
 // defineArrayLength implements ArraySetLength.
 func (cx *ExecutionContext) defineArrayLength(o *Object, d PropDesc) bool {
 	n := o.length
@@ -1307,7 +966,7 @@ func (cx *ExecutionContext) defineArrayLength(o *Object, d PropDesc) bool {
 		ok = cx.setArrayLength(o, n)
 	}
 	if d.hasFalse(HasWritable, FlagWritable) {
-		o.flags |= objFrozenLength
+		o.freezeLength()
 	}
 	return ok
 }
@@ -1496,9 +1155,7 @@ func (cx *ExecutionContext) PreventExtensions(o *Object) bool {
 		if o.flags&objExotic != 0 {
 			cx.resolve(o)
 		}
-		o.flags |= objNotExtensible
-		// The inline caches that add properties are keyed by shared shapes.
-		o.makePrivate()
+		o.makeNonExtensible()
 	}
 	return true
 }

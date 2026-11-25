@@ -955,11 +955,6 @@ func (cx *ExecutionContext) IntrinsicValue(id Intrinsic) Value {
 	}
 }
 
-// SetIntrinsic makes o the intrinsic object id.
-func (cx *ExecutionContext) SetIntrinsic(id Intrinsic, o *Object) {
-	cx.realm.intrinsics[id] = o
-}
-
 // ErrorKind is a native error type.
 type ErrorKind uint8
 
@@ -1286,20 +1281,6 @@ func (ag *agent) typeName(v Value) wtf8.String {
 		return t.Str()
 	}
 	return "Object"
-}
-
-// diagnosticDataProperty reads stored properties for stack traces and exception descriptions.
-// It skips the property operations of exotic objects.
-func diagnosticDataProperty(o, key *Object) (Value, bool) {
-	for h := o; h != nil; h = h.shape.proto {
-		if p, ok := h.shape.lookup(key); ok {
-			if p.flags&FlagAccessor != 0 {
-				break
-			}
-			return h.slots[p.slot], true
-		}
-	}
-	return Undefined, false
 }
 
 // takeException converts the pending exception to a Go error.

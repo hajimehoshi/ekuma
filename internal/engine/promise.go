@@ -590,7 +590,7 @@ func (q quietJobs) tryAwait(v Value, action reactionAction) bool {
 		builtinContext:   cx,
 	}
 	if IsPromise(v) {
-		ctor := cx.Quiet().lookupDataSlot(v.o, cx.Key(KeyConstructor))
+		ctor := cx.lookupDataSlot(v.o, cx.Key(KeyConstructor))
 		if ctor.holder == nil {
 			return false
 		}

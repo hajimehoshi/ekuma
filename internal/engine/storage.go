@@ -167,6 +167,13 @@ func (p *poller) reallocElems(o *Object) {
 	o.replaceElems(elems)
 }
 
+// moveElemsTo moves the elements of o to new storage with room for room elements in all.
+func (o *Object) moveElemsTo(room int) {
+	elems := make([]Value, len(o.elems), room)
+	copy(elems, o.elems)
+	o.replaceElems(elems)
+}
+
 // replaceElems makes elems, which holds the values that remain, the elements of o.
 func (o *Object) replaceElems(elems []Value) {
 	o.leaveElems(o.elems)

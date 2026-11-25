@@ -2126,3 +2126,40 @@ func (o *Object) findUnits(sub wtf8.String, from int, backward bool, poll func()
 func (r *realmPart) DefineAccessor(o *Object, key *Object, getter, setter *Object, flags uint8) {
 	r.Define(o, key, newAccessor(getter, setter), flags|FlagAccessor)
 }
+
+// endLazy makes the lazy object o an ordinary object without properties.
+func (sp *space) endLazy(o *Object) {
+	o.class = classObject
+	o.setExtState(nil)
+	o.flags &^= objExotic
+	sp.rebuildShape(o, o.shape.proto, ordinaryRoot)
+}
+
+// makeNonExtensible makes o refuse new properties.
+func (o *Object) makeNonExtensible() {
+	o.flags |= objNotExtensible
+	// The inline caches that add properties are keyed by shared shapes.
+	o.makePrivate()
+}
+
+// freezeLength makes the length of the array o read-only.
+func (o *Object) freezeLength() {
+	o.flags |= objFrozenLength
+}
+
+// newTemplateArray returns a new frozen array with the elements vals, which still can be given
+// named properties by [space.add].
+func (r *realmPart) newTemplateArray(vals []Value) *Object {
+	a := r.NewArray(nil)
+	for i, v := range vals {
+		r.add(a, r.indexName(uint32(i)), v, FlagEnumerable)
+	}
+	a.length = uint32(len(vals))
+	a.flags |= objSparse | objFrozenLength | objNotExtensible
+	return a
+}
+
+// SetIntrinsic makes o the intrinsic object id.
+func (r *realmPart) SetIntrinsic(id Intrinsic, o *Object) {
+	r.intrinsics[id] = o
+}

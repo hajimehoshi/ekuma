@@ -5,25 +5,15 @@
 
 # Store to raw storage, refer to it, or create objects.
 [stores]
-ExecutionContext.CreateIterResultObject Object.kind:lit Object.pinned:lit Object.shape:lit Value.o:lit objectProperties.slots:write
-ExecutionContext.DefineMatchResultProperties Object.shape:write objectProperties.slots:read objectProperties.slots:write*2
-ExecutionContext.DefineMatchResultPropertiesWithIndices Object.shape:write objectProperties.slots:read objectProperties.slots:write*2
 ExecutionContext.DeleteProp objectProperties.elems:read objectProperties.elems:write shape.lookup:read
 ExecutionContext.EnumerableOwnKeys objectProperties.elems:ref shape.order:ref
 ExecutionContext.GetVCached Value.accessor:read objectProperties.slots:read objectProperties.slots:ref propCache.cacheEntry:ref propCache.second:ref
 ExecutionContext.IteratorToList objectProperties.elems:read objectProperties.elems:ref*2
 ExecutionContext.OwnKeys objectProperties.elems:read objectProperties.elems:ref
-ExecutionContext.PreventExtensions Object.flags:write
-ExecutionContext.RecordRegExpOriginals Object.flags:write Value.accessor:read objectProperties.slots:read shape.lookup:read
-ExecutionContext.SetIntrinsic realmPart.intrinsics:write
-ExecutionContext.addIndex Object.flags:write Object.length:write objectProperties.elems:read objectProperties.elems:ref objectProperties.elems:write
 ExecutionContext.appendIterable Object.length:write objectProperties.elems:read
-ExecutionContext.builtString Value.n:lit Value.o:lit shapeTable.shortStrings:ref space.strings:ref
-ExecutionContext.defineArrayLength Object.flags:write
 ExecutionContext.defineFieldK cacheEntry.kind:write cacheEntry.next:write cacheEntry.shape:write shape.lookup:read
 ExecutionContext.defineMappedArgument objectProperties.slots:write*3 shape.lookup:read
 ExecutionContext.definePublicField Object.shape:write
-ExecutionContext.densify Object.flags:write Object.shape:write objectProperties.elems:read objectProperties.elems:write objectProperties.slots:read shape.lookup:read
 ExecutionContext.forInMayVisit objectProperties.elems:ref
 ExecutionContext.forInOwnKeys objectProperties.elems:read objectProperties.elems:ref
 ExecutionContext.getGlobal Value.o:lit*2 globalCache.holder:write globalCache.ref:write globalCache.shape:write objectProperties.slots:read objectProperties.slots:ref shape.lookup:read
@@ -33,55 +23,20 @@ ExecutionContext.initGlobalLex objectProperties.slots:write shape.lookup:read
 ExecutionContext.initRealmGlobals Object.class:write shapeTable.arguments:write shapeTable.iterResult:write
 ExecutionContext.initRealmPrototypes Object.kind:lit Object.shape:lit Object.str:lit realmPart.intrinsics:write*4 shapeTable.array:write shapeTable.function:write shapeTable.materializedFunction:write shapeTable.nullProto:write shapeTable.object:write shapeTable.proxy:write shapeTable.shortStrings:write*2 shapeTable.string:write
 ExecutionContext.newArguments Object.flags:write Value.o:lit objectProperties.elems:write
-ExecutionContext.newArgumentsObject Object.pinned:write Value.o:lit objectProperties.elems:write objectProperties.slots:write
-ExecutionContext.ownFunctionPrototypeSlot cacheEntry.slot:write objectProperties.slots:ref shape.lookup:read
 ExecutionContext.regExpLiteralMethod Value.o:lit*3 propCache.cacheEntry:ref propCache.second:ref
-ExecutionContext.regExpShape shapeTable.regExp:write
-ExecutionContext.resetLentRegExp Object.shape:write objectProperties.slots:ref
 ExecutionContext.resolveGlobal globalCache.holder:write globalCache.shape:write shape.lookup:read
 ExecutionContext.setArrayLength Object.length:write*3 objectProperties.elems:read objectProperties.elems:ref*2 objectProperties.elems:write shape.lookup:read
 ExecutionContext.setGlobal Value.o:lit*2 globalCache.holder:write*2 globalCache.ref:write*2 globalCache.shape:write*2 objectProperties.slots:read objectProperties.slots:ref*2 objectProperties.slots:write*2 shape.lookup:read
 ExecutionContext.setIndex objectProperties.elems:read objectProperties.elems:write
 ExecutionContext.setNamed Value.accessor:read cacheEntry.epoch:write cacheEntry.holder:write cacheEntry.kind:write*2 cacheEntry.next:write cacheEntry.shape:write*2 cacheEntry.slot:write objectProperties.slots:read objectProperties.slots:write
 ExecutionContext.setPrivate Value.accessor:read objectProperties.slots:read objectProperties.slots:write shape.lookup:read
-ExecutionContext.setupClass Object.flags:write Object.shape:write Value.o:lit*2
 ExecutionContext.storeValue objectProperties.elems:read objectProperties.elems:write
-ExecutionContext.templateObject Object.flags:write Object.length:write Value.o:lit
 NewExecutionContext Object.kind:lit Object.shape:lit objectProperties.slots:lit shape.small:lit shape.space:lit space.strings:ref*3
-Object.RemoveFirstElement Object.length:write objectProperties.elems:read objectProperties.elems:ref*2 objectProperties.elems:write*3
-Object.RemoveLastElement Object.length:write objectProperties.elems:read
-Object.SetElement objectProperties.elems:read objectProperties.elems:write
-Object.takeDataProperties Object.shape:write objectProperties.elems:read objectProperties.elems:ref*2 objectProperties.slots:ref
-QuietContext.AppendElements Object.length:write objectProperties.elems:read objectProperties.elems:write*2
-QuietContext.AppendElementsOf Object.length:write objectProperties.elems:read objectProperties.elems:ref objectProperties.elems:write
-QuietContext.AssignDataProperties Object.shape:write objectProperties.elems:read objectProperties.slots:ref
-QuietContext.CopyElementRange objectProperties.elems:read objectProperties.elems:ref
-QuietContext.FillElements objectProperties.elems:read objectProperties.elems:write
-QuietContext.JoinStrings Object.flags:write objectProperties.elems:read objectProperties.elems:ref
-QuietContext.NumberToString space.strings:ref
-QuietContext.PrependElements Object.length:write objectProperties.elems:read objectProperties.elems:ref*2 objectProperties.elems:write*4
-QuietContext.ReverseElements objectProperties.elems:read objectProperties.elems:write*2
-QuietContext.SearchElements objectProperties.elems:ref
-QuietContext.SetRegExpLastIndex objectProperties.slots:write
-QuietContext.SpliceElements Object.length:write objectProperties.elems:read objectProperties.elems:ref*3 objectProperties.elems:write
-QuietContext.UnmodifiedRegExpMatcher objectProperties.slots:ref
-QuietContext.getVWithoutCall cacheEntry.ref:write objectProperties.slots:ref
-QuietContext.searchElementsSlow objectProperties.elems:ref
-WeakTable.Set objectMeta.weak:write
-agent.InitLazyObject Object.class:write Object.flags:write
 agent.exec *
 evalArg objectProperties.elems:ref
-propCache.rememberRead namedRead.count:lit namedRead.depth:lit namedRead.prop:lit namedReads.epoch:write namedReads.shapes:lit namedReads.shapes:write*2 namedReads.space:write propCache.reads:write shape.readID:write
-realmPart.materialize Object.flags:write Object.shape:write Value.o:lit*3
-realmPart.replaceOwn Object.flags:write objectProperties.elems:read objectProperties.elems:write*2
-setNumber *
-space.noArrayIteratorReturn Object.flags:write Object.getOwn:read
-space.readNamedSlot Value.accessor:read cacheEntry.holder:write cacheEntry.kind:write*2 cacheEntry.ref:write cacheEntry.shape:write*2 cacheEntry.slot:write*2 objectProperties.slots:read objectProperties.slots:ref
-sparseIndexCache.addedKeys shape.order:ref
 
 # Read properties without the guards of the property operations.
 [reads]
-ElementCount objectProperties.elems:read
 ExecutionContext.CreateDataProperty objectProperties.elems:read
 ExecutionContext.GetOwnProperty Value.accessor:read objectProperties.elems:read objectProperties.slots:read shape.lookup:read
 ExecutionContext.HasOwnProperty objectProperties.elems:read shape.lookup:read
@@ -97,28 +52,16 @@ ExecutionContext.getIndex Value.accessor:read objectProperties.elems:read object
 ExecutionContext.getPrivate Value.accessor:read objectProperties.slots:read shape.lookup:read
 ExecutionContext.getProp shape.lookup:read
 ExecutionContext.getValue objectProperties.elems:read
-ExecutionContext.inheritsHasInstance shape.lookup:read
 ExecutionContext.iteratePlainArray objectProperties.elems:read
 ExecutionContext.readInstancePrototype Value.accessor:read Value.o:lit*2
 ExecutionContext.setFuncName shape.lookup:read
 Object.Element objectProperties.elems:read
-QuietContext.HasOwnMethod objectProperties.slots:read shape.lookup:read
 QuietContext.HasOwnPropertyPlain objectProperties.elems:read shape.lookup:read
-QuietContext.InheritsMethod shape.lookup:read
 QuietContext.PushElements objectProperties.elems:read
-QuietContext.RegExpLastIndex objectProperties.slots:read
-QuietContext.SkipHoles objectProperties.elems:read
-QuietContext.SkipHolesBackward objectProperties.elems:read
 agent.observePush objectProperties.elems:read
 arrayIterator.step objectProperties.elems:read
 arrayIterator.stepPlain objectProperties.elems:read
-dataSlot.value objectProperties.slots:read
 decoratorAccessHas shape.lookup:read
-diagnosticDataProperty objectProperties.slots:read shape.lookup:read
-originalProp.find Value.accessor:read objectProperties.slots:read shape.lookup:read
-realmPart.arrayCtorPlain Object.getOwn:read Value.accessor:read objectProperties.slots:read
-realmPart.lookup shape.lookup:read
-takenShape objectProperties.elems:read
 
 # Create values, property keys or descriptors from their parts.
 [values]
@@ -204,6 +147,8 @@ ExecutionContext.proxySetPrototypeOf Value.o:lit*2
 ExecutionContext.proxyTrap Value.o:lit
 ExecutionContext.resume Value.o:lit
 ExecutionContext.setScoped Value.o:lit*3
+ExecutionContext.setupClass Value.o:lit*2
+ExecutionContext.templateObject Value.o:lit
 ExecutionContext.throwError Value.o:lit
 Module.GetModuleNamespace Value.o:lit
 Module.initializeEnvironment Value.o:lit*4

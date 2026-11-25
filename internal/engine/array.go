@@ -4,10 +4,10 @@
 package engine
 
 import (
+	"math/bits"
 	"slices"
 	"strings"
 
-	"github.com/hajimehoshi/ekuma/internal/numconv"
 	"github.com/hajimehoshi/ekuma/internal/shortstrings"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
@@ -30,31 +30,6 @@ const minShrinkElems = 64
 // shiftCopyElems is the length below which removing the first element of an array moves
 // the other elements, so that the storage keeps its room for elements added later.
 const shiftCopyElems = 32
-
-// LengthOfArrayLike implements LengthOfArrayLike.
-func (cx *ExecutionContext) LengthOfArrayLike(o *Object) int64 {
-	if o.kind == kindArray {
-		return int64(o.length)
-	}
-	return numconv.ToLength(cx.ToNumber(cx.GetV(Value{o: o}, cx.Key(KeyLength))))
-}
-
-// Element returns the own property of o with the integer index i when reading it
-// cannot run any JavaScript. It reports false when that is not known.
-func (o *Object) Element(i int64) (Value, bool) {
-	if o.objectProperties != nil && i >= 0 && i < int64(len(o.elems)) {
-		if e := o.elems[i]; !e.isHole() {
-			return e, true
-		}
-	}
-	if o.class == classTypedArray && i >= 0 && i <= MaxArrayIndex {
-		t := o.extState().(*TypedArray)
-		if b, ok := t.element(uint32(i)); ok {
-			return loadElement(t.typ, b), true
-		}
-	}
-	return Value{}, false
-}
 
 // SetElement stores v as the own property of o with the integer index i when
 // [Object.Element] returns that property and o is not a typed array, and reports whether it did.
@@ -92,7 +67,7 @@ func (r *realmPart) arrayCtorPlain(o *Object) bool {
 		return false
 	}
 	ctor := r.Intrinsic(IntrinsicArray)
-	c := r.quiet().lookupDataSlot(r.Intrinsic(IntrinsicArrayPrototype), r.Key(KeyConstructor))
+	c := r.lookupDataSlot(r.Intrinsic(IntrinsicArrayPrototype), r.Key(KeyConstructor))
 	if c.holder == nil || c.value().o != ctor {
 		return false
 	}
@@ -100,20 +75,8 @@ func (r *realmPart) arrayCtorPlain(o *Object) bool {
 	return found && p.flags&FlagAccessor != 0 && ctor.slots[p.slot].accessor().getter == r.Intrinsic(IntrinsicArraySpeciesGetter)
 }
 
-// ArraySpeciesCreatePlain returns a new array of the length n with the prototype
-// %Array.prototype% when that is what ArraySpeciesCreate for o creates, because o is an array
-// with the original constructor of the current realm. It reports false otherwise.
-func (q QuietContext) ArraySpeciesCreatePlain(o *Object, n int64) (*Object, bool) {
-	r := q.realm
-	if o.kind != kindArray || n > MaxArrayIndex+1 || !r.arrayCtorPlain(o) {
-		return nil, false
-	}
-	return r.ArrayCreate(uint32(n), r.Intrinsic(IntrinsicArrayPrototype)), true
-}
-
-// AppendElements adds vals at the end of the array o and returns the new length.
-func (q QuietContext) AppendElements(o *Object, vals []Value) (uint32, bool) {
-	r := q.realm
+// appendElements is [QuietContext.AppendElements].
+func (r *realmPart) appendElements(o *Object, vals []Value) (uint32, bool) {
 	if !o.elemsResizable() || !r.newElementsPlain(o) {
 		return 0, false
 	}
@@ -123,84 +86,8 @@ func (q QuietContext) AppendElements(o *Object, vals []Value) (uint32, bool) {
 	return o.length, true
 }
 
-const pushSampleInterval = 8
-
-// pushSizeHint tracks single-element pushes at one call site in a JavaScript closure.
-type pushSizeHint struct {
-	pc int
-	// previous and current are the sampled sizes of successive runs at pc.
-	// A push reaching minElems+1 starts a new run.
-	previous uint16
-	current  uint16
-	// target is the smaller of the two completed samples when a run starts.
-	target uint16
-}
-
-// PushElements appends vals to the array o and returns its new length and true.
-// If o requires the generic Array.prototype.push algorithm, it leaves o unchanged
-// and returns 0, false.
-func (q QuietContext) PushElements(o *Object, vals []Value) (uint32, bool) {
-	n, ok := q.AppendElements(o, vals)
-	// Sample single-element pushes so earlier array lengths at this call site can
-	// guide how much space to reserve.
-	if ok && len(vals) == 1 && n > minElems && n <= maxPresizedElems {
-		if n == minElems+1 || int(n) == cap(o.elems) || n%pushSampleInterval == 0 {
-			q.observePush(o)
-		}
-	}
-	return n, ok
-}
-
-// observePush is [agent.observePush].
-func (q QuietContext) observePush(o *Object) {
-	q.realm.executionContext().observePush(o)
-}
-
-// observePush samples the array after a single-element push at the calling frame's pc.
-func (ag *agent) observePush(o *Object) {
-	if len(ag.frames) == 0 {
-		return
-	}
-	n := len(o.elems)
-	fr := &ag.frames[len(ag.frames)-1]
-	state := fr.cl.extState()
-	h, _ := state.(*pushSizeHint)
-	if h == nil || h.pc != fr.pc {
-		if n < 2*pushSampleInterval {
-			return
-		}
-		if h == nil {
-			if state != nil {
-				return
-			}
-			h = new(pushSizeHint)
-			fr.cl.setExtState(h)
-		}
-		*h = pushSizeHint{
-			pc: fr.pc,
-		}
-	}
-	if n == minElems+1 {
-		h.target, h.previous, h.current = min(h.previous, h.current), h.current, 0
-	}
-	if n >= 2*pushSampleInterval {
-		// The final length can fall between samples. Limit the allowance
-		// to space the array already acquired.
-		h.current = uint16(min(n+pushSampleInterval-1, cap(o.elems), maxPresizedElems))
-	}
-	if n == cap(o.elems) {
-		// Bound the cost of a short result following larger ones.
-		if room := min(int(h.target), 8*n); room > n {
-			elems := make([]Value, n, room)
-			copy(elems, o.elems)
-			o.replaceElems(elems)
-		}
-	}
-}
-
-// PrependElements adds vals at the start of the array o and returns the new length.
-func (q QuietContext) PrependElements(o *Object, vals []Value) (uint32, bool) {
-	r := q.realm
+// prependElements is [QuietContext.PrependElements].
+func (r *realmPart) prependElements(o *Object, vals []Value) (uint32, bool) {
 	if !o.elemsMovable() || !r.newElementsPlain(o) {
 		return 0, false
 	}
@@ -272,10 +159,8 @@ func (o *Object) RemoveFirstElement() (Value, bool) {
 	return v, true
 }
 
-// FillElements stores v as the elements of the array o from start up to end, as
-// Array.prototype.fill does when the length of o is n. It reports false when it did nothing.
-func (q QuietContext) FillElements(o *Object, n, start, end int64, v Value) bool {
-	r := q.realm
+// fillElements is [QuietContext.FillElements].
+func (r *realmPart) fillElements(o *Object, n, start, end int64, v Value) bool {
 	if !o.elemsChangeable() || int64(o.length) != n {
 		return false
 	}
@@ -296,33 +181,12 @@ func (q QuietContext) FillElements(o *Object, n, start, end int64, v Value) bool
 	return true
 }
 
-// SearchArray returns the index of the first element of the Array v that equals target, or -1,
-// comparing with SameValueZero when sameValueZero is set and with IsStrictlyEqual otherwise. It
-// reports false when v is not an Array or reading one of its elements could run JavaScript.
-func (q QuietContext) SearchArray(v, target Value, sameValueZero bool) (int64, bool) {
-	o := v.o
-	if o == nil || o.kind != kindArray {
-		return -1, false
-	}
-	n := int64(o.length)
-	found, next := q.SearchElements(o, 0, n, target, sameValueZero)
-	if found < 0 && next < n {
-		return -1, false
-	}
-	return found, true
-}
-
-// SearchElements returns the first index of the elements of o from i toward end, which is
-// excluded and may be below i, whose element equals target, comparing with SameValueZero when
-// sameValueZero is set and with IsStrictlyEqual otherwise. It looks only at a run of elements
-// that reading runs no JavaScript for, and returns -1 and the index after the run when the run
-// has no such element.
-func (q QuietContext) SearchElements(o *Object, i, end int64, target Value, sameValueZero bool) (found, next int64) {
+// searchElements is [QuietContext.SearchElements].
+func (r *realmPart) searchElements(o *Object, i, end int64, target Value, sameValueZero bool) (found, next int64) {
 	// Only strings and BigInts can take long to compare.
 	if t := target.o; t != nil && (len(t.str) > maxQuickCompare || t.kind == kindBigInt) {
-		return q.searchElementsSlow(o, i, end, target)
+		return r.searchElementsSlow(o, i, end, target)
 	}
-	r := q.realm
 	eq := IsStrictlyEqual
 	if sameValueZero {
 		eq = SameValueZero
@@ -366,10 +230,9 @@ func (q QuietContext) SearchElements(o *Object, i, end int64, target Value, same
 	return -1, i
 }
 
-// searchElementsSlow is [QuietContext.SearchElements] for a target that can take long to
+// searchElementsSlow is [realmPart.searchElements] for a target that can take long to
 // compare. The target is not a number, so both comparisons are IsStrictlyEqual.
-func (q QuietContext) searchElementsSlow(o *Object, i, end int64, target Value) (found, next int64) {
-	r := q.realm
+func (r *realmPart) searchElementsSlow(o *Object, i, end int64, target Value) (found, next int64) {
 	step := int64(1)
 	if end < i {
 		step = -1
@@ -396,10 +259,8 @@ func (q QuietContext) searchElementsSlow(o *Object, i, end int64, target Value) 
 	return -1, i
 }
 
-// JoinStrings joins an array of the given length with sep when its elements and sep are
-// ASCII strings and the result fits in MaxStringLength bytes. It reports false otherwise.
-func (q QuietContext) JoinStrings(o *Object, length int64, sep wtf8.String) (Value, bool) {
-	r := q.realm
+// joinStrings is [QuietContext.JoinStrings].
+func (r *realmPart) joinStrings(o *Object, length int64, sep wtf8.String) (Value, bool) {
 	if o.kind != kindArray || int64(o.length) != length || int64(len(o.elems)) != length || !wtf8.IsASCII(sep) {
 		return Value{}, false
 	}
@@ -440,9 +301,8 @@ func (q QuietContext) JoinStrings(o *Object, length int64, sep wtf8.String) (Val
 	return v, true
 }
 
-// ReverseElements reverses the order of the elements of the array o.
-func (q QuietContext) ReverseElements(o *Object) bool {
-	r := q.realm
+// reverseElements is [QuietContext.ReverseElements].
+func (r *realmPart) reverseElements(o *Object) bool {
 	if !o.isDense() {
 		return false
 	}
@@ -453,10 +313,8 @@ func (q QuietContext) ReverseElements(o *Object) bool {
 	return true
 }
 
-// CopyElementRange returns a new array with the elements of the array o from start up to end,
-// as Array.prototype.slice creates it. A range that ends before it starts is empty.
-func (q QuietContext) CopyElementRange(o *Object, start, end int64) (*Object, bool) {
-	r := q.realm
+// copyElementRange is [QuietContext.CopyElementRange].
+func (r *realmPart) copyElementRange(o *Object, start, end int64) (*Object, bool) {
 	if !o.elemsComplete() {
 		return nil, false
 	}
@@ -473,11 +331,8 @@ func (q QuietContext) CopyElementRange(o *Object, start, end int64) (*Object, bo
 	return r.NewArray(appendPolled(&r.poller, nil, elems)), true
 }
 
-// SpliceElements replaces del elements of the array o from start on with items, and returns
-// the removed elements as a new array, as Array.prototype.splice creates it.
-// length is the length of o that start and del were checked against.
-func (q QuietContext) SpliceElements(o *Object, length, start, del int64, items []Value) (*Object, bool) {
-	r := q.realm
+// spliceElements is [QuietContext.SpliceElements].
+func (r *realmPart) spliceElements(o *Object, length, start, del int64, items []Value) (*Object, bool) {
 	if length != int64(len(o.elems)) || start < 0 || start > length || del < 0 || del > length-start {
 		return nil, false
 	}
@@ -510,10 +365,8 @@ func (q QuietContext) SpliceElements(o *Object, length, start, del int64, items 
 	return r.NewArray(removed), true
 }
 
-// AppendElementsOf adds the elements of the array src at the end of the array dst,
-// which must have the length n, exactly n elements and no other property.
-func (q QuietContext) AppendElementsOf(dst *Object, n int64, src *Object) bool {
-	r := q.realm
+// appendElementsOf is [QuietContext.AppendElementsOf].
+func (r *realmPart) appendElementsOf(dst *Object, n int64, src *Object) bool {
 	if !dst.elemsResizable() || int64(dst.length) != n || dst.shape != r.shapes.array {
 		return false
 	}
@@ -530,11 +383,8 @@ func (q QuietContext) AppendElementsOf(dst *Object, n int64, src *Object) bool {
 	return true
 }
 
-// SkipHoles returns the greatest index j with i <= j <= end such that neither o nor its prototypes
-// have a property with an integer index from i to j-1. It returns i when that is not known
-// without running JavaScript.
-func (q QuietContext) SkipHoles(o *Object, i, end int64) int64 {
-	r := q.realm
+// skipHoles is [QuietContext.SkipHoles].
+func (r *realmPart) skipHoles(o *Object, i, end int64) int64 {
 	if i < 0 || i >= end || i < int64(len(o.elems)) && !o.elems[i].isHole() || !o.holesAreAbsent() {
 		return i
 	}
@@ -554,11 +404,8 @@ func (q QuietContext) SkipHoles(o *Object, i, end int64) int64 {
 	return j
 }
 
-// SkipHolesBackward returns the least index j with end <= j <= i such that neither o nor its
-// prototypes have a property with an integer index from j+1 to i. It returns i when that is not
-// known without running JavaScript.
-func (q QuietContext) SkipHolesBackward(o *Object, i, end int64) int64 {
-	r := q.realm
+// skipHolesBackward is [QuietContext.SkipHolesBackward].
+func (r *realmPart) skipHolesBackward(o *Object, i, end int64) int64 {
 	if i <= end || i < 0 || i > MaxArrayIndex || i < int64(len(o.elems)) && !o.elems[i].isHole() || !o.holesAreAbsent() {
 		return i
 	}
@@ -690,4 +537,213 @@ func (c *sparseIndexCache) addedKeys(s *shape, buf []*Object) ([]*Object, bool) 
 		return nil, false
 	}
 	return added, true
+}
+
+// growElems reports whether storing the index i should extend elems.
+func growElems(elems []Value, i uint32) bool {
+	n := int64(len(elems))
+	return int64(i) < int64(cap(elems)) || int64(i) <= n+n/2+16
+}
+
+// addIndex creates the data property with the array index i on o, which has no such own property.
+// It reports false when o does not allow it.
+func (r *realmPart) addIndex(o *Object, i uint32, val Value, flags uint8) bool {
+	if o.flags&objNotExtensible != 0 {
+		return false
+	}
+	if o.kind == kindArray && i >= o.length {
+		if o.flags&objFrozenLength != 0 {
+			return false
+		}
+		o.length = i + 1
+	}
+	n := len(o.elems)
+	if flags == FlagsData {
+		if uint(i) < uint(n) {
+			o.elems[i] = val
+			return true
+		}
+		if growElems(o.elems, i) {
+			o.reserveElems(int(i) + 1 - n)
+			for uint32(len(o.elems)) < i {
+				o.pushElem(hole)
+			}
+			o.pushElem(val)
+			// The elements may have reached the indices in the shape. Checking only when their
+			// number passes a power of two bounds the cost of the checks by that of the growth.
+			if o.flags&objSparse != 0 && bits.Len(uint(n)) != bits.Len(uint(len(o.elems))) {
+				r.densify(o)
+			}
+			return true
+		}
+	}
+	o.flags |= objSparse
+	r.add(o, r.indexName(i), val, flags)
+	// Checking only when the number of properties in the shape reaches a power of two bounds
+	// the cost of the checks by that of the additions. The elements would need more than i
+	// slots.
+	if c := int64(o.shape.count); flags == FlagsData && c&(c-1) == 0 && (int64(len(o.elems))+c)*denseFactor > int64(i) {
+		r.densify(o)
+	}
+	return true
+}
+
+// densify moves the array index properties of o from its shape to elems, and clears objSparse,
+// when they are all writable, enumerable and configurable data properties and elems would have
+// at most denseFactor slots per element.
+func (r *realmPart) densify(o *Object) {
+	if o.kind != kindArray && o.class != classObject || o.flags&(objExotic|objNotExtensible) != 0 {
+		return
+	}
+	// The new shape adds the named properties to root, which keeps its own properties, if any,
+	// in the first base slots.
+	s := o.shape
+	var root *shape
+	var base int
+	if s.private {
+		root = r.rootShape(s.proto, s.realm, s.family)
+	} else {
+		root = s
+		for root.parent != nil {
+			root = root.parent
+		}
+		base = int(root.count)
+	}
+	keys := s.keys()
+	var count int64
+	end := int64(len(o.elems))
+	for j, k := range keys {
+		if k.kind != kindString {
+			continue
+		}
+		i, ok := stringIndex(k.str)
+		if !ok {
+			continue
+		}
+		if j < base {
+			return
+		}
+		if p, _ := s.lookup(k); p.flags != FlagsData {
+			return
+		}
+		count++
+		end = max(end, int64(i)+1)
+	}
+	if (int64(len(o.elems))+count)*denseFactor < end {
+		return
+	}
+	present := count
+	for _, e := range o.elems {
+		if !e.isHole() {
+			present++
+		}
+	}
+	if present*denseFactor < end {
+		return
+	}
+
+	o.reserveElems(int(end) - len(o.elems))
+	for int64(len(o.elems)) < end {
+		o.pushElem(hole)
+	}
+	o.shape = root
+	slots := o.detachSlots(base, len(o.slots)-int(count))
+	for _, k := range keys[base:] {
+		p, _ := s.lookup(k)
+		if k.kind == kindString {
+			if i, ok := stringIndex(k.str); ok {
+				o.elems[i] = slots[p.slot]
+				continue
+			}
+		}
+		r.add(o, k, slots[p.slot], p.flags)
+	}
+	o.leaveSlots(slots)
+	o.flags &^= objSparse
+	if o.kind != kindArray {
+		// The shape may be one that o had before, with other slots. The inline caches of
+		// global variables point into the slots of the global object while it keeps its
+		// shape, so o gets a new one.
+		o.makePrivate()
+	}
+	r.touchProto(o)
+}
+
+// replaceOwn stores the value and attributes of the existing own property k of o.
+func (r *realmPart) replaceOwn(o *Object, k PropKey, val Value, flags uint8) {
+	name := k.key
+	if name == nil {
+		if int64(k.idx) < int64(len(o.elems)) && !o.elems[k.idx].isHole() {
+			if flags == FlagsData {
+				o.elems[k.idx] = val
+				return
+			}
+			// The property no longer fits in elems.
+			o.elems[k.idx] = hole
+			o.flags |= objSparse
+			r.add(o, r.indexName(k.idx), val, flags)
+			return
+		}
+		name = r.indexName(k.idx)
+	}
+	r.Define(o, name, val, flags)
+}
+
+// arrayIterCache is what arrayIterationPlain found for arrays with the initial shape.
+type arrayIterCache struct {
+	// iter and next are the data properties that iterating such an array reads.
+	iter dataSlot
+	next dataSlot
+
+	// epoch is the value of agent.protoEpoch at which iter and next were found.
+	epoch   uint32
+	checked bool
+	// found reports whether iter and next were found as data properties.
+	found bool
+	// noReturn reports whether array iterators had no return method at epoch.
+	noReturn bool
+}
+
+// arrayIterationPlain reports whether o uses the original array values and next methods.
+// Reading an element can still invoke a getter.
+func (r *realmPart) arrayIterationPlain(o *Object) bool {
+	if validateExec {
+		r.checkPlainArray(o)
+	}
+	return o.shape == r.shapes.array && r.arrayIterationUnmodified(r)
+}
+
+// arrayIterationUnmodified reports whether %Array.prototype%[@@iterator] and
+// %ArrayIteratorPrototype%.next are the original functions.
+func (sp *space) arrayIterationUnmodified(r *realmPart) bool {
+	c := &r.arrayIter
+	if c.epoch != sp.protoEpoch || !c.checked {
+		c.checked = true
+		c.epoch = sp.protoEpoch
+		c.iter = r.lookupDataSlot(r.intrinsics[IntrinsicArrayPrototype], sp.WellKnownSymbol(SymbolIterator))
+		c.next = r.lookupDataSlot(r.intrinsics[IntrinsicArrayIteratorPrototype], sp.Key(KeyNext))
+		c.found = c.iter.holder != nil && c.next.holder != nil
+		c.noReturn = sp.noArrayIteratorReturn(r.intrinsics[IntrinsicArrayIteratorPrototype])
+	}
+	if validateExec {
+		r.checkArrayIteration()
+	}
+	// Assigning to an existing data property does not move protoEpoch, so the values are
+	// compared on every call.
+	return c.found && c.iter.value().o == r.intrinsics[IntrinsicArrayPrototypeValues] &&
+		c.next.value().o == r.intrinsics[IntrinsicArrayIteratorPrototypeNext]
+}
+
+// noArrayIteratorReturn reports whether array iterators have no return method, which closing
+// one calls. The prototypes that it looks at count as prototypes from then on, so that adding a
+// property to one moves protoEpoch.
+func (sp *space) noArrayIteratorReturn(proto *Object) bool {
+	key := sp.Key(KeyReturn)
+	for p := proto; p != nil; p = p.shape.proto {
+		p.flags |= objIsProto
+		if _, ok := p.getOwn(key); ok || p.flags&objExotic != 0 {
+			return false
+		}
+	}
+	return true
 }
