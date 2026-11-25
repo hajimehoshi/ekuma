@@ -127,7 +127,7 @@ func (cx *ExecutionContext) lendRegExpLiteral(regs []Value, dst, callee int32, s
 }
 
 // regExpLiteralFor returns the lent object of the literal site, as new, when f is one of
-// borrowers and [QuietContext.UnmodifiedRegExpMatcher] accepts it, or else a new RegExp object.
+// borrowers and [quiet.Context.UnmodifiedRegExpMatcher] accepts it, or else a new RegExp object.
 func (cx *ExecutionContext) regExpLiteralFor(f *Object, site *regExpSite, borrowers []*Object) *Object {
 	if f == nil || !slices.Contains(borrowers, f) {
 		return cx.newRegExpLiteral(site)
@@ -194,31 +194,6 @@ func (cx *ExecutionContext) IsRegExpOfCurrentRealm(o *Object) bool {
 	return o.ExtState().(*regExpState).Realm == cx.realmPart
 }
 
-// MatchRegExp matches re against the string s at the code unit index start, or after it unless re
-// is sticky. It returns the code unit indices of the captures, or nil when there is no match. They
-// are valid until the next match.
-func (q QuietContext) MatchRegExp(re *regexp.Regexp, s Value, start int) []int {
-	m := &q.realm.RegExpMatcher
-	str := s.Str()
-	m.SetASCII(str, s.IsASCII())
-	return re.Match(m, str, start, q)
-}
-
-// FindRegExp is like [QuietContext.MatchRegExp], but it finds the first match at start or after it
-// even when re is sticky.
-func (q QuietContext) FindRegExp(re *regexp.Regexp, s Value, start int) []int {
-	m := &q.realm.RegExpMatcher
-	str := s.Str()
-	m.SetASCII(str, s.IsASCII())
-	return re.Find(m, str, start, q)
-}
-
-// RegExpMatchSpan returns the positions in the subject of the capture i of the last match, which
-// must have succeeded.
-func (q QuietContext) RegExpMatchSpan(i int) (start, end wtf8.Pos) {
-	return q.realm.RegExpMatcher.Span(i)
-}
-
 // RegExpFlagsString returns the string of the flags f in the order of the flags getter.
 func (cx *ExecutionContext) RegExpFlagsString(f regexp.Flags) Value {
 	t := cx.realm.RegExpFlagStrings
@@ -231,34 +206,6 @@ func (cx *ExecutionContext) RegExpFlagsString(f regexp.Flags) Value {
 		*v = cx.NewString(wtf8.String(f.String()))
 	}
 	return *v
-}
-
-// RecordRegExpMatch updates the legacy static properties of %RegExp% after a match of the RegExp
-// object r against s with the capture indices caps. It does nothing when the [[Realm]] of r is not
-// the current realm.
-func (q QuietContext) RecordRegExpMatch(r *Object, s Value, caps []int) {
-	st := r.ExtState().(*regExpState)
-	if st.Realm != q.realm {
-		return
-	}
-	if st.Legacy {
-		q.UpdateLegacyRegExpStaticProperties(s, caps)
-		return
-	}
-	// This is InvalidateLegacyRegExpStaticProperties.
-	l := &q.realm.LegacyRegExp
-	l.Input = storage.Undefined
-	l.Str = storage.Undefined
-	l.Caps = l.Caps[:0]
-}
-
-// UpdateLegacyRegExpStaticProperties implements UpdateLegacyRegExpStaticProperties for %RegExp%
-// after a match against s with the capture indices caps.
-func (q QuietContext) UpdateLegacyRegExpStaticProperties(s Value, caps []int) {
-	l := &q.realm.LegacyRegExp
-	l.Input = s
-	l.Str = s
-	l.Caps = append(l.Caps[:0], caps...)
 }
 
 // LegacyRegExpInput returns the [[RegExpInput]] slot of %RegExp%, or undefined for empty.
@@ -277,25 +224,4 @@ func (cx *ExecutionContext) SetLegacyRegExpInput(s Value) {
 func (cx *ExecutionContext) LegacyRegExpMatch() (s Value, caps []int) {
 	l := &cx.realm.LegacyRegExp
 	return l.Str, l.Caps
-}
-
-// RegExpLastIndex returns the value of the own lastIndex property of o, or false when o may not
-// have it as a writable data property where [ExecutionContext.RegExpAlloc] puts it.
-func (q QuietContext) RegExpLastIndex(o *Object) (Value, bool) {
-	return q.realm.RegExpLastIndex(o)
-}
-
-// SetRegExpLastIndex sets the own lastIndex property of o to v and reports true, or reports
-// false when o may not have it as a writable data property where [ExecutionContext.RegExpAlloc] puts it.
-func (q QuietContext) SetRegExpLastIndex(o *Object, v Value) bool {
-	return q.realm.SetRegExpLastIndex(o, v)
-}
-
-// UnmodifiedRegExpMatcher returns the compiled pattern of o when o is an initialized RegExp object
-// whose prototype is %RegExp.prototype% and whose only own property is a writable lastIndex, while
-// the properties recorded by [ExecutionContext.RecordRegExpOriginals] are unchanged, and nil
-// otherwise. When it is not nil, those properties are the only ones that reading the recorded keys
-// from o finds, and lastIndex is an ordinary data property.
-func (q QuietContext) UnmodifiedRegExpMatcher(o *Object) *regexp.Regexp {
-	return q.realm.UnmodifiedRegExpMatcher(o)
 }

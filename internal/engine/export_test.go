@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/hajimehoshi/ekuma/internal/bytecode"
+	"github.com/hajimehoshi/ekuma/internal/quiet"
 	"github.com/hajimehoshi/ekuma/internal/storage"
 )
 
@@ -394,21 +395,21 @@ func (s *Shortcut) wrap(t *testing.T, observe func(s *Shortcut, form, event stri
 				return fast.number2(x, y)
 			}
 		case "method0":
-			wrapped.method0 = func(q QuietContext, this Value) (Value, bool) {
+			wrapped.method0 = func(q quiet.Context, this Value) (Value, bool) {
 				observe(s, form, "start")
 				v, ok := fast.method0(q, this)
 				ended(form, ok)
 				return v, ok
 			}
 		case "method1":
-			wrapped.method1 = func(q QuietContext, this, x Value) (Value, bool) {
+			wrapped.method1 = func(q quiet.Context, this, x Value) (Value, bool) {
 				observe(s, form, "start")
 				v, ok := fast.method1(q, this, x)
 				ended(form, ok)
 				return v, ok
 			}
 		case "method2":
-			wrapped.method2 = func(q QuietContext, this, x, y Value) (Value, bool) {
+			wrapped.method2 = func(q quiet.Context, this, x, y Value) (Value, bool) {
 				observe(s, form, "start")
 				v, ok := fast.method2(q, this, x, y)
 				ended(form, ok)

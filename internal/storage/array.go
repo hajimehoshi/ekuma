@@ -72,7 +72,7 @@ func (r *RealmPart) ArrayCtorPlain(o *Object) bool {
 	return found && p.Flags&FlagAccessor != 0 && ctor.Slots[p.Slot].Accessor().Getter == r.Intrinsic(IntrinsicArraySpeciesGetter)
 }
 
-// AppendElements is QuietContext.AppendElements.
+// AppendElements is quiet.Context.AppendElements.
 func (r *RealmPart) AppendElements(o *Object, vals []Value) (uint32, bool) {
 	if !o.ElemsResizable() || !r.NewElementsPlain(o) {
 		return 0, false
@@ -83,7 +83,7 @@ func (r *RealmPart) AppendElements(o *Object, vals []Value) (uint32, bool) {
 	return o.Length, true
 }
 
-// PrependElements is QuietContext.PrependElements.
+// PrependElements is quiet.Context.PrependElements.
 func (r *RealmPart) PrependElements(o *Object, vals []Value) (uint32, bool) {
 	if !o.elemsMovable() || !r.NewElementsPlain(o) {
 		return 0, false
@@ -156,7 +156,7 @@ func (o *Object) RemoveFirstElement() (Value, bool) {
 	return v, true
 }
 
-// FillElements is QuietContext.FillElements.
+// FillElements is quiet.Context.FillElements.
 func (r *RealmPart) FillElements(o *Object, n, start, end int64, v Value) bool {
 	if !o.elemsChangeable() || int64(o.Length) != n {
 		return false
@@ -178,7 +178,7 @@ func (r *RealmPart) FillElements(o *Object, n, start, end int64, v Value) bool {
 	return true
 }
 
-// SearchElements is QuietContext.SearchElements.
+// SearchElements is quiet.Context.SearchElements.
 func (r *RealmPart) SearchElements(o *Object, i, end int64, target Value, sameValueZero bool) (found, next int64) {
 	// Only strings and BigInts can take long to compare.
 	if t := target.O; t != nil && (len(t.Text) > maxQuickCompare || t.Kind == KindBigInt) {
@@ -256,7 +256,7 @@ func (r *RealmPart) searchElementsSlow(o *Object, i, end int64, target Value) (f
 	return -1, i
 }
 
-// JoinStrings is QuietContext.JoinStrings.
+// JoinStrings is quiet.Context.JoinStrings.
 func (r *RealmPart) JoinStrings(o *Object, length int64, sep wtf8.String) (Value, bool) {
 	if o.Kind != KindArray || int64(o.Length) != length || int64(len(o.Elems)) != length || !wtf8.IsASCII(sep) {
 		return Value{}, false
@@ -298,7 +298,7 @@ func (r *RealmPart) JoinStrings(o *Object, length int64, sep wtf8.String) (Value
 	return v, true
 }
 
-// ReverseElements is QuietContext.ReverseElements.
+// ReverseElements is quiet.Context.ReverseElements.
 func (r *RealmPart) ReverseElements(o *Object) bool {
 	if !o.isDense() {
 		return false
@@ -310,7 +310,7 @@ func (r *RealmPart) ReverseElements(o *Object) bool {
 	return true
 }
 
-// CopyElementRange is QuietContext.CopyElementRange.
+// CopyElementRange is quiet.Context.CopyElementRange.
 func (r *RealmPart) CopyElementRange(o *Object, start, end int64) (*Object, bool) {
 	if !o.elemsComplete() {
 		return nil, false
@@ -328,7 +328,7 @@ func (r *RealmPart) CopyElementRange(o *Object, start, end int64) (*Object, bool
 	return r.NewArray(AppendPolled(&r.Poller, nil, elems)), true
 }
 
-// SpliceElements is QuietContext.SpliceElements.
+// SpliceElements is quiet.Context.SpliceElements.
 func (r *RealmPart) SpliceElements(o *Object, length, start, del int64, items []Value) (*Object, bool) {
 	if length != int64(len(o.Elems)) || start < 0 || start > length || del < 0 || del > length-start {
 		return nil, false
@@ -362,7 +362,7 @@ func (r *RealmPart) SpliceElements(o *Object, length, start, del int64, items []
 	return r.NewArray(removed), true
 }
 
-// AppendElementsOf is QuietContext.AppendElementsOf.
+// AppendElementsOf is quiet.Context.AppendElementsOf.
 func (r *RealmPart) AppendElementsOf(dst *Object, n int64, src *Object) bool {
 	if !dst.ElemsResizable() || int64(dst.Length) != n || dst.Shape != r.Shapes.Array {
 		return false
@@ -380,7 +380,7 @@ func (r *RealmPart) AppendElementsOf(dst *Object, n int64, src *Object) bool {
 	return true
 }
 
-// SkipHoles is QuietContext.SkipHoles.
+// SkipHoles is quiet.Context.SkipHoles.
 func (r *RealmPart) SkipHoles(o *Object, i, end int64) int64 {
 	if i < 0 || i >= end || i < int64(len(o.Elems)) && !o.Elems[i].IsHole() || !o.HolesAreAbsent() {
 		return i
@@ -401,7 +401,7 @@ func (r *RealmPart) SkipHoles(o *Object, i, end int64) int64 {
 	return j
 }
 
-// SkipHolesBackward is QuietContext.SkipHolesBackward.
+// SkipHolesBackward is quiet.Context.SkipHolesBackward.
 func (r *RealmPart) SkipHolesBackward(o *Object, i, end int64) int64 {
 	if i <= end || i < 0 || i > MaxArrayIndex || i < int64(len(o.Elems)) && !o.Elems[i].IsHole() || !o.HolesAreAbsent() {
 		return i

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/hajimehoshi/ekuma/internal/datetime"
+	"github.com/hajimehoshi/ekuma/internal/quiet"
 )
 
 // DefaultTimeZone returns the time zone of local time. It is the local time zone of the host
@@ -37,11 +38,6 @@ func (ag *agent) HasCustomClock() bool {
 
 // The limits of the current time: the limits of time values, and of epoch nanoseconds of
 // Temporal.Instant.
-var (
-	maxSystemTime = time.Unix(8.64e12, 0)
-	minSystemTime = time.Unix(-8.64e12, 0)
-)
-
 // Now returns the current time of the clock, clamped to the range of time values. It
 // implements HostSystemUTCEpochNanoseconds.
 func (ag *agent) Now() time.Time {
@@ -51,37 +47,12 @@ func (ag *agent) Now() time.Time {
 	} else {
 		t = ag.Clock()
 	}
-	return clampSystemTime(t)
-}
-
-// clampSystemTime returns t clamped to the range of time values.
-func clampSystemTime(t time.Time) time.Time {
-	if t.After(maxSystemTime) {
-		return maxSystemTime
-	}
-	if t.Before(minSystemTime) {
-		return minSystemTime
-	}
-	return t
+	return quiet.ClampSystemTime(t)
 }
 
 // SystemUTCEpochMilliseconds returns the current time as a time value.
 func (ag *agent) SystemUTCEpochMilliseconds() float64 {
-	return epochMilliseconds(ag.Now())
-}
-
-// SystemUTCEpochMilliseconds is [agent.SystemUTCEpochMilliseconds] without a host clock. It
-// reports false with one.
-func (q QuietContext) SystemUTCEpochMilliseconds() (float64, bool) {
-	if q.realm.Clock != nil {
-		return 0, false
-	}
-	return epochMilliseconds(clampSystemTime(time.Now())), true
-}
-
-func epochMilliseconds(t time.Time) float64 {
-	// UnixMilli rounds toward negative infinity, as the floor of the specification does.
-	return float64(t.UnixMilli())
+	return quiet.EpochMilliseconds(ag.Now())
 }
 
 // SetRandomSource sets src as the source of [agent.RandomNumber]. A nil src restores the global

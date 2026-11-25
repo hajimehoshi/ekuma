@@ -12,6 +12,7 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/element"
 	"github.com/hajimehoshi/ekuma/internal/engine"
 	"github.com/hajimehoshi/ekuma/internal/numconv"
+	"github.com/hajimehoshi/ekuma/internal/quiet"
 	"github.com/hajimehoshi/ekuma/internal/storage"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
@@ -828,16 +829,16 @@ func typedArrayCopyWithin(cx *engine.ExecutionContext, this engine.Value, args [
 }
 
 var (
-	nativeTypedArrayEntries = engine.RegisterNative(typedArrayIterationNative("entries", engine.IterateEntries))
-	nativeTypedArrayKeys    = engine.RegisterNative(typedArrayIterationNative("keys", engine.IterateKeys))
-	nativeTypedArrayValues  = engine.RegisterNative(typedArrayIterationNative("values", engine.IterateValues))
+	nativeTypedArrayEntries = engine.RegisterNative(typedArrayIterationNative("entries", quiet.IterateEntries))
+	nativeTypedArrayKeys    = engine.RegisterNative(typedArrayIterationNative("keys", quiet.IterateKeys))
+	nativeTypedArrayValues  = engine.RegisterNative(typedArrayIterationNative("values", quiet.IterateValues))
 )
 
 // typedArrayIterationNative returns the method name of %TypedArray%.prototype, which returns an
 // Array Iterator of kind.
 //
 //go:noinline
-func typedArrayIterationNative(name string, kind engine.IterationKind) engine.NativeFunc {
+func typedArrayIterationNative(name string, kind quiet.IterationKind) engine.NativeFunc {
 	return func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		o, _, _ := validateTypedArray(cx, this, "%TypedArray%.prototype."+name)
 		return storage.ObjectValue(cx.NewArrayIterator(o, kind))

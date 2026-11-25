@@ -12,6 +12,7 @@ import (
 
 	"github.com/hajimehoshi/ekuma/internal/engine"
 	"github.com/hajimehoshi/ekuma/internal/numconv"
+	"github.com/hajimehoshi/ekuma/internal/quiet"
 	"github.com/hajimehoshi/ekuma/internal/storage"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
@@ -1005,7 +1006,7 @@ func mathHypot(cx *engine.ExecutionContext, this engine.Value, args []engine.Val
 }
 
 // nativeStringIteratorNext is %StringIteratorPrototype%.next.
-var nativeStringIteratorNext = engine.RegisterPlainIteratorNext(engine.IteratorClosureRealm, "next method called on an object that is not a string iterator", stringIteratorStep, nil)
+var nativeStringIteratorNext = engine.RegisterPlainIteratorNext(engine.IteratorClosureRealm, "next method called on an object that is not a string iterator", quiet.StringIteratorStep, nil)
 
 var nativeGeneratorFunctionConstructor = engine.RegisterNative(generatorFunctionConstructor)
 
@@ -1032,16 +1033,6 @@ func initIterators(cx *engine.ExecutionContext) {
 	cx.Define(gf, cx.Key(engine.KeyPrototype), storage.ObjectValue(gp), engine.FlagConfigurable)
 	cx.Define(gp, cx.Key(engine.KeyConstructor), storage.ObjectValue(gf), engine.FlagConfigurable)
 	functionKindConstructor(cx, "GeneratorFunction", nativeGeneratorFunctionConstructor, gf)
-}
-
-func stringIteratorStep(q engine.QuietContext, _ *engine.Object, it *stringIterator) (engine.Value, bool) {
-	if it.pos >= len(it.str) {
-		return storage.Undefined, false
-	}
-	_, size := wtf8.DecodeRune(it.str[it.pos:])
-	s := it.str[it.pos : it.pos+size]
-	it.pos += size
-	return q.NewString(s), true
 }
 
 var (

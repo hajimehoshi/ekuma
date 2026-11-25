@@ -6,43 +6,16 @@ package builtin
 import (
 	"github.com/hajimehoshi/ekuma/internal/collection"
 	"github.com/hajimehoshi/ekuma/internal/engine"
+	"github.com/hajimehoshi/ekuma/internal/quiet"
 	"github.com/hajimehoshi/ekuma/internal/storage"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
-
-// mapIterator is the state of a Map Iterator object.
-type mapIterator struct {
-	// table is nil once the iterator is done.
-	table  *collection.Table
-	cursor collection.Cursor
-	kind   engine.IterationKind
-}
-
-// setIterator is the state of a Set Iterator object.
-type setIterator struct {
-	// table is nil once the iterator is done.
-	table  *collection.Table
-	cursor collection.Cursor
-	kind   engine.IterationKind
-}
 
 func thisMap(cx *engine.ExecutionContext, this engine.Value, name string) *collection.Table {
 	t, _ := storage.MapData(this).(*collection.Table)
 	if t == nil {
 		cx.ThrowTypeError("Map.prototype." + name + " called on incompatible receiver " + cx.DisplayString(this))
 	}
-	return t
-}
-
-// mapOf returns the [[MapData]] of this, or nil when this is not a Map object.
-func mapOf(this engine.Value) *collection.Table {
-	t, _ := storage.MapData(this).(*collection.Table)
-	return t
-}
-
-// setOf returns the [[SetData]] of this, or nil when this is not a Set object.
-func setOf(this engine.Value) *collection.Table {
-	t, _ := storage.SetData(this).(*collection.Table)
 	return t
 }
 
@@ -70,44 +43,6 @@ func addEntriesFromIterable(cx *engine.ExecutionContext, target *engine.Object, 
 		}
 		return true
 	})
-}
-
-// iterationUnobservable reports whether iterating the Map or Set o calls the method iter as its
-// @@iterator, which proto holds, and the method next, which iterProto holds.
-func iterationUnobservable(q engine.QuietContext, o, proto, iter, iterProto, next *engine.Object) bool {
-	return q.InheritsMethod(o, proto, q.WellKnownSymbol(engine.SymbolIterator), iter) && q.HasOwnMethod(iterProto, q.Key(engine.KeyNext), next)
-}
-
-// newMapCopy returns the Map that the constructor makes with proto from iterable when that calls
-// the original methods of a Map only. It reports false otherwise.
-func newMapCopy(q engine.QuietContext, proto *engine.Object, iterable engine.Value) (*engine.Object, bool) {
-	src := mapOf(iterable)
-	if src == nil || proto != q.Intrinsic(engine.IntrinsicMapPrototype) {
-		return nil, false
-	}
-	if !q.HasOwnMethod(proto, q.Key(engine.KeySet), q.Intrinsic(engine.IntrinsicMapPrototypeSet)) {
-		return nil, false
-	}
-	if !iterationUnobservable(q, iterable.Object(), proto, q.Intrinsic(engine.IntrinsicMapPrototypeEntries), q.Intrinsic(engine.IntrinsicMapIteratorPrototype), q.Intrinsic(engine.IntrinsicMapIteratorPrototypeNext)) {
-		return nil, false
-	}
-	return q.NewMapObject(proto, src.Clone(q.Poll)), true
-}
-
-// newSetCopy returns the Set that the constructor makes with proto from iterable when that calls
-// the original methods of a Set only. It reports false otherwise.
-func newSetCopy(q engine.QuietContext, proto *engine.Object, iterable engine.Value) (*engine.Object, bool) {
-	src := setOf(iterable)
-	if src == nil || proto != q.Intrinsic(engine.IntrinsicSetPrototype) {
-		return nil, false
-	}
-	if !q.HasOwnMethod(proto, q.Key(engine.KeyAdd), q.Intrinsic(engine.IntrinsicSetPrototypeAdd)) {
-		return nil, false
-	}
-	if !iterationUnobservable(q, iterable.Object(), proto, q.Intrinsic(engine.IntrinsicSetPrototypeValues), q.Intrinsic(engine.IntrinsicSetIteratorPrototype), q.Intrinsic(engine.IntrinsicSetIteratorPrototypeNext)) {
-		return nil, false
-	}
-	return q.NewSetObject(proto, src.Clone(q.Poll)), true
 }
 
 // reserveProbe is the number of elements of an array after which a collection made from the
@@ -188,32 +123,32 @@ var (
 	nativeMapGroupBy     = engine.RegisterNative(mapGroupBy)
 	nativeMapClear       = engine.RegisterNative(mapClear)
 	nativeMapDelete      = engine.RegisterNativeWithKernels(mapDelete, engine.Kernels{
-		Method1:  mapDeleteKernel,
+		Method1:  quiet.MapDeleteKernel,
 		Contract: shortContract,
 	})
 	nativeMapGet = engine.RegisterNativeWithKernels(mapGet, engine.Kernels{
-		Method1:  mapGetKernel,
+		Method1:  quiet.MapGetKernel,
 		Contract: shortContract,
 	})
 	nativeMapHas = engine.RegisterNativeWithKernels(mapHas, engine.Kernels{
-		Method1:  mapHasKernel,
+		Method1:  quiet.MapHasKernel,
 		Contract: shortContract,
 	})
 	nativeMapSet = engine.RegisterNativeWithKernels(mapSet, engine.Kernels{
-		Method2:  mapSetKernel,
+		Method2:  quiet.MapSetKernel,
 		Contract: shortContract,
 	})
 	nativeMapGetOrInsert         = engine.RegisterNative(mapGetOrInsert)
 	nativeMapGetOrInsertComputed = engine.RegisterNative(mapGetOrInsertComputed)
 	nativeMapForEach             = engine.RegisterNative(mapForEach)
 	nativeMapSize                = engine.RegisterNativeWithKernels(mapSize, engine.Kernels{
-		Method0:  mapSizeKernel,
+		Method0:  quiet.MapSizeKernel,
 		Contract: shortContract,
 	})
-	nativeMapKeys         = engine.RegisterNative(mapIterationNative("keys", engine.IterateKeys))
-	nativeMapValues       = engine.RegisterNative(mapIterationNative("values", engine.IterateValues))
-	nativeMapEntries      = engine.RegisterNative(mapIterationNative("entries", engine.IterateEntries))
-	nativeMapIteratorNext = engine.RegisterPlainIteratorNext(engine.IteratorClosureRealm, "next method called on an object that is not a Map Iterator", mapIteratorStep, mapIteratorPairStep)
+	nativeMapKeys         = engine.RegisterNative(mapIterationNative("keys", quiet.IterateKeys))
+	nativeMapValues       = engine.RegisterNative(mapIterationNative("values", quiet.IterateValues))
+	nativeMapEntries      = engine.RegisterNative(mapIterationNative("entries", quiet.IterateEntries))
+	nativeMapIteratorNext = engine.RegisterPlainIteratorNext(engine.IteratorClosureRealm, "next method called on an object that is not a Map Iterator", quiet.MapIteratorStep, mapIteratorPairStep)
 )
 
 func initMap(cx *engine.ExecutionContext) {
@@ -255,7 +190,7 @@ func mapConstructor(cx *engine.ExecutionContext, this engine.Value, args []engin
 	targetProto := cx.GetPrototypeFromConstructor(nt, engine.IntrinsicMapPrototype)
 	iterable := arg(args, 0)
 	if iterable.IsObject() {
-		if m, ok := newMapCopy(cx.Quiet(), targetProto, iterable); ok {
+		if m, ok := quiet.NewMapCopy(cx.Quiet(), targetProto, iterable); ok {
 			return storage.ObjectValue(m)
 		}
 	}
@@ -304,48 +239,18 @@ func mapDelete(cx *engine.ExecutionContext, this engine.Value, args []engine.Val
 	return storage.Bool(thisMap(cx, this, "delete").Delete(arg(args, 0)))
 }
 
-func mapDeleteKernel(q engine.QuietContext, this, k engine.Value) (engine.Value, bool) {
-	if t := mapOf(this); t != nil {
-		return storage.Bool(t.Delete(k)), true
-	}
-	return storage.Undefined, false
-}
-
 func mapGet(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	v, _ := thisMap(cx, this, "get").Get(arg(args, 0))
 	return v
-}
-
-func mapGetKernel(q engine.QuietContext, this, k engine.Value) (engine.Value, bool) {
-	if t := mapOf(this); t != nil {
-		v, _ := t.Get(k)
-		return v, true
-	}
-	return storage.Undefined, false
 }
 
 func mapHas(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	return storage.Bool(thisMap(cx, this, "has").Has(arg(args, 0)))
 }
 
-func mapHasKernel(q engine.QuietContext, this, k engine.Value) (engine.Value, bool) {
-	if t := mapOf(this); t != nil {
-		return storage.Bool(t.Has(k)), true
-	}
-	return storage.Undefined, false
-}
-
 func mapSet(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	thisMap(cx, this, "set").Set(arg(args, 0), arg(args, 1))
 	return this
-}
-
-func mapSetKernel(q engine.QuietContext, this, k, v engine.Value) (engine.Value, bool) {
-	if t := mapOf(this); t != nil {
-		t.Set(k, v)
-		return this, true
-	}
-	return storage.Undefined, false
 }
 
 func mapGetOrInsert(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -399,58 +304,32 @@ func mapSize(cx *engine.ExecutionContext, this engine.Value, args []engine.Value
 	return storage.Number(float64(thisMap(cx, this, "size").Size()))
 }
 
-func mapSizeKernel(q engine.QuietContext, this engine.Value) (engine.Value, bool) {
-	if t := mapOf(this); t != nil {
-		return storage.Number(float64(t.Size())), true
-	}
-	return storage.Undefined, false
-}
-
 // mapIterationNative returns the method name of Map.prototype, which returns a Map Iterator of kind.
 //
 //go:noinline
-func mapIterationNative(name string, kind engine.IterationKind) engine.NativeFunc {
+func mapIterationNative(name string, kind quiet.IterationKind) engine.NativeFunc {
 	return func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		t := thisMap(cx, this, name)
-		return storage.ObjectValue(cx.NewIteratorObject(cx.Intrinsic(engine.IntrinsicMapIteratorPrototype), &mapIterator{
-			table:  t,
-			cursor: t.Start(),
-			kind:   kind,
+		return storage.ObjectValue(cx.NewIteratorObject(cx.Intrinsic(engine.IntrinsicMapIteratorPrototype), &quiet.MapIterator{
+			Table:  t,
+			Cursor: t.Start(),
+			Kind:   kind,
 		}))
 	}
 }
 
-func mapIteratorStep(q engine.QuietContext, iterator *engine.Object, it *mapIterator) (engine.Value, bool) {
-	if it.table == nil {
-		return storage.Undefined, false
-	}
-	k, v, ok := it.table.Next(&it.cursor)
-	if !ok {
-		it.table = nil
-		it.cursor = collection.Cursor{}
-		return storage.Undefined, false
-	}
-	switch it.kind {
-	case engine.IterateKeys:
-		return k, true
-	case engine.IterateValues:
-		return v, true
-	}
-	return storage.ObjectValue(engine.CreationQuietContext(iterator).NewArrayPair(k, v)), true
-}
-
 func mapIteratorPairStep(state any) (engine.Value, engine.Value, engine.PairStep) {
-	it, _ := state.(*mapIterator)
-	if it == nil || it.kind != engine.IterateEntries {
+	it, _ := state.(*quiet.MapIterator)
+	if it == nil || it.Kind != quiet.IterateEntries {
 		return storage.Undefined, storage.Undefined, engine.PairDeclined
 	}
-	if it.table == nil {
+	if it.Table == nil {
 		return storage.Undefined, storage.Undefined, engine.PairDone
 	}
-	k, v, ok := it.table.Next(&it.cursor)
+	k, v, ok := it.Table.Next(&it.Cursor)
 	if !ok {
-		it.table = nil
-		it.cursor = collection.Cursor{}
+		it.Table = nil
+		it.Cursor = collection.Cursor{}
 		return storage.Undefined, storage.Undefined, engine.PairDone
 	}
 	return k, v, engine.PairYielded
@@ -543,21 +422,21 @@ func newSet(cx *engine.ExecutionContext, t *collection.Table) engine.Value {
 var (
 	nativeSetConstructor = engine.RegisterNative(setConstructor)
 	nativeSetAdd         = engine.RegisterNativeWithKernels(setAdd, engine.Kernels{
-		Method1:  setAddKernel,
+		Method1:  quiet.SetAddKernel,
 		Contract: shortContract,
 	})
 	nativeSetClear  = engine.RegisterNative(setClear)
 	nativeSetDelete = engine.RegisterNativeWithKernels(setDelete, engine.Kernels{
-		Method1:  setDeleteKernel,
+		Method1:  quiet.SetDeleteKernel,
 		Contract: shortContract,
 	})
 	nativeSetHas = engine.RegisterNativeWithKernels(setHas, engine.Kernels{
-		Method1:  setHasKernel,
+		Method1:  quiet.SetHasKernel,
 		Contract: shortContract,
 	})
 	nativeSetForEach = engine.RegisterNative(setForEach)
 	nativeSetSize    = engine.RegisterNativeWithKernels(setSize, engine.Kernels{
-		Method0:  setSizeKernel,
+		Method0:  quiet.SetSizeKernel,
 		Contract: shortContract,
 	})
 	nativeSetUnion               = engine.RegisterNative(setUnion)
@@ -567,9 +446,9 @@ var (
 	nativeSetIsSubsetOf          = engine.RegisterNative(setIsSubsetOf)
 	nativeSetIsSupersetOf        = engine.RegisterNative(setIsSupersetOf)
 	nativeSetIsDisjointFrom      = engine.RegisterNative(setIsDisjointFrom)
-	nativeSetEntries             = engine.RegisterNative(setIterationNative("entries", engine.IterateEntries))
-	nativeSetValues              = engine.RegisterNative(setIterationNative("values", engine.IterateValues))
-	nativeSetIteratorNext        = engine.RegisterPlainIteratorNext(engine.IteratorClosureRealm, "next method called on an object that is not a Set Iterator", setIteratorStep, setIteratorPairStep)
+	nativeSetEntries             = engine.RegisterNative(setIterationNative("entries", quiet.IterateEntries))
+	nativeSetValues              = engine.RegisterNative(setIterationNative("values", quiet.IterateValues))
+	nativeSetIteratorNext        = engine.RegisterPlainIteratorNext(engine.IteratorClosureRealm, "next method called on an object that is not a Set Iterator", quiet.SetIteratorStep, setIteratorPairStep)
 )
 
 func initSet(cx *engine.ExecutionContext) {
@@ -616,7 +495,7 @@ func setConstructor(cx *engine.ExecutionContext, this engine.Value, args []engin
 	targetProto := cx.GetPrototypeFromConstructor(nt, engine.IntrinsicSetPrototype)
 	iterable := arg(args, 0)
 	if iterable.IsObject() {
-		if s, ok := newSetCopy(cx.Quiet(), targetProto, iterable); ok {
+		if s, ok := quiet.NewSetCopy(cx.Quiet(), targetProto, iterable); ok {
 			return storage.ObjectValue(s)
 		}
 	}
@@ -654,17 +533,6 @@ func setAdd(cx *engine.ExecutionContext, this engine.Value, args []engine.Value)
 	return this
 }
 
-func setAddKernel(q engine.QuietContext, this, v engine.Value) (engine.Value, bool) {
-	t := setOf(this)
-	if t == nil {
-		return storage.Undefined, false
-	}
-	if !t.Has(v) {
-		t.Append(v, v)
-	}
-	return this, true
-}
-
 func setClear(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	thisSet(cx, this, "clear").Clear()
 	return storage.Undefined
@@ -674,22 +542,8 @@ func setDelete(cx *engine.ExecutionContext, this engine.Value, args []engine.Val
 	return storage.Bool(thisSet(cx, this, "delete").Delete(arg(args, 0)))
 }
 
-func setDeleteKernel(q engine.QuietContext, this, v engine.Value) (engine.Value, bool) {
-	if t := setOf(this); t != nil {
-		return storage.Bool(t.Delete(v)), true
-	}
-	return storage.Undefined, false
-}
-
 func setHas(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	return storage.Bool(thisSet(cx, this, "has").Has(arg(args, 0)))
-}
-
-func setHasKernel(q engine.QuietContext, this, v engine.Value) (engine.Value, bool) {
-	if t := setOf(this); t != nil {
-		return storage.Bool(t.Has(v)), true
-	}
-	return storage.Undefined, false
 }
 
 func setForEach(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -713,13 +567,6 @@ func setForEach(cx *engine.ExecutionContext, this engine.Value, args []engine.Va
 
 func setSize(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	return storage.Number(float64(thisSet(cx, this, "size").Size()))
-}
-
-func setSizeKernel(q engine.QuietContext, this engine.Value) (engine.Value, bool) {
-	if t := setOf(this); t != nil {
-		return storage.Number(float64(t.Size())), true
-	}
-	return storage.Undefined, false
 }
 
 func setUnion(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -868,45 +715,29 @@ func setIsDisjointFrom(cx *engine.ExecutionContext, this engine.Value, args []en
 // setIterationNative returns the method name of Set.prototype, which returns a Set Iterator of kind.
 //
 //go:noinline
-func setIterationNative(name string, kind engine.IterationKind) engine.NativeFunc {
+func setIterationNative(name string, kind quiet.IterationKind) engine.NativeFunc {
 	return func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		t := thisSet(cx, this, name)
-		return storage.ObjectValue(cx.NewIteratorObject(cx.Intrinsic(engine.IntrinsicSetIteratorPrototype), &setIterator{
-			table:  t,
-			cursor: t.Start(),
-			kind:   kind,
+		return storage.ObjectValue(cx.NewIteratorObject(cx.Intrinsic(engine.IntrinsicSetIteratorPrototype), &quiet.SetIterator{
+			Table:  t,
+			Cursor: t.Start(),
+			Kind:   kind,
 		}))
 	}
 }
 
-func setIteratorStep(q engine.QuietContext, iterator *engine.Object, it *setIterator) (engine.Value, bool) {
-	if it.table == nil {
-		return storage.Undefined, false
-	}
-	k, _, ok := it.table.Next(&it.cursor)
-	if !ok {
-		it.table = nil
-		it.cursor = collection.Cursor{}
-		return storage.Undefined, false
-	}
-	if it.kind == engine.IterateEntries {
-		return storage.ObjectValue(engine.CreationQuietContext(iterator).NewArrayPair(k, k)), true
-	}
-	return k, true
-}
-
 func setIteratorPairStep(state any) (engine.Value, engine.Value, engine.PairStep) {
-	it, _ := state.(*setIterator)
-	if it == nil || it.kind != engine.IterateEntries {
+	it, _ := state.(*quiet.SetIterator)
+	if it == nil || it.Kind != quiet.IterateEntries {
 		return storage.Undefined, storage.Undefined, engine.PairDeclined
 	}
-	if it.table == nil {
+	if it.Table == nil {
 		return storage.Undefined, storage.Undefined, engine.PairDone
 	}
-	k, _, ok := it.table.Next(&it.cursor)
+	k, _, ok := it.Table.Next(&it.Cursor)
 	if !ok {
-		it.table = nil
-		it.cursor = collection.Cursor{}
+		it.Table = nil
+		it.Cursor = collection.Cursor{}
 		return storage.Undefined, storage.Undefined, engine.PairDone
 	}
 	return k, k, engine.PairYielded

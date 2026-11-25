@@ -11,6 +11,7 @@ import (
 
 	"github.com/hajimehoshi/ekuma/internal/engine"
 	"github.com/hajimehoshi/ekuma/internal/numconv"
+	"github.com/hajimehoshi/ekuma/internal/quiet"
 	"github.com/hajimehoshi/ekuma/internal/storage"
 	"github.com/hajimehoshi/ekuma/internal/unorm"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
@@ -58,11 +59,11 @@ func rejectRegExpObject(cx *engine.ExecutionContext, v engine.Value, what string
 var (
 	// The kernel converts a number or a string, which needs no code to run and cannot throw.
 	nativeStringConstructor = engine.RegisterNativeWithKernels(stringConstructor, engine.Kernels{
-		Method1:  stringConstructorKernel,
+		Method1:  quiet.StringConstructorKernel,
 		Contract: shortContract,
 	})
 	nativeStringFromCharCode = engine.RegisterNativeWithKernels(stringFromCharCode, engine.Kernels{
-		Method1:  stringFromCharCodeKernel,
+		Method1:  quiet.StringFromCharCodeKernel,
 		Contract: shortContract,
 	})
 	nativeStringFromCodePoint = engine.RegisterNative(stringFromCodePoint)
@@ -72,34 +73,34 @@ var (
 	// The kernels of the methods below are the methods for a string and arguments whose
 	// conversions run no code.
 	nativeStringCharAt = engine.RegisterNativeWithKernels(stringCharAt, engine.Kernels{
-		Method1:  stringCharAtKernel,
+		Method1:  quiet.StringCharAtKernel,
 		Contract: shortContract,
 	})
 	nativeStringAt         = engine.RegisterNative(stringAt)
 	nativeStringCharCodeAt = engine.RegisterNativeWithKernels(stringCharCodeAt, engine.Kernels{
-		Method1:  stringCharCodeAtKernel,
+		Method1:  quiet.StringCharCodeAtKernel,
 		Contract: shortContract,
 	})
 	nativeStringCodePointAt = engine.RegisterNative(stringCodePointAt)
 	nativeStringIndexOf     = engine.RegisterNativeWithKernels(stringIndexOf, engine.Kernels{
-		Method1:  stringIndexOfKernel,
+		Method1:  quiet.StringIndexOfKernel,
 		Contract: polledContract,
 	})
 	nativeStringLastIndexOf = engine.RegisterNative(stringLastIndexOf)
 	nativeStringIncludes    = engine.RegisterNativeWithKernels(stringIncludes, engine.Kernels{
-		Method1:  stringIncludesKernel,
+		Method1:  quiet.StringIncludesKernel,
 		Contract: polledContract,
 	})
 	nativeStringStartsWith = engine.RegisterNative(stringStartsWith)
 	nativeStringEndsWith   = engine.RegisterNative(stringEndsWith)
 	nativeStringSlice      = engine.RegisterNativeWithKernels(stringSlice, engine.Kernels{
-		Method1:  stringSliceKernel1,
-		Method2:  stringSliceKernel2,
+		Method1:  quiet.StringSliceKernel1,
+		Method2:  quiet.StringSliceKernel2,
 		Contract: shortContract,
 	})
 	nativeStringSubstring = engine.RegisterNativeWithKernels(stringSubstring, engine.Kernels{
-		Method1:  stringSubstringKernel1,
-		Method2:  stringSubstringKernel2,
+		Method1:  quiet.StringSubstringKernel1,
+		Method2:  quiet.StringSubstringKernel2,
 		Contract: shortContract,
 	})
 	nativeStringSubstr         = engine.RegisterNative(stringSubstr)
@@ -197,16 +198,6 @@ func stringConstructor(cx *engine.ExecutionContext, this engine.Value, args []en
 	return s
 }
 
-func stringConstructorKernel(q engine.QuietContext, this, x engine.Value) (engine.Value, bool) {
-	if x.IsString() {
-		return x, true
-	}
-	if x.IsNumber() {
-		return q.NumberToString(x.Number()), true
-	}
-	return storage.Undefined, false
-}
-
 func stringFromCharCode(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	if len(args) == 1 {
 		return cx.UnitString(uint16(cx.ToUint32(args[0])))
@@ -219,13 +210,6 @@ func stringFromCharCode(cx *engine.ExecutionContext, this engine.Value, args []e
 	s := cx.StringFromCodeUnits(units)
 	checkStringLength(cx, s.StringByteLength())
 	return s
-}
-
-func stringFromCharCodeKernel(q engine.QuietContext, this, x engine.Value) (engine.Value, bool) {
-	if !x.IsNumber() {
-		return storage.Undefined, false
-	}
-	return q.UnitString(uint16(numconv.ToUint32(x.Number()))), true
 }
 
 func stringFromCodePoint(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -269,14 +253,7 @@ func stringValueOf(cx *engine.ExecutionContext, this engine.Value, args []engine
 
 func stringCharAt(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	s := thisStringValue(cx, this, "charAt")
-	return unitStringAt(cx.Quiet(), s, cx.ToIntegerOrInfinity(arg(args, 0)))
-}
-
-func stringCharAtKernel(q engine.QuietContext, this, x engine.Value) (engine.Value, bool) {
-	if !this.IsString() || !x.IsNumber() {
-		return storage.Undefined, false
-	}
-	return unitStringAt(q, this, numconv.ToIntegerOrInfinity(x.Number())), true
+	return quiet.UnitStringAt(cx.Quiet(), s, cx.ToIntegerOrInfinity(arg(args, 0)))
 }
 
 func stringAt(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -294,14 +271,7 @@ func stringAt(cx *engine.ExecutionContext, this engine.Value, args []engine.Valu
 
 func stringCharCodeAt(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	s := thisStringValue(cx, this, "charCodeAt")
-	return codeUnitAt(s, cx.ToIntegerOrInfinity(arg(args, 0)))
-}
-
-func stringCharCodeAtKernel(q engine.QuietContext, this, x engine.Value) (engine.Value, bool) {
-	if !this.IsString() || !x.IsNumber() {
-		return storage.Undefined, false
-	}
-	return codeUnitAt(this, numconv.ToIntegerOrInfinity(x.Number())), true
+	return quiet.CodeUnitAt(s, cx.ToIntegerOrInfinity(arg(args, 0)))
 }
 
 func stringCodePointAt(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -321,13 +291,6 @@ func stringIndexOf(cx *engine.ExecutionContext, this engine.Value, args []engine
 	return storage.Number(float64(s.UnitIndexOf(sub, from, cx.Poll)))
 }
 
-func stringIndexOfKernel(q engine.QuietContext, this, sub engine.Value) (engine.Value, bool) {
-	if !this.IsString() || !sub.IsString() {
-		return storage.Undefined, false
-	}
-	return storage.Number(float64(this.UnitIndexOf(sub, 0, q.Poll))), true
-}
-
 func stringLastIndexOf(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	s := thisStringValue(cx, this, "lastIndexOf")
 	sub := cx.ToStringValue(arg(args, 0))
@@ -345,13 +308,6 @@ func stringIncludes(cx *engine.ExecutionContext, this engine.Value, args []engin
 	sub := cx.ToStringValue(arg(args, 0))
 	from := numconv.RelativeIndex(math.Max(cx.ToIntegerOrInfinity(arg(args, 1)), 0), s.StringLength())
 	return storage.Bool(s.UnitIndexOf(sub, from, cx.Poll) >= 0)
-}
-
-func stringIncludesKernel(q engine.QuietContext, this, sub engine.Value) (engine.Value, bool) {
-	if !this.IsString() || !sub.IsString() {
-		return storage.Undefined, false
-	}
-	return storage.Bool(this.UnitIndexOf(sub, 0, q.Poll) >= 0), true
 }
 
 func stringStartsWith(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -383,21 +339,7 @@ func stringSlice(cx *engine.ExecutionContext, this engine.Value, args []engine.V
 	if e := arg(args, 1); !e.IsUndefined() {
 		end = cx.ToIntegerOrInfinity(e)
 	}
-	return sliceString(cx.Quiet(), s, start, end)
-}
-
-func stringSliceKernel1(q engine.QuietContext, this, start engine.Value) (engine.Value, bool) {
-	if !this.IsString() || !start.IsNumber() {
-		return storage.Undefined, false
-	}
-	return sliceString(q, this, start.Number(), math.Inf(1)), true
-}
-
-func stringSliceKernel2(q engine.QuietContext, this, start, end engine.Value) (engine.Value, bool) {
-	if !this.IsString() || !start.IsNumber() || !end.IsNumber() {
-		return storage.Undefined, false
-	}
-	return sliceString(q, this, start.Number(), end.Number()), true
+	return quiet.SliceString(cx.Quiet(), s, start, end)
 }
 
 func stringSubstring(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -406,21 +348,7 @@ func stringSubstring(cx *engine.ExecutionContext, this engine.Value, args []engi
 	if e := arg(args, 1); !e.IsUndefined() {
 		end = cx.ToIntegerOrInfinity(e)
 	}
-	return substringOf(cx.Quiet(), s, start, end)
-}
-
-func stringSubstringKernel1(q engine.QuietContext, this, start engine.Value) (engine.Value, bool) {
-	if !this.IsString() || !start.IsNumber() {
-		return storage.Undefined, false
-	}
-	return substringOf(q, this, start.Number(), math.Inf(1)), true
-}
-
-func stringSubstringKernel2(q engine.QuietContext, this, start, end engine.Value) (engine.Value, bool) {
-	if !this.IsString() || !start.IsNumber() || !end.IsNumber() {
-		return storage.Undefined, false
-	}
-	return substringOf(q, this, start.Number(), end.Number()), true
+	return quiet.SubstringOf(cx.Quiet(), s, start, end)
 }
 
 func stringSubstr(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -819,7 +747,7 @@ func stringMatchNative(name string, key engine.WellKnownSymbol) engine.NativeFun
 
 func stringIteratorMethod(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	s := thisStringValue(cx, this, "[Symbol.iterator]")
-	return storage.ObjectValue(cx.NewIteratorObject(cx.Intrinsic(engine.IntrinsicStringIteratorPrototype), &stringIterator{str: s.Str()}))
+	return storage.ObjectValue(cx.NewIteratorObject(cx.Intrinsic(engine.IntrinsicStringIteratorPrototype), &quiet.StringIterator{Str: s.Str()}))
 }
 
 const (
@@ -872,11 +800,6 @@ func writeStringLimited(cx *engine.ExecutionContext, b *wtf8.Buffer, v engine.Va
 	}
 	writeString(cx, b, v)
 	checkStringLength(cx, b.Len())
-}
-
-type stringIterator struct {
-	str wtf8.String
-	pos int
 }
 
 // unitStrings sets the elements of out to the strings of the code units of s from the index start
@@ -1085,43 +1008,4 @@ func writeRepeated(cx *engine.ExecutionContext, b *wtf8.Buffer, s wtf8.String, c
 			cx.Poll()
 		}
 	}
-}
-
-// codeUnitAt returns the code unit of the string s at the index i, or NaN when s has none there.
-func codeUnitAt(s engine.Value, i float64) engine.Value {
-	if i < 0 || i >= float64(s.StringLength()) {
-		return storage.Number(math.NaN())
-	}
-	return storage.Number(float64(s.UnitAt(int(i))))
-}
-
-// unitStringAt returns the code unit of the string s at the index i as a string, or the empty
-// string when s has none there.
-func unitStringAt(q engine.QuietContext, s engine.Value, i float64) engine.Value {
-	if i < 0 || i >= float64(s.StringLength()) {
-		return q.NewString("")
-	}
-	return q.UnitString(s.UnitAt(int(i)))
-}
-
-// sliceString returns the result of String.prototype.slice for the string s and the converted
-// arguments start and end.
-func sliceString(q engine.QuietContext, s engine.Value, start, end float64) engine.Value {
-	n := s.StringLength()
-	from, to := numconv.RelativeIndex(start, n), numconv.RelativeIndex(end, n)
-	if from >= to {
-		return q.NewString("")
-	}
-	return q.Substring(s, from, to)
-}
-
-// substringOf returns the result of String.prototype.substring for the string s and the converted
-// arguments start and end.
-func substringOf(q engine.QuietContext, s engine.Value, start, end float64) engine.Value {
-	n := s.StringLength()
-	from, to := numconv.RelativeIndex(max(start, 0), n), numconv.RelativeIndex(max(end, 0), n)
-	if from > to {
-		from, to = to, from
-	}
-	return q.Substring(s, from, to)
 }

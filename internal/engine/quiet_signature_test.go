@@ -15,7 +15,7 @@ var codeTypes = []string{
 	"quietJobs", "Script", "scriptOrModule", "asyncWaiters", "waiterHeap", "mailbox", "moduleEvaluations", "jobQueue", "rejectionTracker",
 }
 
-// quietEngineOperations are the operations of QuietContext that reach the engine, with the reasons.
+// quietEngineOperations are the operations of quiet.Context that reach the engine, with the reasons.
 // TestQuietContextBoundary checks them.
 var quietEngineOperations = map[string]string{
 	"observePush": "samples the running frame",
@@ -32,7 +32,7 @@ var signatureExceptions = map[string]string{
 
 // TestQuietSignatures tests that the functions that neither take nor return an execution context
 // or another value that running code needs do not get one elsewhere. All the functions of the engine
-// without such a value in their signatures count, and all the functions with a QuietContext, which
+// without such a value in their signatures count, and all the functions with a quiet.Context, which
 // must have no such value in their signatures.
 //
 // As the test follows signatures, it sees neither what a function value captures nor what an
@@ -40,7 +40,7 @@ var signatureExceptions = map[string]string{
 // sees the calls of both.
 func TestQuietSignatures(t *testing.T) {
 	prog := checkProgram(t, "../../...")
-	quietContext := prog.typ(t, "QuietContext")
+	quietContext := prog.typ(t, "Context")
 	var forbidden []*types.Named
 	for _, name := range slices.Concat(nonStorageTypes, codeTypes) {
 		if typ := prog.typ(t, name); typ != quietContext {
@@ -161,10 +161,10 @@ func TestQuietSignatures(t *testing.T) {
 					switch {
 					case hasQuiet(sig):
 						if name != "" {
-							t.Errorf("%v: function with a QuietContext has %s in its signature", p.fset.Position(lit.Pos()), name)
+							t.Errorf("%v: function with a quiet.Context has %s in its signature", p.fset.Position(lit.Pos()), name)
 						}
 						check(lit.Body, true, func(n ast.Node, what string) {
-							t.Errorf("%v: function literal with a QuietContext mentions %s", p.fset.Position(n.Pos()), what)
+							t.Errorf("%v: function literal with a quiet.Context mentions %s", p.fset.Position(n.Pos()), what)
 						})
 					case name != "":
 						// The literal runs with what its callers pass.
@@ -241,7 +241,7 @@ func TestQuietSignatures(t *testing.T) {
 				// An initialization function runs before there is an agent.
 				initializes := sig.Recv() == nil && f.Name() == "init"
 				if quiet && name != "" {
-					t.Errorf("%v: function with a QuietContext has %s in its signature", p.fset.Position(fn.Pos()), name)
+					t.Errorf("%v: function with a quiet.Context has %s in its signature", p.fset.Position(fn.Pos()), name)
 				}
 				reported := false
 				check(fn.Body, quiet || p.isEngine() && name == "" && !initializes, func(n ast.Node, what string) {

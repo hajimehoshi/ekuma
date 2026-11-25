@@ -328,7 +328,7 @@ func (q quietJobs) tryCallCapabilityResolve(c *PromiseCapability, v Value) bool 
 	if c.alreadyResolved {
 		return true
 	}
-	then, ok := q.cx.Quiet().resolutionThen(c.promise, v)
+	then, ok := q.cx.Quiet().ResolutionThen(c.promise, v)
 	if !ok {
 		return false
 	}
@@ -386,27 +386,11 @@ func (cx *ExecutionContext) resolvePromise(resolverRealm *realmPart, p *Object, 
 
 // tryResolvePromise resolves p with v, or leaves p pending when resolution needs its caller's frame.
 func (q quietJobs) tryResolvePromise(p *Object, v Value) bool {
-	then, ok := q.cx.Quiet().resolutionThen(p, v)
+	then, ok := q.cx.Quiet().ResolutionThen(p, v)
 	if ok {
 		q.cx.resolvePromiseWithThen(p, v, then)
 	}
 	return ok
-}
-
-func (q QuietContext) resolutionThen(p *Object, v Value) (Value, bool) {
-	if v.O == p {
-		// The self-resolution TypeError records the frame.
-		return storage.Undefined, false
-	}
-	return q.promiseThen(v)
-}
-
-// promiseThen returns the then property used by promise resolution, or undefined for a primitive.
-func (q QuietContext) promiseThen(v Value) (Value, bool) {
-	if !v.IsObject() {
-		return storage.Undefined, true
-	}
-	return q.GetVWithoutCall(v, q.realm.Key(KeyThen))
 }
 
 // resolvePromiseWithThen is the part of resolvePromise after the read of then from resolution.
@@ -603,7 +587,7 @@ func (q quietJobs) tryAwait(v Value, action reactionAction) bool {
 			return true
 		}
 	}
-	then, ok := cx.Quiet().promiseThen(v)
+	then, ok := cx.Quiet().PromiseThen(v)
 	if !ok {
 		return false
 	}

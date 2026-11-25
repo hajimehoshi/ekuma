@@ -9,6 +9,7 @@ import (
 
 	"github.com/hajimehoshi/ekuma/internal/engine"
 	"github.com/hajimehoshi/ekuma/internal/numconv"
+	"github.com/hajimehoshi/ekuma/internal/quiet"
 	"github.com/hajimehoshi/ekuma/internal/storage"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
@@ -291,7 +292,7 @@ func flattenIntoArray(cx *engine.ExecutionContext, a *engine.Object, src *engine
 var (
 	nativeArrayConstructor = engine.RegisterNative(arrayConstructor)
 	nativeArrayIsArray     = engine.RegisterNativeWithKernels(arrayIsArray, engine.Kernels{
-		Method1:  arrayIsArrayKernel,
+		Method1:  quiet.ArrayIsArrayKernel,
 		Contract: shortContract,
 	})
 	nativeArrayOf   = engine.RegisterNative(arrayOf)
@@ -301,7 +302,7 @@ var (
 		Contract: shortContract,
 	})
 	nativeArrayPop = engine.RegisterNativeWithKernels(arrayPop, engine.Kernels{
-		Method0:  arrayPopKernel,
+		Method0:  quiet.ArrayPopKernel,
 		Contract: shortContract,
 	})
 	nativeArrayShift     = engine.RegisterNative(arrayShift)
@@ -412,11 +413,6 @@ func arrayIsArray(cx *engine.ExecutionContext, this engine.Value, args []engine.
 	return storage.Bool(cx.IsArray(arg(args, 0)))
 }
 
-func arrayIsArrayKernel(q engine.QuietContext, this, v engine.Value) (engine.Value, bool) {
-	is, ok := q.IsArrayPlain(v)
-	return storage.Bool(is), ok
-}
-
 func arrayOf(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	if this.IsCallable() && cx.IsConstructor(this.Object()) && this.Object() != cx.Intrinsic(engine.IntrinsicArray) {
 		a := cx.Construct(this.Object(), []engine.Value{storage.Number(float64(len(args)))}, this.Object())
@@ -517,7 +513,7 @@ func arrayPush(cx *engine.ExecutionContext, this engine.Value, args []engine.Val
 }
 
 // arrayPushKernel is the fast path of push for a single value.
-func arrayPushKernel(q engine.QuietContext, this, v engine.Value) (engine.Value, bool) {
+func arrayPushKernel(q quiet.Context, this, v engine.Value) (engine.Value, bool) {
 	if !this.IsObject() {
 		return storage.Undefined, false
 	}
@@ -543,13 +539,6 @@ func arrayPop(cx *engine.ExecutionContext, this engine.Value, args []engine.Valu
 	deleteAt(cx, o, n-1)
 	setLength(cx, o, n-1)
 	return v
-}
-
-func arrayPopKernel(q engine.QuietContext, this engine.Value) (engine.Value, bool) {
-	if !this.IsObject() {
-		return storage.Undefined, false
-	}
-	return this.Object().RemoveLastElement()
 }
 
 func arrayShift(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -794,12 +783,12 @@ func arrayReverse(cx *engine.ExecutionContext, this engine.Value, args []engine.
 var (
 	// The kernels of indexOf and includes are the searches of an Array from its start.
 	nativeArrayIndexOf = engine.RegisterNativeWithKernels(arraySearchNative(false, false), engine.Kernels{
-		Method1:  arrayIndexOfKernel,
+		Method1:  quiet.ArrayIndexOfKernel,
 		Contract: polledContract,
 	})
 	nativeArrayLastIndexOf = engine.RegisterNative(arraySearchNative(true, false))
 	nativeArrayIncludes    = engine.RegisterNativeWithKernels(arraySearchNative(false, true), engine.Kernels{
-		Method1:  arrayIncludesKernel,
+		Method1:  quiet.ArrayIncludesKernel,
 		Contract: polledContract,
 	})
 )
@@ -907,16 +896,6 @@ func arraySearchNative(fromEnd, same bool) engine.NativeFunc {
 		}
 		return storage.Number(-1)
 	}
-}
-
-func arrayIndexOfKernel(q engine.QuietContext, this, target engine.Value) (engine.Value, bool) {
-	found, ok := q.SearchArray(this, target, false)
-	return storage.Number(float64(found)), ok
-}
-
-func arrayIncludesKernel(q engine.QuietContext, this, target engine.Value) (engine.Value, bool) {
-	found, ok := q.SearchArray(this, target, true)
-	return storage.Bool(found >= 0), ok
 }
 
 func arrayForEach(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -1201,15 +1180,15 @@ func arrayFlatMap(cx *engine.ExecutionContext, this engine.Value, args []engine.
 }
 
 func arrayKeys(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-	return storage.ObjectValue(cx.NewArrayIterator(cx.ToObject(this), engine.IterateKeys))
+	return storage.ObjectValue(cx.NewArrayIterator(cx.ToObject(this), quiet.IterateKeys))
 }
 
 func arrayEntries(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-	return storage.ObjectValue(cx.NewArrayIterator(cx.ToObject(this), engine.IterateEntries))
+	return storage.ObjectValue(cx.NewArrayIterator(cx.ToObject(this), quiet.IterateEntries))
 }
 
 func arrayValues(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-	return storage.ObjectValue(cx.NewArrayIterator(cx.ToObject(this), engine.IterateValues))
+	return storage.ObjectValue(cx.NewArrayIterator(cx.ToObject(this), quiet.IterateValues))
 }
 
 // newArrayOfLength checks that n is a valid array length as ArrayCreate does, and returns the storage

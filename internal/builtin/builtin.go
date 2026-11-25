@@ -9,6 +9,7 @@ import (
 
 	"github.com/hajimehoshi/ekuma/internal/engine"
 	"github.com/hajimehoshi/ekuma/internal/numconv"
+	"github.com/hajimehoshi/ekuma/internal/quiet"
 	"github.com/hajimehoshi/ekuma/internal/storage"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
@@ -425,7 +426,7 @@ func objectHasOwnProperty(cx *engine.ExecutionContext, this engine.Value, args [
 	return storage.Bool(cx.QueryOwnProperty(cx.ToObject(this), k))
 }
 
-func objectHasOwnPropertyKernel(q engine.QuietContext, this, k engine.Value) (engine.Value, bool) {
+func objectHasOwnPropertyKernel(q quiet.Context, this, k engine.Value) (engine.Value, bool) {
 	if !this.IsObject() {
 		return storage.Undefined, false
 	}

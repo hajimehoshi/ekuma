@@ -3,6 +3,8 @@
 
 package engine
 
+import "github.com/hajimehoshi/ekuma/internal/quiet"
+
 const pushSampleInterval = 8
 
 // pushSizeHint tracks single-element pushes at one call site in a JavaScript closure.
@@ -19,7 +21,7 @@ type pushSizeHint struct {
 // PushElements appends vals to the array o and returns its new length and true.
 // If o requires the generic Array.prototype.push algorithm, it leaves o unchanged
 // and returns 0, false.
-func PushElements(q QuietContext, o *Object, vals []Value) (uint32, bool) {
+func PushElements(q quiet.Context, o *Object, vals []Value) (uint32, bool) {
 	n, ok := q.AppendElements(o, vals)
 	// Sample single-element pushes so earlier array lengths at this call site can
 	// guide how much space to reserve.
@@ -32,8 +34,8 @@ func PushElements(q QuietContext, o *Object, vals []Value) (uint32, bool) {
 }
 
 // observePush is [agent.observePush].
-func observePush(q QuietContext, o *Object) {
-	executionContextOf(q.realm).observePush(o)
+func observePush(q quiet.Context, o *Object) {
+	executionContextOf(q.Realm).observePush(o)
 }
 
 // observePush samples the array after a single-element push at the calling frame's pc.

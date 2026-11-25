@@ -15,7 +15,7 @@ var storageRoots = []string{"Object", "Value", "shape"}
 // nonStorageTypes are the types that storage must not reach. A type that leads to one of these
 // needs no entry.
 var nonStorageTypes = []string{
-	"agent", "realm", "ExecutionContext", "QuietContext", "Host",
+	"agent", "realm", "ExecutionContext", "Context", "Host",
 	"frame", "nativeCall", "generator", "asyncState",
 	"job", "Module", "waiterData",
 }

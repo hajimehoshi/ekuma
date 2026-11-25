@@ -8,6 +8,7 @@ import (
 
 	"github.com/hajimehoshi/ekuma/internal/datetime"
 	"github.com/hajimehoshi/ekuma/internal/engine"
+	"github.com/hajimehoshi/ekuma/internal/quiet"
 	"github.com/hajimehoshi/ekuma/internal/storage"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
@@ -100,7 +101,7 @@ func formatDate(cx *engine.ExecutionContext, method string, tv float64) string {
 var (
 	nativeDateConstructor = engine.RegisterNative(dateConstructor)
 	nativeDateNow         = engine.RegisterNativeWithKernels(dateNow, engine.Kernels{
-		Method0:  dateNowKernel,
+		Method0:  quiet.DateNowKernel,
 		Contract: shortContract,
 	})
 	nativeDateParse             = engine.RegisterNative(dateParse)
@@ -213,12 +214,6 @@ func dateConstructor(cx *engine.ExecutionContext, this engine.Value, args []engi
 
 func dateNow(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	return storage.Number(cx.SystemUTCEpochMilliseconds())
-}
-
-func dateNowKernel(q engine.QuietContext, this engine.Value) (engine.Value, bool) {
-	// A host clock can reenter JavaScript and observe the native call frame.
-	ms, ok := q.SystemUTCEpochMilliseconds()
-	return storage.Number(ms), ok
 }
 
 func dateParse(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {

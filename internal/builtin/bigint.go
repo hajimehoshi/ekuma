@@ -10,6 +10,7 @@ import (
 
 	"github.com/hajimehoshi/ekuma/internal/engine"
 	"github.com/hajimehoshi/ekuma/internal/numconv"
+	"github.com/hajimehoshi/ekuma/internal/quiet"
 	"github.com/hajimehoshi/ekuma/internal/storage"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
@@ -49,7 +50,7 @@ func thisBigIntObject(cx *engine.ExecutionContext, this engine.Value, what strin
 var (
 	// The kernel converts an integer that fits in an int64, which cannot throw.
 	nativeBigIntConstructor = engine.RegisterNativeWithKernels(bigIntConstructor, engine.Kernels{
-		Method1:  bigIntConstructorKernel,
+		Method1:  quiet.BigIntConstructorKernel,
 		Contract: shortContract,
 	})
 	nativeBigIntAsIntN         = engine.RegisterNative(bigIntAsIntN)
@@ -81,15 +82,6 @@ func bigIntConstructor(cx *engine.ExecutionContext, this engine.Value, args []en
 		return numberToBigInt(cx, p.Number())
 	}
 	return cx.ToBigInt(p)
-}
-
-func bigIntConstructorKernel(q engine.QuietContext, this, x engine.Value) (engine.Value, bool) {
-	if x.IsNumber() {
-		if n := x.Number(); n == math.Trunc(n) && n >= -1<<63 && n < 1<<63 {
-			return storage.BigIntFromInt64(int64(n)), true
-		}
-	}
-	return storage.Undefined, false
 }
 
 func bigIntAsIntN(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {

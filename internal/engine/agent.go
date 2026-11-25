@@ -10,6 +10,7 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/bytecode"
 	"github.com/hajimehoshi/ekuma/internal/datetime"
 	"github.com/hajimehoshi/ekuma/internal/element"
+	"github.com/hajimehoshi/ekuma/internal/quiet"
 	"github.com/hajimehoshi/ekuma/internal/regexp"
 	"github.com/hajimehoshi/ekuma/internal/storage"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
@@ -58,11 +59,11 @@ type nativeFast struct {
 func (k *nativeFast) callMethod(r *realmPart, this Value, args []Value) (Value, bool) {
 	switch {
 	case len(args) == 0 && k.method0 != nil:
-		return k.method0(quietContextOf(r), this)
+		return k.method0(quiet.ContextOf(r), this)
 	case len(args) == 1 && k.method1 != nil:
-		return k.method1(quietContextOf(r), this, args[0])
+		return k.method1(quiet.ContextOf(r), this, args[0])
 	case len(args) == 2 && k.method2 != nil:
-		return k.method2(quietContextOf(r), this, args[0], args[1])
+		return k.method2(quiet.ContextOf(r), this, args[0], args[1])
 	}
 	return Value{}, false
 }

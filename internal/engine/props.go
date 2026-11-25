@@ -9,6 +9,7 @@ import (
 	"strconv"
 
 	"github.com/hajimehoshi/ekuma/internal/numconv"
+	"github.com/hajimehoshi/ekuma/internal/quiet"
 	"github.com/hajimehoshi/ekuma/internal/storage"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
@@ -86,7 +87,7 @@ func (cx *ExecutionContext) QueryProperty(o *Object, k QueryKey) bool {
 
 // queryMissing is QueryProperty of o and k, which is missing.
 func (cx *ExecutionContext) queryMissing(o *Object, k QueryKey) bool {
-	if _, ok := cx.Quiet().hasPropertyPlain(o, k.Key); ok {
+	if _, ok := cx.Quiet().HasPropertyPlain(o, k.Key); ok {
 		return false
 	}
 	return cx.HasProperty(o, cx.propKey(k))
@@ -108,7 +109,7 @@ func (cx *ExecutionContext) QueryOwnProperty(o *Object, k QueryKey) bool {
 // getMissing is getNamed of v and k, which is missing.
 func (cx *ExecutionContext) getMissing(v Value, k QueryKey) (Value, *Object) {
 	start := cx.protoStart(v, storage.NamedKey(k.Key))
-	if _, ok := cx.Quiet().hasPropertyPlain(start, k.Key); ok {
+	if _, ok := cx.Quiet().HasPropertyPlain(start, k.Key); ok {
 		return storage.Undefined, nil
 	}
 	return cx.getNamed(v, cx.propKey(k).Key, nil)
@@ -485,8 +486,8 @@ func (cx *ExecutionContext) HasOwnProperty(o *Object, k PropKey) bool {
 
 // HasOwnPropertyPlain is HasOwnProperty of o and the key k when finding out neither throws nor
 // runs code, and takes a short time. It reports false as ok otherwise.
-func HasOwnPropertyPlain(q QuietContext, o *Object, k Value) (has, ok bool) {
-	r := q.realm
+func HasOwnPropertyPlain(q quiet.Context, o *Object, k Value) (has, ok bool) {
+	r := q.Realm
 	var key QueryKey
 	switch {
 	case k.IsNumber():

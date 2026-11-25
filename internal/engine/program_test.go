@@ -29,13 +29,14 @@ const (
 	enginePath = modulePath + "/internal/engine"
 
 	storagePath = modulePath + "/internal/storage"
+	quietPath   = modulePath + "/internal/quiet"
 )
 
 // enginePackages are the packages that the engine consists of. The rules about the inside of the
 // engine name its types, fields and functions without a package. The first package that declares
 // a type decides what its name means, so a package that forwards a type precedes the one that it
 // forwards to.
-var enginePackages = []string{enginePath, storagePath}
+var enginePackages = []string{enginePath, quietPath, storagePath}
 
 // checkedPackage is a type-checked package.
 type checkedPackage struct {

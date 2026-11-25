@@ -4,6 +4,7 @@
 package engine
 
 import (
+	"github.com/hajimehoshi/ekuma/internal/quiet"
 	"github.com/hajimehoshi/ekuma/internal/storage"
 )
 
@@ -136,7 +137,7 @@ func RegisterIteratorNext(yieldRealm IteratorYieldRealm, step IteratorStepFunc) 
 // For a compatible receiver, step must neither throw nor run JavaScript. pairStep is the pair step
 // of the method, for which the same contract holds, or nil. RegisterPlainIteratorNext must be
 // called only in the initialization of a package.
-func RegisterPlainIteratorNext[T any](yieldRealm IteratorYieldRealm, receiverError string, step func(QuietContext, *Object, T) (Value, bool), pairStep IteratorPairStepFunc) Native {
+func RegisterPlainIteratorNext[T any](yieldRealm IteratorYieldRealm, receiverError string, step func(quiet.Context, *Object, T) (Value, bool), pairStep IteratorPairStepFunc) Native {
 	code := func(cx *ExecutionContext, this Value, args []Value) Value {
 		state, ok := storage.IteratorState(this).(T)
 		if !ok {

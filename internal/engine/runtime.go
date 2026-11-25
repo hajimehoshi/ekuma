@@ -11,6 +11,7 @@ import (
 
 	"github.com/hajimehoshi/ekuma/internal/bytecode"
 	"github.com/hajimehoshi/ekuma/internal/numconv"
+	"github.com/hajimehoshi/ekuma/internal/quiet"
 	"github.com/hajimehoshi/ekuma/internal/storage"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
@@ -90,7 +91,7 @@ func (cx *ExecutionContext) getGlobal(key *Object, c *globalCache, orUndef, stri
 		c.Ref = &g.Slots[p.Slot]
 		return g.Slots[p.Slot]
 	}
-	switch l := quietContextOf(r).lookupNamed(g, key); l.Kind {
+	switch l := quiet.ContextOf(r).LookupNamed(g, key); l.Kind {
 	case lookupAbsent, lookupNumericMiss:
 		if orUndef {
 			return storage.Undefined
@@ -1355,9 +1356,9 @@ func (ag *agent) SetFrameless(f *Object) {
 // one or two arguments. They neither throw nor run code, and report false when the function has
 // to be called instead.
 type (
-	MethodKernel0 func(q QuietContext, this Value) (Value, bool)
-	MethodKernel1 func(q QuietContext, this, x Value) (Value, bool)
-	MethodKernel2 func(q QuietContext, this, x, y Value) (Value, bool)
+	MethodKernel0 func(q quiet.Context, this Value) (Value, bool)
+	MethodKernel1 func(q quiet.Context, this, x Value) (Value, bool)
+	MethodKernel2 func(q quiet.Context, this, x, y Value) (Value, bool)
 )
 
 // nativeObject is a native function object together with its function state and description,
@@ -1485,7 +1486,7 @@ func (cx *ExecutionContext) deleteName(key *Object) bool {
 	}
 	// An inherited HasBinding check can create a lexical binding or an own global property.
 	k := storage.NamedKey(key)
-	if !cx.Quiet().delegates(g) || !cx.HasProperty(g, k) {
+	if !cx.Quiet().Delegates(g) || !cx.HasProperty(g, k) {
 		return true
 	}
 	if _, ok := r.GlobalLex.Shape.Lookup(key); ok {

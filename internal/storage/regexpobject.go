@@ -41,7 +41,7 @@ func (r *RealmPart) hasRegExpShape(o *Object) bool {
 	return s != nil && o.Shape == s
 }
 
-// RegExpLastIndex is QuietContext.RegExpLastIndex.
+// RegExpLastIndex is quiet.Context.RegExpLastIndex.
 func (r *RealmPart) RegExpLastIndex(o *Object) (Value, bool) {
 	if !r.hasRegExpShape(o) {
 		return Undefined, false
@@ -49,7 +49,7 @@ func (r *RealmPart) RegExpLastIndex(o *Object) (Value, bool) {
 	return o.Slots[0], true
 }
 
-// SetRegExpLastIndex is QuietContext.SetRegExpLastIndex.
+// SetRegExpLastIndex is quiet.Context.SetRegExpLastIndex.
 func (r *RealmPart) SetRegExpLastIndex(o *Object, v Value) bool {
 	if !r.hasRegExpShape(o) {
 		return false
@@ -69,7 +69,7 @@ func (o *Object) RenewRegExp(s *Shape) {
 	SetNumber(&o.Slots[0], 0)
 }
 
-// regExpOriginals is what QuietContext.UnmodifiedRegExpMatcher compares against.
+// regExpOriginals is what quiet.Context.UnmodifiedRegExpMatcher compares against.
 type regExpOriginals struct {
 	props []originalProp
 
@@ -118,7 +118,7 @@ func (p *originalProp) find() bool {
 }
 
 // RecordRegExpOriginals records the current own properties protoKeys of %RegExp.prototype%
-// and ctorKeys of %RegExp%, which QuietContext.UnmodifiedRegExpMatcher requires to stay unchanged.
+// and ctorKeys of %RegExp%, which quiet.Context.UnmodifiedRegExpMatcher requires to stay unchanged.
 // Every key must name an existing property whose value, if it is a data property, is an object.
 func (r *RealmPart) RecordRegExpOriginals(protoKeys, ctorKeys []*Object) {
 	proto := r.Intrinsic(IntrinsicRegExpPrototype)
@@ -160,7 +160,7 @@ func (r *RealmPart) RecordRegExpOriginals(protoKeys, ctorKeys []*Object) {
 	o.checked = false
 }
 
-// UnmodifiedRegExpMatcher is QuietContext.UnmodifiedRegExpMatcher.
+// UnmodifiedRegExpMatcher is quiet.Context.UnmodifiedRegExpMatcher.
 func (r *RealmPart) UnmodifiedRegExpMatcher(o *Object) *regexp.Regexp {
 	if o.Class != ClassRegExp || !r.hasRegExpShape(o) {
 		return nil

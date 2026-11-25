@@ -7,6 +7,7 @@ import (
 	"cmp"
 	"slices"
 
+	"github.com/hajimehoshi/ekuma/internal/quiet"
 	"github.com/hajimehoshi/ekuma/internal/storage"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
@@ -92,27 +93,18 @@ const (
 	IteratorClosureRealm
 )
 
-// IterationKind identifies what an iterator yields.
-type IterationKind uint8
-
-const (
-	IterateKeys IterationKind = iota
-	IterateValues
-	IterateEntries
-)
-
 type arrayIterator struct {
 	object    *Object
 	nextIndex int64
-	kind      IterationKind
+	kind      quiet.IterationKind
 }
 
 // NewArrayIterator returns an array iterator over the array-like object o.
-func (cx *ExecutionContext) NewArrayIterator(o *Object, kind IterationKind) *Object {
+func (cx *ExecutionContext) NewArrayIterator(o *Object, kind quiet.IterationKind) *Object {
 	return cx.newArrayIterator(o, kind, 0)
 }
 
-func (cx *ExecutionContext) newArrayIterator(o *Object, kind IterationKind, nextIndex int64) *Object {
+func (cx *ExecutionContext) newArrayIterator(o *Object, kind quiet.IterationKind, nextIndex int64) *Object {
 	return cx.NewIteratorObject(cx.Intrinsic(IntrinsicArrayIteratorPrototype), &arrayIterator{
 		object:    o,
 		nextIndex: nextIndex,
@@ -178,7 +170,7 @@ func arrayIteratorIndex(cx *ExecutionContext, o *Object, i uint32) Value {
 
 func (cx *ExecutionContext) arrayIteratorPairStep(it, next Value) (Value, Value, PairStep) {
 	state, _ := storage.IteratorState(it).(*arrayIterator)
-	if state == nil || state.kind != IterateEntries {
+	if state == nil || state.kind != quiet.IterateEntries {
 		return storage.Undefined, storage.Undefined, PairDeclined
 	}
 	key, value, st := state.stepPlain(cx.Quiet())
@@ -191,11 +183,11 @@ func (cx *ExecutionContext) arrayIteratorPairStep(it, next Value) (Value, Value,
 }
 
 // result returns what the iterator yields for key and value.
-func (it *arrayIterator) result(q QuietContext, key, value Value) Value {
+func (it *arrayIterator) result(q quiet.Context, key, value Value) Value {
 	switch it.kind {
-	case IterateKeys:
+	case quiet.IterateKeys:
 		return key
-	case IterateValues:
+	case quiet.IterateValues:
 		return value
 	default:
 		return Value{O: q.NewArrayPair(key, value)}
@@ -204,11 +196,11 @@ func (it *arrayIterator) result(q QuietContext, key, value Value) Value {
 
 // stepPlain is step when that neither runs code nor throws. It declines without advancing
 // otherwise.
-func (it *arrayIterator) stepPlain(q QuietContext) (key, value Value, st PairStep) {
+func (it *arrayIterator) stepPlain(q quiet.Context) (key, value Value, st PairStep) {
 	if it == nil {
 		return storage.Undefined, storage.Undefined, PairDeclined
 	}
-	r := q.realm
+	r := q.Realm
 	o := it.object
 	if o == nil {
 		return storage.Undefined, storage.Undefined, PairDone
@@ -220,7 +212,7 @@ func (it *arrayIterator) stepPlain(q QuietContext) (key, value Value, st PairSte
 		length = int64(o.Length)
 	case o.Class == classTypedArray:
 		t := o.ExtState().(*TypedArray)
-		if it.kind != IterateKeys && i <= MaxArrayIndex {
+		if it.kind != quiet.IterateKeys && i <= MaxArrayIndex {
 			if b, ok := t.element(uint32(i)); ok {
 				value = loadElement(t.typ, b)
 				it.nextIndex = i + 1
@@ -241,7 +233,7 @@ func (it *arrayIterator) stepPlain(q QuietContext) (key, value Value, st PairSte
 		return storage.Undefined, storage.Undefined, PairDone
 	}
 	key = storage.Number(float64(i))
-	if it.kind == IterateKeys {
+	if it.kind == quiet.IterateKeys {
 		it.nextIndex = i + 1
 		return key, storage.Undefined, PairYielded
 	}
@@ -281,7 +273,7 @@ func (it *arrayIterator) step(cx *ExecutionContext) (key, value Value, st PairSt
 	}
 	key = storage.Number(float64(i))
 	it.nextIndex = i + 1
-	if it.kind == IterateKeys {
+	if it.kind == quiet.IterateKeys {
 		return key, storage.Undefined, PairYielded
 	}
 	if i < int64(len(o.Elems)) && !o.Elems[i].IsHole() {
@@ -504,7 +496,7 @@ func (cx *ExecutionContext) closePlainArrayIterator(o *Object, nextIndex uint32,
 	if cx.NoArrayIteratorReturn(cx.Intrinsic(IntrinsicArrayIteratorPrototype)) {
 		return
 	}
-	it := cx.newArrayIterator(o, IterateValues, int64(nextIndex))
+	it := cx.newArrayIterator(o, quiet.IterateValues, int64(nextIndex))
 	cx.iteratorClose(Value{O: it}, pending)
 }
 

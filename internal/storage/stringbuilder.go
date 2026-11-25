@@ -59,7 +59,7 @@ func (r *RealmPart) builtString(b *shortstrings.Builder) Value {
 	}
 }
 
-// NumberToString is QuietContext.NumberToString.
+// NumberToString is quiet.Context.NumberToString.
 func (r *RealmPart) NumberToString(n float64) Value {
 	var buf [32]byte
 	text := numconv.AppendNumber(buf[:0], n)

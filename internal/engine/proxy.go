@@ -124,15 +124,6 @@ func (cx *ExecutionContext) IsArray(v Value) bool {
 	return o != nil && o.Kind == kindArray
 }
 
-// IsArrayPlain is IsArray of v when v is not a proxy. It reports false as ok for a proxy.
-func (q QuietContext) IsArrayPlain(v Value) (is, ok bool) {
-	o := v.O
-	if o != nil && o.Class == classProxy {
-		return false, false
-	}
-	return o != nil && o.Kind == kindArray, true
-}
-
 // FunctionContext returns the context of GetFunctionRealm(f).
 func (cx *ExecutionContext) FunctionContext(f *Object) *ExecutionContext {
 	if r := cx.functionRealmOrNil(f); r != nil {

@@ -17,8 +17,8 @@ import (
 func TestQuietContextBoundary(t *testing.T) {
 	prog := checkProgram(t, "../../...")
 	executionContext := prog.typ(t, "ExecutionContext")
-	quietContext := prog.typ(t, "QuietContext")
-	// The methods of these types are quiet without a QuietContext. The interpreter and the built-ins
+	quietContext := prog.typ(t, "Context")
+	// The methods of these types are quiet without a quiet.Context. The interpreter and the built-ins
 	// rely on many of them not to run code: they tell that arrays and reads are plain, or read, store
 	// or take values in one step.
 	quietReceivers := []*types.Named{prog.typ(t, "quietJobs"), prog.typ(t, "realmPart"), prog.typ(t, "Object"), prog.typ(t, "Value")}
@@ -40,7 +40,7 @@ func TestQuietContextBoundary(t *testing.T) {
 			forbidden[f.(*types.Func).FullName()] = reason
 		}
 	}
-	// quiet holds the functions with a QuietContext, the methods of quietReceivers and the pair steps.
+	// quiet holds the functions with a quiet.Context, the methods of quietReceivers and the pair steps.
 	var quiet []string
 	pairSteps := map[string]bool{}
 
@@ -83,11 +83,11 @@ func TestQuietContextBoundary(t *testing.T) {
 					typ = list.Elem()
 				}
 				if _, ok := typ.Underlying().(*types.Signature); ok {
-					t.Errorf("%v: function with a QuietContext takes the function %s", p.fset.Position(n.Pos()), v.Name())
+					t.Errorf("%v: function with a quiet.Context takes the function %s", p.fset.Position(n.Pos()), v.Name())
 				}
 			}
 		}
-		// checkBuiltin checks the function body, which has a QuietContext when inQuiet is set.
+		// checkBuiltin checks the function body, which has a quiet.Context when inQuiet is set.
 		var checkBuiltin func(body ast.Node, inQuiet bool)
 		checkBuiltin = func(body ast.Node, inQuiet bool) {
 			allowed := map[ast.Expr]bool{}
@@ -121,23 +121,23 @@ func TestQuietContextBoundary(t *testing.T) {
 					// What a predicate reports holds only until code runs.
 					for _, prefix := range []string{"Has", "Inherits", "Is"} {
 						if strings.HasPrefix(sel.Sel.Name, prefix) {
-							t.Errorf("%v: function without a QuietContext asks %s", p.fset.Position(n.Pos()), sel.Sel.Name)
+							t.Errorf("%v: function without a quiet.Context asks %s", p.fset.Position(n.Pos()), sel.Sel.Name)
 						}
 					}
 				}
 				switch {
 				case tv.Type == nil || tv.IsType():
 				case inQuiet && isType(tv.Type, executionContext):
-					t.Errorf("%v: function with a QuietContext uses an ExecutionContext", p.fset.Position(n.Pos()))
+					t.Errorf("%v: function with a quiet.Context uses an ExecutionContext", p.fset.Position(n.Pos()))
 				case !inQuiet && isType(tv.Type, quietContext) && !allowed[expr]:
-					t.Errorf("%v: QuietContext outlives the expression that makes it", p.fset.Position(n.Pos()))
+					t.Errorf("%v: quiet.Context outlives the expression that makes it", p.fset.Position(n.Pos()))
 				}
 				return true
 			})
 		}
 		for id, obj := range info.Defs {
 			if v, ok := obj.(*types.Var); ok && (v.IsField() || v.Parent() == p.pkg.Scope()) && isType(v.Type(), quietContext) {
-				t.Errorf("%v: %s holds a QuietContext", p.fset.Position(id.Pos()), id.Name)
+				t.Errorf("%v: %s holds a quiet.Context", p.fset.Position(id.Pos()), id.Name)
 			}
 		}
 		for _, file := range p.files {
@@ -294,7 +294,7 @@ func TestQuietContextBoundary(t *testing.T) {
 		t.Error("no pair step")
 	}
 	if len(quiet) == 0 {
-		t.Error("no function with a QuietContext")
+		t.Error("no function with a quiet.Context")
 	}
 	for name, ms := range interfaceUses {
 		for _, m := range ms {

@@ -180,7 +180,7 @@ func (dst *Object) TakeDataProperties(from *Object) bool {
 	return true
 }
 
-// AssignDataProperties is QuietContext.AssignDataProperties.
+// AssignDataProperties is quiet.Context.AssignDataProperties.
 func (r *RealmPart) AssignDataProperties(to, from *Object) bool {
 	s := takenShape(to, from)
 	if s == nil || len(from.Elems) != 0 {
@@ -254,7 +254,7 @@ func (r *RealmPart) InheritsHasInstance(c *Object) bool {
 	return true
 }
 
-// GetVWithoutCall is QuietContext.GetVWithoutCall. It fills c, which may be nil, when the lookup can be
+// GetVWithoutCall is quiet.Context.GetVWithoutCall. It fills c, which may be nil, when the lookup can be
 // repeated from the cache.
 func (r *RealmPart) GetVWithoutCall(v Value, key *Object, c *PropCache) (val Value, ok bool) {
 	start := v.O
@@ -297,7 +297,7 @@ func (r *RealmPart) GetVWithoutCall(v Value, key *Object, c *PropCache) (val Val
 	return Undefined, false
 }
 
-// HasOwnMethod is QuietContext.HasOwnMethod.
+// HasOwnMethod is quiet.Context.HasOwnMethod.
 func (o *Object) HasOwnMethod(key, method *Object) bool {
 	if o.Flags&ObjExotic != 0 {
 		return false
@@ -306,7 +306,7 @@ func (o *Object) HasOwnMethod(key, method *Object) bool {
 	return ok && p.Flags&FlagAccessor == 0 && o.Slots[p.Slot].O == method
 }
 
-// InheritsMethod is QuietContext.InheritsMethod.
+// InheritsMethod is quiet.Context.InheritsMethod.
 func (o *Object) InheritsMethod(proto, key, method *Object) bool {
 	if o.Flags&ObjExotic != 0 || o.Shape.Proto != proto {
 		return false
