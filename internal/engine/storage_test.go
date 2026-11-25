@@ -7,7 +7,9 @@ import (
 	"go/ast"
 	"go/token"
 	"go/types"
+	"maps"
 	"path/filepath"
+	"slices"
 	"testing"
 )
 
@@ -129,48 +131,35 @@ var bufferExceptions = map[string]storageException{
 // (agent.clearStale clears those), composite literals of new objects, local copies of a slice,
 // and stores of single values.
 func TestValueStorageOwnership(t *testing.T) {
-	p := checkPackages(t, ".")[0]
-	field := func(typ, name string) types.Object {
-		t.Helper()
-		obj := p.pkg.Scope().Lookup(typ)
-		if obj == nil {
-			t.Fatalf("missing type %s", typ)
-		}
-		f, _, _ := types.LookupFieldOrMethod(obj.Type(), true, p.pkg, name)
-		if f == nil {
-			t.Fatalf("missing field %s.%s", typ, name)
-		}
-		return f
-	}
+	prog := checkProgram(t, "../../...")
 	object := map[types.Object]bool{
-		field("objectProperties", "slots"): true,
-		field("objectProperties", "elems"): true,
+		prog.field(t, "objectProperties", "slots"): true,
+		prog.field(t, "objectProperties", "elems"): true,
 	}
 	// Assigning one of these replaces slots and elems at once.
-	whole := map[types.Type]bool{
-		p.pkg.Scope().Lookup("objectProperties").Type(): true,
-		p.pkg.Scope().Lookup("propertyObject").Type():   true,
-		p.pkg.Scope().Lookup("Object").Type():           true,
+	whole := []*types.Named{
+		prog.typ(t, "objectProperties"),
+		prog.typ(t, "propertyObject"),
+		prog.typ(t, "Object"),
 	}
-	properties := field("Object", "objectProperties")
+	properties := prog.field(t, "Object", "objectProperties")
 	buffers := map[types.Object]bool{
-		field("agent", "natives"):             true,
-		field("agent", "openUpvals"):          true,
-		field("generator", "openUpvals"):      true,
-		field("generator", "scopes"):          true,
-		field("frame", "scopes"):              true,
-		field("asyncState", "queue"):          true,
-		field("DisposeCapability", "stack"):   true,
-		field("rejectionTracker", "promises"): true,
-		field("jobQueue", "jobs"):             true,
+		prog.field(t, "agent", "natives"):             true,
+		prog.field(t, "agent", "openUpvals"):          true,
+		prog.field(t, "generator", "openUpvals"):      true,
+		prog.field(t, "generator", "scopes"):          true,
+		prog.field(t, "frame", "scopes"):              true,
+		prog.field(t, "asyncState", "queue"):          true,
+		prog.field(t, "DisposeCapability", "stack"):   true,
+		prog.field(t, "rejectionTracker", "promises"): true,
+		prog.field(t, "jobQueue", "jobs"):             true,
+	}
+	for _, exceptions := range []map[string]storageException{objectStorageExceptions, bufferExceptions} {
+		for name := range exceptions {
+			prog.checkUnique(t, name)
+		}
 	}
 
-	fieldOf := func(e ast.Expr) types.Object {
-		if sel, ok := ast.Unparen(e).(*ast.SelectorExpr); ok {
-			return p.info.Uses[sel.Sel]
-		}
-		return nil
-	}
 	// base returns the expression that e is a slice of.
 	base := func(e ast.Expr) ast.Expr {
 		for {
@@ -181,68 +170,84 @@ func TestValueStorageOwnership(t *testing.T) {
 			e = s.X
 		}
 	}
-	isAppend := func(call *ast.CallExpr) bool {
-		id, ok := ast.Unparen(call.Fun).(*ast.Ident)
-		if !ok {
-			return false
-		}
-		b, ok := p.info.Uses[id].(*types.Builtin)
-		return ok && b.Name() == "append"
+	// isWhole reports whether typ is one of whole, and not a pointer to it.
+	isWhole := func(typ types.Type) bool {
+		_, ok := types.Unalias(typ).(*types.Named)
+		return ok && slices.ContainsFunc(whole, func(w *types.Named) bool {
+			return isType(typ, w)
+		})
 	}
 
 	objectCounts, bufferCounts := map[string]int{}, map[string]int{}
-	for _, file := range p.files {
-		if filepath.Base(p.fset.Position(file.Pos()).Filename) == "storage.go" {
-			continue
-		}
-		for _, decl := range file.Decls {
-			owner := funcName(decl)
-			report := func(pos token.Pos, exceptions map[string]storageException, counts map[string]int, msg string) {
-				counts[owner]++
-				if counts[owner] > exceptions[owner].count {
-					t.Errorf("%v: %s in %s", p.fset.Position(pos), msg, owner)
-				}
+	for _, p := range prog.pkgs {
+		fieldOf := func(e ast.Expr) types.Object {
+			if sel, ok := ast.Unparen(e).(*ast.SelectorExpr); ok {
+				return used(p.info.Uses[sel.Sel])
 			}
-			// assigned holds the appends whose result an assignment reported already stores.
-			assigned := map[ast.Expr]bool{}
-			ast.Inspect(decl, func(n ast.Node) bool {
-				switch n := n.(type) {
-				case *ast.AssignStmt:
-					if n.Tok == token.DEFINE {
-						return true
-					}
-					for i, l := range n.Lhs {
-						f := fieldOf(l)
-						star, _ := ast.Unparen(l).(*ast.StarExpr)
-						switch {
-						case object[f], f != nil && f == properties, star != nil && whole[p.info.TypeOf(star)]:
-							report(l.Pos(), objectStorageExceptions, objectCounts, "assignment of object storage")
-							if len(n.Lhs) == len(n.Rhs) {
-								assigned[ast.Unparen(n.Rhs[i])] = true
-							}
-						case buffers[f] && len(n.Lhs) == len(n.Rhs):
-							if _, ok := ast.Unparen(n.Rhs[i]).(*ast.SliceExpr); ok {
-								report(l.Pos(), bufferExceptions, bufferCounts, "reslice of a buffer")
-							}
-						}
-					}
-				case *ast.RangeStmt:
-					for _, e := range []ast.Expr{n.Key, n.Value} {
-						if e != nil && object[fieldOf(e)] {
-							report(e.Pos(), objectStorageExceptions, objectCounts, "assignment of object storage")
-						}
-					}
-				case *ast.UnaryExpr:
-					if n.Op == token.AND && object[fieldOf(n.X)] {
-						report(n.Pos(), objectStorageExceptions, objectCounts, "pointer to object storage")
-					}
-				case *ast.CallExpr:
-					if isAppend(n) && !assigned[n] && object[fieldOf(base(n.Args[0]))] {
-						report(n.Pos(), objectStorageExceptions, objectCounts, "append to object storage")
+			return nil
+		}
+		isAppend := func(call *ast.CallExpr) bool {
+			id, ok := ast.Unparen(call.Fun).(*ast.Ident)
+			if !ok {
+				return false
+			}
+			b, ok := p.info.Uses[id].(*types.Builtin)
+			return ok && b.Name() == "append"
+		}
+
+		for _, file := range p.files {
+			if p.isEngine() && filepath.Base(p.fset.Position(file.Pos()).Filename) == "storage.go" {
+				continue
+			}
+			for _, decl := range file.Decls {
+				report := func(pos token.Pos, exceptions map[string]storageException, counts map[string]int, msg string) {
+					owner := prog.owner(&p, decl, slices.Collect(maps.Keys(exceptions)))
+					counts[owner]++
+					if counts[owner] > exceptions[owner].count {
+						t.Errorf("%v: %s in %s", p.fset.Position(pos), msg, owner)
 					}
 				}
-				return true
-			})
+				// assigned holds the appends whose result an assignment reported already stores.
+				assigned := map[ast.Expr]bool{}
+				ast.Inspect(decl, func(n ast.Node) bool {
+					switch n := n.(type) {
+					case *ast.AssignStmt:
+						if n.Tok == token.DEFINE {
+							return true
+						}
+						for i, l := range n.Lhs {
+							f := fieldOf(l)
+							star, _ := ast.Unparen(l).(*ast.StarExpr)
+							switch {
+							case object[f], f != nil && f == properties, star != nil && isWhole(p.info.TypeOf(star)):
+								report(l.Pos(), objectStorageExceptions, objectCounts, "assignment of object storage")
+								if len(n.Lhs) == len(n.Rhs) {
+									assigned[ast.Unparen(n.Rhs[i])] = true
+								}
+							case buffers[f] && len(n.Lhs) == len(n.Rhs):
+								if _, ok := ast.Unparen(n.Rhs[i]).(*ast.SliceExpr); ok {
+									report(l.Pos(), bufferExceptions, bufferCounts, "reslice of a buffer")
+								}
+							}
+						}
+					case *ast.RangeStmt:
+						for _, e := range []ast.Expr{n.Key, n.Value} {
+							if e != nil && object[fieldOf(e)] {
+								report(e.Pos(), objectStorageExceptions, objectCounts, "assignment of object storage")
+							}
+						}
+					case *ast.UnaryExpr:
+						if n.Op == token.AND && object[fieldOf(n.X)] {
+							report(n.Pos(), objectStorageExceptions, objectCounts, "pointer to object storage")
+						}
+					case *ast.CallExpr:
+						if isAppend(n) && !assigned[n] && object[fieldOf(base(n.Args[0]))] {
+							report(n.Pos(), objectStorageExceptions, objectCounts, "append to object storage")
+						}
+					}
+					return true
+				})
+			}
 		}
 	}
 	for _, tc := range []struct {
@@ -264,23 +269,4 @@ func TestValueStorageOwnership(t *testing.T) {
 			}
 		}
 	}
-}
-
-// funcName returns the name of the function or method that decl declares, or the empty string.
-func funcName(decl ast.Decl) string {
-	fn, ok := decl.(*ast.FuncDecl)
-	if !ok {
-		return ""
-	}
-	if fn.Recv == nil {
-		return fn.Name.Name
-	}
-	typ := fn.Recv.List[0].Type
-	if star, ok := typ.(*ast.StarExpr); ok {
-		typ = star.X
-	}
-	if id, ok := typ.(*ast.Ident); ok {
-		return id.Name + "." + fn.Name.Name
-	}
-	return fn.Name.Name
 }

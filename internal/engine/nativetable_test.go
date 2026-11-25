@@ -15,16 +15,18 @@ import (
 // TestNativeRegistrations checks that native functions are registered only by the declarations of
 // package-level variables and by init functions, which run once per process.
 func TestNativeRegistrations(t *testing.T) {
+	prog := checkProgram(t, "../../...")
+	native := prog.typ(t, "Native")
 	isRegistration := func(o types.Object) bool {
 		f, ok := o.(*types.Func)
 		if !ok || !strings.HasPrefix(strings.ToLower(f.Name()), "register") {
 			return false
 		}
 		results := f.Type().(*types.Signature).Results()
-		return results.Len() == 1 && engineType(results.At(0).Type(), "Native")
+		return results.Len() == 1 && isType(results.At(0).Type(), native)
 	}
 	var found bool
-	for _, p := range checkPackages(t, "../../...") {
+	for _, p := range prog.pkgs {
 		var check func(root ast.Node, allowed bool)
 		check = func(root ast.Node, allowed bool) {
 			ast.Inspect(root, func(n ast.Node) bool {

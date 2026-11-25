@@ -15,48 +15,62 @@ import (
 // TestQuietContextBoundary checks that quiet operations cannot run script or host code
 // or use the property lookup reserved for diagnostics.
 func TestQuietContextBoundary(t *testing.T) {
-	const enginePath = "github.com/hajimehoshi/ekuma/internal/engine"
+	prog := checkProgram(t, "../../...")
+	executionContext := prog.typ(t, "ExecutionContext")
+	quietContext := prog.typ(t, "QuietContext")
+	pairStepFunc := prog.typ(t, "IteratorPairStepFunc")
+
 	// A quiet operation must preserve observable property lookups. Calling code and
 	// looking past an exotic object through its stored properties both break that contract.
 	const runsCode = "can run code"
-	forbidden := map[string]string{
-		enginePath + ".diagnosticDataProperty":                "uses diagnostic property lookup",
-		"(*" + enginePath + ".ExecutionContext).runFrame":     runsCode,
-		"(*" + enginePath + ".ExecutionContext).callNative":   runsCode,
-		"(*" + enginePath + ".ExecutionContext).invokeNative": runsCode,
-		"(*" + enginePath + ".agent).exec":                    runsCode,
-		"(*" + enginePath + ".agent).InitLazyObject":          runsCode,
+	forbidden := map[string]string{}
+	for name, reason := range map[string]string{
+		"diagnosticDataProperty":        "uses diagnostic property lookup",
+		"ExecutionContext.runFrame":     runsCode,
+		"ExecutionContext.callNative":   runsCode,
+		"ExecutionContext.invokeNative": runsCode,
+		"agent.exec":                    runsCode,
+		"agent.InitLazyObject":          runsCode,
+	} {
+		for _, f := range prog.function(t, name) {
+			forbidden[f.(*types.Func).FullName()] = reason
+		}
 	}
 	// An interruption unwinds to the host, which runs nothing in between.
-	poll := "(*" + enginePath + ".agent).Poll"
+	poll := prog.implementation(t, "agent.Poll").FullName()
 
 	// Functions without a QuietContext that the interpreter and the built-ins rely on not to run
 	// code: they tell that arrays and reads are plain, or read, store or take values in one step.
-	quiet := []string{
-		"(*" + enginePath + ".ExecutionContext).DefineAccessor",
-		"(*" + enginePath + ".ExecutionContext).arrayIterationPlain",
-		"(*" + enginePath + ".ExecutionContext).arrayProtoPlain",
-		"(*" + enginePath + ".ExecutionContext).replaceOwn",
-		"(*" + enginePath + ".Object).Element",
-		"(*" + enginePath + ".Object).ElementList",
-		"(*" + enginePath + ".Object).RemoveFirstElement",
-		"(*" + enginePath + ".Object).RemoveLastElement",
-		"(*" + enginePath + ".Object).SetElement",
-		"(*" + enginePath + ".Object).plainElems",
-		"(*" + enginePath + ".agent).pairDestructuringPlain",
-		enginePath + ".IsArrayPlain",
-		enginePath + ".takeDataProperties",
+	var quiet []string
+	for _, name := range []string{
+		"ExecutionContext.DefineAccessor",
+		"ExecutionContext.arrayIterationPlain",
+		"ExecutionContext.arrayProtoPlain",
+		"ExecutionContext.replaceOwn",
+		"Object.Element",
+		"Object.ElementList",
+		"Object.RemoveFirstElement",
+		"Object.RemoveLastElement",
+		"Object.SetElement",
+		"Object.plainElems",
+		"agent.pairDestructuringPlain",
+		"IsArrayPlain",
+		"takeDataProperties",
+	} {
+		for _, f := range prog.function(t, name) {
+			quiet = append(quiet, f.(*types.Func).FullName())
+		}
 	}
 	listed := len(quiet)
 	pairSteps := map[string]bool{}
 
 	// Only these diagnostics may inspect stored data without applying property operations.
-	storageLookups := map[string]map[string]bool{
-		enginePath + ".diagnosticDataProperty": {
-			"(*" + enginePath + ".ExecutionContext).ExceptionDescription": true,
-			"(*" + enginePath + ".agent).errorOf":                         true,
-			"(*" + enginePath + ".agent).newErrorData":                    true,
-			"(*" + enginePath + ".agent).typeName":                        true,
+	storageLookups := map[string][]string{
+		"diagnosticDataProperty": {
+			"ExecutionContext.ExceptionDescription",
+			"agent.errorOf",
+			"agent.newErrorData",
+			"agent.typeName",
 		},
 	}
 
@@ -65,15 +79,18 @@ func TestQuietContextBoundary(t *testing.T) {
 	methods := map[string][]string{}
 	interfaceUses := map[string][]string{}
 	pos := map[string]token.Position{}
-	for _, p := range checkPackages(t, "../...", "../../intl/...") {
+	for _, p := range prog.pkgs {
+		if !strings.HasPrefix(p.path, modulePath+"/internal/") && p.path != modulePath+"/intl" && !strings.HasPrefix(p.path, modulePath+"/intl/") {
+			continue
+		}
 		info := p.info
-		builtin := p.path != enginePath
+		builtin := !p.isEngine()
 		hasQuiet := func(sig *types.Signature) bool {
-			if r := sig.Recv(); r != nil && engineType(r.Type(), "QuietContext") {
+			if r := sig.Recv(); r != nil && isType(r.Type(), quietContext) {
 				return true
 			}
 			for v := range sig.Params().Variables() {
-				if engineType(v.Type(), "QuietContext") {
+				if isType(v.Type(), quietContext) {
 					return true
 				}
 			}
@@ -120,7 +137,7 @@ func TestQuietContextBoundary(t *testing.T) {
 				if id, ok := expr.(*ast.Ident); ok && tv.Type == nil && info.Uses[id] != nil {
 					tv.Type = info.Uses[id].Type()
 				}
-				if sel, ok := expr.(*ast.SelectorExpr); ok && !inQuiet && engineType(info.TypeOf(sel.X), "QuietContext") {
+				if sel, ok := expr.(*ast.SelectorExpr); ok && !inQuiet && isType(info.TypeOf(sel.X), quietContext) {
 					// What a predicate reports holds only until code runs.
 					for _, prefix := range []string{"Has", "Inherits", "Is"} {
 						if strings.HasPrefix(sel.Sel.Name, prefix) {
@@ -130,16 +147,16 @@ func TestQuietContextBoundary(t *testing.T) {
 				}
 				switch {
 				case tv.Type == nil || tv.IsType():
-				case inQuiet && engineType(tv.Type, "ExecutionContext"):
+				case inQuiet && isType(tv.Type, executionContext):
 					t.Errorf("%v: function with a QuietContext uses an ExecutionContext", p.fset.Position(n.Pos()))
-				case !inQuiet && engineType(tv.Type, "QuietContext") && !allowed[expr]:
+				case !inQuiet && isType(tv.Type, quietContext) && !allowed[expr]:
 					t.Errorf("%v: QuietContext outlives the expression that makes it", p.fset.Position(n.Pos()))
 				}
 				return true
 			})
 		}
 		for id, obj := range info.Defs {
-			if v, ok := obj.(*types.Var); ok && (v.IsField() || v.Parent() == p.pkg.Scope()) && engineType(v.Type(), "QuietContext") {
+			if v, ok := obj.(*types.Var); ok && (v.IsField() || v.Parent() == p.pkg.Scope()) && isType(v.Type(), quietContext) {
 				t.Errorf("%v: %s holds a QuietContext", p.fset.Position(id.Pos()), id.Name)
 			}
 		}
@@ -194,7 +211,7 @@ func TestQuietContextBoundary(t *testing.T) {
 								break
 							}
 							for i := range min(sig.Params().Len(), len(n.Args)) {
-								if !engineType(sig.Params().At(i).Type(), "IteratorPairStepFunc") {
+								if !isType(sig.Params().At(i).Type(), pairStepFunc) {
 									continue
 								}
 								if info.Types[n.Args[i]].IsNil() {
@@ -242,7 +259,7 @@ func TestQuietContextBoundary(t *testing.T) {
 							case *types.Var:
 								_, isFunc := o.Type().Underlying().(*types.Signature)
 								global := o.Pkg() != nil && o.Parent() == o.Pkg().Scope()
-								if isFunc && (o.IsField() && !written[n] || global) && strings.HasPrefix(o.Pkg().Path(), "github.com/hajimehoshi/ekuma") {
+								if isFunc && (o.IsField() && !written[n] || global) && strings.HasPrefix(o.Pkg().Path(), modulePath) {
 									uses[name] = append(uses[name], "the function "+o.Name())
 									forbidden["the function "+o.Name()] = runsCode
 								}
@@ -255,34 +272,29 @@ func TestQuietContextBoundary(t *testing.T) {
 			}
 		}
 	}
-	for name := range forbidden {
-		if !strings.HasPrefix(name, "the function ") && pos[name].Line == 0 {
-			t.Errorf("no function %s", name)
-		}
-	}
-	if pos[poll].Line == 0 {
-		t.Errorf("no function %s", poll)
-	}
-	for _, name := range quiet[:listed] {
-		if pos[name].Line == 0 {
-			t.Errorf("no function %s", name)
-		}
-	}
 	for lookup, callers := range storageLookups {
-		if pos[lookup].Line == 0 {
-			t.Errorf("no function %s", lookup)
+		// The functions may forward to each other.
+		var lookups []string
+		for _, f := range prog.function(t, lookup) {
+			lookups = append(lookups, f.(*types.Func).FullName())
+		}
+		allowed := map[string]bool{}
+		for _, caller := range callers {
+			allowed[prog.implementation(t, caller).FullName()] = true
 		}
 		called := map[string]bool{}
 		for name, us := range uses {
-			if !slices.Contains(us, lookup) {
+			if slices.Contains(lookups, name) || !slices.ContainsFunc(us, func(u string) bool {
+				return slices.Contains(lookups, u)
+			}) {
 				continue
 			}
 			called[name] = true
-			if !callers[name] {
+			if !allowed[name] {
 				t.Errorf("%v: %s looks properties up with %s", pos[name], name, lookup)
 			}
 		}
-		for name := range callers {
+		for name := range allowed {
 			if !called[name] {
 				t.Errorf("%s does not use %s", name, lookup)
 			}
