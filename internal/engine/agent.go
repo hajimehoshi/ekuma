@@ -417,20 +417,35 @@ func (ag *agent) Poll() {
 	if ag.interrupt.Load() {
 		ag.interrupt.Store(false)
 		ag.receiveNotifications()
-		if c := ag.interruptCause.Swap(nil); c != nil {
-			ag.raised = &interruptSignal{
-				cause: *c,
-			}
-			panic(ag.raised)
+		ag.raise()
+	}
+}
+
+// poll is [agent.Poll] without taking notifications. It leaves the flag set, so that the next
+// Poll of the agent takes them.
+func (p *poller) poll() {
+	p.pollYield()
+	p.ResumeInterruption()
+	if p.interrupt.Load() {
+		p.raise()
+	}
+}
+
+// raise panics with the pending interruption, if there is one.
+func (p *poller) raise() {
+	if c := p.interruptCause.Swap(nil); c != nil {
+		p.raised = &interruptSignal{
+			cause: *c,
 		}
+		panic(p.raised)
 	}
 }
 
 // ResumeInterruption panics again with an interruption that a host callback recovered before
 // the interruption reached the outermost call from Go.
-func (ag *agent) ResumeInterruption() {
-	if ag.raised != nil {
-		panic(ag.raised)
+func (p *poller) ResumeInterruption() {
+	if p.raised != nil {
+		panic(p.raised)
 	}
 }
 
@@ -544,14 +559,29 @@ func (ag *agent) dropNatives(frames int) {
 	ag.natives = ag.natives[:n]
 }
 
+// poller is what a long operation needs to stop at an interruption.
+type poller struct {
+	interrupt interruptFlag
+
+	// interruptCause is the cause of the pending interruption.
+	interruptCause atomic.Pointer[error]
+
+	// raised is the interruption that is unwinding to the outermost call from Go.
+	raised *interruptSignal
+}
+
 // space is the state of an agent that its objects and values need: the property keys and the
 // strings, the symbols, the shapes that belong to no realm, the epochs and IDs that the inline
 // caches rely on, and the objects that WeakRefs keep alive. The objects of an agent lead to its
-// space through their shapes.
+// space through their shapes. It also holds what operations on them need besides: the state of
+// polling, the clock and the RegExp matcher.
 //
 // It must not refer to the agent, a realm, a frame or an execution context, except that a shape
 // records its realm. hostDefined belongs to the host and is opaque to the engine.
 type space struct {
+	// poller comes first, as the interpreter loop reads its flag often.
+	poller
+
 	keys keys
 
 	strings stringTable
@@ -594,6 +624,12 @@ type space struct {
 	// keptObjects is the [[KeptAlive]] list.
 	keptObjects keptObjects
 
+	// clock gives the current time, or is nil for time.Now.
+	clock func() time.Time
+
+	// regExpMatcher matches regular expressions. Nothing that a match runs starts another one.
+	regExpMatcher regexp.Matcher
+
 	// hostDefined is the value that [space.HostDefined] returns.
 	hostDefined any
 }
@@ -629,14 +665,6 @@ type agent struct {
 
 	// depth is the number of interpreter loops that are running.
 	depth int
-
-	interrupt interruptFlag
-
-	// interruptCause is the cause of the pending interruption.
-	interruptCause atomic.Pointer[error]
-
-	// raised is the interruption that is unwinding to the outermost call from Go.
-	raised *interruptSignal
 
 	// entered is the number of calls from Go code outside the engine that are running.
 	entered int
@@ -699,14 +727,8 @@ type agent struct {
 	// hostContext is the host context of the running script, job or cleanup.
 	hostContext
 
-	// clock gives the current time, or is nil for time.Now.
-	clock func() time.Time
-
 	// madeHTMLDDA reports whether the agent made an object with the [[IsHTMLDDA]] internal slot.
 	madeHTMLDDA bool
-
-	// regExpMatcher matches regular expressions. Nothing that a match runs starts another one.
-	regExpMatcher regexp.Matcher
 }
 
 // initialStackSize is the number of values that the stack of an agent has room for from the start.

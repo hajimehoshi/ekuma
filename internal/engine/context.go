@@ -9,7 +9,7 @@ type ExecutionContext struct {
 	realm *realm
 
 	// realmPart is the storage state of realm.
-	realmPart *realmPart
+	*realmPart
 
 	// space is the space of agent.
 	*space

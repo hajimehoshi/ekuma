@@ -40,6 +40,11 @@ type realmPart struct {
 	// asyncFromSyncProto is %AsyncFromSyncIteratorPrototype%, or nil until it is needed.
 	asyncFromSyncProto *Object
 
+	legacyRegExp legacyRegExpStatics
+
+	// space is the space of the agent of the realm.
+	*space
+
 	// owner is the execution context of the realm. Only executionContext and the
 	// interpreter loop read it.
 	owner any
@@ -99,8 +104,6 @@ type realm struct {
 
 	// intlFallbackSymbol is the [[FallbackSymbol]] of %Intl%, or nil until it is needed.
 	intlFallbackSymbol *Object
-
-	legacyRegExp legacyRegExpStatics
 }
 
 func (ag *agent) newRealm() *realm {
@@ -112,6 +115,7 @@ func (ag *agent) newRealm() *realm {
 		space:     &ag.space,
 	}
 	r.owner = &r.context
+	r.space = &ag.space
 	r.referrer = &scriptOrModule{
 		realm: r,
 	}

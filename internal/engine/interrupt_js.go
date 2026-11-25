@@ -43,6 +43,6 @@ func (f *interruptFlag) yield() {
 
 // pollYield yields at each call of [agent.Poll], as its callers call it only between runs of many
 // steps. The goroutines that request an interruption may need more than one yield to run.
-func (ag *agent) pollYield() {
-	ag.interrupt.yield()
+func (p *poller) pollYield() {
+	p.interrupt.yield()
 }

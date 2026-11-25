@@ -161,9 +161,9 @@ func (o *Object) elemsOversized() bool {
 }
 
 // reallocElems moves the elements of o to new storage with room for as many elements again.
-func (cx *ExecutionContext) reallocElems(o *Object) {
+func (p *poller) reallocElems(o *Object) {
 	elems := make([]Value, len(o.elems), max(2*len(o.elems), minElems))
-	CopyPolled(cx, elems, o.elems)
+	copyPolled(p, elems, o.elems)
 	o.replaceElems(elems)
 }
 

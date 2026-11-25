@@ -300,7 +300,7 @@ func (o *Object) RemoveLastElement() (Value, bool) {
 	o.removeLastElem()
 	o.length = uint32(n)
 	if o.elemsOversized() {
-		o.shape.realm.executionContext().reallocElems(o)
+		o.shape.space.reallocElems(o)
 	}
 	return v, true
 }
@@ -336,7 +336,7 @@ func (o *Object) RemoveFirstElement() (Value, bool) {
 	}
 	o.length = uint32(n)
 	if o.elemsOversized() {
-		o.shape.realm.executionContext().reallocElems(o)
+		o.shape.space.reallocElems(o)
 	}
 	return v, true
 }
@@ -540,7 +540,7 @@ func (q QuietContext) CopyElementRange(o *Object, start, end int64) (*Object, bo
 	if slices.ContainsFunc(elems, Value.isHole) || !cx.arrayCtorPlain(o) {
 		return nil, false
 	}
-	return cx.NewArray(appendPolled(cx, nil, elems)), true
+	return cx.NewArray(appendPolled(&cx.poller, nil, elems)), true
 }
 
 // SpliceElements replaces del elements of the array o from start on with items, and returns
@@ -554,7 +554,7 @@ func (q QuietContext) SpliceElements(o *Object, length, start, del int64, items 
 	if !cx.elemsMovable(o) || !cx.arrayCtorPlain(o) || !cx.arrayProtoPlain() {
 		return nil, false
 	}
-	removed := appendPolled(cx, nil, o.elems[start:start+del])
+	removed := appendPolled(&cx.poller, nil, o.elems[start:start+del])
 	n, k := int(length), len(items)
 	newLen := n - int(del) + k
 	if n-int(start+del) > pollChunk {
@@ -591,7 +591,7 @@ func (q QuietContext) AppendElementsOf(dst *Object, n int64, src *Object) bool {
 		return false
 	}
 	old := dst.elems
-	dst.elems = appendPolled(cx, old, src.elems)
+	dst.elems = appendPolled(&cx.poller, old, src.elems)
 	if cap(dst.elems) != cap(old) {
 		dst.leaveElems(old)
 	}

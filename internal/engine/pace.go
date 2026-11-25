@@ -72,19 +72,19 @@ func comparedBytes(v Value) int {
 
 // appendPolled returns append(dst, src...), checking for an interruption while it copies many
 // elements. When the call stops, dst is unchanged except past its length.
-func appendPolled[T any](cx *ExecutionContext, dst, src []T) []T {
+func appendPolled[T any](p *poller, dst, src []T) []T {
 	if len(dst)+len(src) <= pollChunk {
 		return append(dst, src...)
 	}
-	cx.Poll()
+	p.poll()
 	n := len(dst)
 	if cap(dst)-n < len(src) {
 		grown := make([]T, n, max(n+len(src), cap(dst)+cap(dst)/4))
-		CopyPolled(cx, grown, dst)
+		copyPolled(p, grown, dst)
 		dst = grown
 	}
 	dst = dst[:n+len(src)]
-	CopyPolled(cx, dst[n:], src)
+	copyPolled(p, dst[n:], src)
 	return dst
 }
 
@@ -101,10 +101,14 @@ func clearPolled[T any](cx *ExecutionContext, s []T) {
 // CopyPolled is copy for slices that do not overlap, checking for an interruption while it
 // copies many elements.
 func CopyPolled[T any](cx *ExecutionContext, dst, src []T) int {
+	return copyPolled(&cx.poller, dst, src)
+}
+
+func copyPolled[T any](p *poller, dst, src []T) int {
 	n := min(len(dst), len(src))
 	for i := 0; i < n; i += pollChunk {
 		if i > 0 {
-			cx.Poll()
+			p.poll()
 		}
 		copy(dst[i:n], src[i:min(i+pollChunk, n)])
 	}
