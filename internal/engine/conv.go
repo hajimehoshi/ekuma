@@ -70,7 +70,7 @@ func (cx *ExecutionContext) GetMethod(v Value, key *Object) *Object {
 		return nil
 	}
 	if !m.IsCallable() {
-		cx.ThrowTypeError(wtf8.ToValidUTF8(cx.KeyString(PropKey{key: key})) + " is not a function")
+		cx.ThrowTypeError(wtf8.ToValidUTF8(cx.KeyString(NamedKey(key))) + " is not a function")
 	}
 	return m.o
 }

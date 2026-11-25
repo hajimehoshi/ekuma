@@ -123,13 +123,12 @@ func (cx *ExecutionContext) defineMappedArgument(o *Object, i uint32, u *upvalue
 	// The ordinary definition validates against the value in the slot.
 	p, _ := o.shape.lookup(cx.indexName(i))
 	o.slots[p.slot] = *u.p
-	readOnly := d.has&HasWritable != 0 && d.flags&FlagWritable == 0
-	if d.IsData() && d.has&HasValue == 0 && readOnly {
-		d.value = *u.p
-		d.has |= HasValue
+	readOnly := d.hasFalse(HasWritable, FlagWritable)
+	if d.IsData() && !d.hasField(HasValue) && readOnly {
+		d.SetValue(*u.p)
 	}
 	m.params[i] = nil
-	if !cx.defineOwnProperty(o, PropKey{idx: i}, d) {
+	if !cx.defineOwnProperty(o, IndexKey(i), d) {
 		m.params[i] = u
 		o.slots[p.slot] = Undefined
 		return false
@@ -137,8 +136,8 @@ func (cx *ExecutionContext) defineMappedArgument(o *Object, i uint32, u *upvalue
 	if d.IsAccessor() {
 		return true
 	}
-	if d.has&HasValue != 0 {
-		*u.p = d.value
+	if d.hasField(HasValue) {
+		*u.p = d.Value()
 	}
 	if !readOnly {
 		m.params[i] = u

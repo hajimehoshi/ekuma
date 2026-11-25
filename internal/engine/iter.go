@@ -707,13 +707,13 @@ func (cx *ExecutionContext) forInNext(o *Object) (Value, bool) {
 			if obj := it.obj; int64(i) < int64(len(obj.elems)) && !obj.elems[i].isHole() {
 				return cx.indexString(i), true
 			}
-			k := PropKey{idx: i}
+			k := IndexKey(i)
 			d, ok := cx.GetOwnProperty(it.obj, k)
 			if !ok {
 				it.missing = append(it.missing, k)
 				continue
 			}
-			if d.flags&FlagEnumerable != 0 {
+			if d.Enumerable() {
 				return cx.indexString(i), true
 			}
 		}
@@ -740,7 +740,7 @@ func (cx *ExecutionContext) forInNext(o *Object) (Value, bool) {
 			if it.visited != nil {
 				it.visited[k] = struct{}{}
 			}
-			if d.flags&FlagEnumerable == 0 {
+			if !d.Enumerable() {
 				continue
 			}
 			return cx.KeyValue(k), true
@@ -798,10 +798,10 @@ func (cx *ExecutionContext) forInMayVisit(o *Object) bool {
 func (ag *agent) forInVisitReceiver(it *forIn) {
 	it.visited = make(map[PropKey]struct{}, int(it.indices)+len(it.keys)+1)
 	for i := range it.indices {
-		it.visited[PropKey{idx: i}] = struct{}{}
+		it.visited[IndexKey(i)] = struct{}{}
 	}
 	if it.length {
-		it.visited[PropKey{key: ag.Key(KeyLength)}] = struct{}{}
+		it.visited[NamedKey(ag.Key(KeyLength))] = struct{}{}
 	}
 	for _, k := range it.keys {
 		if !k.IsSymbol() {

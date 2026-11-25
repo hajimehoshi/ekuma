@@ -526,7 +526,7 @@ func (s *shape) stringKeys() []PropKey {
 		keys := make([]PropKey, 0, len(s.order))
 		for _, k := range s.order {
 			if k != nil && k.kind == kindString {
-				keys = append(keys, PropKey{key: k})
+				keys = append(keys, NamedKey(k))
 			}
 		}
 		return keys
@@ -534,13 +534,13 @@ func (s *shape) stringKeys() []PropKey {
 	keys := make([]PropKey, s.count)
 	t := s
 	for ; t.parent != nil; t = t.parent {
-		keys[t.count-1] = PropKey{key: t.key}
+		keys[t.count-1] = NamedKey(t.key)
 	}
 	for _, e := range t.small {
-		keys[e.slot] = PropKey{key: e.key}
+		keys[e.slot] = NamedKey(e.key)
 	}
 	for k, p := range t.table {
-		keys[p.slot] = PropKey{key: k}
+		keys[p.slot] = NamedKey(k)
 	}
 	return slices.DeleteFunc(keys, PropKey.IsSymbol)
 }
@@ -742,29 +742,6 @@ func (s *shape) handOver() *shape {
 	s.table = nil
 	s.order = nil
 	return t
-}
-
-// newAccessor returns the content of the slot of an accessor property with the given getter
-// and setter.
-func newAccessor(getter, setter *Object) Value {
-	return Value{
-		o: &Object{
-			kind: kindAccessor,
-			ext: &accessorPair{
-				getter: getter,
-				setter: setter,
-			},
-		},
-	}
-}
-
-type accessorPair struct {
-	getter *Object
-	setter *Object
-}
-
-func (v Value) accessor() *accessorPair {
-	return v.o.ext.(*accessorPair)
 }
 
 // shapeTable holds the shapes that new objects start with.

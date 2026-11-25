@@ -8,53 +8,10 @@ import (
 	"math/bits"
 	"slices"
 	"strconv"
-	"strings"
 
 	"github.com/hajimehoshi/ekuma/internal/numconv"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
-
-// PropKey is a property key: an array index when key is nil, otherwise an interned string or a symbol.
-type PropKey struct {
-	key *Object
-	idx uint32
-}
-
-func (k PropKey) isIndex() bool {
-	return k.key == nil
-}
-
-// IsSymbol reports whether k is a symbol.
-func (k PropKey) IsSymbol() bool {
-	return k.key != nil && k.key.kind == kindSymbol
-}
-
-// KeyOfString returns the property key for the string s.
-// It does not keep s.
-func (cx *ExecutionContext) KeyOfString(s wtf8.String) PropKey {
-	if i, ok := stringIndex(s); ok {
-		return PropKey{idx: i}
-	}
-	if o := cx.strings.lookup(s); o != nil {
-		return PropKey{key: o}
-	}
-	return PropKey{key: cx.Intern(wtf8.String(strings.Clone(string(s))))}
-}
-
-// indexName returns the key under which the array index i is stored in a shape.
-func (r *realmPart) indexName(i uint32) *Object {
-	return r.Intern(wtf8.String(strconv.FormatUint(uint64(i), 10)))
-}
-
-// indexKey returns the interned key for the index i, or nil when the key is not interned,
-// in which case no object has a property with that key.
-func (sp *space) indexKey(i uint32) *Object {
-	if i < 10 {
-		return sp.strings.character(byte('0' + i)).o
-	}
-	var buf [10]byte
-	return sp.strings.lookup(wtf8.String(strconv.AppendUint(buf[:0], uint64(i), 10)))
-}
 
 // KeyValue returns the key k as a string or symbol value.
 func (cx *ExecutionContext) KeyValue(k PropKey) Value {
@@ -83,9 +40,9 @@ func (cx *ExecutionContext) ToPropertyKey(v Value) PropKey {
 	o := v.o
 	if o == numberObject {
 		if i, ok := numberIndex(v.n); ok {
-			return PropKey{idx: i}
+			return IndexKey(i)
 		}
-		return PropKey{key: cx.Intern(numconv.NumberToString(v.n))}
+		return NamedKey(cx.Intern(numconv.NumberToString(v.n)))
 	}
 	if o == nil {
 		return cx.KeyOfString("undefined")
@@ -94,32 +51,17 @@ func (cx *ExecutionContext) ToPropertyKey(v Value) PropKey {
 	case kindString:
 		if c := o.Str(); len(c) > 0 && c[0] >= '0' && c[0] <= '9' {
 			if i, ok := o.arrayIndex(); ok {
-				return PropKey{idx: i}
+				return IndexKey(i)
 			}
 		}
-		return PropKey{key: cx.stringKey(o)}
+		return NamedKey(cx.stringKey(o))
 	case kindSymbol:
-		return PropKey{key: o}
+		return NamedKey(o)
 	}
 	if o.kind >= kindFirstObject {
 		return cx.ToPropertyKey(cx.ToPrimitive(v, HintString))
 	}
 	return cx.KeyOfString(cx.ToString(v))
-}
-
-// QueryKey is a property key for an operation that only reads properties. It may be a string that
-// no property key has.
-type QueryKey struct {
-	// key and idx are as in [PropKey], except that key is not interned when idx is missingKey.
-	key *Object
-	idx uint32
-}
-
-// missingKey is the idx of a query key whose key has the contents of no property key.
-const missingKey = 1
-
-func (k QueryKey) missing() bool {
-	return k.key != nil && k.idx == missingKey
 }
 
 // QueryKey returns ToPropertyKey(v) as a query key, which is valid until code runs or a property
@@ -132,54 +74,6 @@ func (cx *ExecutionContext) QueryKey(v Value) QueryKey {
 		return cx.queryStringKey(o)
 	}
 	return QueryKey(cx.ToPropertyKey(v))
-}
-
-// shortQueryKey returns the query key for the short string v, which is not interned.
-func (sp *space) shortQueryKey(v Value) QueryKey {
-	s := v.shortText()
-	if i, ok := stringIndex(s); ok {
-		return QueryKey{idx: i}
-	}
-	if o := sp.strings.lookup(s); o != nil {
-		return QueryKey{key: o}
-	}
-	return QueryKey{
-		key: v.stringObject(),
-		idx: missingKey,
-	}
-}
-
-// queryStringKey returns the query key for the string o.
-func (sp *space) queryStringKey(o *Object) QueryKey {
-	c := o.Str()
-	if len(c) > 0 && c[0] >= '0' && c[0] <= '9' {
-		if i, ok := o.arrayIndex(); ok {
-			return QueryKey{idx: i}
-		}
-	}
-	if o.flags&objInterned != 0 {
-		return QueryKey{key: o}
-	}
-	if k, ok := o.extObject(); ok {
-		return QueryKey{key: k}
-	}
-	if k := sp.strings.lookup(c); k != nil {
-		o.setExtState(k)
-		return QueryKey{key: k}
-	}
-	// Not interning o keeps a read of a missing key from adding to the interned strings.
-	return QueryKey{
-		key: o,
-		idx: missingKey,
-	}
-}
-
-// propKey returns k as a property key.
-func (cx *ExecutionContext) propKey(k QueryKey) PropKey {
-	if k.missing() {
-		return PropKey{key: cx.stringKey(k.key)}
-	}
-	return PropKey(k)
 }
 
 // QueryProperty is HasProperty of o and k.
@@ -213,123 +107,11 @@ func (cx *ExecutionContext) QueryOwnProperty(o *Object, k QueryKey) bool {
 
 // getMissing is getNamed of v and k, which is missing.
 func (cx *ExecutionContext) getMissing(v Value, k QueryKey) (Value, *Object) {
-	start := cx.protoStart(v, PropKey{key: k.key})
+	start := cx.protoStart(v, NamedKey(k.key))
 	if _, ok := cx.Quiet().hasPropertyPlain(start, k.key); ok {
 		return Undefined, nil
 	}
 	return cx.getNamed(v, cx.propKey(k).key, nil)
-}
-
-// Fields of a property descriptor that are present.
-const (
-	HasValue uint8 = 1 << iota
-	HasWritable
-	HasGet
-	HasSet
-	HasEnumerable
-	HasConfigurable
-)
-
-// PropDesc is a property descriptor.
-type PropDesc struct {
-	value  Value
-	getter *Object
-	setter *Object
-
-	// flags holds the attributes. Only the ones that has names are meaningful.
-	flags uint8
-	has   uint8
-}
-
-// Value returns the [[Value]] field of the data descriptor d.
-func (d *PropDesc) Value() Value {
-	return d.value
-}
-
-// Getter returns the [[Get]] field of the accessor descriptor d, or nil when it is undefined.
-func (d *PropDesc) Getter() *Object {
-	return d.getter
-}
-
-// Setter returns the [[Set]] field of the accessor descriptor d, or nil when it is undefined.
-func (d *PropDesc) Setter() *Object {
-	return d.setter
-}
-
-// Writable reports the [[Writable]] field of d, which is false when absent.
-func (d *PropDesc) Writable() bool {
-	return d.flags&FlagWritable != 0
-}
-
-// Enumerable reports the [[Enumerable]] field of d, which is false when absent.
-func (d *PropDesc) Enumerable() bool {
-	return d.flags&FlagEnumerable != 0
-}
-
-// Configurable reports the [[Configurable]] field of d, which is false when absent.
-func (d *PropDesc) Configurable() bool {
-	return d.flags&FlagConfigurable != 0
-}
-
-// SetValue sets the [[Value]] field of d to v.
-func (d *PropDesc) SetValue(v Value) {
-	d.value = v
-	d.has |= HasValue
-}
-
-// SetGetter sets the [[Get]] field of d to f, where nil stands for undefined.
-func (d *PropDesc) SetGetter(f *Object) {
-	d.getter = f
-	d.has |= HasGet
-}
-
-// SetSetter sets the [[Set]] field of d to f, where nil stands for undefined.
-func (d *PropDesc) SetSetter(f *Object) {
-	d.setter = f
-	d.has |= HasSet
-}
-
-// SetWritable sets the [[Writable]] field of d to b.
-func (d *PropDesc) SetWritable(b bool) {
-	d.setFlag(HasWritable, FlagWritable, b)
-}
-
-// SetEnumerable sets the [[Enumerable]] field of d to b.
-func (d *PropDesc) SetEnumerable(b bool) {
-	d.setFlag(HasEnumerable, FlagEnumerable, b)
-}
-
-// SetConfigurable sets the [[Configurable]] field of d to b.
-func (d *PropDesc) SetConfigurable(b bool) {
-	d.setFlag(HasConfigurable, FlagConfigurable, b)
-}
-
-// setFlag makes the field has of d present with the attribute flag set to b.
-func (d *PropDesc) setFlag(has, flag uint8, b bool) {
-	d.has |= has
-	if b {
-		d.flags |= flag
-	} else {
-		d.flags &^= flag
-	}
-}
-
-// IsAccessor implements IsAccessorDescriptor.
-func (d *PropDesc) IsAccessor() bool {
-	return d.has&(HasGet|HasSet) != 0
-}
-
-// IsData implements IsDataDescriptor.
-func (d *PropDesc) IsData() bool {
-	return d.has&(HasValue|HasWritable) != 0
-}
-
-func dataDesc(v Value, flags uint8) PropDesc {
-	return PropDesc{
-		value: v,
-		flags: flags,
-		has:   HasValue | HasWritable | HasEnumerable | HasConfigurable,
-	}
 }
 
 // materialize creates the properties that a function has from the start but that are only
@@ -592,9 +374,9 @@ func (c *propCache) rememberRead(cx *ExecutionContext, start, holder *Object, p 
 // getNamed fills c, which may be nil, when the lookup can be repeated from the cache.
 func (cx *ExecutionContext) getNamed(v Value, key *Object, c *propCache) (val Value, getter *Object) {
 	if o := v.o; o != nil && o.class == classProxy {
-		return cx.proxyGet(o, PropKey{key: key}, v), nil
+		return cx.proxyGet(o, NamedKey(key), v), nil
 	}
-	start := cx.protoStart(v, PropKey{key: key})
+	start := cx.protoStart(v, NamedKey(key))
 	if start.class == classTypedArray && key == cx.Key(KeyLength) && c != nil {
 		// The cache says that the length is the original getter, whose result needs no call.
 		e := &c.cacheEntry
@@ -612,7 +394,7 @@ func (cx *ExecutionContext) getNamed(v Value, key *Object, c *propCache) (val Va
 	r := cx.lookup(start, key)
 	switch r.kind {
 	case lookupDelegate:
-		return cx.getProp(r.holder, PropKey{key: key}, v), nil
+		return cx.getProp(r.holder, NamedKey(key), v), nil
 	case lookupLength:
 		return r.length(v), nil
 	case lookupAbsent, lookupNumericMiss:
@@ -670,7 +452,7 @@ func (sp *space) readNamedSlot(start, holder *Object, p prop, c *propCache) (val
 // GetV returns the named property key of v, calling a getter.
 func (cx *ExecutionContext) GetV(v Value, key *Object) Value {
 	if v.IsObject() && v.o.shape.family == ordinaryRoot {
-		return cx.getProp(v.o, PropKey{key: key}, v)
+		return cx.getProp(v.o, NamedKey(key), v)
 	}
 	val, getter := cx.getNamed(v, key, nil)
 	if getter != nil {
@@ -763,7 +545,7 @@ func (cx *ExecutionContext) getIndex(v Value, i uint32) (Value, *Object) {
 		if v.isShortString() && uint(i) < uint(v.StringLength()) {
 			return cx.UnitString(v.UnitAt(int(i))), nil
 		}
-		start = cx.protoStart(v, PropKey{idx: i})
+		start = cx.protoStart(v, IndexKey(i))
 	}
 	for h := start; h != nil; h = h.shape.proto {
 		if h.objectProperties != nil && int64(i) < int64(len(h.elems)) {
@@ -775,7 +557,7 @@ func (cx *ExecutionContext) getIndex(v Value, i uint32) (Value, *Object) {
 			continue
 		}
 		if h.delegatesPropertyAccess() {
-			return cx.getProp(h, PropKey{idx: i}, v), nil
+			return cx.getProp(h, IndexKey(i), v), nil
 		}
 		if h.class == classTypedArray {
 			// An integer-indexed object answers for every index and never defers to its prototype.
@@ -827,7 +609,8 @@ func (cx *ExecutionContext) GetOwnProperty(o *Object, k PropKey) (PropDesc, bool
 			cx.resolveForKey(o, k.key)
 		}
 	}
-	if k.key == nil {
+	name := k.key
+	if name == nil {
 		if o.objectProperties != nil && int64(k.idx) < int64(len(o.elems)) {
 			if e := o.elems[k.idx]; !e.isHole() {
 				return dataDesc(e, FlagsData), true
@@ -852,12 +635,12 @@ func (cx *ExecutionContext) GetOwnProperty(o *Object, k PropKey) (PropDesc, bool
 			p, _ := o.shape.lookup(cx.indexName(k.idx))
 			return dataDesc(*u.p, p.flags), true
 		}
-		k.key = cx.indexKey(k.idx)
-		if k.key == nil {
+		name = cx.indexKey(k.idx)
+		if name == nil {
 			return PropDesc{}, false
 		}
 	} else {
-		if k.key == cx.Key(KeyLength) && o.kind == kindArray {
+		if name == cx.Key(KeyLength) && o.kind == kindArray {
 			flags := FlagWritable
 			if o.flags&objFrozenLength != 0 {
 				flags = 0
@@ -865,19 +648,13 @@ func (cx *ExecutionContext) GetOwnProperty(o *Object, k PropKey) (PropDesc, bool
 			return dataDesc(Number(float64(o.length)), flags), true
 		}
 	}
-	p, ok := o.shape.lookup(k.key)
+	p, ok := o.shape.lookup(name)
 	if !ok {
 		return PropDesc{}, false
 	}
 	val := o.slots[p.slot]
 	if p.flags&FlagAccessor != 0 {
-		a := val.accessor()
-		return PropDesc{
-			getter: a.getter,
-			setter: a.setter,
-			flags:  p.flags,
-			has:    HasGet | HasSet | HasEnumerable | HasConfigurable,
-		}, true
+		return accessorDesc(val.accessor(), p.flags), true
 	}
 	return dataDesc(val, p.flags), true
 }
@@ -907,7 +684,7 @@ func (q QuietContext) HasOwnPropertyPlain(o *Object, k Value) (has, ok bool) {
 		if !ok {
 			return false, false
 		}
-		key.idx = i
+		key = QueryKey(IndexKey(i))
 	case k.IsString():
 		if k.isShortString() && k.o.flags&objInterned == 0 {
 			key = r.shortQueryKey(k)
@@ -915,7 +692,7 @@ func (q QuietContext) HasOwnPropertyPlain(o *Object, k Value) (has, ok bool) {
 			key = r.queryStringKey(k.o)
 		}
 	case k.o != nil && k.o.kind == kindSymbol:
-		key.key = k.o
+		key = QueryKey(NamedKey(k.o))
 	default:
 		return false, false
 	}
@@ -941,10 +718,11 @@ func (q QuietContext) HasOwnPropertyPlain(o *Object, k Value) (has, ok bool) {
 		if o.flags&objSparse == 0 {
 			return false, true
 		}
-		if key.key = r.indexKey(key.idx); key.key == nil {
+		name := r.indexKey(key.idx)
+		if name == nil {
 			return false, true
 		}
-		_, has = o.shape.lookup(key.key)
+		_, has = o.shape.lookup(name)
 		return has, true
 	}
 	switch o.shape.family {
@@ -1028,13 +806,13 @@ func (cx *ExecutionContext) getProp(o *Object, k PropKey, receiver Value) Value 
 		if !ok {
 			continue
 		}
-		if d.flags&FlagAccessor != 0 {
-			if d.getter == nil {
+		if d.IsAccessor() {
+			if d.Getter() == nil {
 				return Undefined
 			}
-			return cx.Call(d.getter, receiver)
+			return cx.Call(d.Getter(), receiver)
 		}
-		return d.value
+		return d.Value()
 	}
 	return Undefined
 }
@@ -1239,9 +1017,9 @@ func (cx *ExecutionContext) setNamed(v Value, key *Object, val Value, c *propCac
 	start := o
 	if !v.IsObject() {
 		if v.IsNullish() {
-			cx.ThrowTypeError("cannot set properties of " + cx.DisplayString(v) + " (setting '" + wtf8.ToValidUTF8(cx.KeyString(PropKey{key: key})) + "')")
+			cx.ThrowTypeError("cannot set properties of " + cx.DisplayString(v) + " (setting '" + wtf8.ToValidUTF8(cx.KeyString(NamedKey(key))) + "')")
 		}
-		start = cx.protoStart(v, PropKey{key: key})
+		start = cx.protoStart(v, NamedKey(key))
 		c = nil
 	} else if o.shape.family == lazyFunctionRoot {
 		// The initial properties of a function precede every property that a store adds.
@@ -1250,7 +1028,7 @@ func (cx *ExecutionContext) setNamed(v Value, key *Object, val Value, c *propCac
 	r := cx.lookup(start, key)
 	switch r.kind {
 	case lookupDelegate, lookupNumericMiss:
-		return nil, cx.setProp(r.holder, PropKey{key: key}, val, v)
+		return nil, cx.setProp(r.holder, NamedKey(key), val, v)
 	case lookupLength:
 		if r.holder.kind == kindString {
 			return nil, false
@@ -1258,7 +1036,7 @@ func (cx *ExecutionContext) setNamed(v Value, key *Object, val Value, c *propCac
 		if r.holder == o {
 			return nil, cx.setArrayLengthValue(o, val)
 		}
-		return nil, cx.setProp(r.holder, PropKey{key: key}, val, v)
+		return nil, cx.setProp(r.holder, NamedKey(key), val, v)
 	case lookupSlot, lookupAbsent:
 		if c != nil {
 			c.keep(o.shape)
@@ -1333,13 +1111,13 @@ func (cx *ExecutionContext) setIndex(v Value, i uint32, val Value) (setter *Obje
 	o := v.o
 	if o == nil || o.kind < kindFirstObject {
 		if v.IsNullish() {
-			cx.ThrowTypeError("cannot set properties of " + cx.DisplayString(v) + " (setting '" + wtf8.ToValidUTF8(cx.KeyString(PropKey{idx: i})) + "')")
+			cx.ThrowTypeError("cannot set properties of " + cx.DisplayString(v) + " (setting '" + wtf8.ToValidUTF8(cx.KeyString(IndexKey(i))) + "')")
 		}
 		if o != nil && o.kind == kindString && int64(i) < int64(v.StringLength()) {
 			return nil, false
 		}
 		// Only an inherited setter or a proxy can observe the store.
-		return nil, cx.setProp(cx.protoStart(v, PropKey{idx: i}), PropKey{idx: i}, val, v)
+		return nil, cx.setProp(cx.protoStart(v, IndexKey(i)), IndexKey(i), val, v)
 	}
 	if int64(i) < int64(len(o.elems)) && !o.elems[i].isHole() {
 		o.elems[i] = val
@@ -1352,7 +1130,7 @@ func (cx *ExecutionContext) setIndex(v Value, i uint32, val Value) (setter *Obje
 	if o.indicesInElements() && o.inheritsNoIndex() {
 		return nil, cx.addIndex(o, i, val, FlagsData)
 	}
-	return nil, cx.setProp(o, PropKey{idx: i}, val, v)
+	return nil, cx.setProp(o, IndexKey(i), val, v)
 }
 
 // setProp implements [[Set]] with a receiver. It reports false when the store was refused.
@@ -1386,14 +1164,14 @@ func (cx *ExecutionContext) setProp(o *Object, k PropKey, val Value, receiver Va
 			break
 		}
 	}
-	if found && d.flags&FlagAccessor != 0 {
-		if d.setter == nil {
+	if found && d.IsAccessor() {
+		if d.Setter() == nil {
 			return false
 		}
-		cx.Call(d.setter, receiver, val)
+		cx.Call(d.Setter(), receiver, val)
 		return true
 	}
-	if found && d.flags&FlagWritable == 0 {
+	if found && !d.Writable() {
 		return false
 	}
 	if !receiver.IsObject() {
@@ -1405,13 +1183,10 @@ func (cx *ExecutionContext) setProp(o *Object, k PropKey, val Value, receiver Va
 		r = o
 	}
 	if existing, ok := cx.GetOwnProperty(r, k); ok {
-		if existing.flags&FlagAccessor != 0 || existing.flags&FlagWritable == 0 {
+		if existing.IsAccessor() || !existing.Writable() {
 			return false
 		}
-		return cx.defineOwnProperty(r, k, PropDesc{
-			value: val,
-			has:   HasValue,
-		})
+		return cx.defineOwnProperty(r, k, valueDesc(val))
 	}
 	return cx.defineOwnProperty(r, k, dataDesc(val, FlagsData))
 }
@@ -1454,14 +1229,12 @@ func (cx *ExecutionContext) defineOwnProperty(o *Object, k PropKey, d PropDesc) 
 			// The initial properties of a function precede every property that is defined later.
 			cx.materialize(o)
 		}
-		flags := d.flags & d.attrMask()
-		val := d.value
-		if d.has&HasValue == 0 {
-			val = Undefined
-		}
+		var val Value
+		var flags uint8
 		if d.IsAccessor() {
-			flags = flags&^FlagWritable | FlagAccessor
-			val = newAccessor(d.getter, d.setter)
+			val, flags = d.newAccessorProperty()
+		} else {
+			val, flags = d.newData()
 		}
 		if k.key == nil {
 			return cx.addIndex(o, k.idx, val, flags)
@@ -1471,70 +1244,26 @@ func (cx *ExecutionContext) defineOwnProperty(o *Object, k PropKey, d PropDesc) 
 	}
 
 	// ValidateAndApplyPropertyDescriptor for an existing property.
-	if cur.flags&FlagConfigurable == 0 && !nonConfigurableCompatible(&cur, &d) {
+	if !cur.Configurable() && !nonConfigurableCompatible(&cur, &d) {
 		return false
 	}
 
 	// Merge the fields that are present into the current property.
-	flags := cur.flags
-	if d.has&HasEnumerable != 0 {
-		flags = flags&^FlagEnumerable | d.flags&FlagEnumerable
-	}
-	if d.has&HasConfigurable != 0 {
-		flags = flags&^FlagConfigurable | d.flags&FlagConfigurable
-	}
 	var val Value
-	switch {
-	case d.IsAccessor():
-		g, s := cur.getter, cur.setter
-		if cur.flags&FlagAccessor == 0 {
-			g, s = nil, nil
-		}
-		if d.has&HasGet != 0 {
-			g = d.getter
-		}
-		if d.has&HasSet != 0 {
-			s = d.setter
-		}
-		flags = flags&^FlagWritable | FlagAccessor
-		val = newAccessor(g, s)
-	case cur.flags&FlagAccessor != 0 && !d.IsData():
-		val = newAccessor(cur.getter, cur.setter)
-	default:
-		val = cur.value
-		if cur.flags&FlagAccessor != 0 {
-			val = Undefined
-			flags &^= FlagAccessor | FlagWritable
-		}
-		if d.has&HasValue != 0 {
-			val = d.value
-		}
-		if d.has&HasWritable != 0 {
-			flags = flags&^FlagWritable | d.flags&FlagWritable
-		}
+	var flags uint8
+	if d.keepsData(&cur) {
+		val, flags = d.redefinedData(&cur)
+	} else {
+		val, flags = d.redefinedProperty(&cur)
 	}
 	cx.replaceOwn(o, k, val, flags)
 	return true
 }
 
-// attrMask returns the attribute bits that d specifies.
-func (d *PropDesc) attrMask() uint8 {
-	var m uint8
-	if d.has&HasEnumerable != 0 {
-		m |= FlagEnumerable
-	}
-	if d.has&HasConfigurable != 0 {
-		m |= FlagConfigurable
-	}
-	if d.has&HasWritable != 0 {
-		m |= FlagWritable
-	}
-	return m
-}
-
 // replaceOwn stores the value and attributes of the existing own property k of o.
 func (r *realmPart) replaceOwn(o *Object, k PropKey, val Value, flags uint8) {
-	if k.key == nil {
+	name := k.key
+	if name == nil {
 		if int64(k.idx) < int64(len(o.elems)) && !o.elems[k.idx].isHole() {
 			if flags == FlagsData {
 				o.elems[k.idx] = val
@@ -1546,28 +1275,28 @@ func (r *realmPart) replaceOwn(o *Object, k PropKey, val Value, flags uint8) {
 			r.add(o, r.indexName(k.idx), val, flags)
 			return
 		}
-		k.key = r.indexName(k.idx)
+		name = r.indexName(k.idx)
 	}
-	r.Define(o, k.key, val, flags)
+	r.Define(o, name, val, flags)
 }
 
 // defineArrayLength implements ArraySetLength.
 func (cx *ExecutionContext) defineArrayLength(o *Object, d PropDesc) bool {
 	n := o.length
-	if d.has&HasValue != 0 {
-		n = cx.toArrayLength(d.value)
+	if d.hasField(HasValue) {
+		n = cx.toArrayLength(d.Value())
 	}
 	if d.IsAccessor() {
 		return false
 	}
-	if d.has&HasConfigurable != 0 && d.flags&FlagConfigurable != 0 {
+	if d.hasTrue(HasConfigurable, FlagConfigurable) {
 		return false
 	}
-	if d.has&HasEnumerable != 0 && d.flags&FlagEnumerable != 0 {
+	if d.hasTrue(HasEnumerable, FlagEnumerable) {
 		return false
 	}
 	frozen := o.flags&objFrozenLength != 0
-	if frozen && d.has&HasWritable != 0 && d.flags&FlagWritable != 0 {
+	if frozen && d.hasTrue(HasWritable, FlagWritable) {
 		return false
 	}
 	ok := true
@@ -1577,7 +1306,7 @@ func (cx *ExecutionContext) defineArrayLength(o *Object, d PropDesc) bool {
 		}
 		ok = cx.setArrayLength(o, n)
 	}
-	if d.has&HasWritable != 0 && d.flags&FlagWritable == 0 {
+	if d.hasFalse(HasWritable, FlagWritable) {
 		o.flags |= objFrozenLength
 	}
 	return ok
@@ -1620,20 +1349,18 @@ func (cx *ExecutionContext) DeleteProp(o *Object, k PropKey) bool {
 		if mappedParam(o, k.idx) != nil {
 			return cx.deleteMappedArgument(o, k.idx)
 		}
-		k.key = cx.indexKey(k.idx)
-		if k.key == nil {
+		name := cx.indexKey(k.idx)
+		if name == nil {
 			return true
 		}
-	} else {
-		if k.key == cx.Key(KeyLength) && o.kind == kindArray {
-			return false
-		}
+		p, ok := o.shape.lookup(name)
+		return !ok || cx.deleteOwnSlot(o, name, p)
+	}
+	if k.key == cx.Key(KeyLength) && o.kind == kindArray {
+		return false
 	}
 	p, ok := o.shape.lookup(k.key)
-	if !ok {
-		return true
-	}
-	return cx.deleteOwnSlot(o, k.key, p)
+	return !ok || cx.deleteOwnSlot(o, k.key, p)
 }
 
 func (cx *ExecutionContext) deleteOwnSlot(o *Object, key *Object, p prop) bool {
@@ -1677,7 +1404,7 @@ func (cx *ExecutionContext) OwnKeys(o *Object) []PropKey {
 				if n := len(keys); n > 0 && keys[n-1].idx > i {
 					sorted = false
 				}
-				keys = append(keys, PropKey{idx: i})
+				keys = append(keys, IndexKey(i))
 			}
 		}
 		if !sorted {
@@ -1685,7 +1412,7 @@ func (cx *ExecutionContext) OwnKeys(o *Object) []PropKey {
 		}
 	}
 	if o.kind == kindArray {
-		keys = append(keys, PropKey{key: cx.Key(KeyLength)})
+		keys = append(keys, NamedKey(cx.Key(KeyLength)))
 	}
 	for j, k := range names {
 		cx.pollAt(j)
@@ -1697,12 +1424,12 @@ func (cx *ExecutionContext) OwnKeys(o *Object) []PropKey {
 				continue
 			}
 		}
-		keys = append(keys, PropKey{key: k})
+		keys = append(keys, NamedKey(k))
 	}
 	for j, k := range names {
 		cx.pollAt(j)
 		if k.kind == kindSymbol && k.class != classPrivateName {
-			keys = append(keys, PropKey{key: k})
+			keys = append(keys, NamedKey(k))
 		}
 	}
 	return keys
@@ -1829,16 +1556,6 @@ func (cx *ExecutionContext) DefinePropertyOrThrow(o *Object, k PropKey, d PropDe
 	}
 }
 
-// IndexKey returns the property key for the array index i.
-func IndexKey(i uint32) PropKey {
-	return PropKey{idx: i}
-}
-
-// NamedKey returns the property key for key, which is an interned string or a symbol.
-func NamedKey(key *Object) PropKey {
-	return PropKey{key: key}
-}
-
 // Get implements Get.
 func (cx *ExecutionContext) Get(o *Object, k PropKey) Value {
 	return cx.getProp(o, k, Value{o: o})
@@ -1859,20 +1576,6 @@ func (cx *ExecutionContext) DefineOwnProperty(o *Object, k PropKey, d PropDesc) 
 	return cx.defineOwnProperty(o, k, d)
 }
 
-// isEnumerableString reports whether key is a string and flags make the property enumerable.
-func isEnumerableString(key *Object, flags uint8) bool {
-	return key.kind == kindString && flags&FlagEnumerable != 0
-}
-
-// enumerableKey returns key as a property key when it is a string and flags make it enumerable,
-// and the zero PropKey otherwise.
-func enumerableKey(key *Object, flags uint8) PropKey {
-	if isEnumerableString(key, flags) {
-		return PropKey{key: key}
-	}
-	return PropKey{}
-}
-
 // appendIndexKeys appends the keys of the indices from 0 up to n to keys, checking for an
 // interruption while it appends many.
 func (cx *ExecutionContext) appendIndexKeys(keys []PropKey, n int) []PropKey {
@@ -1888,7 +1591,7 @@ func (cx *ExecutionContext) appendIndexKeys(keys []PropKey, n int) []PropKey {
 // appendIndexRun appends the keys of the indices from i up to j to keys.
 func appendIndexRun(keys []PropKey, i, j int) []PropKey {
 	for ; i < j; i++ {
-		keys = append(keys, PropKey{idx: uint32(i)})
+		keys = append(keys, IndexKey(uint32(i)))
 	}
 	return keys
 }
@@ -1910,7 +1613,7 @@ func (cx *ExecutionContext) appendElemKeys(keys []PropKey, elems []Value) []Prop
 func appendElemRun(keys []PropKey, elems []Value, base int) []PropKey {
 	for i, e := range elems {
 		if !e.isHole() {
-			keys = append(keys, PropKey{idx: uint32(base + i)})
+			keys = append(keys, IndexKey(uint32(base+i)))
 		}
 	}
 	return keys
@@ -1921,7 +1624,7 @@ func appendElemRun(keys []PropKey, elems []Value, base int) []PropKey {
 func appendEnumerableNames(keys []PropKey, s *shape, names []*Object) []PropKey {
 	for _, k := range names {
 		if k != nil && k.kind == kindString && s.table[k].flags&FlagEnumerable != 0 {
-			keys = append(keys, PropKey{key: k})
+			keys = append(keys, NamedKey(k))
 		}
 	}
 	return keys
@@ -1939,7 +1642,7 @@ func (cx *ExecutionContext) EnumerableOwnKeys(o *Object, keys []PropKey) []PropK
 			if k.IsSymbol() {
 				continue
 			}
-			if d, ok := cx.GetOwnProperty(o, k); ok && d.flags&FlagEnumerable != 0 {
+			if d, ok := cx.GetOwnProperty(o, k); ok && d.Enumerable() {
 				keys = append(keys, k)
 			}
 		}

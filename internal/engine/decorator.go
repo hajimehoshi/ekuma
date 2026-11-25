@@ -195,7 +195,7 @@ func (cx *ExecutionContext) applyClassDecorators(st *classDecoration, f *Object)
 	// Nothing has had access to F yet, so its [[Prototype]] is still constructorParent. Without
 	// a ClassHeritage it is %Function.prototype%, whose non-configurable, non-writable
 	// @@metadata is null, as the spec gives for that case.
-	parent := cx.Get(f.shape.proto, PropKey{key: cx.WellKnownSymbol(SymbolMetadata)})
+	parent := cx.Get(f.shape.proto, NamedKey(cx.WellKnownSymbol(SymbolMetadata)))
 	var metadataProto *Object
 	if parent.IsObject() {
 		metadataProto = parent.o
@@ -267,7 +267,7 @@ func (cx *ExecutionContext) applyClassDecorators(st *classDecoration, f *Object)
 	}
 
 	newF := cx.applyDecoratorsToClassDefinition(st, Value{o: f})
-	cx.DefinePropertyOrThrow(newF.o, PropKey{key: cx.WellKnownSymbol(SymbolMetadata)}, dataDesc(Value{o: st.metadata}, FlagsHidden))
+	cx.DefinePropertyOrThrow(newF.o, NamedKey(cx.WellKnownSymbol(SymbolMetadata)), dataDesc(Value{o: st.metadata}, FlagsHidden))
 	return newF
 }
 
@@ -319,23 +319,19 @@ func (cx *ExecutionContext) defineMethodProperty(home *Object, e *elementDef) {
 	if e.key.o != nil && e.key.o.class == classPrivateName {
 		return
 	}
-	d := PropDesc{
-		flags: FlagConfigurable,
-		has:   HasEnumerable | HasConfigurable,
-	}
+	var d PropDesc
+	d.SetEnumerable(false)
+	d.SetConfigurable(true)
 	switch e.kind {
 	case bytecode.ElemMethod:
 		d = dataDesc(Value{o: e.value}, FlagsHidden)
 	case bytecode.ElemGetter:
-		d.getter = e.value
-		d.has |= HasGet
+		d.SetGetter(e.value)
 	case bytecode.ElemSetter:
-		d.setter = e.value
-		d.has |= HasSet
+		d.SetSetter(e.value)
 	case bytecode.ElemAccessor:
-		d.getter = e.getter
-		d.setter = e.setter
-		d.has |= HasGet | HasSet
+		d.SetGetter(e.getter)
+		d.SetSetter(e.setter)
 	}
 	cx.DefinePropertyOrThrow(home, cx.ToPropertyKey(e.key), d)
 }
@@ -353,8 +349,8 @@ func (cx *ExecutionContext) applyDecoratorsToElementDefinition(e *elementDef, ex
 			value = Value{o: e.value}
 		case bytecode.ElemAccessor:
 			o := cx.NewOrdinaryObject()
-			cx.CreateDataPropertyOrThrow(o, PropKey{key: cx.Key(KeyGet)}, Value{o: e.getter})
-			cx.CreateDataPropertyOrThrow(o, PropKey{key: cx.Key(KeySet)}, Value{o: e.setter})
+			cx.CreateDataPropertyOrThrow(o, NamedKey(cx.Key(KeyGet)), Value{o: e.getter})
+			cx.CreateDataPropertyOrThrow(o, NamedKey(cx.Key(KeySet)), Value{o: e.setter})
 			value = Value{o: o}
 		}
 		nv := func() Value {
@@ -398,7 +394,7 @@ func (cx *ExecutionContext) applyDecoratorsToElementDefinition(e *elementDef, ex
 // decoratorResultFunction returns the property key of the object that an accessor decorator
 // returned when it is a function, or nil when it is undefined.
 func (cx *ExecutionContext) decoratorResultFunction(o Value, key *Object) *Object {
-	v := cx.Get(o.o, PropKey{key: key})
+	v := cx.Get(o.o, NamedKey(key))
 	if v.IsCallable() {
 		return v.o
 	}
@@ -475,7 +471,7 @@ func (cx *ExecutionContext) createDecoratorContextObject(kind int, name Value, i
 		kindStr = "field"
 	}
 	def := func(key wtf8.String, v Value) {
-		cx.CreateDataPropertyOrThrow(ctx, PropKey{key: cx.Intern(key)}, v)
+		cx.CreateDataPropertyOrThrow(ctx, NamedKey(cx.Intern(key)), v)
 	}
 	def("kind", cx.NewString(kindStr))
 	if !isClass {
@@ -528,14 +524,14 @@ func (cx *ExecutionContext) createDecoratorAccessObject(kind int, name Value) Va
 	}
 	if kind != bytecode.ElemSetter {
 		getter := cx.NewNativeWithState("", 1, nativeDecoratorAccessGetter, st)
-		cx.CreateDataPropertyOrThrow(access, PropKey{key: cx.Key(KeyGet)}, Value{o: getter})
+		cx.CreateDataPropertyOrThrow(access, NamedKey(cx.Key(KeyGet)), Value{o: getter})
 	}
 	if kind == bytecode.ElemField || kind == bytecode.ElemAccessor || kind == bytecode.ElemSetter {
 		setter := cx.NewNativeWithState("", 2, nativeDecoratorAccessSetter, st)
-		cx.CreateDataPropertyOrThrow(access, PropKey{key: cx.Key(KeySet)}, Value{o: setter})
+		cx.CreateDataPropertyOrThrow(access, NamedKey(cx.Key(KeySet)), Value{o: setter})
 	}
 	has := cx.NewNativeWithState("has", 1, nativeDecoratorAccessHas, st)
-	cx.CreateDataPropertyOrThrow(access, PropKey{key: cx.Intern("has")}, Value{o: has})
+	cx.CreateDataPropertyOrThrow(access, NamedKey(cx.Intern("has")), Value{o: has})
 	return Value{o: access}
 }
 

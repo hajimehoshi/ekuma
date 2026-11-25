@@ -104,7 +104,7 @@ func (cx *ExecutionContext) getGlobal(key *Object, c *globalCache, orUndef, stri
 		}
 		return v
 	}
-	k := PropKey{key: key}
+	k := NamedKey(key)
 	if !cx.HasProperty(g, k) {
 		if orUndef {
 			return Undefined
@@ -153,7 +153,7 @@ func (cx *ExecutionContext) resolveGlobal(key *Object, c *globalCache) Value {
 		}
 		return Undefined
 	}
-	if cx.HasProperty(g, PropKey{key: key}) {
+	if cx.HasProperty(g, NamedKey(key)) {
 		return Undefined
 	}
 	return Null
@@ -184,7 +184,7 @@ func (cx *ExecutionContext) setGlobal(key *Object, val Value, c *globalCache, st
 		c.ref = &g.slots[p.slot]
 		return
 	}
-	k := PropKey{key: key}
+	k := NamedKey(key)
 	// SetMutableBinding checks whether the binding still exists. A proxy can observe
 	// the check even in sloppy code.
 	if !cx.HasProperty(g, k) && strict {
@@ -205,7 +205,7 @@ func (cx *ExecutionContext) checkGlobalDecl(key *Object, what int) {
 		if lex {
 			cx.ThrowSyntaxError("identifier '" + wtf8.ToValidUTF8(key.str) + "' has already been declared")
 		}
-		if !cx.HasOwnProperty(r.global, PropKey{key: key}) && !cx.IsExtensible(r.global) {
+		if !cx.HasOwnProperty(r.global, NamedKey(key)) && !cx.IsExtensible(r.global) {
 			cx.ThrowTypeError("cannot declare global variable '" + wtf8.ToValidUTF8(key.str) + "'")
 		}
 	case bytecode.DeclLexical:
@@ -213,21 +213,21 @@ func (cx *ExecutionContext) checkGlobalDecl(key *Object, what int) {
 			cx.ThrowSyntaxError("identifier '" + wtf8.ToValidUTF8(key.str) + "' has already been declared")
 		}
 		// A lexical declaration may not hide a global property that cannot be reconfigured.
-		if d, ok := cx.GetOwnProperty(r.global, PropKey{key: key}); ok && d.flags&FlagConfigurable == 0 {
+		if d, ok := cx.GetOwnProperty(r.global, NamedKey(key)); ok && !d.Configurable() {
 			cx.ThrowSyntaxError("identifier '" + wtf8.ToValidUTF8(key.str) + "' has already been declared")
 		}
 	case bytecode.DeclFunction:
 		if lex {
 			cx.ThrowSyntaxError("identifier '" + wtf8.ToValidUTF8(key.str) + "' has already been declared")
 		}
-		d, ok := cx.GetOwnProperty(r.global, PropKey{key: key})
+		d, ok := cx.GetOwnProperty(r.global, NamedKey(key))
 		switch {
 		case !ok:
 			if !cx.IsExtensible(r.global) {
 				cx.ThrowTypeError("cannot declare global function '" + wtf8.ToValidUTF8(key.str) + "'")
 			}
-		case d.flags&FlagConfigurable != 0:
-		case d.flags&FlagAccessor != 0 || d.flags&(FlagWritable|FlagEnumerable) != FlagWritable|FlagEnumerable:
+		case d.Configurable():
+		case d.IsAccessor() || !d.Writable() || !d.Enumerable():
 			cx.ThrowTypeError("cannot declare global function '" + wtf8.ToValidUTF8(key.str) + "'")
 		}
 	}
@@ -237,7 +237,7 @@ func (cx *ExecutionContext) checkGlobalDecl(key *Object, what int) {
 // flags has [bytecode.GlobalVarFunc]. flags is a set of the bytecode GlobalVar flags.
 func (cx *ExecutionContext) declareGlobalVar(key *Object, flags int, fn Value) {
 	g := cx.realm.global
-	k := PropKey{key: key}
+	k := NamedKey(key)
 	d, ok := cx.GetOwnProperty(g, k)
 	attrs := FlagEnumerable | FlagWritable
 	if flags&bytecode.GlobalVarDeletable != 0 {
@@ -249,14 +249,11 @@ func (cx *ExecutionContext) declareGlobalVar(key *Object, flags int, fn Value) {
 		}
 		return
 	}
-	if !ok || d.flags&FlagConfigurable != 0 {
+	if !ok || d.Configurable() {
 		cx.DefinePropertyOrThrow(g, k, dataDesc(fn, attrs))
 		return
 	}
-	cx.DefinePropertyOrThrow(g, k, PropDesc{
-		value: fn,
-		has:   HasValue,
-	})
+	cx.DefinePropertyOrThrow(g, k, valueDesc(fn))
 }
 
 // declareGlobalAnnexB declares the global variable key of a block-level function of sloppy
@@ -268,7 +265,7 @@ func (cx *ExecutionContext) declareGlobalAnnexB(key *Object, flags int) bool {
 	if _, lex := r.globalLex.shape.lookup(key); lex {
 		return false
 	}
-	if !cx.HasOwnProperty(r.global, PropKey{key: key}) && !cx.IsExtensible(r.global) {
+	if !cx.HasOwnProperty(r.global, NamedKey(key)) && !cx.IsExtensible(r.global) {
 		return false
 	}
 	cx.declareGlobalVar(key, flags&^bytecode.GlobalVarFunc, Undefined)
@@ -938,12 +935,10 @@ func (cx *ExecutionContext) defineClassElement(this Value, e *classElement) {
 			o := cx.privateStorage(this.o)
 			if p, ok := o.shape.lookup(e.key.o); ok && p.flags&FlagAccessor != 0 {
 				a := o.slots[p.slot].accessor()
-				if e.kind == bytecode.ElemGetter && a.getter == nil {
-					a.getter = e.val
+				if e.kind == bytecode.ElemGetter && a.addGetter(e.val) {
 					return
 				}
-				if e.kind == bytecode.ElemSetter && a.setter == nil {
-					a.setter = e.val
+				if e.kind == bytecode.ElemSetter && a.addSetter(e.val) {
 					return
 				}
 			}
@@ -980,7 +975,7 @@ func (cx *ExecutionContext) defineFieldK(o *Object, key *Object, val Value, c *p
 			return
 		}
 	}
-	cx.CreateDataPropertyOrThrow(o, PropKey{key: key}, val)
+	cx.CreateDataPropertyOrThrow(o, NamedKey(key), val)
 }
 
 // definePublicField implements CreateDataPropertyOrThrow for the public class field k of o.
@@ -1010,19 +1005,13 @@ func (cx *ExecutionContext) defineMethod(o *Object, k, f Value) {
 // defineAccessor defines the getter or setter f under the key k of o.
 func (cx *ExecutionContext) defineAccessor(o *Object, k Value, f *Object, isSetter, enumerable bool) {
 	f.ownFunction().home = o
-	d := PropDesc{
-		flags: FlagConfigurable,
-		has:   HasEnumerable | HasConfigurable,
-	}
-	if enumerable {
-		d.flags |= FlagEnumerable
-	}
+	var d PropDesc
+	d.SetEnumerable(enumerable)
+	d.SetConfigurable(true)
 	if isSetter {
-		d.setter = f
-		d.has |= HasSet
+		d.SetSetter(f)
 	} else {
-		d.getter = f
-		d.has |= HasGet
+		d.SetGetter(f)
 	}
 	cx.DefinePropertyOrThrow(o, cx.ToPropertyKey(k), d)
 }
@@ -1065,11 +1054,11 @@ func (cx *ExecutionContext) setFuncName(f, k Value, prefix int) {
 	o := f.o
 	if o.fn.materialized {
 		if _, ok := o.shape.lookup(cx.Key(KeyName)); ok {
-			if d, _ := cx.GetOwnProperty(o, PropKey{key: cx.Key(KeyName)}); d.flags&FlagAccessor != 0 || !d.value.IsString() || d.value.rawString() != "" {
+			if d, _ := cx.GetOwnProperty(o, NamedKey(cx.Key(KeyName))); d.IsAccessor() || !d.Value().IsString() || d.Value().rawString() != "" {
 				return
 			}
 		}
-		cx.defineOwnProperty(o, PropKey{key: cx.Key(KeyName)}, dataDesc(cx.NewString(name), FlagConfigurable))
+		cx.defineOwnProperty(o, NamedKey(cx.Key(KeyName)), dataDesc(cx.NewString(name), FlagConfigurable))
 		return
 	}
 	// The name is part of the code of an unmaterialized function, which closures share,
@@ -1110,11 +1099,11 @@ keys:
 			}
 		}
 		d, ok := cx.GetOwnProperty(from, k)
-		if !ok || d.flags&FlagEnumerable == 0 {
+		if !ok || !d.Enumerable() {
 			continue
 		}
-		val := d.value
-		if d.flags&FlagAccessor != 0 || from.class == classProxy {
+		val := d.Value()
+		if d.IsAccessor() || from.class == classProxy {
 			val = cx.getProp(from, k, Value{o: from})
 		}
 		cx.CreateDataPropertyOrThrow(dst, k, val)
@@ -1660,7 +1649,7 @@ func (ag *agent) ActiveNativeState() any {
 // findScope returns the innermost of the depth innermost dynamic scopes of the running
 // function cl that has the variable key, or nil.
 func (cx *ExecutionContext) findScope(cl *Object, key *Object, depth int) *Object {
-	k := PropKey{key: key}
+	k := NamedKey(key)
 	for _, scopes := range [...][]*Object{cx.frames[len(cx.frames)-1].scopes, cl.fn.capturedScopes()} {
 		for _, o := range slices.Backward(scopes) {
 			if depth == 0 {
@@ -1673,7 +1662,7 @@ func (cx *ExecutionContext) findScope(cl *Object, key *Object, depth int) *Objec
 			if o.class == classEvalScope {
 				return o
 			}
-			if u := cx.getProp(o, PropKey{key: cx.WellKnownSymbol(SymbolUnscopables)}, Value{o: o}); u.IsObject() {
+			if u := cx.getProp(o, NamedKey(cx.WellKnownSymbol(SymbolUnscopables)), Value{o: o}); u.IsObject() {
 				if ToBoolean(cx.getProp(u.o, k, u)) {
 					continue
 				}
@@ -1704,7 +1693,7 @@ func (ag *agent) openScopes(cl *Object) *[]*Object {
 
 // getScoped implements GetBindingValue of the object environment record of the dynamic scope o.
 func (cx *ExecutionContext) getScoped(o *Object, key *Object, strict bool) Value {
-	k := PropKey{key: key}
+	k := NamedKey(key)
 	if !cx.HasProperty(o, k) {
 		if strict {
 			cx.ThrowReferenceError(wtf8.ToValidUTF8(key.str) + " is not defined")
@@ -1716,7 +1705,7 @@ func (cx *ExecutionContext) getScoped(o *Object, key *Object, strict bool) Value
 
 // setScoped writes to a dynamic scope or performs PutValue on an unresolvable reference.
 func (cx *ExecutionContext) setScoped(o *Object, key *Object, val Value, strict bool) {
-	k := PropKey{key: key}
+	k := NamedKey(key)
 	if o == nullObject {
 		if strict {
 			cx.ThrowReferenceError(wtf8.ToValidUTF8(key.str) + " is not defined")
@@ -1744,7 +1733,7 @@ func (cx *ExecutionContext) deleteName(key *Object) bool {
 		return cx.deleteOwnSlot(g, key, p)
 	}
 	// An inherited HasBinding check can create a lexical binding or an own global property.
-	k := PropKey{key: key}
+	k := NamedKey(key)
 	if !cx.Quiet().delegates(g) || !cx.HasProperty(g, k) {
 		return true
 	}

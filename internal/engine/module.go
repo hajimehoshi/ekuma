@@ -1101,7 +1101,7 @@ func (cx *ExecutionContext) importCall(specifier, options Value, phase bytecode.
 		if !options.IsObject() {
 			cx.ThrowTypeError("the options of import() must be an object")
 		}
-		attrs := cx.Get(options.o, PropKey{key: cx.Intern("with")})
+		attrs := cx.Get(options.o, NamedKey(cx.Intern("with")))
 		if attrs.IsUndefined() {
 			return
 		}

@@ -25,6 +25,8 @@ var storageFiles = map[string]string{
 	"object.go":         "objects, shapes, inline caches and strings",
 	"builtinobject.go":  "creation of built-in objects",
 	"functionobject.go": "creation of functions",
+	"propkey.go":        "property keys",
+	"propdesc.go":       "property descriptors and accessors",
 	"storage.go":        "slots and elements",
 	"concat.go":         "strings that concatenations extend",
 	"shortstring.go":    "strings in values",
@@ -34,13 +36,6 @@ var storageFiles = map[string]string{
 // validationFiles are the files that check raw storage in the ekumavalidate build. They are not
 // subject to the list.
 var validationFiles = []string{"validate_on.go", "validate_cache_on.go"}
-
-// rawTypes are the structs outside storageFiles whose fields are raw, with the reasons.
-var rawTypes = map[string]string{
-	"PropKey":  "its key is interned and no array index",
-	"QueryKey": "its key is interned unless it is missing",
-	"PropDesc": "its flags and its values depend on each other",
-}
 
 // rawFields are the raw fields of the other structs, with the reasons.
 var rawFields = map[string]string{
@@ -212,13 +207,6 @@ func newRawStorage(t *testing.T, prog *program) *rawStorage {
 		if n := found[base]; n != 1 {
 			t.Fatalf("got %d files %s, want 1", n, base)
 		}
-	}
-	for name := range rawTypes {
-		named := prog.typ(t, name)
-		if slices.Contains(structs, named) {
-			t.Errorf("a storage file declares %s: remove it from rawTypes", name)
-		}
-		structs = append(structs, named)
 	}
 	for _, named := range structs {
 		name := named.Obj().Name()

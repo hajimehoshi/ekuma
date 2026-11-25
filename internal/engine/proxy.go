@@ -4,7 +4,6 @@
 package engine
 
 import (
-	"math/bits"
 	"strconv"
 
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
@@ -326,7 +325,7 @@ func (cx *ExecutionContext) proxyGetOwnProperty(o *Object, k PropKey) (PropDesc,
 		if !targetHas {
 			return PropDesc{}, false
 		}
-		if targetDesc.flags&FlagConfigurable == 0 {
+		if !targetDesc.Configurable() {
 			cx.throwTrapError(name, "trap returned undefined for property '"+wtf8.ToValidUTF8(cx.KeyString(k))+"' which is non-configurable in the proxy target")
 		}
 		if !cx.IsExtensible(target) {
@@ -340,11 +339,11 @@ func (cx *ExecutionContext) proxyGetOwnProperty(o *Object, k PropKey) (PropDesc,
 	if !isCompatiblePropertyDescriptor(extensible, &d, &targetDesc, targetHas) {
 		cx.throwTrapError(name, "trap returned descriptor for property '"+wtf8.ToValidUTF8(cx.KeyString(k))+"' that is incompatible with the existing property in the proxy target")
 	}
-	if d.flags&FlagConfigurable == 0 {
-		if !targetHas || targetDesc.flags&FlagConfigurable != 0 {
+	if !d.Configurable() {
+		if !targetHas || targetDesc.Configurable() {
 			cx.throwTrapError(name, "trap reported non-configurability for property '"+wtf8.ToValidUTF8(cx.KeyString(k))+"' which is either non-existent or configurable in the proxy target")
 		}
-		if d.has&HasWritable != 0 && d.flags&FlagWritable == 0 && targetDesc.flags&FlagWritable != 0 {
+		if d.hasFalse(HasWritable, FlagWritable) && targetDesc.Writable() {
 			cx.throwTrapError(name, "trap reported non-configurable and non-writable for property '"+wtf8.ToValidUTF8(cx.KeyString(k))+"' which is non-configurable, writable in the proxy target")
 		}
 	}
@@ -365,7 +364,7 @@ func (cx *ExecutionContext) proxyDefineOwnProperty(o *Object, k PropKey, d PropD
 	}
 	targetDesc, targetHas := cx.GetOwnProperty(target, k)
 	extensible := cx.IsExtensible(target)
-	settingConfigFalse := d.has&HasConfigurable != 0 && d.flags&FlagConfigurable == 0
+	settingConfigFalse := d.hasFalse(HasConfigurable, FlagConfigurable)
 	if !targetHas {
 		if !extensible {
 			cx.throwTrapError(name, "trap returned truish for adding property '"+wtf8.ToValidUTF8(cx.KeyString(k))+"' to the non-extensible proxy target")
@@ -378,10 +377,10 @@ func (cx *ExecutionContext) proxyDefineOwnProperty(o *Object, k PropKey, d PropD
 	if !isCompatiblePropertyDescriptor(extensible, &d, &targetDesc, true) {
 		cx.throwTrapError(name, "trap returned truish for adding property '"+wtf8.ToValidUTF8(cx.KeyString(k))+"' that is incompatible with the existing property in the proxy target")
 	}
-	if settingConfigFalse && targetDesc.flags&FlagConfigurable != 0 {
+	if settingConfigFalse && targetDesc.Configurable() {
 		cx.throwTrapError(name, "trap returned truish for defining non-configurable property '"+wtf8.ToValidUTF8(cx.KeyString(k))+"' which is configurable in the proxy target")
 	}
-	if targetDesc.flags&(FlagAccessor|FlagConfigurable|FlagWritable) == FlagWritable && d.has&HasWritable != 0 && d.flags&FlagWritable == 0 {
+	if !targetDesc.IsAccessor() && !targetDesc.Configurable() && targetDesc.Writable() && d.hasFalse(HasWritable, FlagWritable) {
 		cx.throwTrapError(name, "trap returned truish for defining non-configurable property '"+wtf8.ToValidUTF8(cx.KeyString(k))+"' which cannot be non-writable, unless there exists a corresponding non-configurable, non-writable own property of the target object")
 	}
 	return true
@@ -399,7 +398,7 @@ func (cx *ExecutionContext) proxyHas(o *Object, k PropKey) bool {
 		return true
 	}
 	if targetDesc, ok := cx.GetOwnProperty(target, k); ok {
-		if targetDesc.flags&FlagConfigurable == 0 {
+		if !targetDesc.Configurable() {
 			cx.throwTrapError("has", "trap returned falsish for property '"+wtf8.ToValidUTF8(cx.KeyString(k))+"' which exists in the proxy target as non-configurable")
 		}
 		if !cx.IsExtensible(target) {
@@ -418,11 +417,11 @@ func (cx *ExecutionContext) proxyGet(o *Object, k PropKey, receiver Value) Value
 		return cx.getProp(target, k, receiver)
 	}
 	r := cx.callTrap(trap, handler, Value{o: target}, cx.KeyValue(k), receiver)
-	if targetDesc, ok := cx.GetOwnProperty(target, k); ok && targetDesc.flags&FlagConfigurable == 0 {
-		if targetDesc.flags&(FlagAccessor|FlagWritable) == 0 && !SameValue(r, targetDesc.value) {
+	if targetDesc, ok := cx.GetOwnProperty(target, k); ok && !targetDesc.Configurable() {
+		if !targetDesc.IsAccessor() && !targetDesc.Writable() && !SameValue(r, targetDesc.Value()) {
 			cx.throwTrapError("get", "property '"+wtf8.ToValidUTF8(cx.KeyString(k))+"' is a read-only and non-configurable data property on the proxy target but the proxy did not return its actual value")
 		}
-		if targetDesc.flags&FlagAccessor != 0 && targetDesc.getter == nil && !r.IsUndefined() {
+		if targetDesc.IsAccessor() && targetDesc.Getter() == nil && !r.IsUndefined() {
 			cx.throwTrapError("get", "property '"+wtf8.ToValidUTF8(cx.KeyString(k))+"' is a non-configurable accessor property on the proxy target and does not have a getter function, but the trap did not return 'undefined'")
 		}
 	}
@@ -440,11 +439,11 @@ func (cx *ExecutionContext) proxySet(o *Object, k PropKey, val, receiver Value) 
 	if !ToBoolean(cx.callTrap(trap, handler, Value{o: target}, cx.KeyValue(k), val, receiver)) {
 		return false
 	}
-	if targetDesc, ok := cx.GetOwnProperty(target, k); ok && targetDesc.flags&FlagConfigurable == 0 {
-		if targetDesc.flags&(FlagAccessor|FlagWritable) == 0 && !SameValue(val, targetDesc.value) {
+	if targetDesc, ok := cx.GetOwnProperty(target, k); ok && !targetDesc.Configurable() {
+		if !targetDesc.IsAccessor() && !targetDesc.Writable() && !SameValue(val, targetDesc.Value()) {
 			cx.throwTrapError("set", "trap returned truish for property '"+wtf8.ToValidUTF8(cx.KeyString(k))+"' which exists in the proxy target as a non-configurable and non-writable data property with a different value")
 		}
-		if targetDesc.flags&FlagAccessor != 0 && targetDesc.setter == nil {
+		if targetDesc.IsAccessor() && targetDesc.Setter() == nil {
 			cx.throwTrapError("set", "trap returned truish for property '"+wtf8.ToValidUTF8(cx.KeyString(k))+"' which exists in the proxy target as a non-configurable and non-writable accessor property without a setter")
 		}
 	}
@@ -466,7 +465,7 @@ func (cx *ExecutionContext) proxyDelete(o *Object, k PropKey) bool {
 	if !ok {
 		return true
 	}
-	if targetDesc.flags&FlagConfigurable == 0 {
+	if !targetDesc.Configurable() {
 		cx.throwTrapError("deleteProperty", "trap returned truish for property '"+wtf8.ToValidUTF8(cx.KeyString(k))+"' which is non-configurable in the proxy target")
 	}
 	if !cx.IsExtensible(target) {
@@ -498,7 +497,7 @@ func (cx *ExecutionContext) proxyOwnKeys(o *Object) []PropKey {
 	var configurable, nonconfigurable []PropKey
 	for _, k := range cx.OwnKeys(target) {
 		p.Step(cx)
-		if d, ok := cx.GetOwnProperty(target, k); ok && d.flags&FlagConfigurable == 0 {
+		if d, ok := cx.GetOwnProperty(target, k); ok && !d.Configurable() {
 			nonconfigurable = append(nonconfigurable, k)
 		} else {
 			configurable = append(configurable, k)
@@ -539,7 +538,7 @@ func (cx *ExecutionContext) propertyKeyList(v Value) []PropKey {
 	var keys []PropKey
 	for i := range n {
 		cx.PollAt(i)
-		k := PropKey{idx: uint32(i)}
+		k := IndexKey(uint32(i))
 		if i > MaxArrayIndex {
 			k = cx.KeyOfString(wtf8.String(strconv.FormatInt(i, 10)))
 		}
@@ -589,70 +588,6 @@ func (cx *ExecutionContext) proxyConstruct(o *Object, args []Value, newTarget *O
 	return r.o
 }
 
-// isCompatiblePropertyDescriptor implements IsCompatiblePropertyDescriptor. hasCur reports whether
-// the property described by cur exists.
-func isCompatiblePropertyDescriptor(extensible bool, d, cur *PropDesc, hasCur bool) bool {
-	if !hasCur {
-		return extensible
-	}
-	return cur.flags&FlagConfigurable != 0 || nonConfigurableCompatible(cur, d)
-}
-
-// nonConfigurableCompatible reports whether ValidateAndApplyPropertyDescriptor accepts d for the
-// existing property described by cur, which is not configurable.
-func nonConfigurableCompatible(cur, d *PropDesc) bool {
-	if d.has&HasConfigurable != 0 && d.flags&FlagConfigurable != 0 {
-		return false
-	}
-	if d.has&HasEnumerable != 0 && (d.flags^cur.flags)&FlagEnumerable != 0 {
-		return false
-	}
-	curAccessor := cur.flags&FlagAccessor != 0
-	if d.IsAccessor() != curAccessor && (d.IsAccessor() || d.IsData()) {
-		return false
-	}
-	if curAccessor {
-		if d.has&HasGet != 0 && d.getter != cur.getter {
-			return false
-		}
-		if d.has&HasSet != 0 && d.setter != cur.setter {
-			return false
-		}
-	} else if cur.flags&FlagWritable == 0 {
-		if d.has&HasWritable != 0 && d.flags&FlagWritable != 0 {
-			return false
-		}
-		if d.has&HasValue != 0 && !SameValue(d.value, cur.value) {
-			return false
-		}
-	}
-	return true
-}
-
-// complete implements CompletePropertyDescriptor. It also marks an accessor descriptor with
-// [FlagAccessor], as the descriptors of existing properties are.
-func (d *PropDesc) complete() {
-	if d.IsAccessor() {
-		d.has |= HasGet | HasSet
-		d.flags = d.flags&^FlagWritable | FlagAccessor
-	} else {
-		if d.has&HasValue == 0 {
-			d.value = Undefined
-		}
-		if d.has&HasWritable == 0 {
-			d.flags &^= FlagWritable
-		}
-		d.has |= HasValue | HasWritable
-	}
-	if d.has&HasEnumerable == 0 {
-		d.flags &^= FlagEnumerable
-	}
-	if d.has&HasConfigurable == 0 {
-		d.flags &^= FlagConfigurable
-	}
-	d.has |= HasEnumerable | HasConfigurable
-}
-
 // ToPropertyDescriptor implements ToPropertyDescriptor.
 func (cx *ExecutionContext) ToPropertyDescriptor(v Value) PropDesc {
 	if !v.IsObject() {
@@ -661,7 +596,7 @@ func (cx *ExecutionContext) ToPropertyDescriptor(v Value) PropDesc {
 	o := v.o
 	var d PropDesc
 	field := func(key CommonKey) (Value, bool) {
-		k := PropKey{key: cx.Key(key)}
+		k := NamedKey(cx.Key(key))
 		if !cx.HasProperty(o, k) {
 			return Undefined, false
 		}
@@ -707,30 +642,30 @@ func (cx *ExecutionContext) ToPropertyDescriptor(v Value) PropDesc {
 
 // FromPropertyDescriptor implements FromPropertyDescriptor for a descriptor that is not undefined.
 func (cx *ExecutionContext) FromPropertyDescriptor(d PropDesc) Value {
-	o := cx.newEmptyObjectWithRoom(bits.OnesCount8(d.has))
+	o := cx.newEmptyObjectWithRoom(d.fieldCount())
 	fn := func(f *Object) Value {
 		if f == nil {
 			return Undefined
 		}
 		return Value{o: f}
 	}
-	if d.has&HasValue != 0 {
-		cx.add(o, cx.Key(KeyValue), d.value, FlagsData)
+	if d.hasField(HasValue) {
+		cx.add(o, cx.Key(KeyValue), d.Value(), FlagsData)
 	}
-	if d.has&HasWritable != 0 {
-		cx.add(o, cx.Key(KeyWritable), Bool(d.flags&FlagWritable != 0), FlagsData)
+	if d.hasField(HasWritable) {
+		cx.add(o, cx.Key(KeyWritable), Bool(d.Writable()), FlagsData)
 	}
-	if d.has&HasGet != 0 {
-		cx.add(o, cx.Key(KeyGet), fn(d.getter), FlagsData)
+	if d.hasField(HasGet) {
+		cx.add(o, cx.Key(KeyGet), fn(d.Getter()), FlagsData)
 	}
-	if d.has&HasSet != 0 {
-		cx.add(o, cx.Key(KeySet), fn(d.setter), FlagsData)
+	if d.hasField(HasSet) {
+		cx.add(o, cx.Key(KeySet), fn(d.Setter()), FlagsData)
 	}
-	if d.has&HasEnumerable != 0 {
-		cx.add(o, cx.Key(KeyEnumerable), Bool(d.flags&FlagEnumerable != 0), FlagsData)
+	if d.hasField(HasEnumerable) {
+		cx.add(o, cx.Key(KeyEnumerable), Bool(d.Enumerable()), FlagsData)
 	}
-	if d.has&HasConfigurable != 0 {
-		cx.add(o, cx.Key(KeyConfigurable), Bool(d.flags&FlagConfigurable != 0), FlagsData)
+	if d.hasField(HasConfigurable) {
+		cx.add(o, cx.Key(KeyConfigurable), Bool(d.Configurable()), FlagsData)
 	}
 	return Value{o: o}
 }

@@ -236,7 +236,7 @@ func (cx *ExecutionContext) declareEvalVar(cl *Object, key *Object, depth int, r
 		}
 		depth -= len(scopes)
 	}
-	k := PropKey{key: key}
+	k := NamedKey(key)
 	switch {
 	case !cx.HasOwnProperty(o, k):
 		v := Undefined

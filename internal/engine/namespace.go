@@ -142,20 +142,20 @@ func (cx *ExecutionContext) namespaceDefineOwnProperty(o *Object, k PropKey, d P
 	if !ok {
 		return false
 	}
-	if d.has&HasConfigurable != 0 && d.flags&FlagConfigurable != 0 {
+	if d.hasTrue(HasConfigurable, FlagConfigurable) {
 		return false
 	}
-	if d.has&HasEnumerable != 0 && d.flags&FlagEnumerable == 0 {
+	if d.hasFalse(HasEnumerable, FlagEnumerable) {
 		return false
 	}
 	if d.IsAccessor() {
 		return false
 	}
-	if d.has&HasWritable != 0 && d.flags&FlagWritable == 0 {
+	if d.hasFalse(HasWritable, FlagWritable) {
 		return false
 	}
-	if d.has&HasValue != 0 {
-		return SameValue(d.value, cur.value)
+	if d.hasField(HasValue) {
+		return SameValue(d.Value(), cur.Value())
 	}
 	return true
 }
@@ -164,7 +164,7 @@ func (cx *ExecutionContext) namespaceDefineOwnProperty(o *Object, k PropKey, d P
 func (cx *ExecutionContext) namespaceOwnKeys(o *Object) []PropKey {
 	keys := slices.Clone(cx.namespaceExports(o).keys)
 	for _, k := range o.shape.keys() {
-		keys = append(keys, PropKey{key: k})
+		keys = append(keys, NamedKey(k))
 	}
 	return keys
 }
