@@ -33,8 +33,10 @@ func TestQuietContextBoundary(t *testing.T) {
 	// Functions without a QuietContext that the interpreter and the built-ins rely on not to run
 	// code: they tell that arrays and reads are plain, or read, store or take values in one step.
 	quiet := []string{
+		"(*" + enginePath + ".ExecutionContext).DefineAccessor",
 		"(*" + enginePath + ".ExecutionContext).arrayIterationPlain",
 		"(*" + enginePath + ".ExecutionContext).arrayProtoPlain",
+		"(*" + enginePath + ".ExecutionContext).replaceOwn",
 		"(*" + enginePath + ".Object).Element",
 		"(*" + enginePath + ".Object).ElementList",
 		"(*" + enginePath + ".Object).RemoveFirstElement",

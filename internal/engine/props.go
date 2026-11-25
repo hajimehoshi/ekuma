@@ -1468,9 +1468,9 @@ func (cx *ExecutionContext) defineOwnProperty(o *Object, k PropKey, d PropDesc) 
 		if o.kind == kindArray && k.key == nil && k.idx >= o.length && o.flags&objFrozenLength != 0 {
 			return false
 		}
-		if o.flags&objExotic != 0 {
+		if o.flags&objExotic != 0 && o.fn != nil {
 			// The initial properties of a function precede every property that is defined later.
-			cx.resolve(o)
+			cx.materialize(o)
 		}
 		flags := d.flags & d.attrMask()
 		val := d.value

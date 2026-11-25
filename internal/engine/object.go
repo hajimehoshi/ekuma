@@ -1661,10 +1661,14 @@ func (o *Object) shareShape() {
 }
 
 // Define creates or replaces the own named property key of o with the given attributes,
-// without any of the checks of the JavaScript operations.
+// without any of the checks of the JavaScript operations. An object of
+// [ExecutionContext.NewLazyObject] must be initialized already.
 func (cx *ExecutionContext) Define(o *Object, key *Object, val Value, flags uint8) {
-	if o.flags&objExotic != 0 {
-		cx.resolve(o)
+	if validateExec && o.class == classLazy {
+		panic("engine: property definition on an uninitialized lazy object")
+	}
+	if o.flags&objExotic != 0 && o.fn != nil {
+		cx.materialize(o)
 	}
 	p, ok := o.shape.lookup(key)
 	if !ok {

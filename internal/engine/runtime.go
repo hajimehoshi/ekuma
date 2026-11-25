@@ -532,7 +532,7 @@ func (cx *ExecutionContext) ownFunctionPrototypeSlot(ctor *Object, site *propCac
 		return nil
 	}
 	if ctor.flags&objExotic != 0 {
-		cx.resolve(ctor)
+		cx.materialize(ctor)
 	}
 	p, ok := ctor.shape.lookup(cx.Key(KeyPrototype))
 	if !ok {
