@@ -688,6 +688,9 @@ func objectAssign(cx *engine.ExecutionContext, this engine.Value, args []engine.
 		if cx.Quiet().AssignDataProperties(to, from) {
 			continue
 		}
+		// The pacer does not count across the sources, and reading the keys can look at many
+		// elements that are not present.
+		cx.Poll()
 		var pacer engine.Pacer
 		for _, k := range cx.OwnKeys(from) {
 			pacer.Step(cx)

@@ -1011,6 +1011,9 @@ func (cx *ExecutionContext) copyDataProperties(dst *Object, src Value, excluded 
 		return
 	}
 	from := cx.ToObject(src)
+	if cx.InterruptFlag.Load() {
+		cx.Poll()
+	}
 	if len(excluded) == 0 && dst.TakeDataProperties(from) {
 		return
 	}
@@ -1030,7 +1033,7 @@ func (cx *ExecutionContext) copyDataProperties(dst *Object, src Value, excluded 
 	var pacer Pacer
 keys:
 	for _, k := range ks {
-		pacer.Step(cx)
+		pacer.Steps(cx, 1+len(skip))
 		for _, s := range skip {
 			if s == k {
 				continue keys

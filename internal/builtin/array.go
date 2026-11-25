@@ -245,9 +245,14 @@ func flattenIntoArray(cx *engine.ExecutionContext, a *engine.Object, src *engine
 		l:     l,
 		depth: depth,
 	}}
+	var pacer engine.Pacer
 	for len(stack) > 0 {
 		t := &stack[len(stack)-1]
-		if t.i = cx.Quiet().SkipHoles(t.src, t.i, t.l); t.i >= t.l {
+		if i := cx.Quiet().SkipHoles(t.src, t.i, t.l); i > t.i {
+			pacer.Steps(cx, int(min(i-t.i, engine.PollInterval)))
+			t.i = i
+		}
+		if t.i >= t.l {
 			stack = stack[:len(stack)-1]
 			continue
 		}
@@ -702,6 +707,8 @@ func arrayConcat(cx *engine.ExecutionContext, this engine.Value, args []engine.V
 			n += l
 			continue
 		}
+		// Skipping the holes of an item does not check for an interruption.
+		cx.Poll()
 		for i := int64(0); i < l; i++ {
 			if i = cx.Quiet().SkipHoles(item.Object(), i, l); i == l {
 				break

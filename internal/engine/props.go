@@ -1260,6 +1260,9 @@ func (cx *ExecutionContext) EnumerableOwnKeys(o *Object, keys []PropKey) []PropK
 	if o.Flags&objExotic != 0 && (o.Fn != nil || o.Class == classLazy) {
 		cx.resolve(o)
 	}
+	if cx.InterruptFlag.Load() {
+		cx.Poll()
+	}
 	if (o.Class != classObject && o.Class != classArray && o.Class != classFunction) || o.Flags&(objSparse|objExotic) != 0 {
 		for i, k := range cx.OwnKeys(o) {
 			cx.pollAt(i)

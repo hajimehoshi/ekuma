@@ -2491,6 +2491,74 @@ func TestProxyInterrupt(t *testing.T) {
 	}
 }
 
+// TestRepeatedCopyInterrupt checks that operations that read one object after another check for an
+// interruption between the objects.
+func TestRepeatedCopyInterrupt(t *testing.T) {
+	// No source runs anything that checks for an interruption after the call of stop, not even at
+	// its end.
+	tests := []struct {
+		name string
+		src  string
+	}{
+		{
+			name: "Object.assign",
+			src:  `Object.assign({}, { get a() { stop(); } }, { b: 1 })`,
+		},
+		{
+			name: "concat",
+			src:  `[].concat({ [Symbol.isConcatSpreadable]: true, get length() { stop(); return 0; } }, [,])`,
+		},
+		{
+			name: "flat",
+			src: `var holes = [0];
+				while (holes.length < 70000) holes[Math.floor(holes.length * 1.4) + 1] = 0;
+				for (var i in holes) delete holes[i];
+				var nested = [0, holes];
+				Object.defineProperty(nested, 0, { get() { stop(); } });
+				nested.flat()`,
+		},
+		{
+			name: "object spread",
+			src:  `({ ...{ get a() { stop(); } }, ...{ b: 1 } })`,
+		},
+		{
+			name: "object rest",
+			src: `var source = { get a() { stop(); } };
+				for (var i = 0; i < 300; i++) source["k" + i] = 0;
+				var rest = new Function("source", "var { " + Array.from({ length: 300 }, (_, i) => "k" + i + ": v").join() + ", ...r } = source; done = true");
+				rest(source)`,
+		},
+		{
+			name: "JSON.stringify",
+			src:  `JSON.stringify([{ get a() { stop(); } }, {}])`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var vm ekuma.VM
+			cause := errors.New("interrupted")
+			withdraw := func() {}
+			if err := vm.Global().Set("stop", vm.FuncOf("stop", func(this ekuma.Value, args []ekuma.Value) (any, error) {
+				withdraw = ekuma.RequestInterrupt(vm.InitialRealm(), cause)
+				return nil, nil
+			})); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := runScript(t.Context(), &vm, tt.name, "var done = false; "+tt.src+"; done = true"); !errors.Is(err, cause) {
+				t.Errorf("got %v, want %v", err, cause)
+			}
+			withdraw()
+			done, err := vm.Global().Get("done")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if done.Bool() {
+				t.Error("the operation was not interrupted")
+			}
+		})
+	}
+}
+
 // TestBigIntInterrupt checks that a context stops long operations on huge BigInts promptly.
 func TestBigIntInterrupt(t *testing.T) {
 	var vm ekuma.VM
