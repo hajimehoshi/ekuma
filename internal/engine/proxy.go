@@ -176,7 +176,7 @@ func (cx *ExecutionContext) functionRealmOrNil(f *Object) *realmPart {
 			}
 			f = st.target
 		case f.fn != nil && f.fn.code != nil:
-			return f.fn.code.context.realmPart
+			return f.fn.code.realm
 		case f.fn != nil && f.fn.info != nil:
 			return f.fn.info.realm
 		default:

@@ -1247,13 +1247,13 @@ func (cx *ExecutionContext) IsConstructor(f *Object) bool {
 func (p *funcProto) closurePrototype() *Object {
 	switch {
 	case p.isGenerator && p.isAsync:
-		return p.context.Intrinsic(IntrinsicAsyncGeneratorFunctionPrototype)
+		return p.realm.intrinsics[IntrinsicAsyncGeneratorFunctionPrototype]
 	case p.isGenerator:
-		return p.context.Intrinsic(IntrinsicGeneratorFunctionPrototype)
+		return p.realm.intrinsics[IntrinsicGeneratorFunctionPrototype]
 	case p.isAsync:
-		return p.context.Intrinsic(IntrinsicAsyncFunctionPrototype)
+		return p.realm.intrinsics[IntrinsicAsyncFunctionPrototype]
 	}
-	return p.context.Intrinsic(IntrinsicFunctionPrototype)
+	return p.realm.intrinsics[IntrinsicFunctionPrototype]
 }
 
 // arrayProtoPlain reports whether no array index property exists on the prototypes of plain arrays,
@@ -1415,7 +1415,7 @@ func (cx *ExecutionContext) callSlow(f *Object, this Value, args []Value, isNew 
 	}
 	c := fn.code
 	if fn.classConstructor && !isNew && newTarget == nil {
-		c.context.ThrowTypeError("class constructor " + wtf8.ToValidUTF8(c.name) + " cannot be invoked without 'new'")
+		c.realm.executionContext().ThrowTypeError("class constructor " + wtf8.ToValidUTF8(c.name) + " cannot be invoked without 'new'")
 	}
 	if c.isGenerator || c.isAsync {
 		return cx.callCoroutine(f, this, args)
@@ -1488,7 +1488,7 @@ func (cx *ExecutionContext) Construct(f *Object, args []Value, newTarget *Object
 	this := tdz
 	if !fn.derived {
 		proto := cx.GetPrototypeFromConstructor(newTarget, IntrinsicObjectPrototype)
-		this = Value{o: newInstance(cx.shapeForRealm(proto, fn.code.context.realmPart))}
+		this = Value{o: newInstance(cx.shapeForRealm(proto, fn.code.realm))}
 	}
 	r := cx.callSlow(f, this, args, !fn.derived, newTarget)
 	if !r.IsObject() {

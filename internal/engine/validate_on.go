@@ -445,7 +445,7 @@ func validationFailure(fp *funcProto, pc int, msg string) string {
 
 // checkActive checks that the active context is that of the running frame, whose code is fp.
 func (ag *agent) checkActive(fp *funcProto) {
-	if ag.active != fp.context {
+	if ag.active.realmPart != fp.realm {
 		panic(fmt.Sprintf("ekumavalidate: active context is not that of the running frame of %s", fp.name))
 	}
 }

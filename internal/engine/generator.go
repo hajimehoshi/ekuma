@@ -172,7 +172,7 @@ func (ag *agent) pushGenerator(f *Object, this Value, args []Value, ret int32) {
 
 // newGeneratorObject creates the generator object of g, whose parameters are instantiated.
 func (cx *ExecutionContext) newGeneratorObject(g *generator) *Object {
-	r := g.fp.context.realm
+	r := g.fp.realm
 	proto := r.intrinsics[IntrinsicGeneratorPrototype]
 	if g.async != nil {
 		proto = r.intrinsics[IntrinsicAsyncGeneratorPrototype]
@@ -180,7 +180,7 @@ func (cx *ExecutionContext) newGeneratorObject(g *generator) *Object {
 	if p := cx.GetV(Value{o: g.f}, cx.Key(KeyPrototype)); p.IsObject() {
 		proto = p.o
 	}
-	o := g.fp.context.NewObject(proto)
+	o := newObject(cx.shapeForRealm(proto, r))
 	o.class = classGenerator
 	o.setExtState(g)
 	g.object = o
@@ -322,7 +322,7 @@ func (cx *ExecutionContext) ResumeGenerator(gen Value, mode ResumeMode, v Value)
 			return r, true
 		}
 		// Yield creates its result before returning to the resuming method's realm.
-		return g.fp.context.CreateIterResultObject(r, false), true
+		return cx.contextOf(g.fp.realm).CreateIterResultObject(r, false), true
 	}
 	return cx.CreateIterResultObject(r, true), true
 }

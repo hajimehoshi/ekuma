@@ -684,7 +684,7 @@ type agent struct {
 	active *ExecutionContext
 
 	// callerRealm is the realm that was current when the innermost interpreter loop started.
-	callerRealm *realm
+	callerRealm *realmPart
 
 	// timeZone is the time zone of local time, or nil for the one of the host.
 	timeZone datetime.TimeZone

@@ -53,15 +53,15 @@ func asyncGeneratorStateOf(g *generator) asyncGeneratorState {
 }
 
 // callAsync calls the async function f, which is not an async generator, from Go.
-func (ag *agent) callAsync(f *Object, this Value, args []Value) Value {
+func (cx *ExecutionContext) callAsync(f *Object, this Value, args []Value) Value {
 	g := newGenerator(f, this, args)
 	g.async = asyncFunction
-	cx := g.fp.context
+	body := cx.contextOf(g.fp.realm)
 	var promise *Object
-	cx.Run(func() {
-		promise = cx.NewPromiseObject(cx.Intrinsic(IntrinsicPromisePrototype))
+	body.Run(func() {
+		promise = body.NewPromiseObject(body.Intrinsic(IntrinsicPromisePrototype))
 		g.object = promise
-		g.asyncFunctionResume(ResumeNext, Undefined)
+		body.asyncFunctionResume(g, ResumeNext, Undefined)
 	})
 	return Value{o: promise}
 }
@@ -73,20 +73,20 @@ func (ag *agent) takeThrown() Value {
 	return e
 }
 
-// resumeAfterAwait continues the async function or async generator g after an await.
-func (g *generator) resumeAfterAwait(mode ResumeMode, v Value) {
+// resumeAfterAwait continues the async function or async generator g, whose context is cx, after an
+// await.
+func (cx *ExecutionContext) resumeAfterAwait(g *generator, mode ResumeMode, v Value) {
 	if g.async == asyncFunction {
-		g.asyncFunctionResume(mode, v)
+		cx.asyncFunctionResume(g, mode, v)
 		return
 	}
-	g.fp.context.asyncGeneratorResume(g, mode, v)
+	cx.asyncGeneratorResume(g, mode, v)
 }
 
-// asyncFunctionResume runs the async function g from its suspension until it awaits or
-// completes, and settles its promise when it completes.
-func (g *generator) asyncFunctionResume(mode ResumeMode, v Value) {
+// asyncFunctionResume runs the async function g, whose context is cx, from its suspension until it
+// awaits or completes, and settles its promise when it completes.
+func (cx *ExecutionContext) asyncFunctionResume(g *generator, mode ResumeMode, v Value) {
 	defer g.abortOnPanic()
-	cx := g.fp.context
 	promise := g.object
 	f, fp, this := g.f, g.fp, g.this
 	for {
@@ -111,7 +111,7 @@ func (g *generator) asyncFunctionResume(mode ResumeMode, v Value) {
 			g.complete()
 			return
 		}
-		if g.tryAwait(r, reactionAwait) {
+		if cx.tryAwait(g, r, reactionAwait) {
 			return
 		}
 		mode, v = ResumeThrow, cx.takeThrown()
@@ -120,7 +120,7 @@ func (g *generator) asyncFunctionResume(mode ResumeMode, v Value) {
 
 // underFrame calls f, which must not throw, with the frame of g at its suspension or return.
 func (g *generator) underFrame(f func()) {
-	cx := g.fp.context
+	cx := g.fp.realm.executionContext()
 	n := len(cx.frames)
 	state := g.state
 	cx.pushGenFrame(g, 0)
@@ -151,7 +151,7 @@ func (resumer *ExecutionContext) asyncGeneratorResume(g *generator, mode ResumeM
 				return
 			}
 		} else if g.awaiting {
-			if g.tryAwait(r, reactionAwait) {
+			if g.fp.realm.executionContext().tryAwait(g, r, reactionAwait) {
 				return
 			}
 			mode, v = ResumeThrow, resumer.takeThrown()
@@ -169,7 +169,7 @@ func (resumer *ExecutionContext) asyncGeneratorResume(g *generator, mode ResumeM
 		mode, v = next.mode, next.value
 		if mode == ResumeReturn {
 			// AsyncGeneratorUnwrapYieldResumption awaits the value to return.
-			if g.tryAwait(v, reactionAwaitReturn) {
+			if g.fp.realm.executionContext().tryAwait(g, v, reactionAwaitReturn) {
 				return
 			}
 			mode, v = ResumeThrow, resumer.takeThrown()
@@ -268,7 +268,7 @@ func (cx *ExecutionContext) ResumeAsyncGenerator(gen Value, mode ResumeMode, v V
 		if mode == ResumeReturn {
 			// AsyncGeneratorUnwrapYieldResumption awaits the value to return.
 			g.awaiting = true
-			if g.tryAwait(v, reactionAwaitReturn) {
+			if g.fp.realm.executionContext().tryAwait(g, v, reactionAwaitReturn) {
 				break
 			}
 			mode, v = ResumeThrow, cx.takeThrown()

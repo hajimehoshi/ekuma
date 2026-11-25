@@ -24,9 +24,8 @@ var nonStorageTypes = []string{
 // storageClosureExceptions are the fields that may lead from storage to the rest of the engine,
 // with the reasons.
 var storageClosureExceptions = map[string]string{
-	"nativeInfo.fast":   "copy of the fast forms in the native table",
-	"funcProto.context": "context that runs the code",
-	"funcProto.script":  "referrer of imports",
+	"nativeInfo.fast":  "copy of the fast forms in the native table",
+	"funcProto.script": "referrer of imports",
 }
 
 // TestStorageClosure tests that the types of storage do not lead to the rest of the engine, except

@@ -561,9 +561,9 @@ func (cx *ExecutionContext) Await(v Value, k AwaitHandler) {
 	})
 }
 
-// tryAwait suspends g on v, or leaves the exception pending if PromiseResolve throws.
-func (g *generator) tryAwait(v Value, kind reactionKind) bool {
-	cx := g.fp.context
+// tryAwait suspends g, whose context is cx, on v, or leaves the exception pending if PromiseResolve
+// throws.
+func (cx *ExecutionContext) tryAwait(g *generator, v Value, kind reactionKind) bool {
 	action := reactionAction{
 		kind: kind,
 		gen:  g,
@@ -875,14 +875,14 @@ func (j *job) run() {
 		if j.rejected {
 			mode = ResumeThrow
 		}
-		r.gen.resumeAfterAwait(mode, j.argument)
+		cx.resumeAfterAwait(r.gen, mode, j.argument)
 		return
 	case reactionAwaitReturn:
 		mode := ResumeReturn
 		if j.rejected {
 			mode = ResumeThrow
 		}
-		r.gen.resumeAfterAwait(mode, j.argument)
+		cx.resumeAfterAwait(r.gen, mode, j.argument)
 		return
 	case reactionAsyncGeneratorReturn:
 		g := r.gen

@@ -73,7 +73,7 @@ func (cx *ExecutionContext) NewScript(code *bytecode.Func) *Script {
 // ScriptEvaluation evaluates s and runs pending jobs. completed reports whether
 // the script returned normally before the job checkpoint.
 func (s *Script) ScriptEvaluation() (Value, bool, error) {
-	cx := s.code.context
+	cx := s.code.realm.executionContext()
 	var completed bool
 	value, err := cx.enter(func() Value {
 		v := s.CallScript()
@@ -85,9 +85,9 @@ func (s *Script) ScriptEvaluation() (Value, bool, error) {
 
 // CallScript evaluates s from a running host function and propagates its exception.
 func (s *Script) CallScript() Value {
-	cx := s.code.context
+	cx := s.code.realm.executionContext()
 	previous := cx.enteredRealm
-	cx.enteredRealm = s.code.context.realm
+	cx.enteredRealm = cx.realm
 	defer func() { cx.enteredRealm = previous }()
 	return cx.Call(cx.newScriptFunction(s.code), Value{o: cx.realm.globalThis})
 }

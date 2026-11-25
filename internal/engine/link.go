@@ -54,8 +54,9 @@ type funcProto struct {
 	// script is the [[ScriptOrModule]] of the functions.
 	script *scriptOrModule
 
-	// Each frame enters the context of its linked code, including a replacement tail frame.
-	context *ExecutionContext
+	// realm is the [[Realm]] of the functions. Each frame enters the context of the realm of its
+	// linked code, including a replacement tail frame.
+	realm *realmPart
 
 	// thisReg is the register that the first instruction loads this into, or -1 when the
 	// first instruction does not load this. thisSloppy says whether it converts this the way
@@ -130,8 +131,8 @@ func (cx *ExecutionContext) linkFunc(f *bytecode.Func, script *scriptOrModule, c
 		needsExtra:            f.NeedsExtra || legacy,
 		legacyCallerArguments: legacy,
 
-		script:  script,
-		context: cx,
+		script: script,
+		realm:  cx.realmPart,
 
 		thisReg:  -1,
 		heapRegs: f.IsGenerator || f.IsAsync,

@@ -30,7 +30,7 @@ func TestExecutionContextBoundary(t *testing.T) {
 			objs: []types.Object{prog.field(t, "agent", "active")},
 			owners: []string{
 				"ExecutionContext.activate", "Host.ActiveContext", "ExecutionContext.runFrame", "ExecutionContext.protect",
-				"agent.exec", "agent.checkActive",
+				"agent.exec", "agent.checkActive", "agent.install",
 			},
 		},
 		useRule{
@@ -38,9 +38,19 @@ func TestExecutionContextBoundary(t *testing.T) {
 			objs: prog.function(t, "ExecutionContext.activate"),
 			owners: []string{
 				"NewExecutionContext", "ExecutionContext.Run", "ExecutionContext.enter", "ExecutionContext.enterJob",
-				"ExecutionContext.enterBoundary", "agent.exec", "ExecutionContext.runFrame", "ExecutionContext.callNative",
+				"ExecutionContext.enterBoundary", "ExecutionContext.runFrame", "ExecutionContext.callNative",
 				"ExecutionContext.protect",
 			},
+		},
+		useRule{
+			what:   "context installation",
+			objs:   prog.function(t, "agent.install"),
+			owners: []string{"agent.exec"},
+		},
+		useRule{
+			what:   "owner of a realm part",
+			objs:   []types.Object{prog.field(t, "realmPart", "owner")},
+			owners: []string{"agent.newRealm", "realmPart.executionContext", "agent.exec"},
 		},
 	)
 
@@ -127,7 +137,7 @@ func TestFrameRegisterBoundary(t *testing.T) {
 }
 
 // checkActiveReads tests that the interpreter loop uses the active context in place, so that no copy
-// of it outlives a change of the running frame, and installs contexts only through activate.
+// of it outlives a change of the running frame, and installs contexts only through install.
 func checkActiveReads(t *testing.T, prog *program) {
 	active := prog.field(t, "agent", "active")
 	var reads int

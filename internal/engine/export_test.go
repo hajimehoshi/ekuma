@@ -98,7 +98,7 @@ func TraceShortcut(t *testing.T, f Value, op bytecode.Opcode, bypass bool, dista
 	}
 
 	var stepping bool
-	fp.context.checks.observeSteps(func(current *funcProto, pc int) {
+	fp.realm.executionContext().checks.observeSteps(func(current *funcProto, pc int) {
 		if current != fp {
 			return
 		}
@@ -138,6 +138,7 @@ func NewRegisters(f *bytecode.Func) *Registers {
 		frames: []frame{{
 			fp: fp,
 		}},
+		active: &ExecutionContext{},
 	}
 	ag.ensureStack(fp.nregs + 1)
 	return &Registers{

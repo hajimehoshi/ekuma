@@ -495,5 +495,5 @@ func (c *funcProto) checkReturnedProperty(this Value, e *cacheEntry) {
 	if get.Op != bytecode.OpGetProp {
 		panic(validationFailure(c, 1, "the property that the function returns is not read here"))
 	}
-	c.context.checkEntryRead(c, 1, this, this.o, c.keys[get.C], e)
+	c.realm.executionContext().checkEntryRead(c, 1, this, this.o, c.keys[get.C], e)
 }

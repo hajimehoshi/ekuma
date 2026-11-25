@@ -97,6 +97,9 @@ const (
 	// execPanic: Go code called by the loop threw. The frames are still in place.
 	execPanic
 
+	// execEnter: the frame the loop would run belongs to another realm than the active context.
+	execEnter
+
 	// execYield: the generator the loop was started for suspended.
 	execYield
 
@@ -210,7 +213,7 @@ func (ag *agent) pushFrame(f *Object, this Value, base, argc int, ret int32, isN
 	fr.fp, fr.cl, fr.this, fr.newTarget, fr.gen, fr.scopes = fp, f, this, newTarget, nil, nil
 	fr.pc, fr.base, fr.ret, fr.isNew, fr.argc, fr.extraBase = 0, base, ret, isNew, argc, extraBase
 	n := len(ag.frames) - 1
-	fr.plainReturn = n > 0 && ag.frames[n-1].fp.context.realm == fp.context.realm
+	fr.plainReturn = n > 0 && ag.frames[n-1].fp.realm == fp.realm
 	ag.sp = base + fp.nregs + 1
 	return base
 }
@@ -405,9 +408,13 @@ func (cx *ExecutionContext) runFrame(stop int) (Value, bool) {
 	cx.depth++
 	// The frames may belong to other realms than the code that started the loop.
 	saved, outer := cx.active, cx.callerRealm
-	cx.callerRealm = cx.realm
+	cx.callerRealm = cx.realmPart
 	for {
 		v, st := cx.exec(stop)
+		if st == execEnter {
+			cx.frames[len(cx.frames)-1].fp.realm.executionContext().activate()
+			continue
+		}
 		if validateExec {
 			cx.leaveChecks()
 		}
@@ -428,10 +435,10 @@ func (cx *ExecutionContext) runFrame(stop int) (Value, bool) {
 func (cx *ExecutionContext) throwReturnError(stop, n, pc int, kind ErrorKind, msg string) {
 	r := cx.callerRealm
 	if n > stop {
-		r = cx.frames[n-1].fp.context.realm
+		r = cx.frames[n-1].fp.realm
 	}
 	cx.frames[n].pc = pc
-	cx.recordThrow(r.context.NewError(kind, msg))
+	cx.recordThrow(r.executionContext().NewError(kind, msg))
 	// The constructor has returned. Unwind from before its handlers.
 	cx.frames[n].pc = 0
 	panic(errThrow)
@@ -468,7 +475,11 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 	fp := fr.fp
 	pc := fr.pc
 	// The active context is that of the running frame wherever exec reads it.
-	fp.context.activate()
+	if fp.realm != ag.active.realmPart {
+		// runFrame installs the context. Doing it here would keep the type that the way to the
+		// context checks in a register throughout the loop.
+		return Undefined, execEnter
+	}
 	if validateExec {
 		ag.enterChecks()
 	}
@@ -1458,7 +1469,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				}
 			}
 			if !fp.heapRegs && f != nil && f.fn != nil {
-				if c := f.fn.code; c != nil && c.inlineFrames && c.context == ag.active {
+				if c := f.fn.code; c != nil && c.inlineFrames && c.realm == fp.realm {
 					n := len(ag.frames)
 					argBase := ag.frames[n-1].base + first
 					// The caller's registers already cover all the arguments.
@@ -2486,7 +2497,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				// registers its tests take there made the loop store the values it carries
 				// before every instruction where registers are few, as on amd64.
 				if f := regs[b+1].o; !fp.heapRegs && f != nil && f.fn != nil && !ag.interrupt.Load() {
-					if c := f.fn.code; c != nil && c.inlineFrames && c.context == ag.active {
+					if c := f.fn.code; c != nil && c.inlineFrames && c.realm == fp.realm {
 						n := len(ag.frames)
 						cur := &ag.frames[n-1]
 						argc := cur.argc
@@ -2621,16 +2632,16 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 					regs = ag.reload(regs, ag.frameBase(), fp)
 				}
 				if proto.o == nil || proto.o.kind < kindFirstObject {
-					proto = Value{o: f.fn.code.context.realm.intrinsics[IntrinsicObjectPrototype]}
+					proto = Value{o: f.fn.code.realm.intrinsics[IntrinsicObjectPrototype]}
 				}
 				var shape *shape
-				if proto.o == c.holder && c.next != nil && c.next.realm == f.fn.code.context.realmPart {
+				if proto.o == c.holder && c.next != nil && c.next.realm == f.fn.code.realm {
 					if validateExec {
-						ag.active.checkInstanceShape(fp, pc-2, proto.o, f.fn.code.context.realmPart, c.next)
+						ag.active.checkInstanceShape(fp, pc-2, proto.o, f.fn.code.realm, c.next)
 					}
 					shape = c.next
 				} else {
-					shape = ag.active.shapeForRealm(proto.o, f.fn.code.context.realmPart)
+					shape = ag.active.shapeForRealm(proto.o, f.fn.code.realm)
 					if c.kind == cacheOwn {
 						c.holder, c.next = proto.o, shape
 					}
@@ -2680,11 +2691,13 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			}
 			fr := &ag.frames[n-1]
 			fp = fr.fp
-			fp.context.activate()
 			pc = fr.pc
 			regs = fr.registers(ag.stack)
 			ag.sp = fr.top()
 			regs[ret] = r
+			if fp.realm != ag.active.realmPart {
+				goto enter
+			}
 		case bytecode.OpThrow:
 			if ag.captureThrowSites {
 				ag.thrownAt = throwSite{
@@ -2718,11 +2731,13 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			}
 			fr := &ag.frames[n-1]
 			fp = fr.fp
-			fp.context.activate()
 			pc = fr.pc
 			regs = fr.registers(ag.stack)
 			ag.sp = fr.top()
 			regs[ret] = Value{o: o}
+			if fp.realm != ag.active.realmPart {
+				goto enter
+			}
 		case bytecode.OpYield, bytecode.OpAwait:
 			n := len(ag.frames) - 1
 			cur := &ag.frames[n]
@@ -3353,7 +3368,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 					ag.frames[len(ag.frames)-1].pc = pc
 					ag.active.ThrowRangeError("maximum call stack size exceeded")
 				}
-				if site := c.returnedProperty; site != nil && !isNew && newTarget == nil && c.context == ag.active && callThis.IsObject() {
+				if site := c.returnedProperty; site != nil && !isNew && newTarget == nil && c.realm == fp.realm && callThis.IsObject() {
 					if e := site.entry(callThis.o.shape); e != nil && e.kind == cacheOwn {
 						if validateExec {
 							c.checkReturnedProperty(callThis, e)
@@ -3364,7 +3379,6 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				}
 				ag.frames[len(ag.frames)-1].pc = pc
 				base := ag.pushFrame(f, callThis, argBase, argc, ret, isNew, newTarget)
-				c.context.activate()
 				fp = c
 				regs = ag.stack[base : base+c.nregs+1]
 				pc = 0
@@ -3374,6 +3388,9 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 						regs[r] = t
 						pc = 1
 					}
+				}
+				if fp.realm != ag.active.realmPart {
+					goto enter
 				}
 				continue
 			}
@@ -3427,9 +3444,11 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				ag.pushGenerator(f, callThis, ag.stack[argBase:argBase+argc], ret)
 				fr := &ag.frames[len(ag.frames)-1]
 				fp = fr.fp
-				fp.context.activate()
 				regs = fr.gen.regs
 				pc = 0
+				if fp.realm != ag.active.realmPart {
+					goto enter
+				}
 				continue
 			}
 			ag.ensureStack(argBase + argc)
@@ -3452,9 +3471,11 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 		{
 			fr := &ag.frames[len(ag.frames)-1]
 			fp = fr.fp
-			fp.context.activate()
 			regs = ag.stack[fr.base : fr.base+fp.nregs+1]
 			pc = 0
+			if fp.realm != ag.active.realmPart {
+				goto enter
+			}
 			continue
 		}
 
@@ -3501,9 +3522,18 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 		{
 			fr := &ag.frames[len(ag.frames)-1]
 			fp = fr.fp
-			fp.context.activate()
 			pc = fr.pc
 			regs = fr.registers(ag.stack)
+			if fp.realm == ag.active.realmPart {
+				continue
+			}
+		}
+
+	enter:
+		// The frame that runs from here on belongs to another realm than the active context.
+		// The branch on ok predicts well, where a selection would delay the loads through the context.
+		if cx, ok := fp.realm.owner.(*ExecutionContext); ok {
+			ag.install(cx)
 		}
 	}
 }

@@ -35,6 +35,11 @@ func (cx *ExecutionContext) activate() *ExecutionContext {
 	return previous
 }
 
+// install makes cx the active context.
+func (ag *agent) install(cx *ExecutionContext) {
+	ag.active = cx
+}
+
 // Run calls f with cx active for host reentry.
 func (cx *ExecutionContext) Run(f func()) {
 	if previous := cx.activate(); previous != cx {

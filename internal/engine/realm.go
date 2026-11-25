@@ -40,15 +40,25 @@ type realmPart struct {
 	// asyncFromSyncProto is %AsyncFromSyncIteratorPrototype%, or nil until it is needed.
 	asyncFromSyncProto *Object
 
-	// owner is the execution context of the realm. Only executionContext reads it.
+	// owner is the execution context of the realm. Only executionContext and the
+	// interpreter loop read it.
 	owner any
 }
 
 // executionContext returns the execution context of the realm that embeds r.
 func (r *realmPart) executionContext() *ExecutionContext {
-	// The two-value form compiles to no call, which the frame changes of the interpreter loop rely on.
+	// The two-value form compiles to no call, so that the interpreter loop makes none at a change of
+	// realm.
 	cx, _ := r.owner.(*ExecutionContext)
 	return cx
+}
+
+// contextOf returns the execution context of the realm that embeds r.
+func (cx *ExecutionContext) contextOf(r *realmPart) *ExecutionContext {
+	if r == cx.realmPart {
+		return cx
+	}
+	return r.executionContext()
 }
 
 // realm is a Realm Record.
