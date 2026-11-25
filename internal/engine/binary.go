@@ -884,7 +884,7 @@ func (d *DataView) Unlock() {
 
 // Element returns the own property of o with the integer index i when reading it
 // cannot run any JavaScript. It reports false when that is not known.
-func (o *Object) Element(i int64) (Value, bool) {
+func Element(o *Object, i int64) (Value, bool) {
 	if o.objectProperties != nil && i >= 0 && i < int64(len(o.elems)) {
 		if e := o.elems[i]; !e.isHole() {
 			return e, true

@@ -149,7 +149,7 @@ func (ag *agent) InitLazyObject(o *Object) {
 		return
 	}
 	init := o.extState().(func(*ExecutionContext, *Object))
-	cx := o.CreationContext()
+	cx := CreationContext(o)
 	cx.endLazy(o)
 	cx.Run(func() {
 		init(cx, o)
@@ -484,7 +484,7 @@ func (cx *ExecutionContext) HasOwnProperty(o *Object, k PropKey) bool {
 
 // HasOwnPropertyPlain is HasOwnProperty of o and the key k when finding out neither throws nor
 // runs code, and takes a short time. It reports false as ok otherwise.
-func (q QuietContext) HasOwnPropertyPlain(o *Object, k Value) (has, ok bool) {
+func HasOwnPropertyPlain(q QuietContext, o *Object, k Value) (has, ok bool) {
 	r := q.realm
 	var key QueryKey
 	switch {

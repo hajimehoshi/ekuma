@@ -148,7 +148,7 @@ func (cx *ExecutionContext) evalCode(fp *funcProto, site int, src wtf8.String) *
 	// eval, and the active one for an indirect eval.
 	var script *scriptOrModule
 	if fp != nil {
-		script = fp.scriptOrModule()
+		script = scriptOrModuleOf(fp)
 	} else {
 		script = cx.activeScriptOrModule()
 	}

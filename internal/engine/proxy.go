@@ -150,7 +150,7 @@ func (q QuietContext) IsArrayPlain(v Value) (is, ok bool) {
 // FunctionContext returns the context of GetFunctionRealm(f).
 func (cx *ExecutionContext) FunctionContext(f *Object) *ExecutionContext {
 	if r := cx.functionRealmOrNil(f); r != nil {
-		return r.executionContext()
+		return executionContextOf(r)
 	}
 	cx.throwRevoked("GetFunctionRealm")
 	return nil

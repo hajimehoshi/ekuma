@@ -19,21 +19,21 @@ type pushSizeHint struct {
 // PushElements appends vals to the array o and returns its new length and true.
 // If o requires the generic Array.prototype.push algorithm, it leaves o unchanged
 // and returns 0, false.
-func (q QuietContext) PushElements(o *Object, vals []Value) (uint32, bool) {
+func PushElements(q QuietContext, o *Object, vals []Value) (uint32, bool) {
 	n, ok := q.AppendElements(o, vals)
 	// Sample single-element pushes so earlier array lengths at this call site can
 	// guide how much space to reserve.
 	if ok && len(vals) == 1 && n > minElems && n <= maxPresizedElems {
 		if n == minElems+1 || int(n) == cap(o.elems) || n%pushSampleInterval == 0 {
-			q.observePush(o)
+			observePush(q, o)
 		}
 	}
 	return n, ok
 }
 
 // observePush is [agent.observePush].
-func (q QuietContext) observePush(o *Object) {
-	q.realm.executionContext().observePush(o)
+func observePush(q QuietContext, o *Object) {
+	executionContextOf(q.realm).observePush(o)
 }
 
 // observePush samples the array after a single-element push at the calling frame's pc.

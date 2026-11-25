@@ -18,13 +18,13 @@ var codeTypes = []string{
 // quietEngineOperations are the operations of QuietContext that reach the engine, with the reasons.
 // TestQuietContextBoundary checks them.
 var quietEngineOperations = map[string]string{
-	"QuietContext.observePush": "samples the running frame",
+	"observePush": "samples the running frame",
 }
 
 // signatureExceptions are the other functions that mention values of the types without taking or
 // returning any, with the reasons.
 var signatureExceptions = map[string]string{
-	"Native.fast":               "reads the native table, whose functions take an execution context",
+	"nativeFastOf":              "reads the native table, whose functions take an execution context",
 	"RegisterPlainIteratorNext": "registers function literals that take an execution context",
 	"addNativeFast":             "fills the native table",
 	"isSyncGenerator":           "reads the kind of a generator",

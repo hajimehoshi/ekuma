@@ -51,7 +51,7 @@ type funcProto struct {
 	// that implementations add to non-strict ordinary functions.
 	legacyCallerArguments bool
 
-	// script is the [[ScriptOrModule]] of the functions. Only scriptOrModule reads it.
+	// script is the [[ScriptOrModule]] of the functions. Only scriptOrModuleOf reads it.
 	script any
 
 	// realm is the [[Realm]] of the functions. Each frame enters the context of the realm of its
@@ -84,8 +84,8 @@ type funcProto struct {
 	plainFunction *function
 }
 
-// scriptOrModule returns the [[ScriptOrModule]] of the functions.
-func (p *funcProto) scriptOrModule() *scriptOrModule {
+// scriptOrModuleOf returns the [[ScriptOrModule]] of the functions.
+func scriptOrModuleOf(p *funcProto) *scriptOrModule {
 	return p.script.(*scriptOrModule)
 }
 

@@ -59,7 +59,7 @@ func TestDerivedReturnErrorLocation(t *testing.T) {
 	var loc engine.ExceptionLocation
 	cx.SetExceptionReporter(func(thrown engine.Value, site engine.ExceptionLocation) {
 		loc = site
-		if thrown.Object().CreationContext() != cx {
+		if engine.CreationContext(thrown.Object()) != cx {
 			t.Error("derived constructor return error was created outside the caller's realm")
 		}
 		if got := cx.ProtoOf(thrown.Object()); got != cx.Intrinsic(engine.IntrinsicTypeErrorPrototype) {

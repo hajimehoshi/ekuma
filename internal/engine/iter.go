@@ -311,7 +311,7 @@ var stepDeclined = newMarker(nil)
 func (cx *ExecutionContext) iterNext(it, next Value) (Value, int) {
 	f := next.o
 	if f != nil && f.fn != nil && cx.hasIteratorFast(f.fn) {
-		if fast := f.fn.info.native.fast(); fast.step != nil {
+		if fast := nativeFastOf(f.fn.info.native); fast.step != nil {
 			if cx.interrupt.Load() {
 				cx.Poll()
 			}
@@ -391,7 +391,7 @@ func (cx *ExecutionContext) IteratorStepValue(it, next Value) (Value, bool) {
 // without the result: it reports false when the iterator is done.
 func (cx *ExecutionContext) IteratorStep(it, next Value) bool {
 	if f := next.o; f != nil && f.fn != nil && cx.hasIteratorFast(f.fn) {
-		if fast := f.fn.info.native.fast(); fast.step != nil {
+		if fast := nativeFastOf(f.fn.info.native); fast.step != nil {
 			if cx.interrupt.Load() {
 				cx.Poll()
 			}
@@ -563,7 +563,7 @@ func (cx *ExecutionContext) plainArrayIteratorIndex(o *Object, i uint32) Value {
 	if cx.interrupt.Load() {
 		cx.Poll()
 	}
-	return next.fn.info.native.fast().arrayIndex(cx, o, i)
+	return nativeFastOf(next.fn.info.native).arrayIndex(cx, o, i)
 }
 
 // IterateRecord is [ExecutionContext.Iterate] for the iterator record of the iterator it and its next method

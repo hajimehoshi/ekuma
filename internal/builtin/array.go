@@ -27,7 +27,7 @@ func bigKey(cx *engine.ExecutionContext, i int64) engine.PropKey {
 // getAt returns the property of o with the integer index i. A loop over consecutive indices
 // that calls it checks for an interruption regularly.
 func getAt(cx *engine.ExecutionContext, o *engine.Object, i int64) engine.Value {
-	if e, ok := o.Element(i); ok {
+	if e, ok := engine.Element(o, i); ok {
 		cx.PollAt(i)
 		return e
 	}
@@ -38,7 +38,7 @@ func getAt(cx *engine.ExecutionContext, o *engine.Object, i int64) engine.Value 
 // hasAt reports whether o has a property with the integer index i. A loop over consecutive
 // indices that calls it checks for an interruption regularly.
 func hasAt(cx *engine.ExecutionContext, o *engine.Object, i int64) bool {
-	if _, ok := o.Element(i); ok {
+	if _, ok := engine.Element(o, i); ok {
 		cx.PollAt(i)
 		return true
 	}
@@ -58,7 +58,7 @@ func skipHoles(cx *engine.ExecutionContext, o *engine.Object, i, end int64, back
 // holeSteps returns the number of consecutive indices from i, moving by dir (1 or -1) and at most
 // count, at which neither o nor its prototypes are known to have a property.
 func holeSteps(cx *engine.ExecutionContext, o *engine.Object, i, count, dir int64) int64 {
-	if _, ok := o.Element(i); ok || i > engine.MaxArrayIndex {
+	if _, ok := engine.Element(o, i); ok || i > engine.MaxArrayIndex {
 		return 0
 	}
 	if dir > 0 {
@@ -188,7 +188,7 @@ func joinRun(cx *engine.ExecutionContext, b *wtf8.Buffer, o *engine.Object, i, e
 		if i > 0 {
 			b.WriteString(sep)
 		}
-		e, ok := o.Element(i)
+		e, ok := engine.Element(o, i)
 		if !ok {
 			if j := cx.Quiet().SkipHoles(o, i, n); j > i {
 				// The indices from i to j-1 read as undefined.
@@ -482,7 +482,7 @@ func arrayFrom(cx *engine.ExecutionContext, this engine.Value, args []engine.Val
 
 func arrayPush(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	o := cx.ToObject(this)
-	if n, ok := cx.Quiet().PushElements(o, args); ok {
+	if n, ok := engine.PushElements(cx.Quiet(), o, args); ok {
 		return engine.Number(float64(n))
 	}
 	n := cx.LengthOfArrayLike(o)
@@ -503,7 +503,7 @@ func arrayPushKernel(q engine.QuietContext, this, v engine.Value) (engine.Value,
 		return engine.Undefined, false
 	}
 	vals := [...]engine.Value{v}
-	n, ok := q.PushElements(this.Object(), vals[:])
+	n, ok := engine.PushElements(q, this.Object(), vals[:])
 	if !ok {
 		return engine.Undefined, false
 	}
@@ -822,7 +822,7 @@ func arraySearchNative(fromEnd, same bool) engine.NativeFunc {
 					break
 				}
 				cx.PollAt(i)
-				if e, ok := o.Element(i); ok {
+				if e, ok := engine.Element(o, i); ok {
 					if eq(e, target) {
 						return engine.Number(float64(i))
 					}
@@ -851,7 +851,7 @@ func arraySearchNative(fromEnd, same bool) engine.NativeFunc {
 			}
 			cx.PollAt(i)
 			if same {
-				e, ok := o.Element(i)
+				e, ok := engine.Element(o, i)
 				if !ok {
 					if j := cx.Quiet().SkipHoles(o, i, n); j > i {
 						// The indices from i to j-1 read as undefined.
@@ -868,7 +868,7 @@ func arraySearchNative(fromEnd, same bool) engine.NativeFunc {
 				}
 				continue
 			}
-			if e, ok := o.Element(i); ok {
+			if e, ok := engine.Element(o, i); ok {
 				if eq(e, target) {
 					return engine.Number(float64(i))
 				}
@@ -1056,7 +1056,7 @@ func arrayReduceNative(name string, right bool) engine.NativeFunc {
 			}
 		}
 		for ; i != end; i += d {
-			if _, ok := o.Element(i); !ok {
+			if _, ok := engine.Element(o, i); !ok {
 				if i = skipHoles(cx, o, i, end, right); i == end {
 					break
 				}
@@ -1648,7 +1648,7 @@ func (l *eachLoop) next() (v, r engine.Value, ok bool) {
 	cx, o := l.cx, l.o
 	for i := l.i + 1; i < l.n; i++ {
 		if l.skipHoles {
-			if _, ok := o.Element(i); !ok {
+			if _, ok := engine.Element(o, i); !ok {
 				if i = cx.Quiet().SkipHoles(o, i, l.n); i == l.n {
 					break
 				}

@@ -98,7 +98,7 @@ func TraceShortcut(t *testing.T, f Value, op bytecode.Opcode, bypass bool, dista
 	}
 
 	var stepping bool
-	fp.realm.executionContext().checks.observeSteps(func(current *funcProto, pc int) {
+	executionContextOf(fp.realm).checks.observeSteps(func(current *funcProto, pc int) {
 		if current != fp {
 			return
 		}
@@ -289,7 +289,7 @@ func Shortcuts(t *testing.T, cx *ExecutionContext, holders []*Object, observe fu
 	})
 	var shortcuts []*Shortcut
 	for _, o := range objects {
-		if o.fn == nil || o.fn.info == nil || o.fn.info.native.fast() == nil && o.fn.info.extremum == ExtremumNone {
+		if o.fn == nil || o.fn.info == nil || nativeFastOf(o.fn.info.native) == nil && o.fn.info.extremum == ExtremumNone {
 			continue
 		}
 		s := &Shortcut{
@@ -332,7 +332,7 @@ func (s *Shortcut) wrap(t *testing.T, observe func(s *Shortcut, form, event stri
 	if fn.info.extremum != ExtremumNone {
 		s.Forms = append(s.Forms, "extremum")
 	}
-	fast := fn.info.native.fast()
+	fast := nativeFastOf(fn.info.native)
 	if fast == nil {
 		return
 	}
@@ -436,11 +436,11 @@ func observer(f *Object) NativeFunc {
 // ObserveNative makes the native function f call observe whenever it starts.
 func ObserveNative(f Value, observe func()) {
 	info := f.o.fn.changeableInfo()
-	code := info.native.code()
+	code := nativeCodeOf(info.native)
 	if info.native.index == nativeObserved.index {
 		code = observer(f.o)
 	}
-	observers.Set(f, info.realm.executionContext().NewFunction("", func(cx *ExecutionContext, this Value, args []Value) Value {
+	observers.Set(f, executionContextOf(info.realm).NewFunction("", func(cx *ExecutionContext, this Value, args []Value) Value {
 		observe()
 		return code(cx, this, args)
 	}))

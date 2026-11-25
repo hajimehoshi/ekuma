@@ -199,7 +199,7 @@ func builtinExec(cx *engine.ExecutionContext, r *engine.Object, s engine.Value) 
 	}
 	index := engine.Number(float64(caps[0]))
 	groups := groupsObject(cx, re, func(i int) engine.Value {
-		v, _ := a.Element(int64(i))
+		v, _ := engine.Element(a, int64(i))
 		return v
 	})
 	if pairs == nil {

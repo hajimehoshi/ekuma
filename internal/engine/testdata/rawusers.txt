@@ -37,6 +37,7 @@ evalArg objectProperties.elems:ref
 
 # Read properties without the guards of the property operations.
 [reads]
+Element objectProperties.elems:read
 ExecutionContext.CreateDataProperty objectProperties.elems:read
 ExecutionContext.GetOwnProperty Value.accessor:read objectProperties.elems:read objectProperties.slots:read shape.lookup:read
 ExecutionContext.HasOwnProperty objectProperties.elems:read shape.lookup:read
@@ -55,9 +56,8 @@ ExecutionContext.getValue objectProperties.elems:read
 ExecutionContext.iteratePlainArray objectProperties.elems:read
 ExecutionContext.readInstancePrototype Value.accessor:read Value.o:lit*2
 ExecutionContext.setFuncName shape.lookup:read
-Object.Element objectProperties.elems:read
-QuietContext.HasOwnPropertyPlain objectProperties.elems:read shape.lookup:read
-QuietContext.PushElements objectProperties.elems:read
+HasOwnPropertyPlain objectProperties.elems:read shape.lookup:read
+PushElements objectProperties.elems:read
 agent.observePush objectProperties.elems:read
 arrayIterator.step objectProperties.elems:read
 arrayIterator.stepPlain objectProperties.elems:read

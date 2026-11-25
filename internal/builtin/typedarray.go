@@ -282,7 +282,7 @@ func storeNumbers(cx *engine.ExecutionContext, t *engine.TypedArray, offset int,
 	var stored int64
 	lockedRuns(cx, t, 0, int(n), false, func(b []byte, i, j int) bool {
 		for k := i; k < j; k++ {
-			e, ok := src.Element(int64(k))
+			e, ok := engine.Element(src, int64(k))
 			if !ok || !e.IsNumber() || (offset+k+1)*size > len(b) {
 				return false
 			}

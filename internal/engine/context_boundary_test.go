@@ -50,12 +50,12 @@ func TestExecutionContextBoundary(t *testing.T) {
 		useRule{
 			what:   "owner of a realm part",
 			objs:   []types.Object{prog.field(t, "realmPart", "owner")},
-			owners: []string{"agent.newRealm", "realmPart.executionContext", "agent.exec"},
+			owners: []string{"agent.newRealm", "executionContextOf", "agent.exec"},
 		},
 		useRule{
 			what:   "ScriptOrModule of linked code",
 			objs:   []types.Object{prog.field(t, "funcProto", "script")},
-			owners: []string{"ExecutionContext.linkFunc", "funcProto.scriptOrModule"},
+			owners: []string{"ExecutionContext.linkFunc", "scriptOrModuleOf"},
 		},
 	)
 

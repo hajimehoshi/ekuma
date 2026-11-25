@@ -185,7 +185,7 @@ func IteratorState(v Value) any {
 // For other values it returns two nil values.
 func IteratorStateAndContext(v Value) (any, *ExecutionContext) {
 	if v.IsObject() && v.o.class == classIterator {
-		return v.o.extState(), v.o.shape.realm.executionContext()
+		return v.o.extState(), executionContextOf(v.o.shape.realm)
 	}
 	return nil, nil
 }

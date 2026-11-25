@@ -356,7 +356,7 @@ func (cx *ExecutionContext) ParseJSONModule(src string, hostDefined any) (*Modul
 // activeScriptOrModule implements GetActiveScriptOrModule, with the realm standing for null.
 func (cx *ExecutionContext) activeScriptOrModule() *scriptOrModule {
 	if n := len(cx.frames); n > 0 {
-		return cx.frames[n-1].fp.scriptOrModule()
+		return scriptOrModuleOf(cx.frames[n-1].fp)
 	}
 	return cx.realm.referrer
 }
@@ -1234,7 +1234,7 @@ func (cx *ExecutionContext) evaluateAll(modules []*Module) Value {
 
 // importMeta returns the object import.meta of the running module.
 func (cx *ExecutionContext) importMeta() Value {
-	m := cx.frames[len(cx.frames)-1].fp.scriptOrModule().module
+	m := scriptOrModuleOf(cx.frames[len(cx.frames)-1].fp).module
 	if !m.metaStarted {
 		if m.meta == nil {
 			m.meta = cx.NewObject(nil)

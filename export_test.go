@@ -92,7 +92,7 @@ func IsEnteredRealm(r *Realm) bool {
 // ObjectCreationRealm returns the host realm of the object v, or nil if it has none.
 func ObjectCreationRealm(v Value) *Realm {
 	o := v.value.Object()
-	cx := o.CreationContext()
+	cx := engine.CreationContext(o)
 	if cx == nil {
 		return nil
 	}

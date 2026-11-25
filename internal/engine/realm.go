@@ -45,13 +45,13 @@ type realmPart struct {
 	// space is the space of the agent of the realm.
 	*space
 
-	// owner is the execution context of the realm. Only executionContext and the
+	// owner is the execution context of the realm. Only executionContextOf and the
 	// interpreter loop read it.
 	owner any
 }
 
-// executionContext returns the execution context of the realm that embeds r.
-func (r *realmPart) executionContext() *ExecutionContext {
+// executionContextOf returns the execution context of the realm that embeds r.
+func executionContextOf(r *realmPart) *ExecutionContext {
 	// The two-value form compiles to no call, so that the interpreter loop makes none at a change of
 	// realm.
 	cx, _ := r.owner.(*ExecutionContext)
@@ -63,7 +63,7 @@ func (cx *ExecutionContext) contextOf(r *realmPart) *ExecutionContext {
 	if r == cx.realmPart {
 		return cx
 	}
-	return r.executionContext()
+	return executionContextOf(r)
 }
 
 // realm is a Realm Record.
@@ -196,9 +196,9 @@ func (cx *ExecutionContext) IsIntrinsicOfOtherRealm(f *Object, id Intrinsic) boo
 
 // CreationContext returns the creation realm's context for the JavaScript object o,
 // or nil for a detached global proxy.
-func (o *Object) CreationContext() *ExecutionContext {
+func CreationContext(o *Object) *ExecutionContext {
 	if r := o.creationRealm(); r != nil {
-		return r.executionContext()
+		return executionContextOf(r)
 	}
 	return nil
 }

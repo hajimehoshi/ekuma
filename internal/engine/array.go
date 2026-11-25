@@ -32,7 +32,7 @@ const minShrinkElems = 64
 const shiftCopyElems = 32
 
 // SetElement stores v as the own property of o with the integer index i when
-// [Object.Element] returns that property and o is not a typed array, and reports whether it did.
+// [Element] returns that property and o is not a typed array, and reports whether it did.
 func (o *Object) SetElement(i int64, v Value) bool {
 	if o.objectProperties != nil && i >= 0 && i < int64(len(o.elems)) && !o.elems[i].isHole() {
 		o.elems[i] = v

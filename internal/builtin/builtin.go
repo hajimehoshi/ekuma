@@ -428,7 +428,7 @@ func objectHasOwnPropertyKernel(q engine.QuietContext, this, k engine.Value) (en
 	if !this.IsObject() {
 		return engine.Undefined, false
 	}
-	has, ok := q.HasOwnPropertyPlain(this.Object(), k)
+	has, ok := engine.HasOwnPropertyPlain(q, this.Object(), k)
 	return engine.Bool(has), ok
 }
 

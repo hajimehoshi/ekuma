@@ -78,19 +78,19 @@ func addNativeFast(fast *nativeFast) uint8 {
 	return uint8(i)
 }
 
-// code returns the code of n.
-func (n Native) code() NativeFunc {
+// nativeCodeOf returns the code of n.
+func nativeCodeOf(n Native) NativeFunc {
 	return nativeTable.codes[n.index%nativeTableSize]
 }
 
 // hasFast reports whether fast returns something.
 func (n Native) hasFast() bool {
-	// Widening the index as fast does lets the compiler share its register.
+	// Widening the index as nativeFastOf does lets the compiler share its register.
 	return uint(n.fastIndex) != 0
 }
 
-// fast returns what the callers of n use instead of calling it, or nil.
-func (n Native) fast() *nativeFast {
+// nativeFastOf returns what the callers of n use instead of calling it, or nil.
+func nativeFastOf(n Native) *nativeFast {
 	return nativeTable.fasts[uint(n.fastIndex)]
 }
 
@@ -177,7 +177,7 @@ func RegisterPlainIteratorNext[T any](yieldRealm IteratorYieldRealm, receiverErr
 // newIteratorResult returns the result of the next method of the built-in iterator this that yields v.
 func newIteratorResult(cx *ExecutionContext, yieldRealm IteratorYieldRealm, this, v Value) Value {
 	if yieldRealm == IteratorClosureRealm {
-		return this.o.CreationContext().CreateIterResultObject(v, false)
+		return CreationContext(this.o).CreateIterResultObject(v, false)
 	}
 	return cx.CreateIterResultObject(v, false)
 }

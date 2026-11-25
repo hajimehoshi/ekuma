@@ -50,7 +50,7 @@ func (q QuietContext) Substring(s Value, start, end int) Value {
 	return q.realm.Substring(s, start, end)
 }
 
-// CreationQuietContext is the quiet context of [Object.CreationContext].
+// CreationQuietContext is the quiet context of [CreationContext].
 func (o *Object) CreationQuietContext() QuietContext {
 	return QuietContext{
 		realm: o.creationRealm(),

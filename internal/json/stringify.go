@@ -105,7 +105,7 @@ func (s *Stringifier) Stringify(cx *engine.ExecutionContext, value, replacer, sp
 		seen := map[engine.PropKey]bool{}
 		for i := range n {
 			var v engine.Value
-			if e, ok := r.Element(i); ok {
+			if e, ok := engine.Element(r, i); ok {
 				cx.PollAt(i)
 				v = e
 			} else {
@@ -369,7 +369,7 @@ func (w *writer) serializeArray(o *engine.Object) {
 			w.newline(depth)
 		}
 		var v engine.Value
-		if e, ok := o.Element(i); ok {
+		if e, ok := engine.Element(o, i); ok {
 			v = e
 		} else {
 			v = cx.Get(o, indexKey(cx, i))

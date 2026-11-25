@@ -402,7 +402,7 @@ func (cx *ExecutionContext) runFrame(stop int) (Value, bool) {
 	for {
 		v, st := cx.exec(stop)
 		if st == execEnter {
-			cx.frames[len(cx.frames)-1].fp.realm.executionContext().activate()
+			executionContextOf(cx.frames[len(cx.frames)-1].fp.realm).activate()
 			continue
 		}
 		if validateExec {
@@ -428,7 +428,7 @@ func (cx *ExecutionContext) throwReturnError(stop, n, pc int, kind ErrorKind, ms
 		r = cx.frames[n-1].fp.realm
 	}
 	cx.frames[n].pc = pc
-	cx.recordThrow(r.executionContext().NewError(kind, msg))
+	cx.recordThrow(executionContextOf(r).NewError(kind, msg))
 	// The constructor has returned. Unwind from before its handlers.
 	cx.frames[n].pc = 0
 	panic(errThrow)
@@ -3034,7 +3034,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			var x, y Value
 			var st PairStep
 			pairRealm := ag.active.realmPart
-			if step := next.o.fn.iteratorPairStep(ag.active.realmPart); step != nil {
+			if step := iteratorPairStepOf(next.o.fn, ag.active.realmPart); step != nil {
 				x, y, st = step(IteratorState(it))
 				if st == PairYielded {
 					pairRealm = it.o.shape.realm
@@ -3399,7 +3399,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 					panic("ekuma: construction in a call of a native function")
 				}
 				if info.native.hasFast() {
-					k := info.native.fast()
+					k := nativeFastOf(info.native)
 					if argc == 1 && k.number1 != nil {
 						if a := ag.stack[argBase]; a.o == numberObject {
 							x := k.number1(a.n)

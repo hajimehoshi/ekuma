@@ -120,7 +120,7 @@ func (cx *ExecutionContext) asyncFunctionResume(g *generator, mode ResumeMode, v
 
 // underFrame calls f, which must not throw, with the frame of g at its suspension or return.
 func (g *generator) underFrame(f func()) {
-	cx := g.fp.realm.executionContext()
+	cx := executionContextOf(g.fp.realm)
 	n := len(cx.frames)
 	state := g.state
 	cx.pushGenFrame(g, 0)
@@ -151,7 +151,7 @@ func (resumer *ExecutionContext) asyncGeneratorResume(g *generator, mode ResumeM
 				return
 			}
 		} else if g.awaiting {
-			if g.fp.realm.executionContext().tryAwait(g, r, reactionAwait) {
+			if executionContextOf(g.fp.realm).tryAwait(g, r, reactionAwait) {
 				return
 			}
 			mode, v = ResumeThrow, resumer.takeThrown()
@@ -169,7 +169,7 @@ func (resumer *ExecutionContext) asyncGeneratorResume(g *generator, mode ResumeM
 		mode, v = next.mode, next.value
 		if mode == ResumeReturn {
 			// AsyncGeneratorUnwrapYieldResumption awaits the value to return.
-			if g.fp.realm.executionContext().tryAwait(g, v, reactionAwaitReturn) {
+			if executionContextOf(g.fp.realm).tryAwait(g, v, reactionAwaitReturn) {
 				return
 			}
 			mode, v = ResumeThrow, resumer.takeThrown()
@@ -268,7 +268,7 @@ func (cx *ExecutionContext) ResumeAsyncGenerator(gen Value, mode ResumeMode, v V
 		if mode == ResumeReturn {
 			// AsyncGeneratorUnwrapYieldResumption awaits the value to return.
 			g.awaiting = true
-			if g.fp.realm.executionContext().tryAwait(g, v, reactionAwaitReturn) {
+			if executionContextOf(g.fp.realm).tryAwait(g, v, reactionAwaitReturn) {
 				break
 			}
 			mode, v = ResumeThrow, cx.takeThrown()

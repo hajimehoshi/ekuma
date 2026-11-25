@@ -267,7 +267,7 @@ func capabilityExecutor(cx *ExecutionContext, this Value, args []Value) Value {
 // ensureResolvingFunctions materializes the deferred functions of an intrinsic capability.
 func (ag *agent) ensureResolvingFunctions(c *PromiseCapability) {
 	if c.resolve == nil {
-		c.promise.CreationContext().createResolvingFunctions(c)
+		CreationContext(c.promise).createResolvingFunctions(c)
 	}
 }
 
@@ -361,7 +361,7 @@ func (cx *ExecutionContext) IfAbruptRejectPromise(c *PromiseCapability, f func()
 // already resolved: the promise resolution procedure.
 func (cx *ExecutionContext) resolvePromise(resolverRealm *realmPart, p *Object, resolution Value) {
 	if resolution.o == p {
-		cx.rejectPromise(p, resolverRealm.executionContext().NewError(ErrorKindType, "chaining cycle detected for promise"))
+		cx.rejectPromise(p, executionContextOf(resolverRealm).NewError(ErrorKindType, "chaining cycle detected for promise"))
 		return
 	}
 	if !resolution.IsObject() {
@@ -808,7 +808,7 @@ func (q *jobQueue) dequeue() job {
 func (cx *ExecutionContext) promiseJobContext(callback *Object) *ExecutionContext {
 	if cx.trackJobRealms && callback != nil {
 		if r := cx.functionRealmOrNil(callback); r != nil {
-			return r.executionContext()
+			return executionContextOf(r)
 		}
 		// A revoked proxy gets its TypeError from the realm creating the job.
 	}
@@ -834,7 +834,7 @@ func (cx *ExecutionContext) QueueMicrotask(callback Value) {
 	}
 	cx.jobs.enqueue(job{
 		kind:             jobCallback,
-		context:          callback.o.CreationContext(),
+		context:          CreationContext(callback.o),
 		continuationData: cx.continuationData,
 		callback:         callback.o,
 	})

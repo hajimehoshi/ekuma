@@ -1195,7 +1195,7 @@ func (cx *ExecutionContext) callSlow(f *Object, this Value, args []Value, isNew 
 	}
 	c := fn.code
 	if fn.classConstructor && !isNew && newTarget == nil {
-		c.realm.executionContext().ThrowTypeError("class constructor " + wtf8.ToValidUTF8(c.name) + " cannot be invoked without 'new'")
+		executionContextOf(c.realm).ThrowTypeError("class constructor " + wtf8.ToValidUTF8(c.name) + " cannot be invoked without 'new'")
 	}
 	if c.isGenerator || c.isAsync {
 		return cx.callCoroutine(f, this, args)

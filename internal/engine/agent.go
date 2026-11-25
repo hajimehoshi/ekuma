@@ -168,13 +168,13 @@ func (cx *ExecutionContext) hasIteratorFast(f *function) bool {
 	return f.info != nil && f.info.native.hasFast() && f.info.realm == cx.realmPart
 }
 
-// iteratorPairStep returns the pair step of the next method f of a built-in iterator in realm r, or nil.
-func (f *function) iteratorPairStep(r *realmPart) IteratorPairStepFunc {
+// iteratorPairStepOf returns the pair step of the next method f of a built-in iterator in realm r, or nil.
+func iteratorPairStepOf(f *function, r *realmPart) IteratorPairStepFunc {
 	info := f.info
 	if info == nil || !info.native.hasFast() || info.realm != r {
 		return nil
 	}
-	return info.native.fast().pairStep
+	return nativeFastOf(info.native).pairStep
 }
 
 type boundFunc struct {
@@ -500,7 +500,7 @@ func (cx *ExecutionContext) growNatives() {
 // callNative dispatches a native call or construction. A proxy inherits its caller's context.
 func (cx *ExecutionContext) callNative(f *Object, this Value, args []Value, newTarget *Object) Value {
 	if r := f.fn.info.realm; r != nil && r != cx.realmPart {
-		cx = r.executionContext()
+		cx = executionContextOf(r)
 	}
 	if previous := cx.activate(); previous != cx {
 		defer previous.activate()
@@ -524,7 +524,7 @@ func (cx *ExecutionContext) invokeNative(f *Object, this Value, args []Value, ne
 	ag.natives = ag.natives[:n+1]
 	c := &ag.natives[n]
 	c.f, c.receiver, c.frames, c.newTarget = f, this, len(ag.frames), newTarget
-	r := f.fn.info.native.code()(cx, this, args)
+	r := nativeCodeOf(f.fn.info.native)(cx, this, args)
 	cx.popNative()
 	return r
 }
