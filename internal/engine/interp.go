@@ -98,9 +98,6 @@ const (
 	// execPanic: Go code called by the loop threw. The frames are still in place.
 	execPanic
 
-	// execEnter: the frame the loop would run belongs to another realm than the active context.
-	execEnter
-
 	// execYield: the generator the loop was started for suspended.
 	execYield
 
@@ -379,19 +376,19 @@ func (fr *frame) top() int {
 }
 
 // run executes the top frame until the frame at index stop returns, and returns its value.
-// An exception that leaves that frame is thrown to the Go caller.
-func (cx *ExecutionContext) run(stop int) Value {
-	v, ok := cx.runFrame(stop)
+// An exception that leaves that frame is thrown to the Go caller. r is the realm of the frame.
+func (cx *ExecutionContext) run(stop int, r *realmPart) Value {
+	v, ok := cx.runFrame(stop, r)
 	if !ok {
 		panic(errThrow)
 	}
 	return v
 }
 
-// runFrame executes the frame at stop until it returns, yields, or unwinds with an exception.
-// An unwound frame leaves the exception pending and returns false.
+// runFrame executes the frame at stop, whose realm is r, until it returns, yields, or unwinds with an
+// exception. An unwound frame leaves the exception pending and returns false.
 // At the depth limit, the frames from stop are dropped and a RangeError is thrown.
-func (cx *ExecutionContext) runFrame(stop int) (Value, bool) {
+func (cx *ExecutionContext) runFrame(stop int, r *realmPart) (Value, bool) {
 	if cx.depth >= maxDepth {
 		cx.unwindTo(stop)
 		cx.ThrowRangeError("maximum call stack size exceeded")
@@ -401,17 +398,17 @@ func (cx *ExecutionContext) runFrame(stop int) (Value, bool) {
 	saved, outer := cx.active, cx.callerRealm
 	cx.callerRealm = cx.realmPart
 	for {
-		v, st := cx.exec(stop)
-		if st == execEnter {
-			executionContextOf(cx.frames[len(cx.frames)-1].fp.Realm).activate()
-			continue
+		if r != cx.active.realmPart {
+			executionContextOf(r).activate()
 		}
+		v, st := cx.exec(stop)
 		if validateExec {
 			cx.leaveChecks()
 		}
 		if st == execPanic {
 			v, st = cx.unwind(stop)
 			if st == execCatch {
+				r = cx.frames[len(cx.frames)-1].fp.Realm
 				continue
 			}
 		}
@@ -465,12 +462,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 	fr := &ag.frames[len(ag.frames)-1]
 	fp := fr.fp
 	pc := fr.pc
-	// The active context is that of the running frame wherever exec reads it.
-	if fp.Realm != ag.active.realmPart {
-		// runFrame installs the context. Doing it here would keep the type that the way to the
-		// context checks in a register throughout the loop.
-		return storage.Undefined, execEnter
-	}
+	// The active context is that of the running frame wherever exec reads it. runFrame installs it.
 	if validateExec {
 		ag.enterChecks()
 	}

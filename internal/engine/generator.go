@@ -218,7 +218,7 @@ func (cx *ExecutionContext) callCoroutine(f *Object, this Value, args []Value) V
 	}
 	sp := cx.sp
 	cx.pushGenerator(f, this, args, 0)
-	r := cx.run(len(cx.frames) - 1)
+	r := cx.run(len(cx.frames)-1, c.Realm)
 	cx.sp = sp
 	return r
 }
@@ -286,7 +286,7 @@ func (resumer *ExecutionContext) resume(g *generator, mode ResumeMode, v Value) 
 			panic(errThrow)
 		}
 	}
-	r, ok := resumer.runFrame(stop)
+	r, ok := resumer.runFrame(stop, g.fp.Realm)
 	resumer.sp = sp
 	if !ok {
 		resumer.dropNatives(stop)

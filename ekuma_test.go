@@ -3690,6 +3690,25 @@ func TestRealmRestored(t *testing.T) {
 	check("an interruption")
 }
 
+// TestRealmCatch checks that a function of another realm continues in its own realm after catching
+// an exception that passed through a native function.
+func TestRealmCatch(t *testing.T) {
+	var vm ekuma.VM
+	if err := vm.Global().Set("other", vm.NewRealm().Global()); err != nil {
+		t.Fatalf("Set: %v", err)
+	}
+	v, err := runScript(t.Context(), &vm, "catch", `
+		var throws = function() { [1].forEach(function() { throw 1; }); };
+		var catches = other.Function("f", "try { f(); } catch (e) {} try { null.x; } catch (e) { return e; }");
+		catches(throws) instanceof other.TypeError`)
+	if err != nil {
+		t.Fatalf("runScript: %v", err)
+	}
+	if !v.Bool() {
+		t.Errorf("after the catch, the realm of the function is not current")
+	}
+}
+
 var inlineStringSink engine.Value
 var inlineTextSink wtf8.String
 

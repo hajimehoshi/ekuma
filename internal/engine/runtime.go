@@ -1120,7 +1120,7 @@ func (cx *ExecutionContext) callOnStack(f *Object, this Value, args []Value) Val
 		cx.ensureStack(base + n + fn.Code.Nregs + 1)
 		copy(cx.stack[base:], args)
 		cx.pushFrame(f, this, base, n, 0, false, nil)
-		r := cx.run(len(cx.frames) - 1)
+		r := cx.run(len(cx.frames)-1, fn.Code.Realm)
 		cx.sp = base
 		return r
 	}
@@ -1170,7 +1170,7 @@ func (cx *ExecutionContext) callSlow(f *Object, this Value, args []Value, isNew 
 	cx.ensureStack(base + len(args) + c.Nregs + 1)
 	copy(cx.stack[base:], args)
 	cx.pushFrame(f, this, base, len(args), 0, isNew, newTarget)
-	r := cx.run(len(cx.frames) - 1)
+	r := cx.run(len(cx.frames)-1, c.Realm)
 	cx.sp = base
 	return r
 }
