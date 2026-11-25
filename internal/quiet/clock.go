@@ -25,7 +25,7 @@ func ClampSystemTime(t time.Time) time.Time {
 // SystemUTCEpochMilliseconds is agent.SystemUTCEpochMilliseconds without a host clock. It
 // reports false with one.
 func (q Context) SystemUTCEpochMilliseconds() (float64, bool) {
-	if q.Realm.Clock != nil {
+	if q.Realm.HasHostClock {
 		return 0, false
 	}
 	return EpochMilliseconds(ClampSystemTime(time.Now())), true

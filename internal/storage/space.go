@@ -4,8 +4,6 @@
 package storage
 
 import (
-	"time"
-
 	"github.com/hajimehoshi/ekuma/internal/regexp"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
@@ -64,8 +62,8 @@ type Space struct {
 	// keptObjects is the [[KeptAlive]] list.
 	keptObjects keptObjects
 
-	// Clock gives the current time, or is nil for time.Now.
-	Clock func() time.Time
+	// HasHostClock is set if a host function gives the current time.
+	HasHostClock bool
 
 	// RegExpMatcher matches regular expressions. Nothing that a match runs starts another one.
 	RegExpMatcher regexp.Matcher

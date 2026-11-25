@@ -6,6 +6,7 @@ package engine
 import (
 	"math/rand/v2"
 	"slices"
+	"time"
 
 	"github.com/hajimehoshi/ekuma/internal/bytecode"
 	"github.com/hajimehoshi/ekuma/internal/datetime"
@@ -397,6 +398,9 @@ type agent struct {
 
 	// madeHTMLDDA reports whether the agent made an object with the [[IsHTMLDDA]] internal slot.
 	madeHTMLDDA bool
+
+	// clock gives the current time, or is nil for time.Now. SetClock keeps HasHostClock up with it.
+	clock func() time.Time
 }
 
 // initialStackSize is the number of values that the stack of an agent has room for from the start.
