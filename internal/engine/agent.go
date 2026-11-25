@@ -199,7 +199,7 @@ const (
 	KeySuppressed
 	KeyToString
 	keyValueOf
-	keyToJSON
+	KeyToJSON
 	keyCall
 	keyApply
 	keyBind
@@ -300,7 +300,7 @@ func (cx *ExecutionContext) initKeys() {
 		KeyLength: "length", KeyPrototype: "prototype", KeyConstructor: "constructor", KeyName: "name",
 		KeyMessage: "message", KeyStack: "stack", KeyCause: "cause", KeyErrors: "errors",
 		KeyError: "error", KeySuppressed: "suppressed",
-		KeyToString: "toString", keyValueOf: "valueOf", keyToJSON: "toJSON",
+		KeyToString: "toString", keyValueOf: "valueOf", KeyToJSON: "toJSON",
 		keyCall: "call", keyApply: "apply", keyBind: "bind",
 		KeyGet: "get", KeySet: "set", KeyValue: "value", KeyWritable: "writable",
 		KeyEnumerable: "enumerable", KeyConfigurable: "configurable",

@@ -44,6 +44,13 @@ type realm struct {
 
 	regExpOriginals regExpOriginals
 
+	// objectTagStrings are results of Object.prototype.toString, by tag.
+	objectTagStrings map[wtf8.String]Value
+
+	// joins are the objects that Array.prototype.join is joining, and localeJoins those that
+	// Array.prototype.toLocaleString is.
+	joins, localeJoins joinGuard
+
 	// regExpBorrowers are the functions marked by [ExecutionContext.LendRegExpLiterals], and
 	// regExpReceiverBorrowers those marked by [ExecutionContext.LendRegExpLiteralReceivers].
 	regExpBorrowers, regExpReceiverBorrowers []*Object

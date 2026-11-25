@@ -39,6 +39,13 @@ func method(cx *engine.ExecutionContext, o *engine.Object, name wtf8.String, len
 	return fn
 }
 
+// methodWithState is [method] for a function whose internal slots are state.
+func methodWithState(cx *engine.ExecutionContext, o *engine.Object, name wtf8.String, length int, f engine.NativeFunc, state any) *engine.Object {
+	fn := cx.NewNativeWithState(name, length, f, state)
+	cx.Define(o, cx.Intern(name), engine.ObjectValue(fn), engine.FlagsHidden)
+	return fn
+}
+
 // symMethod defines the non-enumerable function under the symbol key on o.
 func symMethod(cx *engine.ExecutionContext, o *engine.Object, key *engine.Object, name wtf8.String, length int, f engine.NativeFunc) *engine.Object {
 	fn := cx.NewNative(name, length, f)
@@ -160,11 +167,10 @@ func Install(cx *engine.ExecutionContext) {
 	setIntegrity(cx, throwTypeError, true)
 	cx.SetIntrinsic(engine.IntrinsicThrowTypeError, throwTypeError)
 
-	var strs objectStrings
-	initObject(cx, &strs)
+	initObject(cx)
 	initFunction(cx)
 	initError(cx)
-	initArray(cx, &strs)
+	initArray(cx)
 	initString(cx)
 	initRegExp(cx)
 	parseFloat, parseInt := newParseFunctions(cx)
@@ -194,43 +200,19 @@ func Install(cx *engine.ExecutionContext) {
 	cx.FinishBuiltins()
 }
 
-// objectStrings holds the results of Object.prototype.toString of one realm by tag.
-type objectStrings struct {
-	byTag map[wtf8.String]engine.Value
-}
-
-// objectStringsLimit bounds the number of tags that an objectStrings keeps.
-const objectStringsLimit = 64
-
-// forTag returns the string "[object tag]".
-func (s *objectStrings) forTag(cx *engine.ExecutionContext, tag wtf8.String) engine.Value {
-	if v, ok := s.byTag[tag]; ok {
-		return v
-	}
-	checkStringLength(cx, len(tag)+9)
-	v := cx.NewString("[object " + tag + "]")
-	if len(s.byTag) < objectStringsLimit {
-		if s.byTag == nil {
-			s.byTag = map[wtf8.String]engine.Value{}
-		}
-		s.byTag[tag] = v
-	}
-	return v
-}
-
-// toString implements Object.prototype.toString for the value v, which is neither undefined nor null.
-func (s *objectStrings) toString(cx *engine.ExecutionContext, v engine.Value) engine.Value {
+// objectPrototypeToString implements Object.prototype.toString for the value v, which is neither undefined nor null.
+func objectPrototypeToString(cx *engine.ExecutionContext, v engine.Value) engine.Value {
 	if !v.IsObject() {
 		// A wrapper object from ToObject is observable only by code that the lookup of
 		// @@toStringTag runs.
 		if t, ok := cx.Quiet().GetVWithoutCall(v, cx.WellKnownSymbol(engine.SymbolToStringTag)); ok {
 			if t.IsString() {
-				return s.forTag(cx, t.Str())
+				return cx.ObjectTagString(t.Str())
 			}
-			return s.forTag(cx, primitiveTag(v))
+			return cx.ObjectTagString(primitiveTag(v))
 		}
 	}
-	return s.objectToString(cx, cx.ToObject(v))
+	return objectToString(cx, cx.ToObject(v))
 }
 
 // primitiveTag returns the builtinTag of Object.prototype.toString for the object that
@@ -248,12 +230,12 @@ func primitiveTag(v engine.Value) wtf8.String {
 }
 
 // objectToString implements Object.prototype.toString for the object o.
-func (s *objectStrings) objectToString(cx *engine.ExecutionContext, o *engine.Object) engine.Value {
+func objectToString(cx *engine.ExecutionContext, o *engine.Object) engine.Value {
 	tag := cx.BuiltinTag(o)
 	if t := cx.GetV(engine.ObjectValue(o), cx.WellKnownSymbol(engine.SymbolToStringTag)); t.IsString() {
 		tag = t.Str()
 	}
-	return s.forTag(cx, tag)
+	return cx.ObjectTagString(tag)
 }
 
 // setIntegrity implements SetIntegrityLevel. frozen selects frozen over sealed.
@@ -350,7 +332,7 @@ func objectDefineProperties(cx *engine.ExecutionContext, o *engine.Object, props
 	}
 }
 
-func initObject(cx *engine.ExecutionContext, strs *objectStrings) {
+func initObject(cx *engine.ExecutionContext) {
 	proto := cx.Intrinsic(engine.IntrinsicObjectPrototype)
 	ctor := constructor(cx, "Object", 1, engine.IntrinsicObjectPrototype, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		if nt := cx.GetNewTarget(); nt != nil && nt != cx.Intrinsic(engine.IntrinsicObject) {
@@ -396,11 +378,11 @@ func initObject(cx *engine.ExecutionContext, strs *objectStrings) {
 	method(cx, proto, "toString", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		switch {
 		case this.IsUndefined():
-			return strs.forTag(cx, "Undefined")
+			return cx.ObjectTagString("Undefined")
 		case this.IsNull():
-			return strs.forTag(cx, "Null")
+			return cx.ObjectTagString("Null")
 		}
-		return strs.toString(cx, this)
+		return objectPrototypeToString(cx, this)
 	})
 	method(cx, proto, "toLocaleString", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		return cx.CallValue(cx.GetV(this, cx.Key(engine.KeyToString)), this)

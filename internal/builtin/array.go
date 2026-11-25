@@ -141,34 +141,12 @@ func callback(cx *engine.ExecutionContext, args []engine.Value, what string) *en
 	return f.Object()
 }
 
-// joinGuard holds the objects that are being joined, to stop at cycles.
-type joinGuard struct {
-	joining []*engine.Object
-}
-
-// enter adds o and reports whether it was not being joined. leave must be called when it
-// reports true.
-func (g *joinGuard) enter(o *engine.Object) bool {
-	if slices.Contains(g.joining, o) {
-		return false
-	}
-	g.joining = append(g.joining, o)
-	return true
-}
-
-// leave removes the object that the last call of enter added.
-func (g *joinGuard) leave() {
-	last := len(g.joining) - 1
-	g.joining[last] = nil
-	g.joining = g.joining[:last]
-}
-
 // joinArray implements Array.prototype.join for the first n elements of the object o.
-func joinArray(cx *engine.ExecutionContext, g *joinGuard, o *engine.Object, n int64, sep wtf8.String) engine.Value {
-	if !g.enter(o) {
+func joinArray(cx *engine.ExecutionContext, o *engine.Object, n int64, sep wtf8.String) engine.Value {
+	if !cx.EnterJoin(o) {
 		return cx.NewString("")
 	}
-	defer g.leave()
+	defer cx.LeaveJoin()
 	if v, ok := cx.Quiet().JoinStrings(o, n, sep); ok {
 		return v
 	}
@@ -291,9 +269,8 @@ func flattenIntoArray(cx *engine.ExecutionContext, a *engine.Object, src *engine
 	}
 }
 
-func initArray(cx *engine.ExecutionContext, strs *objectStrings) {
+func initArray(cx *engine.ExecutionContext) {
 	proto := cx.Intrinsic(engine.IntrinsicArrayPrototype)
-	var joins joinGuard
 	ctor := constructor(cx, "Array", 1, engine.IntrinsicArrayPrototype, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		proto := cx.Intrinsic(engine.IntrinsicArrayPrototype)
 		if nt := cx.GetNewTarget(); nt != nil && nt != cx.Intrinsic(engine.IntrinsicArray) {
@@ -647,14 +624,14 @@ func initArray(cx *engine.ExecutionContext, strs *objectStrings) {
 		if s := arg(args, 0); !s.IsUndefined() {
 			sep = cx.ToString(s)
 		}
-		return joinArray(cx, &joins, o, n, sep)
+		return joinArray(cx, o, n, sep)
 	})
 	method(cx, proto, "toString", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		o := cx.ToObject(this)
 		if j := cx.GetV(engine.ObjectValue(o), cx.Intern("join")); j.IsCallable() {
 			return cx.Call(j.Object(), engine.ObjectValue(o))
 		}
-		return strs.objectToString(cx, o)
+		return objectToString(cx, o)
 	})
 	method(cx, proto, "reverse", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		o := cx.ToObject(this)
@@ -1134,13 +1111,12 @@ func initArrayAdditions(cx *engine.ExecutionContext, proto *engine.Object) {
 		}
 		return engine.ObjectValue(o)
 	})
-	var localeJoins joinGuard
 	method(cx, proto, "toLocaleString", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		o := cx.ToObject(this)
-		if !localeJoins.enter(o) {
+		if !cx.EnterLocaleJoin(o) {
 			return cx.NewString("")
 		}
-		defer localeJoins.leave()
+		defer cx.LeaveLocaleJoin()
 		n := cx.LengthOfArrayLike(o)
 		return joinElements(cx, o, n, ",", cx.Key(engine.KeyToLocaleString))
 	})

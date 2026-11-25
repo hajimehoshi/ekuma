@@ -114,8 +114,13 @@ func (p *Parser) release() {
 	p.src = ""
 	p.vals = releaseScratch(p.vals)
 	p.keys = releaseScratch(p.keys)
-	p.recs = releaseScratch(p.recs)
-	p.frames = releaseScratch(p.frames)
+	if p.recs != nil {
+		p.recs = releaseScratch(p.recs)
+	}
+	if cap(p.frames) > maxRetainedScratch {
+		p.frames = nil
+	}
+	p.frames = p.frames[:0]
 	if p.buf.Len() > maxRetainedBuffer {
 		p.buf = wtf8.Buffer{}
 	}

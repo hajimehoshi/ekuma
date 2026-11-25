@@ -18,8 +18,7 @@ type writer struct {
 	cx  *engine.ExecutionContext
 	buf []byte
 
-	keyToJSON  engine.PropKey
-	keyRawJSON *engine.Object
+	keyToJSON engine.PropKey
 
 	replacer *engine.Object
 
@@ -72,9 +71,8 @@ type Stringifier struct {
 // Stringify implements JSON.stringify.
 func (s *Stringifier) Stringify(cx *engine.ExecutionContext, value, replacer, space engine.Value) engine.Value {
 	w := &writer{
-		cx:         cx,
-		keyToJSON:  engine.NamedKey(cx.Intern("toJSON")),
-		keyRawJSON: cx.Intern("rawJSON"),
+		cx:        cx,
+		keyToJSON: engine.NamedKey(cx.Key(engine.KeyToJSON)),
 	}
 	// A call from a toJSON method or a replacer during another call uses storage of its own.
 	if !s.busy {
@@ -156,11 +154,12 @@ func (s *Stringifier) Stringify(cx *engine.ExecutionContext, value, replacer, sp
 	}
 
 	var holder *engine.Object
+	emptyKey := engine.NamedKey(cx.Intern(""))
 	if w.replacer != nil {
 		holder = cx.NewOrdinaryObject()
-		cx.CreateDataPropertyOrThrow(holder, engine.NamedKey(cx.Intern("")), value)
+		cx.CreateDataPropertyOrThrow(holder, emptyKey, value)
 	}
-	if !w.serialize(holder, engine.NamedKey(cx.Intern("")), value) {
+	if !w.serialize(holder, emptyKey, value) {
 		return engine.Undefined
 	}
 	w.checkLength()
@@ -214,7 +213,7 @@ func (w *writer) serialize(holder *engine.Object, key engine.PropKey, value engi
 		o := value.Object()
 		switch {
 		case o.IsRawJSON():
-			w.buf = append(w.buf, cx.ToString(cx.Get(o, engine.NamedKey(w.keyRawJSON)))...)
+			w.buf = append(w.buf, cx.ToString(cx.Get(o, engine.NamedKey(cx.Intern("rawJSON"))))...)
 			return true
 		case isClass(engine.ThisNumberValue(value)):
 			value = engine.Number(cx.ToNumber(value))

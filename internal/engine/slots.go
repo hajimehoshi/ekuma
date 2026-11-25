@@ -305,6 +305,28 @@ func (cx *ExecutionContext) BuiltinTag(o *Object) wtf8.String {
 	return "Object"
 }
 
+// objectTagStringsLimit bounds the number of tags whose strings a realm keeps.
+const objectTagStringsLimit = 64
+
+// ObjectTagString returns the string "[object tag]". It throws a RangeError when that is too long.
+func (cx *ExecutionContext) ObjectTagString(tag wtf8.String) Value {
+	r := cx.realm
+	if v, ok := r.objectTagStrings[tag]; ok {
+		return v
+	}
+	if len(tag)+9 > MaxStringLength {
+		cx.ThrowRangeError("invalid string length")
+	}
+	v := cx.NewString("[object " + tag + "]")
+	if len(r.objectTagStrings) < objectTagStringsLimit {
+		if r.objectTagStrings == nil {
+			r.objectTagStrings = map[wtf8.String]Value{}
+		}
+		r.objectTagStrings[tag] = v
+	}
+	return v
+}
+
 // IsRegExpObject reports whether o is a RegExp object.
 func (o *Object) IsRegExpObject() bool {
 	return o.class == classRegExp
