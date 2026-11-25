@@ -1134,7 +1134,6 @@ func initArrayAdditions(cx *engine.ExecutionContext, proto *engine.Object) {
 		}
 		return engine.ObjectValue(o)
 	})
-	toLocaleStringKey := cx.Intern("toLocaleString")
 	var localeJoins joinGuard
 	method(cx, proto, "toLocaleString", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		o := cx.ToObject(this)
@@ -1143,7 +1142,7 @@ func initArrayAdditions(cx *engine.ExecutionContext, proto *engine.Object) {
 		}
 		defer localeJoins.leave()
 		n := cx.LengthOfArrayLike(o)
-		return joinElements(cx, o, n, ",", toLocaleStringKey)
+		return joinElements(cx, o, n, ",", cx.Key(engine.KeyToLocaleString))
 	})
 	method(cx, proto, "toReversed", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		o := cx.ToObject(this)

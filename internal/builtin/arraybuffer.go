@@ -14,10 +14,10 @@ import (
 
 // binaryIntrinsics are the intrinsic objects of the binary data built-ins of one realm.
 type binaryIntrinsics struct {
-	arrayBufferCtor, arrayBufferProto             *engine.Object
-	sharedArrayBufferCtor, sharedArrayBufferProto *engine.Object
-	typedArrayCtor, typedArrayProto               *engine.Object
-	dataViewProto                                 *engine.Object
+	arrayBufferProto                *engine.Object
+	sharedArrayBufferProto          *engine.Object
+	typedArrayCtor, typedArrayProto *engine.Object
+	dataViewProto                   *engine.Object
 
 	// ctors and protos are the typed array constructors and their prototypes, by element type.
 	ctors  [element.TypeCount]*engine.Object
@@ -96,7 +96,7 @@ func initArrayBuffer(cx *engine.ExecutionContext, bi *binaryIntrinsics) {
 		m := maxByteLengthOption(cx, arg(args, 1))
 		return engine.ObjectValue(allocateArrayBuffer(cx, nt, n, m, false))
 	})
-	bi.arrayBufferCtor = ctor
+	cx.SetIntrinsic(engine.IntrinsicArrayBuffer, ctor)
 	speciesGetter(cx, ctor)
 	method(cx, ctor, "isView", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		a := arg(args, 0)
@@ -129,7 +129,7 @@ func initArrayBuffer(cx *engine.ExecutionContext, bi *binaryIntrinsics) {
 		}
 		first, final := relativeRange(cx, arg(args, 0), arg(args, 1), b.ByteLength())
 		newLen := max(final-first, 0)
-		c := speciesConstructor(cx, this.Object(), ctor)
+		c := speciesConstructor(cx, this.Object(), cx.Intrinsic(engine.IntrinsicArrayBuffer))
 		r := cx.Construct(c, []engine.Value{engine.Number(float64(newLen))}, c)
 		nb := engine.ArrayBufferData(engine.ObjectValue(r))
 		if nb == nil || nb.IsShared() {
@@ -179,7 +179,7 @@ func initArrayBuffer(cx *engine.ExecutionContext, bi *binaryIntrinsics) {
 				data = slices.Clone(b.Bytes()[first:final])
 			}
 		}
-		return engine.ObjectValue(cx.NewImmutableArrayBufferFromBytes(proto, data))
+		return engine.ObjectValue(cx.NewImmutableArrayBufferFromBytes(cx.Intrinsic(engine.IntrinsicArrayBufferPrototype), data))
 	})
 	method(cx, proto, "resize", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		b := engine.ArrayBufferData(this)
@@ -196,40 +196,42 @@ func initArrayBuffer(cx *engine.ExecutionContext, bi *binaryIntrinsics) {
 		b.Resize(int(n))
 		return engine.Undefined
 	})
-	// transfer implements ArrayBufferCopyAndDetach as the method name.
-	// preserve is ~preserve-resizability~, and immutable is ~immutable~.
-	transfer := func(name string, preserve, immutable bool) {
-		method(cx, proto, wtf8.String(name), 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-			b := thisArrayBuffer(cx, this, false, name)
-			var n int64
-			if l := arg(args, 0); l.IsUndefined() {
-				n = int64(b.ByteLength())
-			} else {
-				n = toIndex(cx, l)
-			}
-			if b.IsDetached() {
-				cx.ThrowTypeError("cannot transfer a detached ArrayBuffer")
-			}
-			if b.IsImmutable() {
-				cx.ThrowTypeError("cannot transfer an immutable ArrayBuffer")
-			}
-			if b.HasDetachKey() {
-				cx.ThrowTypeError("cannot transfer an ArrayBuffer that only the host can detach")
-			}
-			m := int64(-1)
-			if preserve && b.IsResizable() {
-				m = int64(b.MaxByteLength())
-				if n > m {
-					cx.ThrowRangeError("new length exceeds maxByteLength")
-				}
-			}
-			return engine.ObjectValue(cx.TransferArrayBuffer(this.Object(), proto, n, m, immutable))
-		})
-	}
-	transfer("transfer", true, false)
-	transfer("transferToFixedLength", false, false)
-	transfer("transferToImmutable", false, true)
+	defineTransfer(cx, "transfer", true, false)
+	defineTransfer(cx, "transferToFixedLength", false, false)
+	defineTransfer(cx, "transferToImmutable", false, true)
 	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("ArrayBuffer"), engine.FlagConfigurable)
+}
+
+// defineTransfer defines the method name of ArrayBuffer.prototype, which implements
+// ArrayBufferCopyAndDetach.
+// preserve is ~preserve-resizability~, and immutable is ~immutable~.
+func defineTransfer(cx *engine.ExecutionContext, name string, preserve, immutable bool) {
+	method(cx, cx.Intrinsic(engine.IntrinsicArrayBufferPrototype), wtf8.String(name), 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		b := thisArrayBuffer(cx, this, false, name)
+		var n int64
+		if l := arg(args, 0); l.IsUndefined() {
+			n = int64(b.ByteLength())
+		} else {
+			n = toIndex(cx, l)
+		}
+		if b.IsDetached() {
+			cx.ThrowTypeError("cannot transfer a detached ArrayBuffer")
+		}
+		if b.IsImmutable() {
+			cx.ThrowTypeError("cannot transfer an immutable ArrayBuffer")
+		}
+		if b.HasDetachKey() {
+			cx.ThrowTypeError("cannot transfer an ArrayBuffer that only the host can detach")
+		}
+		m := int64(-1)
+		if preserve && b.IsResizable() {
+			m = int64(b.MaxByteLength())
+			if n > m {
+				cx.ThrowRangeError("new length exceeds maxByteLength")
+			}
+		}
+		return engine.ObjectValue(cx.TransferArrayBuffer(this.Object(), cx.Intrinsic(engine.IntrinsicArrayBufferPrototype), n, m, immutable))
+	})
 }
 
 func initSharedArrayBuffer(cx *engine.ExecutionContext, bi *binaryIntrinsics) {
@@ -245,7 +247,7 @@ func initSharedArrayBuffer(cx *engine.ExecutionContext, bi *binaryIntrinsics) {
 		m := maxByteLengthOption(cx, arg(args, 1))
 		return engine.ObjectValue(allocateArrayBuffer(cx, nt, n, m, true))
 	})
-	bi.sharedArrayBufferCtor = ctor
+	cx.SetIntrinsic(engine.IntrinsicSharedArrayBuffer, ctor)
 	speciesGetter(cx, ctor)
 
 	getter(cx, proto, cx.Intern("byteLength"), "byteLength", func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -275,7 +277,7 @@ func initSharedArrayBuffer(cx *engine.ExecutionContext, bi *binaryIntrinsics) {
 		b := thisArrayBuffer(cx, this, true, "slice")
 		first, final := relativeRange(cx, arg(args, 0), arg(args, 1), b.ByteLength())
 		newLen := max(final-first, 0)
-		c := speciesConstructor(cx, this.Object(), ctor)
+		c := speciesConstructor(cx, this.Object(), cx.Intrinsic(engine.IntrinsicSharedArrayBuffer))
 		r := cx.Construct(c, []engine.Value{engine.Number(float64(newLen))}, c)
 		nb := engine.ArrayBufferData(engine.ObjectValue(r))
 		if nb == nil || !nb.IsShared() {

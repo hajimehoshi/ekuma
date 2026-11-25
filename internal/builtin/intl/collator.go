@@ -481,7 +481,6 @@ func beforeDot(s string) bool {
 // %TypedArray%.prototype.toLocaleString with the versions of ECMA-402, which pass the locales
 // and the options to the elements.
 func initArrayToLocaleString(cx *engine.ExecutionContext) {
-	key := cx.Intern("toLocaleString")
 	// joining are the arrays being converted, which an array that contains itself meets again.
 	var joining []*engine.Object
 	join := func(cx *engine.ExecutionContext, o *engine.Object, n int64, args []engine.Value) engine.Value {
@@ -502,7 +501,7 @@ func initArrayToLocaleString(cx *engine.ExecutionContext) {
 			}
 			e := cx.Get(o, cx.ToPropertyKey(engine.Number(float64(k))))
 			if !e.IsNullish() {
-				b.WriteString(cx.ToString(cx.CallValue(cx.GetV(e, key), e, locales, options)))
+				b.WriteString(cx.ToString(cx.CallValue(cx.GetV(e, cx.Key(engine.KeyToLocaleString)), e, locales, options)))
 			}
 			if b.Len() > engine.MaxStringLength {
 				cx.ThrowRangeError("invalid string length")

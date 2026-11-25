@@ -53,7 +53,7 @@ func (cx *ExecutionContext) iteratorRecord(it Value) (Value, Value) {
 	if !it.IsObject() {
 		cx.ThrowTypeError("result of the Symbol.iterator method is not an object")
 	}
-	return it, cx.GetV(it, cx.Key(keyNext))
+	return it, cx.GetV(it, cx.Key(KeyNext))
 }
 
 // IteratorStepFunc is the next method of a built-in iterator, without the iterator result:
@@ -454,14 +454,14 @@ func (cx *ExecutionContext) iteratorClose(it Value, pending bool) {
 	if pending {
 		saved, site := cx.thrown, cx.thrownAt
 		cx.protect(func() {
-			if m := cx.GetMethod(it, cx.Key(keyReturn)); m != nil {
+			if m := cx.GetMethod(it, cx.Key(KeyReturn)); m != nil {
 				cx.Call(m, it)
 			}
 		})
 		cx.thrown, cx.thrownAt = saved, site
 		return
 	}
-	m := cx.GetMethod(it, cx.Key(keyReturn))
+	m := cx.GetMethod(it, cx.Key(KeyReturn))
 	if m == nil {
 		return
 	}
@@ -557,7 +557,7 @@ func (cx *ExecutionContext) IterateFromMethod(v Value, method *Object, f func(Va
 	if !it.IsObject() {
 		cx.ThrowTypeError("result of the Symbol.iterator method is not an object")
 	}
-	cx.IterateRecord(it, cx.GetV(it, cx.Key(keyNext)), f)
+	cx.IterateRecord(it, cx.GetV(it, cx.Key(KeyNext)), f)
 }
 
 // iteratePlainArray iterates o by index with the original array values and next methods.
@@ -881,7 +881,7 @@ func (cx *ExecutionContext) iterReturn(it Value) (Value, bool) {
 	if it.IsUndefined() {
 		return Undefined, false
 	}
-	m := cx.GetMethod(it, cx.Key(keyReturn))
+	m := cx.GetMethod(it, cx.Key(KeyReturn))
 	if m == nil {
 		return Undefined, false
 	}
@@ -922,7 +922,7 @@ func (cx *ExecutionContext) IteratorToList(v Value, method *Object) []Value {
 		cx.ThrowTypeError("result of the Symbol.iterator method is not an object")
 	}
 	var vals []Value
-	cx.IterateRecord(it, cx.GetV(it, cx.Key(keyNext)), func(e Value) bool {
+	cx.IterateRecord(it, cx.GetV(it, cx.Key(KeyNext)), func(e Value) bool {
 		vals = append(vals, e)
 		return true
 	})

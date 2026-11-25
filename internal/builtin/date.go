@@ -327,7 +327,6 @@ func initDate(cx *engine.ExecutionContext) {
 		}
 		return cx.NewString(wtf8.String(datetime.ISOString(tv)))
 	})
-	toISOString := cx.Intern("toISOString")
 	method(cx, proto, "toJSON", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		o := engine.ObjectValue(cx.ToObject(this))
 		tv := cx.ToPrimitive(o, engine.HintNumber)
@@ -336,7 +335,7 @@ func initDate(cx *engine.ExecutionContext) {
 				return engine.Null
 			}
 		}
-		return cx.CallValue(cx.GetV(o, toISOString), o)
+		return cx.CallValue(cx.GetV(o, cx.Key(engine.KeyToISOString)), o)
 	})
 
 	toPrimitive := cx.NewNative("[Symbol.toPrimitive]", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {

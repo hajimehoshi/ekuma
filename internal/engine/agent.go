@@ -209,11 +209,11 @@ const (
 	KeyWritable
 	KeyEnumerable
 	KeyConfigurable
-	keyNext
+	KeyNext
 	keyDone
-	keyReturn
+	KeyReturn
 	keyThrow
-	keyThen
+	KeyThen
 	keyCallee
 	keyCaller
 	keyArguments
@@ -231,10 +231,27 @@ const (
 	keyPreventExtensions
 	keyGetOwnPropertyDescriptor
 	keyDefineProperty
-	keyHas
+	KeyHas
 	keyDeleteProperty
 	keyOwnKeys
 	keyConstruct
+	KeyAdd
+	KeyKeys
+	KeySize
+	KeyStatus
+	KeyReason
+	KeyMode
+	KeyPadding
+	KeyToLocaleString
+	KeyToISOString
+	KeyHasIndices
+	KeyGlobal
+	KeyIgnoreCase
+	KeyMultiline
+	KeyDotAll
+	KeyUnicode
+	KeyUnicodeSets
+	KeySticky
 	commonKeyCount
 )
 
@@ -286,14 +303,20 @@ func (cx *ExecutionContext) initKeys() {
 		keyCall: "call", keyApply: "apply", keyBind: "bind",
 		KeyGet: "get", KeySet: "set", KeyValue: "value", KeyWritable: "writable",
 		KeyEnumerable: "enumerable", KeyConfigurable: "configurable",
-		keyNext: "next", keyDone: "done", keyReturn: "return", keyThrow: "throw", keyThen: "then",
+		KeyNext: "next", keyDone: "done", KeyReturn: "return", keyThrow: "throw", KeyThen: "then",
 		keyCallee: "callee", keyCaller: "caller", keyArguments: "arguments",
 		keyIndex: "index", keyInput: "input", keyGroups: "groups", keyLastIndex: "lastIndex",
 		KeyRaw: "raw", keySource: "source", keyFlags: "flags", keyDefault: "default",
 		keyGetPrototypeOf: "getPrototypeOf", keySetPrototypeOf: "setPrototypeOf",
 		keyIsExtensible: "isExtensible", keyPreventExtensions: "preventExtensions",
 		keyGetOwnPropertyDescriptor: "getOwnPropertyDescriptor", keyDefineProperty: "defineProperty",
-		keyHas: "has", keyDeleteProperty: "deleteProperty", keyOwnKeys: "ownKeys", keyConstruct: "construct",
+		KeyHas: "has", keyDeleteProperty: "deleteProperty", keyOwnKeys: "ownKeys", keyConstruct: "construct",
+		KeyAdd: "add", KeyKeys: "keys", KeySize: "size", KeyStatus: "status", KeyReason: "reason",
+		KeyMode: "mode", KeyPadding: "padding",
+		KeyToLocaleString: "toLocaleString", KeyToISOString: "toISOString",
+		KeyHasIndices: "hasIndices", KeyGlobal: "global", KeyIgnoreCase: "ignoreCase",
+		KeyMultiline: "multiline", KeyDotAll: "dotAll", KeyUnicode: "unicode",
+		KeyUnicodeSets: "unicodeSets", KeySticky: "sticky",
 	} {
 		cx.keys.common[k] = cx.Intern(name)
 	}
@@ -709,6 +732,11 @@ const (
 	IntrinsicAsyncIteratorPrototype
 	IntrinsicArrayIteratorPrototype
 	IntrinsicStringIteratorPrototype
+	IntrinsicMapIteratorPrototype
+	IntrinsicSetIteratorPrototype
+	IntrinsicRegExpStringIteratorPrototype
+	IntrinsicIteratorHelperPrototype
+	IntrinsicWrapForValidIteratorPrototype
 	IntrinsicGeneratorPrototype
 	IntrinsicAsyncGeneratorPrototype
 	IntrinsicGeneratorFunctionPrototype
@@ -735,6 +763,9 @@ const (
 	IntrinsicObject
 	IntrinsicFunction
 	IntrinsicRegExp
+	IntrinsicIterator
+	IntrinsicArrayBuffer
+	IntrinsicSharedArrayBuffer
 	IntrinsicAbstractModuleSource
 
 	IntrinsicTemporal
@@ -790,6 +821,11 @@ const (
 	IntrinsicArraySpeciesGetter
 	IntrinsicTypedArrayPrototypeLengthGetter
 	IntrinsicGeneratorPrototypeNext
+
+	// The initial values of these functions are what the built-ins treat specially.
+	IntrinsicSetPrototypeHas
+	IntrinsicWeakMapPrototypeSet
+	IntrinsicWeakSetPrototypeAdd
 
 	// The functions that the engine calls.
 	IntrinsicJSONParse

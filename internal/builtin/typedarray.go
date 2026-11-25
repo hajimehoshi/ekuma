@@ -1037,7 +1037,6 @@ func initTypedArrays(cx *engine.ExecutionContext, bi *binaryIntrinsics) {
 		}
 		return engine.ObjectValue(a)
 	})
-	toLocaleStringKey := cx.Intern("toLocaleString")
 	method(cx, proto, "toLocaleString", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		o, _, n := validateTypedArray(cx, this, "%TypedArray%.prototype.toLocaleString")
 		var b wtf8.Buffer
@@ -1046,7 +1045,7 @@ func initTypedArrays(cx *engine.ExecutionContext, bi *binaryIntrinsics) {
 				b.WriteString(",")
 			}
 			if e := getAt(cx, o, int64(i)); !e.IsNullish() {
-				b.WriteString(cx.ToString(cx.CallValue(cx.GetV(e, toLocaleStringKey), e)))
+				b.WriteString(cx.ToString(cx.CallValue(cx.GetV(e, cx.Key(engine.KeyToLocaleString)), e)))
 			}
 			if b.Len() > engine.MaxStringLength {
 				cx.ThrowRangeError("invalid string length")

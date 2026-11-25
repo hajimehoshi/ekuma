@@ -451,38 +451,47 @@ func escapeRegExpPattern(src wtf8.String) wtf8.String {
 // flagProps lists the flag accessors of RegExp.prototype in the order of the flags getter.
 var flagProps = []struct {
 	name string
+	key  engine.CommonKey
 	flag regexp.Flags
 }{
 	{
 		name: "hasIndices",
+		key:  engine.KeyHasIndices,
 		flag: regexp.FlagHasIndices,
 	},
 	{
 		name: "global",
+		key:  engine.KeyGlobal,
 		flag: regexp.FlagGlobal,
 	},
 	{
 		name: "ignoreCase",
+		key:  engine.KeyIgnoreCase,
 		flag: regexp.FlagIgnoreCase,
 	},
 	{
 		name: "multiline",
+		key:  engine.KeyMultiline,
 		flag: regexp.FlagMultiline,
 	},
 	{
 		name: "dotAll",
+		key:  engine.KeyDotAll,
 		flag: regexp.FlagDotAll,
 	},
 	{
 		name: "unicode",
+		key:  engine.KeyUnicode,
 		flag: regexp.FlagUnicode,
 	},
 	{
 		name: "unicodeSets",
+		key:  engine.KeyUnicodeSets,
 		flag: regexp.FlagUnicodeSets,
 	},
 	{
 		name: "sticky",
+		key:  engine.KeySticky,
 		flag: regexp.FlagSticky,
 	},
 }
@@ -592,7 +601,7 @@ func initRegExp(cx *engine.ExecutionContext) {
 		return engine.ObjectValue(cx.RegExpInitialize(o, p, f))
 	})
 	for _, fp := range flagProps {
-		getter(cx, proto, cx.Intern(wtf8.String(fp.name)), wtf8.String(fp.name), func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		getter(cx, proto, cx.Key(fp.key), wtf8.String(fp.name), func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 			if !this.IsObject() {
 				cx.ThrowTypeError("RegExp.prototype." + fp.name + " getter called on non-object")
 			}
@@ -606,18 +615,14 @@ func initRegExp(cx *engine.ExecutionContext) {
 			return engine.Bool(re.Flags()&fp.flag != 0)
 		})
 	}
-	flagKeys := make([]engine.PropKey, len(flagProps))
-	for i, fp := range flagProps {
-		flagKeys[i] = engine.NamedKey(cx.Intern(wtf8.String(fp.name)))
-	}
 	getter(cx, proto, env.flags, "flags", func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		r := thisObject(cx, this, "RegExp.prototype.flags getter")
 		if m := cx.Quiet().UnmodifiedRegExpMatcher(r); m != nil {
 			return env.flagsString(cx, m.Flags())
 		}
 		var f regexp.Flags
-		for i, fp := range flagProps {
-			if engine.ToBoolean(cx.Get(r, flagKeys[i])) {
+		for _, fp := range flagProps {
+			if engine.ToBoolean(cx.Get(r, engine.NamedKey(cx.Key(fp.key)))) {
 				f |= fp.flag
 			}
 		}
@@ -673,6 +678,7 @@ func initRegExp(cx *engine.ExecutionContext) {
 	})
 
 	iterProto := cx.NewObject(cx.Intrinsic(engine.IntrinsicIteratorPrototype))
+	cx.SetIntrinsic(engine.IntrinsicRegExpStringIteratorPrototype, iterProto)
 	iteratorNext(cx, iterProto, engine.IteratorMethodRealm, func(cx *engine.ExecutionContext, this engine.Value) (engine.Value, bool) {
 		st, ok := engine.IteratorState(this).(*regexpStringIterator)
 		if !ok {
@@ -714,7 +720,7 @@ func initRegExp(cx *engine.ExecutionContext) {
 		lastIndex := env.getLastIndex(cx, r)
 		env.setLastIndex(cx, matcher, lastIndex)
 		fl := flags.Str()
-		return engine.ObjectValue(cx.NewIteratorObject(iterProto, &regexpStringIterator{
+		return engine.ObjectValue(cx.NewIteratorObject(cx.Intrinsic(engine.IntrinsicRegExpStringIteratorPrototype), &regexpStringIterator{
 			r:           matcher,
 			s:           s,
 			global:      strings.Contains(string(fl), "g"),
@@ -780,7 +786,7 @@ func initRegExp(cx *engine.ExecutionContext) {
 		cx.WellKnownSymbol(engine.SymbolSplit),
 	}
 	for _, fp := range flagProps {
-		protoKeys = append(protoKeys, cx.Intern(wtf8.String(fp.name)))
+		protoKeys = append(protoKeys, cx.Key(fp.key))
 	}
 	cx.RecordRegExpOriginals(protoKeys, []*engine.Object{cx.WellKnownSymbol(engine.SymbolSpecies)})
 }

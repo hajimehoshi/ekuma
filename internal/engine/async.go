@@ -295,7 +295,7 @@ func (cx *ExecutionContext) asyncFromSyncIterator(it, next Value) (Value, Value)
 		iterator: it,
 		next:     next,
 	}
-	return Value{o: o}, cx.GetV(Value{o: o}, cx.Key(keyNext))
+	return Value{o: o}, cx.GetV(Value{o: o}, cx.Key(KeyNext))
 }
 
 // CreateAsyncFromSyncIterator implements CreateAsyncFromSyncIterator for the iterator it and
@@ -319,7 +319,7 @@ func (cx *ExecutionContext) thisAsyncFromSyncIterator(this Value) *asyncFromSync
 func (cx *ExecutionContext) initAsyncFromSyncIteratorPrototype() {
 	proto := cx.NewObject(cx.Intrinsic(IntrinsicAsyncIteratorPrototype))
 	cx.realm.asyncFromSyncProto = proto
-	cx.Define(proto, cx.Key(keyNext), Value{o: cx.NewNative("next", 0, func(cx *ExecutionContext, this Value, args []Value) Value {
+	cx.Define(proto, cx.Key(KeyNext), Value{o: cx.NewNative("next", 0, func(cx *ExecutionContext, this Value, args []Value) Value {
 		s := cx.thisAsyncFromSyncIterator(this)
 		c := cx.newIntrinsicCapability()
 		var result Value
@@ -337,13 +337,13 @@ func (cx *ExecutionContext) initAsyncFromSyncIteratorPrototype() {
 		}
 		return cx.asyncFromSyncIteratorContinuation(result, c, s.iterator, true)
 	})}, FlagsHidden)
-	cx.Define(proto, cx.Key(keyReturn), Value{o: cx.NewNative("return", 0, func(cx *ExecutionContext, this Value, args []Value) Value {
+	cx.Define(proto, cx.Key(KeyReturn), Value{o: cx.NewNative("return", 0, func(cx *ExecutionContext, this Value, args []Value) Value {
 		s := cx.thisAsyncFromSyncIterator(this)
 		c := cx.newIntrinsicCapability()
 		var result Value
 		var hasReturn bool
 		if !cx.IfAbruptRejectPromise(c, func() {
-			m := cx.GetMethod(s.iterator, cx.Key(keyReturn))
+			m := cx.GetMethod(s.iterator, cx.Key(KeyReturn))
 			if m == nil {
 				return
 			}
@@ -450,7 +450,7 @@ func (cx *ExecutionContext) AsyncIteratorClose(it Value, v Value, thrown bool, k
 	}
 	var m *Object
 	if e, ok := cx.Completion(func() {
-		m = cx.GetMethod(it, cx.Key(keyReturn))
+		m = cx.GetMethod(it, cx.Key(KeyReturn))
 	}); !ok {
 		fail(e)
 		return

@@ -55,12 +55,11 @@ func disposableStackPrototype(hint engine.DisposeHint) engine.Intrinsic {
 	return engine.IntrinsicDisposableStackPrototype
 }
 
-// newDisposableStack returns a new stack with hint for the new target nt.
-func newDisposableStack(cx *engine.ExecutionContext, hint engine.DisposeHint, nt *engine.Object, dc *engine.DisposeCapability) engine.Value {
+// newDisposableStack returns a new stack with hint and the prototype proto.
+func newDisposableStack(cx *engine.ExecutionContext, hint engine.DisposeHint, proto *engine.Object, dc *engine.DisposeCapability) engine.Value {
 	s := &disposableStack{
 		dc: dc,
 	}
-	proto := cx.GetPrototypeFromConstructor(nt, disposableStackPrototype(hint))
 	return engine.ObjectValue(cx.NewDisposableStackObject(proto, hint == engine.AsyncDispose, s))
 }
 
@@ -94,13 +93,12 @@ func initDisposableStack(cx *engine.ExecutionContext, async bool) {
 	protoID := disposableStackPrototype(hint)
 	proto := cx.NewOrdinaryObject()
 	cx.SetIntrinsic(protoID, proto)
-	var ctor *engine.Object
-	ctor = constructor(cx, wtf8.String(name), 0, protoID, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	constructor(cx, wtf8.String(name), 0, protoID, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		nt := cx.GetNewTarget()
 		if nt == nil {
 			cx.ThrowTypeError("constructor " + name + " requires 'new'")
 		}
-		return newDisposableStack(cx, hint, nt, engine.NewDisposeCapability())
+		return newDisposableStack(cx, hint, cx.GetPrototypeFromConstructor(nt, disposableStackPrototype(hint)), engine.NewDisposeCapability())
 	})
 
 	method(cx, proto, "adopt", 2, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -171,7 +169,7 @@ func initDisposableStack(cx *engine.ExecutionContext, async bool) {
 	})
 	method(cx, proto, "move", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		s := thisPendingDisposableStack(cx, hint, this, "move")
-		moved := newDisposableStack(cx, hint, ctor, s.dc)
+		moved := newDisposableStack(cx, hint, cx.Intrinsic(disposableStackPrototype(hint)), s.dc)
 		s.dc = engine.NewDisposeCapability()
 		s.disposed = true
 		return moved

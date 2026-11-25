@@ -375,7 +375,7 @@ func (cx *ExecutionContext) resolvePromise(resolverRealm *realm, p *Object, reso
 	}
 	var then Value
 	if !cx.protect(func() {
-		then = cx.GetV(resolution, cx.Key(keyThen))
+		then = cx.GetV(resolution, cx.Key(KeyThen))
 	}) {
 		e := cx.thrown
 		cx.thrown = Undefined
@@ -407,7 +407,7 @@ func (q QuietContext) promiseThen(v Value) (Value, bool) {
 	if !v.IsObject() {
 		return Undefined, true
 	}
-	return q.GetVWithoutCall(v, q.cx.Key(keyThen))
+	return q.GetVWithoutCall(v, q.cx.Key(KeyThen))
 }
 
 // resolvePromiseWithThen is the part of resolvePromise after the read of then from resolution.
@@ -634,7 +634,7 @@ func (cx *ExecutionContext) awaitValue(v Value, action reactionAction) {
 	case v.IsObject():
 		var then Value
 		if e, ok := cx.Completion(func() {
-			then = cx.GetV(v, cx.Key(keyThen))
+			then = cx.GetV(v, cx.Key(KeyThen))
 		}); !ok {
 			v, rejected = e, true
 		} else if then.IsCallable() {

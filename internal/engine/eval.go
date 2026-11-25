@@ -266,11 +266,12 @@ const (
 	AsyncGeneratorFunction
 )
 
-// CreateDynamicFunction implements CreateDynamicFunction. ctor is the constructor being called,
-// newTarget is nil in a plain call, and the last of args is the body.
-func (cx *ExecutionContext) CreateDynamicFunction(ctor, newTarget *Object, kind FunctionKind, args []Value) Value {
+// CreateDynamicFunction implements CreateDynamicFunction for the running native constructor.
+// The last of args is the body.
+func (cx *ExecutionContext) CreateDynamicFunction(kind FunctionKind, args []Value) Value {
+	newTarget := cx.GetNewTarget()
 	if newTarget == nil {
-		newTarget = ctor
+		newTarget = cx.activeNative()
 	}
 	var params, body wtf8.String
 	if len(args) > 0 {

@@ -135,9 +135,6 @@ func promiseKeyedCombinator(cx *engine.ExecutionContext, c, promises engine.Valu
 
 // performPromiseAllKeyed implements PerformPromiseAllKeyed. settled selects the all-settled variant.
 func performPromiseAllKeyed(cx *engine.ExecutionContext, settled bool, promises *engine.Object, c engine.Value, pc *engine.PromiseCapability, resolve engine.Value) {
-	keyThen := cx.Intern("then")
-	keyStatus := cx.Intern("status")
-	keyReason := cx.Intern("reason")
 	e := &keyedPromiseElements{
 		promiseElements: newPromiseElements(),
 	}
@@ -153,14 +150,14 @@ func performPromiseAllKeyed(cx *engine.ExecutionContext, settled bool, promises 
 		called := false
 		var onFulfilled, onRejected engine.Value
 		if settled {
-			element := func(status string, key *engine.Object) engine.Value {
+			element := func(status string, key engine.CommonKey) engine.Value {
 				return engine.ObjectValue(cx.NewNative("", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 					if called {
 						return engine.Undefined
 					}
 					called = true
 					o := cx.NewObjectFromProperties(
-						[]engine.PropKey{engine.NamedKey(keyStatus), engine.NamedKey(key)},
+						[]engine.PropKey{engine.NamedKey(cx.Key(engine.KeyStatus)), engine.NamedKey(cx.Key(key))},
 						[]engine.Value{cx.NewString(wtf8.String(status)), arg(args, 0)},
 					)
 					e.values[i] = engine.ObjectValue(o)
@@ -168,8 +165,8 @@ func performPromiseAllKeyed(cx *engine.ExecutionContext, settled bool, promises 
 					return engine.Undefined
 				}))
 			}
-			onFulfilled = element("fulfilled", cx.Key(engine.KeyValue))
-			onRejected = element("rejected", keyReason)
+			onFulfilled = element("fulfilled", engine.KeyValue)
+			onRejected = element("rejected", engine.KeyReason)
 		} else {
 			onFulfilled = engine.ObjectValue(cx.NewNative("", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 				if called {
@@ -182,7 +179,7 @@ func performPromiseAllKeyed(cx *engine.ExecutionContext, settled bool, promises 
 			}))
 			onRejected = cx.CapabilityReject(pc)
 		}
-		invoke(cx, next, keyThen, onFulfilled, onRejected)
+		invoke(cx, next, cx.Key(engine.KeyThen), onFulfilled, onRejected)
 	}
 	e.resolveIfDone(cx, pc)
 }
@@ -208,10 +205,6 @@ func initPromise(cx *engine.ExecutionContext) {
 	cx.SetIntrinsic(engine.IntrinsicPromise, ctor)
 	speciesGetter(cx, ctor)
 
-	keyThen := cx.Intern("then")
-	keyStatus := cx.Intern("status")
-	keyReason := cx.Intern("reason")
-
 	method(cx, ctor, "all", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		e := newPromiseElements()
 		return promiseCombinator(cx, this, arg(args, 0), func(pc *engine.PromiseCapability, next engine.Value) {
@@ -228,7 +221,7 @@ func initPromise(cx *engine.ExecutionContext) {
 				}
 				return engine.Undefined
 			})
-			invoke(cx, next, keyThen, engine.ObjectValue(onFulfilled), cx.CapabilityReject(pc))
+			invoke(cx, next, cx.Key(engine.KeyThen), engine.ObjectValue(onFulfilled), cx.CapabilityReject(pc))
 		}, func(pc *engine.PromiseCapability) {
 			if e.complete() {
 				cx.CallCapabilityResolve(pc, engine.ObjectValue(cx.NewArray(e.take())))
@@ -241,14 +234,14 @@ func initPromise(cx *engine.ExecutionContext) {
 		return promiseCombinator(cx, this, arg(args, 0), func(pc *engine.PromiseCapability, next engine.Value) {
 			i := e.reserve()
 			called := false
-			element := func(status string, key *engine.Object) *engine.Object {
+			element := func(status string, key engine.CommonKey) *engine.Object {
 				return cx.NewNative("", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 					if called {
 						return engine.Undefined
 					}
 					called = true
 					o := cx.NewObjectFromProperties(
-						[]engine.PropKey{engine.NamedKey(keyStatus), engine.NamedKey(key)},
+						[]engine.PropKey{engine.NamedKey(cx.Key(engine.KeyStatus)), engine.NamedKey(cx.Key(key))},
 						[]engine.Value{cx.NewString(wtf8.String(status)), arg(args, 0)},
 					)
 					e.values[i] = engine.ObjectValue(o)
@@ -258,9 +251,9 @@ func initPromise(cx *engine.ExecutionContext) {
 					return engine.Undefined
 				})
 			}
-			onFulfilled := element("fulfilled", cx.Key(engine.KeyValue))
-			onRejected := element("rejected", keyReason)
-			invoke(cx, next, keyThen, engine.ObjectValue(onFulfilled), engine.ObjectValue(onRejected))
+			onFulfilled := element("fulfilled", engine.KeyValue)
+			onRejected := element("rejected", engine.KeyReason)
+			invoke(cx, next, cx.Key(engine.KeyThen), engine.ObjectValue(onFulfilled), engine.ObjectValue(onRejected))
 		}, func(pc *engine.PromiseCapability) {
 			if e.complete() {
 				cx.CallCapabilityResolve(pc, engine.ObjectValue(cx.NewArray(e.take())))
@@ -297,7 +290,7 @@ func initPromise(cx *engine.ExecutionContext) {
 				}
 				return engine.Undefined
 			})
-			invoke(cx, next, keyThen, cx.CapabilityResolve(pc), engine.ObjectValue(onRejected))
+			invoke(cx, next, cx.Key(engine.KeyThen), cx.CapabilityResolve(pc), engine.ObjectValue(onRejected))
 		}, func(pc *engine.PromiseCapability) {
 			if e.complete() {
 				cx.Throw(aggregate(cx))
@@ -307,7 +300,7 @@ func initPromise(cx *engine.ExecutionContext) {
 
 	method(cx, ctor, "race", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		return promiseCombinator(cx, this, arg(args, 0), func(pc *engine.PromiseCapability, next engine.Value) {
-			invoke(cx, next, keyThen, cx.CapabilityResolve(pc), cx.CapabilityReject(pc))
+			invoke(cx, next, cx.Key(engine.KeyThen), cx.CapabilityResolve(pc), cx.CapabilityReject(pc))
 		}, func(pc *engine.PromiseCapability) {})
 	})
 
@@ -354,7 +347,7 @@ func initPromise(cx *engine.ExecutionContext) {
 	})
 
 	method(cx, proto, "catch", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		return invoke(cx, this, keyThen, engine.Undefined, arg(args, 0))
+		return invoke(cx, this, cx.Key(engine.KeyThen), engine.Undefined, arg(args, 0))
 	})
 
 	method(cx, proto, "finally", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -372,7 +365,7 @@ func initPromise(cx *engine.ExecutionContext) {
 				valueThunk := cx.NewNative("", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 					return value
 				})
-				return invoke(cx, p, keyThen, engine.ObjectValue(valueThunk))
+				return invoke(cx, p, cx.Key(engine.KeyThen), engine.ObjectValue(valueThunk))
 			}))
 			catchFinally = engine.ObjectValue(cx.NewNative("", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 				reason := arg(args, 0)
@@ -382,10 +375,10 @@ func initPromise(cx *engine.ExecutionContext) {
 					cx.Throw(reason)
 					return engine.Undefined
 				})
-				return invoke(cx, p, keyThen, engine.ObjectValue(thrower))
+				return invoke(cx, p, cx.Key(engine.KeyThen), engine.ObjectValue(thrower))
 			}))
 		}
-		return invoke(cx, this, keyThen, thenFinally, catchFinally)
+		return invoke(cx, this, cx.Key(engine.KeyThen), thenFinally, catchFinally)
 	})
 
 	method(cx, proto, "then", 2, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {

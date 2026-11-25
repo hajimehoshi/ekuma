@@ -1282,7 +1282,7 @@ func (ag *agent) arrayIterationUnmodified(r *realm) bool {
 		c.epoch = ag.protoEpoch
 		q := r.context.Quiet()
 		c.iter = q.lookupDataSlot(r.intrinsics[IntrinsicArrayPrototype], ag.WellKnownSymbol(SymbolIterator))
-		c.next = q.lookupDataSlot(r.intrinsics[IntrinsicArrayIteratorPrototype], ag.Key(keyNext))
+		c.next = q.lookupDataSlot(r.intrinsics[IntrinsicArrayIteratorPrototype], ag.Key(KeyNext))
 		c.found = c.iter.holder != nil && c.next.holder != nil
 		c.noReturn = ag.noArrayIteratorReturn(r.intrinsics[IntrinsicArrayIteratorPrototype])
 	}
@@ -1305,7 +1305,7 @@ func (ag *agent) pairDestructuringPlain(r *realm) bool {
 // one calls. The prototypes that it looks at count as prototypes from then on, so that adding a
 // property to one moves protoEpoch.
 func (ag *agent) noArrayIteratorReturn(proto *Object) bool {
-	key := ag.Key(keyReturn)
+	key := ag.Key(KeyReturn)
 	for p := proto; p != nil; p = p.shape.proto {
 		p.flags |= objIsProto
 		if _, ok := p.getOwn(key); ok || p.flags&objExotic != 0 {

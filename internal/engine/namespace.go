@@ -89,7 +89,7 @@ func (ag *agent) isNamespaceExportKey(o *Object, k PropKey) bool {
 	if k.IsSymbol() {
 		return false
 	}
-	return !namespaceOf(o).deferred || k.key != ag.Key(keyThen)
+	return !namespaceOf(o).deferred || k.key != ag.Key(KeyThen)
 }
 
 // namespaceExports implements GetModuleExportsList: it returns the namespace data of the

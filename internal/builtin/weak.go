@@ -32,8 +32,6 @@ func thisWeakMap(cx *engine.ExecutionContext, this engine.Value, name string) *e
 func initWeakMap(cx *engine.ExecutionContext) {
 	proto := cx.NewOrdinaryObject()
 	cx.SetIntrinsic(engine.IntrinsicWeakMapPrototype, proto)
-	setKey := cx.Intern("set")
-	var weakMapSet *engine.Object
 	constructor(cx, "WeakMap", 0, engine.IntrinsicWeakMapPrototype, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		nt := cx.GetNewTarget()
 		if nt == nil {
@@ -44,9 +42,9 @@ func initWeakMap(cx *engine.ExecutionContext) {
 		if iterable.IsNullish() {
 			return engine.ObjectValue(m)
 		}
-		adder := adderOf(cx, m, setKey)
+		adder := adderOf(cx, m, cx.Key(engine.KeySet))
 		var fast func(k, v engine.Value)
-		if adder == weakMapSet {
+		if adder == cx.Intrinsic(engine.IntrinsicWeakMapPrototypeSet) {
 			t := engine.WeakMapData(engine.ObjectValue(m))
 			fast = func(k, v engine.Value) {
 				if !cx.CanBeHeldWeakly(k) {
@@ -80,13 +78,14 @@ func initWeakMap(cx *engine.ExecutionContext) {
 		k := arg(args, 0)
 		return engine.Bool(cx.CanBeHeldWeakly(k) && t.Has(k))
 	})
-	weakMapSet = method(cx, proto, "set", 2, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	weakMapSet := method(cx, proto, "set", 2, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		t := thisWeakMap(cx, this, "set")
 		k := arg(args, 0)
 		requireHoldable(cx, k, "as weak map key")
 		t.Set(k, arg(args, 1))
 		return this
 	})
+	cx.SetIntrinsic(engine.IntrinsicWeakMapPrototypeSet, weakMapSet)
 	method(cx, proto, "getOrInsert", 2, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		t := thisWeakMap(cx, this, "getOrInsert")
 		k, v := arg(args, 0), arg(args, 1)
@@ -125,8 +124,6 @@ func thisWeakSet(cx *engine.ExecutionContext, this engine.Value, name string) *e
 func initWeakSet(cx *engine.ExecutionContext) {
 	proto := cx.NewOrdinaryObject()
 	cx.SetIntrinsic(engine.IntrinsicWeakSetPrototype, proto)
-	addKey := cx.Intern("add")
-	var weakSetAdd *engine.Object
 	constructor(cx, "WeakSet", 0, engine.IntrinsicWeakSetPrototype, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		nt := cx.GetNewTarget()
 		if nt == nil {
@@ -137,10 +134,11 @@ func initWeakSet(cx *engine.ExecutionContext) {
 		if iterable.IsNullish() {
 			return engine.ObjectValue(s)
 		}
-		adder := adderOf(cx, s, addKey)
+		adder := adderOf(cx, s, cx.Key(engine.KeyAdd))
+		original := adder == cx.Intrinsic(engine.IntrinsicWeakSetPrototypeAdd)
 		t := engine.WeakSetData(engine.ObjectValue(s))
 		cx.Iterate(iterable, func(e engine.Value) bool {
-			if adder == weakSetAdd && cx.CanBeHeldWeakly(e) {
+			if original && cx.CanBeHeldWeakly(e) {
 				t.Set(e, engine.True)
 			} else {
 				// This includes the TypeError of the original method.
@@ -151,13 +149,14 @@ func initWeakSet(cx *engine.ExecutionContext) {
 		return engine.ObjectValue(s)
 	})
 
-	weakSetAdd = method(cx, proto, "add", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	weakSetAdd := method(cx, proto, "add", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		t := thisWeakSet(cx, this, "add")
 		v := arg(args, 0)
 		requireHoldable(cx, v, "in weak set")
 		t.Set(v, engine.True)
 		return this
 	})
+	cx.SetIntrinsic(engine.IntrinsicWeakSetPrototypeAdd, weakSetAdd)
 	method(cx, proto, "delete", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		t := thisWeakSet(cx, this, "delete")
 		v := arg(args, 0)

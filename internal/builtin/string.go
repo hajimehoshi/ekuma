@@ -632,11 +632,11 @@ func initString(cx *engine.ExecutionContext) {
 	replace("replaceAll", true)
 	for _, e := range []struct {
 		name string
-		key  *engine.Object
+		key  engine.WellKnownSymbol
 	}{
-		{"match", cx.WellKnownSymbol(engine.SymbolMatch)},
-		{"matchAll", cx.WellKnownSymbol(engine.SymbolMatchAll)},
-		{"search", cx.WellKnownSymbol(engine.SymbolSearch)},
+		{"match", engine.SymbolMatch},
+		{"matchAll", engine.SymbolMatchAll},
+		{"search", engine.SymbolSearch},
 	} {
 		fn := method(cx, proto, wtf8.String(e.name), 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 			cx.RequireObjectCoercible(this, "String.prototype."+e.name)
@@ -648,7 +648,7 @@ func initString(cx *engine.ExecutionContext) {
 				if e.name == "matchAll" {
 					requireGlobalRegExp(cx, pat.Object(), "matchAll")
 				}
-				if m := cx.GetMethod(pat, e.key); m != nil {
+				if m := cx.GetMethod(pat, cx.WellKnownSymbol(e.key)); m != nil {
 					return cx.Call(m, pat, this)
 				}
 			}
@@ -658,7 +658,7 @@ func initString(cx *engine.ExecutionContext) {
 				flags = cx.NewString("g")
 			}
 			rx := regExpCreate(cx, pat, flags)
-			return cx.CallValue(cx.GetV(engine.ObjectValue(rx), e.key), engine.ObjectValue(rx), s)
+			return cx.CallValue(cx.GetV(engine.ObjectValue(rx), cx.WellKnownSymbol(e.key)), engine.ObjectValue(rx), s)
 		})
 		if e.name != "matchAll" {
 			cx.LendRegExpLiterals(fn)

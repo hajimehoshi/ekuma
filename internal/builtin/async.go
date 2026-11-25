@@ -12,9 +12,8 @@ import (
 // functionKindConstructor creates the constructor name of the functions of kind whose prototype
 // object is proto, such as GeneratorFunction. It is not a global.
 func functionKindConstructor(cx *engine.ExecutionContext, name wtf8.String, kind engine.FunctionKind, proto *engine.Object) {
-	var c *engine.Object
-	c = cx.NewNativeConstructor(name, 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		return cx.CreateDynamicFunction(c, cx.GetNewTarget(), kind, args)
+	c := cx.NewNativeConstructor(name, 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		return cx.CreateDynamicFunction(kind, args)
 	})
 	cx.SetPrototypeOf(c, cx.Intrinsic(engine.IntrinsicFunction))
 	cx.Define(c, cx.Key(engine.KeyPrototype), engine.ObjectValue(proto), 0)

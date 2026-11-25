@@ -22,17 +22,11 @@ func (r *iterRecord) stepValue(cx *engine.ExecutionContext) (engine.Value, bool)
 	return cx.IteratorStepValue(r.it, r.next)
 }
 
-// iteratorKeys holds the property keys that the iterator helpers use.
-type iteratorKeys struct {
-	next *engine.Object
-	ret  *engine.Object
-}
-
 // getIteratorDirect implements GetIteratorDirect.
-func (k *iteratorKeys) getIteratorDirect(cx *engine.ExecutionContext, it engine.Value) iterRecord {
+func getIteratorDirect(cx *engine.ExecutionContext, it engine.Value) iterRecord {
 	return iterRecord{
 		it:   it,
-		next: cx.GetV(it, k.next),
+		next: cx.GetV(it, cx.Key(engine.KeyNext)),
 	}
 }
 
@@ -120,47 +114,57 @@ func (h *iteratorHelper) resumeBody(cx *engine.ExecutionContext, mode engine.Res
 	return h.body.step(cx)
 }
 
+// newIteratorHelper returns a new iterator helper object with body.
+func newIteratorHelper(cx *engine.ExecutionContext, body helperBody) engine.Value {
+	return engine.ObjectValue(cx.NewIteratorObject(cx.Intrinsic(engine.IntrinsicIteratorHelperPrototype), &iteratorHelper{body: body}))
+}
+
+// setIgnoringIteratorPrototype sets the property key of this to v as the setters of
+// Iterator.prototype do.
+func setIgnoringIteratorPrototype(cx *engine.ExecutionContext, this engine.Value, key *engine.Object, v engine.Value) {
+	setterThatIgnoresPrototypeProperties(cx, this, cx.Intrinsic(engine.IntrinsicIteratorPrototype), engine.NamedKey(key), v, "Iterator.prototype setter")
+}
+
 // initIteratorHelpers defines Iterator and the iterator helpers.
 func initIteratorHelpers(cx *engine.ExecutionContext) {
-	k := &iteratorKeys{
-		next: cx.Intern("next"),
-		ret:  cx.Intern("return"),
-	}
 	proto := cx.Intrinsic(engine.IntrinsicIteratorPrototype)
-	var ctor *engine.Object
-	ctor = cx.NewNativeConstructor("Iterator", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	ctor := cx.NewNativeConstructor("Iterator", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		nt := cx.GetNewTarget()
-		if nt == nil || nt == ctor {
+		if nt == nil || nt == cx.Intrinsic(engine.IntrinsicIterator) {
 			cx.ThrowTypeError("Iterator cannot be constructed directly")
 		}
 		return engine.ObjectValue(cx.NewInstance(cx.GetPrototypeFromConstructor(nt, engine.IntrinsicIteratorPrototype)))
 	})
+	cx.SetIntrinsic(engine.IntrinsicIterator, ctor)
 	cx.DefineConstructorPrototype(ctor, engine.IntrinsicIteratorPrototype)
 	cx.Define(cx.GlobalObject().Object(), cx.Intern("Iterator"), engine.ObjectValue(ctor), engine.FlagsHidden)
 
 	// The properties that Iterator.prototype had in earlier editions are accessors whose setters
 	// ignore the prototype.
-	ignoringAccessor := func(key *engine.Object, name string, v engine.Value) {
-		g := cx.NewNative(wtf8.String("get "+name), 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	ignoringAccessor := func(key *engine.Object, name string, v engine.Value, set engine.NativeFunc) {
+		get := cx.NewNative(wtf8.String("get "+name), 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 			return v
 		})
-		s := cx.NewNative(wtf8.String("set "+name), 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-			setterThatIgnoresPrototypeProperties(cx, this, proto, engine.NamedKey(key), arg(args, 0), "Iterator.prototype setter")
-			return engine.Undefined
-		})
-		cx.DefineAccessor(proto, key, g, s, engine.FlagConfigurable)
+		cx.DefineAccessor(proto, key, get, cx.NewNative(wtf8.String("set "+name), 1, set), engine.FlagConfigurable)
 	}
-	ignoringAccessor(cx.Key(engine.KeyConstructor), "constructor", engine.ObjectValue(ctor))
-	ignoringAccessor(cx.WellKnownSymbol(engine.SymbolToStringTag), "[Symbol.toStringTag]", cx.SharedString("Iterator"))
+	ignoringAccessor(cx.Key(engine.KeyConstructor), "constructor", engine.ObjectValue(ctor), func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		setIgnoringIteratorPrototype(cx, this, cx.Key(engine.KeyConstructor), arg(args, 0))
+		return engine.Undefined
+	})
+	ignoringAccessor(cx.WellKnownSymbol(engine.SymbolToStringTag), "[Symbol.toStringTag]", cx.SharedString("Iterator"), func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		setIgnoringIteratorPrototype(cx, this, cx.WellKnownSymbol(engine.SymbolToStringTag), arg(args, 0))
+		return engine.Undefined
+	})
 
 	symMethod(cx, proto, cx.WellKnownSymbol(engine.SymbolDispose), "[Symbol.dispose]", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		if m := cx.GetMethod(this, k.ret); m != nil {
+		if m := cx.GetMethod(this, cx.Key(engine.KeyReturn)); m != nil {
 			cx.Call(m, this)
 		}
 		return engine.Undefined
 	})
 
 	helperProto := cx.NewObject(proto)
+	cx.SetIntrinsic(engine.IntrinsicIteratorHelperPrototype, helperProto)
 	iteratorNext(cx, helperProto, engine.IteratorClosureRealm, func(cx *engine.ExecutionContext, this engine.Value) (engine.Value, bool) {
 		return resumeHelper(cx, this, engine.ResumeNext)
 	})
@@ -169,15 +173,12 @@ func initIteratorHelpers(cx *engine.ExecutionContext) {
 		return cx.CreateIterResultObject(engine.Undefined, true)
 	})
 	cx.Define(helperProto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Iterator Helper"), engine.FlagConfigurable)
-	newHelper := func(cx *engine.ExecutionContext, body helperBody) engine.Value {
-		return engine.ObjectValue(cx.NewIteratorObject(helperProto, &iteratorHelper{body: body}))
-	}
 
-	initIteratorFrom(cx, k, ctor)
-	initIteratorConcat(cx, ctor, newHelper)
-	initIteratorZip(cx, ctor, newHelper)
-	initLazyIteratorMethods(cx, k, newHelper)
-	initEagerIteratorMethods(cx, k)
+	initIteratorFrom(cx, ctor)
+	initIteratorConcat(cx, ctor)
+	initIteratorZip(cx, ctor)
+	initLazyIteratorMethods(cx)
+	initEagerIteratorMethods(cx)
 }
 
 // wrappedIterator is the state of an object that Iterator.from wraps an iterator in.
@@ -195,8 +196,9 @@ func throwNotWrappedIterator(cx *engine.ExecutionContext, what string) {
 	cx.ThrowTypeError("%WrapForValidIteratorPrototype%." + what + " called on an incompatible receiver")
 }
 
-func initIteratorFrom(cx *engine.ExecutionContext, k *iteratorKeys, ctor *engine.Object) {
+func initIteratorFrom(cx *engine.ExecutionContext, ctor *engine.Object) {
 	wrapProto := cx.NewObject(cx.Intrinsic(engine.IntrinsicIteratorPrototype))
+	cx.SetIntrinsic(engine.IntrinsicWrapForValidIteratorPrototype, wrapProto)
 	method(cx, wrapProto, "next", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		w, _ := engine.IteratorState(this).(*wrappedIterator)
 		requireWrappedIterator(cx, w, "next")
@@ -205,7 +207,7 @@ func initIteratorFrom(cx *engine.ExecutionContext, k *iteratorKeys, ctor *engine
 	method(cx, wrapProto, "return", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		w, _ := engine.IteratorState(this).(*wrappedIterator)
 		requireWrappedIterator(cx, w, "return")
-		m := cx.GetMethod(w.it, k.ret)
+		m := cx.GetMethod(w.it, cx.Key(engine.KeyReturn))
 		if m == nil {
 			return cx.CreateIterResultObject(engine.Undefined, true)
 		}
@@ -214,10 +216,10 @@ func initIteratorFrom(cx *engine.ExecutionContext, k *iteratorKeys, ctor *engine
 	method(cx, ctor, "from", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		var r iterRecord
 		r.it, r.next = cx.GetIteratorFlattenable(arg(args, 0), true)
-		if cx.OrdinaryHasInstance(engine.ObjectValue(ctor), r.it) {
+		if cx.OrdinaryHasInstance(engine.ObjectValue(cx.Intrinsic(engine.IntrinsicIterator)), r.it) {
 			return r.it
 		}
-		return engine.ObjectValue(cx.NewIteratorObject(wrapProto, &wrappedIterator{iterRecord: r}))
+		return engine.ObjectValue(cx.NewIteratorObject(cx.Intrinsic(engine.IntrinsicWrapForValidIteratorPrototype), &wrappedIterator{iterRecord: r}))
 	})
 }
 
@@ -256,7 +258,7 @@ func (h *concatHelper) close(cx *engine.ExecutionContext) {
 	}
 }
 
-func initIteratorConcat(cx *engine.ExecutionContext, ctor *engine.Object, newHelper func(*engine.ExecutionContext, helperBody) engine.Value) {
+func initIteratorConcat(cx *engine.ExecutionContext, ctor *engine.Object) {
 	method(cx, ctor, "concat", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		h := &concatHelper{
 			inputs: make([]concatInput, len(args)),
@@ -274,7 +276,7 @@ func initIteratorConcat(cx *engine.ExecutionContext, ctor *engine.Object, newHel
 				method:   m,
 			}
 		}
-		return newHelper(cx, h)
+		return newIteratorHelper(cx, h)
 	})
 }
 
@@ -390,46 +392,44 @@ func newZipHelper(open, next []engine.Value, mode zipMode) *zipHelper {
 	return h
 }
 
-func initIteratorZip(cx *engine.ExecutionContext, ctor *engine.Object, newHelper func(*engine.ExecutionContext, helperBody) engine.Value) {
-	modeKey := cx.Intern("mode")
-	paddingKey := cx.Intern("padding")
-	// options reads the options of Iterator.zip and Iterator.zipKeyed and returns the mode and
-	// the padding option.
-	options := func(cx *engine.ExecutionContext, iterables, opts engine.Value) (zipMode, engine.Value) {
-		if !iterables.IsObject() {
-			cx.ThrowTypeError(cx.DisplayString(iterables) + " is not an object")
-		}
-		// GetOptionsObject.
-		if opts.IsUndefined() {
-			return zipShortest, engine.Undefined
-		}
-		if !opts.IsObject() {
-			cx.ThrowTypeError("the options must be an object")
-		}
-		mode := zipShortest
-		switch m := cx.GetV(opts, modeKey); {
-		case m.IsUndefined():
-		case m.IsString() && m.Str() == "shortest":
-		case m.IsString() && m.Str() == "longest":
-			mode = zipLongest
-		case m.IsString() && m.Str() == "strict":
-			mode = zipStrict
-		default:
-			cx.ThrowTypeError("the mode must be \"shortest\", \"longest\" or \"strict\"")
-		}
-		pad := engine.Undefined
-		if mode == zipLongest {
-			pad = cx.GetV(opts, paddingKey)
-			if !pad.IsUndefined() && !pad.IsObject() {
-				cx.ThrowTypeError("the padding must be an object")
-			}
-		}
-		return mode, pad
+// zipOptions reads the options of Iterator.zip and Iterator.zipKeyed and returns the mode and
+// the padding option.
+func zipOptions(cx *engine.ExecutionContext, iterables, opts engine.Value) (zipMode, engine.Value) {
+	if !iterables.IsObject() {
+		cx.ThrowTypeError(cx.DisplayString(iterables) + " is not an object")
 	}
+	// GetOptionsObject.
+	if opts.IsUndefined() {
+		return zipShortest, engine.Undefined
+	}
+	if !opts.IsObject() {
+		cx.ThrowTypeError("the options must be an object")
+	}
+	mode := zipShortest
+	switch m := cx.GetV(opts, cx.Key(engine.KeyMode)); {
+	case m.IsUndefined():
+	case m.IsString() && m.Str() == "shortest":
+	case m.IsString() && m.Str() == "longest":
+		mode = zipLongest
+	case m.IsString() && m.Str() == "strict":
+		mode = zipStrict
+	default:
+		cx.ThrowTypeError("the mode must be \"shortest\", \"longest\" or \"strict\"")
+	}
+	pad := engine.Undefined
+	if mode == zipLongest {
+		pad = cx.GetV(opts, cx.Key(engine.KeyPadding))
+		if !pad.IsUndefined() && !pad.IsObject() {
+			cx.ThrowTypeError("the padding must be an object")
+		}
+	}
+	return mode, pad
+}
 
+func initIteratorZip(cx *engine.ExecutionContext, ctor *engine.Object) {
 	method(cx, ctor, "zip", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		iterables := arg(args, 0)
-		mode, pad := options(cx, iterables, arg(args, 1))
+		mode, pad := zipOptions(cx, iterables, arg(args, 1))
 		input, inputNext := cx.GetIterator(iterables)
 		open := []engine.Value{input}
 		var next []engine.Value
@@ -473,12 +473,12 @@ func initIteratorZip(cx *engine.ExecutionContext, ctor *engine.Object, newHelper
 				})
 			}
 		}
-		return newHelper(cx, h)
+		return newIteratorHelper(cx, h)
 	})
 
 	method(cx, ctor, "zipKeyed", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		iterables := arg(args, 0)
-		mode, pad := options(cx, iterables, arg(args, 1))
+		mode, pad := zipOptions(cx, iterables, arg(args, 1))
 		o := iterables.Object()
 		var open, next []engine.Value
 		var keys []engine.PropKey
@@ -516,7 +516,7 @@ func initIteratorZip(cx *engine.ExecutionContext, ctor *engine.Object, newHelper
 				})
 			}
 		}
-		return newHelper(cx, h)
+		return newIteratorHelper(cx, h)
 	})
 }
 
@@ -765,53 +765,53 @@ func (h *chunksHelper) close(cx *engine.ExecutionContext) {
 }
 
 // initLazyIteratorMethods defines the methods of Iterator.prototype that return iterator helpers.
-func initLazyIteratorMethods(cx *engine.ExecutionContext, k *iteratorKeys, newHelper func(*engine.ExecutionContext, helperBody) engine.Value) {
+func initLazyIteratorMethods(cx *engine.ExecutionContext) {
 	proto := cx.Intrinsic(engine.IntrinsicIteratorPrototype)
 	method(cx, proto, "map", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		it := receiver(cx, this, "map")
 		f := callableArg(cx, it, arg(args, 0))
-		return newHelper(cx, &mapHelper{
-			src: k.getIteratorDirect(cx, it),
+		return newIteratorHelper(cx, &mapHelper{
+			src: getIteratorDirect(cx, it),
 			f:   f,
 		})
 	})
 	method(cx, proto, "filter", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		it := receiver(cx, this, "filter")
 		f := callableArg(cx, it, arg(args, 0))
-		return newHelper(cx, &filterHelper{
-			src: k.getIteratorDirect(cx, it),
+		return newIteratorHelper(cx, &filterHelper{
+			src: getIteratorDirect(cx, it),
 			f:   f,
 		})
 	})
 	method(cx, proto, "take", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		it := receiver(cx, this, "take")
 		n := limitArg(cx, it, arg(args, 0))
-		return newHelper(cx, &takeHelper{
-			src:       k.getIteratorDirect(cx, it),
+		return newIteratorHelper(cx, &takeHelper{
+			src:       getIteratorDirect(cx, it),
 			remaining: n,
 		})
 	})
 	method(cx, proto, "drop", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		it := receiver(cx, this, "drop")
 		n := limitArg(cx, it, arg(args, 0))
-		return newHelper(cx, &dropHelper{
-			src:       k.getIteratorDirect(cx, it),
+		return newIteratorHelper(cx, &dropHelper{
+			src:       getIteratorDirect(cx, it),
 			remaining: n,
 		})
 	})
 	method(cx, proto, "flatMap", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		it := receiver(cx, this, "flatMap")
 		f := callableArg(cx, it, arg(args, 0))
-		return newHelper(cx, &flatMapHelper{
-			src: k.getIteratorDirect(cx, it),
+		return newIteratorHelper(cx, &flatMapHelper{
+			src: getIteratorDirect(cx, it),
 			f:   f,
 		})
 	})
 	method(cx, proto, "chunks", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		it := receiver(cx, this, "chunks")
 		size := sizeArg(cx, it, arg(args, 0))
-		return newHelper(cx, &chunksHelper{
-			src:  k.getIteratorDirect(cx, it),
+		return newIteratorHelper(cx, &chunksHelper{
+			src:  getIteratorDirect(cx, it),
 			size: size,
 		})
 	})
@@ -827,8 +827,8 @@ func initLazyIteratorMethods(cx *engine.ExecutionContext, k *iteratorKeys, newHe
 		default:
 			closeAndThrowTypeError(cx, it, "undersized must be \"only-full\" or \"allow-partial\"")
 		}
-		return newHelper(cx, &chunksHelper{
-			src:          k.getIteratorDirect(cx, it),
+		return newIteratorHelper(cx, &chunksHelper{
+			src:          getIteratorDirect(cx, it),
 			size:         size,
 			windows:      true,
 			allowPartial: allowPartial,
@@ -836,13 +836,34 @@ func initLazyIteratorMethods(cx *engine.ExecutionContext, k *iteratorKeys, newHe
 	})
 }
 
+// searchIterator stops at the first value for which the predicate's truth value equals want.
+// It returns that value and true, or undefined and false if the iterator is exhausted.
+func searchIterator(cx *engine.ExecutionContext, this engine.Value, args []engine.Value, name string, want bool) (engine.Value, bool) {
+	it := receiver(cx, this, name)
+	f := callableArg(cx, it, arg(args, 0))
+	r := getIteratorDirect(cx, it)
+	counter := 0.0
+	found := false
+	result := engine.Undefined
+	cx.IterateRecord(r.it, r.next, func(v engine.Value) bool {
+		if engine.ToBoolean(cx.Call(f, engine.Undefined, v, engine.Number(counter))) == want {
+			found = true
+			result = v
+			return false
+		}
+		counter++
+		return true
+	})
+	return result, found
+}
+
 // initEagerIteratorMethods defines the methods of Iterator.prototype that consume the iterator.
-func initEagerIteratorMethods(cx *engine.ExecutionContext, k *iteratorKeys) {
+func initEagerIteratorMethods(cx *engine.ExecutionContext) {
 	proto := cx.Intrinsic(engine.IntrinsicIteratorPrototype)
 	method(cx, proto, "reduce", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		it := receiver(cx, this, "reduce")
 		f := callableArg(cx, it, arg(args, 0))
-		r := k.getIteratorDirect(cx, it)
+		r := getIteratorDirect(cx, it)
 		var acc engine.Value
 		counter := 0.0
 		if len(args) < 2 {
@@ -864,7 +885,7 @@ func initEagerIteratorMethods(cx *engine.ExecutionContext, k *iteratorKeys) {
 	})
 	method(cx, proto, "toArray", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		it := receiver(cx, this, "toArray")
-		r := k.getIteratorDirect(cx, it)
+		r := getIteratorDirect(cx, it)
 		var items []engine.Value
 		for {
 			v, ok := cx.IteratorStepValue(r.it, r.next)
@@ -877,7 +898,7 @@ func initEagerIteratorMethods(cx *engine.ExecutionContext, k *iteratorKeys) {
 	method(cx, proto, "forEach", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		it := receiver(cx, this, "forEach")
 		f := callableArg(cx, it, arg(args, 0))
-		r := k.getIteratorDirect(cx, it)
+		r := getIteratorDirect(cx, it)
 		counter := 0.0
 		cx.IterateRecord(r.it, r.next, func(v engine.Value) bool {
 			cx.Call(f, engine.Undefined, v, engine.Number(counter))
@@ -886,36 +907,16 @@ func initEagerIteratorMethods(cx *engine.ExecutionContext, k *iteratorKeys) {
 		})
 		return engine.Undefined
 	})
-	// search stops at the first value for which the predicate's truth value equals want.
-	// It returns that value and true, or undefined and false if the iterator is exhausted.
-	search := func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value, name string, want bool) (engine.Value, bool) {
-		it := receiver(cx, this, name)
-		f := callableArg(cx, it, arg(args, 0))
-		r := k.getIteratorDirect(cx, it)
-		counter := 0.0
-		found := false
-		result := engine.Undefined
-		cx.IterateRecord(r.it, r.next, func(v engine.Value) bool {
-			if engine.ToBoolean(cx.Call(f, engine.Undefined, v, engine.Number(counter))) == want {
-				found = true
-				result = v
-				return false
-			}
-			counter++
-			return true
-		})
-		return result, found
-	}
 	method(cx, proto, "some", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		_, found := search(cx, this, args, "some", true)
+		_, found := searchIterator(cx, this, args, "some", true)
 		return engine.Bool(found)
 	})
 	method(cx, proto, "every", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		_, found := search(cx, this, args, "every", false)
+		_, found := searchIterator(cx, this, args, "every", false)
 		return engine.Bool(!found)
 	})
 	method(cx, proto, "find", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		v, _ := search(cx, this, args, "find", true)
+		v, _ := searchIterator(cx, this, args, "find", true)
 		return v
 	})
 	method(cx, proto, "includes", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -932,7 +933,7 @@ func initEagerIteratorMethods(cx *engine.ExecutionContext, k *iteratorKeys) {
 			}
 			toSkip = n
 		}
-		r := k.getIteratorDirect(cx, it)
+		r := getIteratorDirect(cx, it)
 		skipped := 0.0
 		found := false
 		for {
@@ -960,7 +961,7 @@ func initEagerIteratorMethods(cx *engine.ExecutionContext, k *iteratorKeys) {
 				sep = cx.ToString(s)
 			})
 		}
-		r := k.getIteratorDirect(cx, it)
+		r := getIteratorDirect(cx, it)
 		var sb wtf8.Buffer
 		first := true
 		for {

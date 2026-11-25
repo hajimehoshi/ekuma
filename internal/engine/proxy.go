@@ -397,7 +397,7 @@ func (cx *ExecutionContext) proxyDefineOwnProperty(o *Object, k PropKey, d PropD
 func (cx *ExecutionContext) proxyHas(o *Object, k PropKey) bool {
 	target, handler := cx.proxyEnter(o, "has")
 	defer cx.proxyLeave()
-	trap := cx.proxyTrap(handler, keyHas)
+	trap := cx.proxyTrap(handler, KeyHas)
 	if trap == nil {
 		return cx.HasProperty(target, k)
 	}

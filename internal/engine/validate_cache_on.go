@@ -384,7 +384,7 @@ func (ag *agent) checkArrayIteration(r *realm) {
 	next := r.intrinsics[IntrinsicArrayIteratorPrototypeNext]
 	if c.found && c.iter.value().o == values && c.next.value().o == next {
 		ag.checkOriginal(cx, r.intrinsics[IntrinsicArrayPrototype], ag.WellKnownSymbol(SymbolIterator), values)
-		ag.checkOriginal(cx, r.intrinsics[IntrinsicArrayIteratorPrototype], ag.Key(keyNext), next)
+		ag.checkOriginal(cx, r.intrinsics[IntrinsicArrayIteratorPrototype], ag.Key(KeyNext), next)
 	}
 	if c.noReturn {
 		ag.checkNoIteratorReturn(r)
@@ -393,7 +393,7 @@ func (ag *agent) checkArrayIteration(r *realm) {
 
 // checkNoIteratorReturn checks that the array iterators of r have no return method.
 func (ag *agent) checkNoIteratorReturn(r *realm) {
-	key := ag.Key(keyReturn)
+	key := ag.Key(KeyReturn)
 	if p := r.context.peekFrom(r.intrinsics[IntrinsicArrayIteratorPrototype], key); p.kind != peekMiss {
 		panic(ag.cacheFailure(nil, 0, "the array iteration cache", key, "no property", p.String()))
 	}

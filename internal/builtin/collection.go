@@ -182,13 +182,24 @@ func initMapAndSet(cx *engine.ExecutionContext) {
 	initObjectGroupBy(cx)
 }
 
+// defineMapIteration defines the method name of Map.prototype that returns a Map Iterator of kind.
+func defineMapIteration(cx *engine.ExecutionContext, name string, kind engine.IterationKind) *engine.Object {
+	return method(cx, cx.Intrinsic(engine.IntrinsicMapPrototype), wtf8.String(name), 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		t := thisMap(cx, this, name)
+		return engine.ObjectValue(cx.NewIteratorObject(cx.Intrinsic(engine.IntrinsicMapIteratorPrototype), &mapIterator{
+			table:  t,
+			cursor: t.Start(),
+			kind:   kind,
+		}))
+	})
+}
+
 func initMap(cx *engine.ExecutionContext) {
 	proto := cx.Intrinsic(engine.IntrinsicMapPrototype)
-	setKey := cx.Intern("set")
 	methods := &collectionMethods{
 		proto:    proto,
-		adderKey: setKey,
-		nextKey:  cx.Intern("next"),
+		adderKey: cx.Key(engine.KeySet),
+		nextKey:  cx.Key(engine.KeyNext),
 	}
 	ctor := constructor(cx, "Map", 0, engine.IntrinsicMapPrototype, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		nt := cx.GetNewTarget()
@@ -207,7 +218,7 @@ func initMap(cx *engine.ExecutionContext) {
 		if iterable.IsNullish() {
 			return engine.ObjectValue(m)
 		}
-		adder := adderOf(cx, m, setKey)
+		adder := adderOf(cx, m, cx.Key(engine.KeySet))
 		var fast func(k, v engine.Value)
 		if adder == methods.adder {
 			n := engine.ElementCount(iterable)
@@ -327,7 +338,7 @@ func initMap(cx *engine.ExecutionContext) {
 			cx.Call(cb.Object(), thisArg, argv...)
 		}
 	})
-	mapSize := getter(cx, proto, cx.Intern("size"), "size", func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	mapSize := getter(cx, proto, cx.Key(engine.KeySize), "size", func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		return engine.Number(float64(thisMap(cx, this, "size").Size()))
 	})
 	cx.SetMethodKernels(mapSize, shortContract, func(q engine.QuietContext, this engine.Value) (engine.Value, bool) {
@@ -338,20 +349,11 @@ func initMap(cx *engine.ExecutionContext) {
 	}, nil, nil)
 
 	iterProto := cx.NewObject(cx.Intrinsic(engine.IntrinsicIteratorPrototype))
+	cx.SetIntrinsic(engine.IntrinsicMapIteratorPrototype, iterProto)
 	methods.iterProto = iterProto
-	iterate := func(name string, kind engine.IterationKind) *engine.Object {
-		return method(cx, proto, wtf8.String(name), 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-			t := thisMap(cx, this, name)
-			return engine.ObjectValue(cx.NewIteratorObject(iterProto, &mapIterator{
-				table:  t,
-				cursor: t.Start(),
-				kind:   kind,
-			}))
-		})
-	}
-	iterate("keys", engine.IterateKeys)
-	iterate("values", engine.IterateValues)
-	methods.iter = iterate("entries", engine.IterateEntries)
+	defineMapIteration(cx, "keys", engine.IterateKeys)
+	defineMapIteration(cx, "values", engine.IterateValues)
+	methods.iter = defineMapIteration(cx, "entries", engine.IterateEntries)
 	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolIterator), engine.ObjectValue(methods.iter), engine.FlagsHidden)
 	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Map"), engine.FlagConfigurable)
 
@@ -399,9 +401,6 @@ type setRecord struct {
 	has  *engine.Object
 	keys *engine.Object
 
-	// next is the property key "next".
-	next *engine.Object
-
 	// table is the [[SetData]] of obj when obj is a Set and has is %Set.prototype.has%,
 	// so that a lookup in table gives the result of calling has.
 	table *collection.Table
@@ -411,21 +410,13 @@ type setRecord struct {
 	pace engine.Pacer
 }
 
-// setLikeKeys are the property keys that the Set methods read from their argument.
-type setLikeKeys struct {
-	size, has, keys, next *engine.Object
-
-	// setHas is %Set.prototype.has%.
-	setHas *engine.Object
-}
-
 // getSetRecord implements GetSetRecord.
-func getSetRecord(cx *engine.ExecutionContext, v engine.Value, k *setLikeKeys) setRecord {
+func getSetRecord(cx *engine.ExecutionContext, v engine.Value) setRecord {
 	if !v.IsObject() {
 		cx.ThrowTypeError(cx.DisplayString(v) + " is not an object")
 	}
 	o := v.Object()
-	n := cx.ToNumber(cx.Get(o, engine.NamedKey(k.size)))
+	n := cx.ToNumber(cx.Get(o, engine.NamedKey(cx.Key(engine.KeySize))))
 	if n != n {
 		cx.ThrowTypeError("the size of a set-like object must be a number")
 	}
@@ -433,11 +424,11 @@ func getSetRecord(cx *engine.ExecutionContext, v engine.Value, k *setLikeKeys) s
 	if size < 0 {
 		cx.ThrowRangeError("the size of a set-like object must not be negative")
 	}
-	has := cx.Get(o, engine.NamedKey(k.has))
+	has := cx.Get(o, engine.NamedKey(cx.Key(engine.KeyHas)))
 	if !has.IsCallable() {
 		cx.ThrowTypeError("the has method of a set-like object must be a function")
 	}
-	keys := cx.Get(o, engine.NamedKey(k.keys))
+	keys := cx.Get(o, engine.NamedKey(cx.Key(engine.KeyKeys)))
 	if !keys.IsCallable() {
 		cx.ThrowTypeError("the keys method of a set-like object must be a function")
 	}
@@ -446,9 +437,8 @@ func getSetRecord(cx *engine.ExecutionContext, v engine.Value, k *setLikeKeys) s
 		size: size,
 		has:  has.Object(),
 		keys: keys.Object(),
-		next: k.next,
 	}
-	if r.has == k.setHas {
+	if r.has == cx.Intrinsic(engine.IntrinsicSetPrototypeHas) {
 		r.table, _ = engine.SetData(v).(*collection.Table)
 	}
 	return r
@@ -469,7 +459,7 @@ func (r *setRecord) keysIterator(cx *engine.ExecutionContext) (it, next engine.V
 	if !it.IsObject() {
 		cx.ThrowTypeError("the keys method of a set-like object must return an object")
 	}
-	next = cx.GetV(it, r.next)
+	next = cx.GetV(it, cx.Key(engine.KeyNext))
 	if !next.IsCallable() {
 		cx.ThrowTypeError("the iterator of a set-like object must have a next method")
 	}
@@ -487,19 +477,24 @@ func newSet(cx *engine.ExecutionContext, t *collection.Table) engine.Value {
 	return engine.ObjectValue(cx.NewSetObject(cx.Intrinsic(engine.IntrinsicSetPrototype), t))
 }
 
+// defineSetIteration defines the method name of Set.prototype that returns a Set Iterator of kind.
+func defineSetIteration(cx *engine.ExecutionContext, name string, kind engine.IterationKind) *engine.Object {
+	return method(cx, cx.Intrinsic(engine.IntrinsicSetPrototype), wtf8.String(name), 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		t := thisSet(cx, this, name)
+		return engine.ObjectValue(cx.NewIteratorObject(cx.Intrinsic(engine.IntrinsicSetIteratorPrototype), &setIterator{
+			table:  t,
+			cursor: t.Start(),
+			kind:   kind,
+		}))
+	})
+}
+
 func initSet(cx *engine.ExecutionContext) {
 	proto := cx.Intrinsic(engine.IntrinsicSetPrototype)
-	addKey := cx.Intern("add")
-	keys := &setLikeKeys{
-		size: cx.Intern("size"),
-		has:  cx.Intern("has"),
-		keys: cx.Intern("keys"),
-		next: cx.Intern("next"),
-	}
 	methods := &collectionMethods{
 		proto:    proto,
-		adderKey: addKey,
-		nextKey:  keys.next,
+		adderKey: cx.Key(engine.KeyAdd),
+		nextKey:  cx.Key(engine.KeyNext),
 	}
 	ctor := constructor(cx, "Set", 0, engine.IntrinsicSetPrototype, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		nt := cx.GetNewTarget()
@@ -518,7 +513,7 @@ func initSet(cx *engine.ExecutionContext) {
 		if iterable.IsNullish() {
 			return engine.ObjectValue(s)
 		}
-		adder := adderOf(cx, s, addKey)
+		adder := adderOf(cx, s, cx.Key(engine.KeyAdd))
 		if adder == methods.adder {
 			n := engine.ElementCount(iterable)
 			var i int
@@ -571,10 +566,11 @@ func initSet(cx *engine.ExecutionContext) {
 		}
 		return engine.Undefined, false
 	}, nil)
-	keys.setHas = method(cx, proto, "has", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	setHas := method(cx, proto, "has", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		return engine.Bool(thisSet(cx, this, "has").Has(arg(args, 0)))
 	})
-	cx.SetMethodKernels(keys.setHas, shortContract, nil, func(q engine.QuietContext, this, v engine.Value) (engine.Value, bool) {
+	cx.SetIntrinsic(engine.IntrinsicSetPrototypeHas, setHas)
+	cx.SetMethodKernels(setHas, shortContract, nil, func(q engine.QuietContext, this, v engine.Value) (engine.Value, bool) {
 		if t := setOf(this); t != nil {
 			return engine.Bool(t.Has(v)), true
 		}
@@ -598,7 +594,7 @@ func initSet(cx *engine.ExecutionContext) {
 			cx.Call(cb.Object(), thisArg, argv...)
 		}
 	})
-	setSize := getter(cx, proto, keys.size, "size", func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	setSize := getter(cx, proto, cx.Key(engine.KeySize), "size", func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		return engine.Number(float64(thisSet(cx, this, "size").Size()))
 	})
 	cx.SetMethodKernels(setSize, shortContract, func(q engine.QuietContext, this engine.Value) (engine.Value, bool) {
@@ -610,7 +606,7 @@ func initSet(cx *engine.ExecutionContext) {
 
 	method(cx, proto, "union", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		t := thisSet(cx, this, "union")
-		r := getSetRecord(cx, arg(args, 0), keys)
+		r := getSetRecord(cx, arg(args, 0))
 		it, next := r.keysIterator(cx)
 		result := t.Clone(cx.Poll)
 		cx.IterateRecord(it, next, func(e engine.Value) bool {
@@ -623,7 +619,7 @@ func initSet(cx *engine.ExecutionContext) {
 	})
 	method(cx, proto, "intersection", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		t := thisSet(cx, this, "intersection")
-		r := getSetRecord(cx, arg(args, 0), keys)
+		r := getSetRecord(cx, arg(args, 0))
 		result := &collection.Table{}
 		if float64(t.Size()) <= r.size {
 			c := t.Start()
@@ -648,7 +644,7 @@ func initSet(cx *engine.ExecutionContext) {
 	})
 	method(cx, proto, "difference", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		t := thisSet(cx, this, "difference")
-		r := getSetRecord(cx, arg(args, 0), keys)
+		r := getSetRecord(cx, arg(args, 0))
 		result := t.Clone(cx.Poll)
 		if float64(t.Size()) <= r.size {
 			// The result is not visible to JavaScript yet, so its keys can be taken in advance.
@@ -676,7 +672,7 @@ func initSet(cx *engine.ExecutionContext) {
 	})
 	method(cx, proto, "symmetricDifference", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		t := thisSet(cx, this, "symmetricDifference")
-		r := getSetRecord(cx, arg(args, 0), keys)
+		r := getSetRecord(cx, arg(args, 0))
 		it, next := r.keysIterator(cx)
 		result := t.Clone(cx.Poll)
 		cx.IterateRecord(it, next, func(e engine.Value) bool {
@@ -694,7 +690,7 @@ func initSet(cx *engine.ExecutionContext) {
 	})
 	method(cx, proto, "isSubsetOf", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		t := thisSet(cx, this, "isSubsetOf")
-		r := getSetRecord(cx, arg(args, 0), keys)
+		r := getSetRecord(cx, arg(args, 0))
 		if float64(t.Size()) > r.size {
 			return engine.False
 		}
@@ -711,7 +707,7 @@ func initSet(cx *engine.ExecutionContext) {
 	})
 	method(cx, proto, "isSupersetOf", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		t := thisSet(cx, this, "isSupersetOf")
-		r := getSetRecord(cx, arg(args, 0), keys)
+		r := getSetRecord(cx, arg(args, 0))
 		if float64(t.Size()) < r.size {
 			return engine.False
 		}
@@ -724,7 +720,7 @@ func initSet(cx *engine.ExecutionContext) {
 	})
 	method(cx, proto, "isDisjointFrom", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		t := thisSet(cx, this, "isDisjointFrom")
-		r := getSetRecord(cx, arg(args, 0), keys)
+		r := getSetRecord(cx, arg(args, 0))
 		if float64(t.Size()) <= r.size {
 			c := t.Start()
 			for {
@@ -746,20 +742,11 @@ func initSet(cx *engine.ExecutionContext) {
 	})
 
 	iterProto := cx.NewObject(cx.Intrinsic(engine.IntrinsicIteratorPrototype))
+	cx.SetIntrinsic(engine.IntrinsicSetIteratorPrototype, iterProto)
 	methods.iterProto = iterProto
-	iterate := func(name string, kind engine.IterationKind) *engine.Object {
-		return method(cx, proto, wtf8.String(name), 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-			t := thisSet(cx, this, name)
-			return engine.ObjectValue(cx.NewIteratorObject(iterProto, &setIterator{
-				table:  t,
-				cursor: t.Start(),
-				kind:   kind,
-			}))
-		})
-	}
-	iterate("entries", engine.IterateEntries)
-	methods.iter = iterate("values", engine.IterateValues)
-	cx.Define(proto, keys.keys, engine.ObjectValue(methods.iter), engine.FlagsHidden)
+	defineSetIteration(cx, "entries", engine.IterateEntries)
+	methods.iter = defineSetIteration(cx, "values", engine.IterateValues)
+	cx.Define(proto, cx.Key(engine.KeyKeys), engine.ObjectValue(methods.iter), engine.FlagsHidden)
 	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolIterator), engine.ObjectValue(methods.iter), engine.FlagsHidden)
 	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Set"), engine.FlagConfigurable)
 

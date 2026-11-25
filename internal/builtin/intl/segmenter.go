@@ -179,7 +179,9 @@ func (r *realm) initSegmenter(cx *engine.ExecutionContext) {
 	r.segmenterProto = proto
 
 	segmentsProto := cx.NewObject(cx.Intrinsic(engine.IntrinsicObjectPrototype))
+	r.segmentsProto = segmentsProto
 	iterProto := cx.NewObject(cx.Intrinsic(engine.IntrinsicIteratorPrototype))
+	r.segmentIteratorProto = iterProto
 
 	method(cx, ctor, "supportedLocalesOf", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		return supportedLocalesOf(cx, args)
@@ -196,7 +198,7 @@ func (r *realm) initSegmenter(cx *engine.ExecutionContext) {
 		sd := thisSegmenter(cx, this, "segment")
 		s := cx.ToString(arg(args, 0))
 		str := cx.NewString(s)
-		return engine.ObjectValue(cx.NewIntlObject(segmentsProto, newSegmentsData(cx, sd, str, s)))
+		return engine.ObjectValue(cx.NewIntlObject(cx.RealmExtension().(*realm).segmentsProto, newSegmentsData(cx, sd, str, s)))
 	})
 	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Intl.Segmenter"), engine.FlagConfigurable)
 
@@ -210,7 +212,7 @@ func (r *realm) initSegmenter(cx *engine.ExecutionContext) {
 	})
 	cx.Define(segmentsProto, cx.WellKnownSymbol(engine.SymbolIterator), engine.ObjectValue(cx.NewNative("[Symbol.iterator]", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		d := thisSegments(cx, this, "[Symbol.iterator]")
-		return engine.ObjectValue(cx.NewIntlObject(iterProto, &segmentIteratorData{
+		return engine.ObjectValue(cx.NewIntlObject(cx.RealmExtension().(*realm).segmentIteratorProto, &segmentIteratorData{
 			segments: d,
 		}))
 	})), engine.FlagsHidden)

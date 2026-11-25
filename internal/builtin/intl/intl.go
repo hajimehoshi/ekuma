@@ -32,9 +32,11 @@ type realm struct {
 	dateTimeFormatProto *engine.Object
 	dateTimeFormatCtor  *engine.Object
 
-	collatorProto  *engine.Object
-	segmenterProto *engine.Object
-	collatorCtor   *engine.Object
+	collatorProto        *engine.Object
+	segmenterProto       *engine.Object
+	segmentsProto        *engine.Object
+	segmentIteratorProto *engine.Object
+	collatorCtor         *engine.Object
 	// defaultCollator is the collator of String.prototype.localeCompare without locales and
 	// options.
 	defaultCollator       *collatorData

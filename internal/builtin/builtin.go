@@ -702,9 +702,8 @@ func indexValues(cx *engine.ExecutionContext, out []engine.Value, v engine.Value
 
 func initFunction(cx *engine.ExecutionContext) {
 	proto := cx.Intrinsic(engine.IntrinsicFunctionPrototype)
-	var ctor *engine.Object
-	ctor = constructor(cx, "Function", 1, engine.IntrinsicFunctionPrototype, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		return cx.CreateDynamicFunction(ctor, cx.GetNewTarget(), engine.NormalFunction, args)
+	ctor := constructor(cx, "Function", 1, engine.IntrinsicFunctionPrototype, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		return cx.CreateDynamicFunction(engine.NormalFunction, args)
 	})
 	cx.SetIntrinsic(engine.IntrinsicFunction, ctor)
 
@@ -854,7 +853,6 @@ func initError(cx *engine.ExecutionContext) {
 	method(cx, base, "isError", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		return engine.Bool(engine.IsError(arg(args, 0)))
 	})
-	stackKey := engine.NamedKey(cx.Key(engine.KeyStack))
 	cx.DefineAccessor(cx.Intrinsic(engine.IntrinsicErrorPrototype), cx.Key(engine.KeyStack),
 		cx.NewNative("get stack", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 			if !this.IsObject() {
@@ -873,7 +871,7 @@ func initError(cx *engine.ExecutionContext) {
 			if !v.IsString() {
 				cx.ThrowTypeError("Error.prototype.stack setter requires a string")
 			}
-			setterThatIgnoresPrototypeProperties(cx, this, cx.Intrinsic(engine.IntrinsicErrorPrototype), stackKey, v, "Error.prototype.stack setter")
+			setterThatIgnoresPrototypeProperties(cx, this, cx.Intrinsic(engine.IntrinsicErrorPrototype), engine.NamedKey(cx.Key(engine.KeyStack)), v, "Error.prototype.stack setter")
 			return engine.Undefined
 		}),
 		engine.FlagConfigurable)
