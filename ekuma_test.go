@@ -2605,6 +2605,39 @@ func TestMoveWithHoles(t *testing.T) {
 	}
 }
 
+// TestForInVisitedIndices checks which keys of prototypes a for-in loop over an array visits.
+func TestForInVisitedIndices(t *testing.T) {
+	const src = `function keys(o, visit) {
+			var ks = [];
+			for (var k in o) {
+				ks.push(k);
+				visit?.(k);
+			}
+			return ks.join();
+		}
+		function array(proto) {
+			return Object.setPrototypeOf(Object.assign([10, 11, 12, 13], { a: 1, b: 2 }), proto);
+		}
+		var proto = () => Object.setPrototypeOf({ 0: 0, 2: 0, 5: 0, a: 0, b: 0, c: 0 }, { 2: 0, 3: 0, 5: 0, 7: 0, b: 0, d: 0 });
+		var hidden = array(proto());
+		Object.defineProperty(hidden, "c", { value: 1, enumerable: false });
+		var removed = array(proto()), cut = array(proto());
+		[
+			keys(hidden),
+			// Keys that are gone when they come up are visited on the first prototype that has them.
+			keys(removed, k => { if (k === "0") { delete removed[2]; delete removed[3]; delete removed.b; } }),
+			keys(cut, k => { if (k === "1") cut.length = 2; }),
+		].join(" ")`
+	var vm ekuma.VM
+	v, err := runScript(t.Context(), &vm, "keys", src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := v.String(), "0,1,2,3,a,b,5,7,d 0,1,a,2,5,b,c,3,7,d 0,1,a,b,2,5,c,3,7,d"; got != want {
+		t.Errorf("got %s, want %s", got, want)
+	}
+}
+
 // TestBigIntInterrupt checks that a context stops long operations on huge BigInts promptly.
 func TestBigIntInterrupt(t *testing.T) {
 	var vm ekuma.VM

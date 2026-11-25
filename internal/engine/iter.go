@@ -4,6 +4,7 @@
 package engine
 
 import (
+	"cmp"
 	"slices"
 
 	"github.com/hajimehoshi/ekuma/internal/storage"
@@ -641,13 +642,16 @@ type forIn struct {
 	keys           []PropKey
 	pos            int
 
-	// visited holds the keys that were visited, once obj is a prototype, and is nil while obj
-	// is the receiver. The keys visited on the receiver are its keys above and the key length
-	// if length is set, less those in missing, which the receiver no longer had when they
-	// came up.
-	visited map[PropKey]struct{}
-	length  bool
-	missing []PropKey
+	// visited is nil while obj is the receiver. The keys visited on the receiver are its keys
+	// above and the key length if length is set, less those in missing, which the receiver no
+	// longer had when they came up, in this order.
+	//
+	// Once obj is a prototype, the visited keys are those in visited and the indices below
+	// receiverIndices less those in missing, which holds only such indices.
+	visited         map[PropKey]struct{}
+	length          bool
+	receiverIndices uint32
+	missing         []PropKey
 }
 
 // newForIn returns the iterator of a for-in loop over v.
@@ -689,6 +693,7 @@ func (cx *ExecutionContext) forInNext(o *Object) (Value, bool) {
 			if obj := it.obj; int64(i) < int64(len(obj.Elems)) && !obj.Elems[i].IsHole() {
 				return cx.indexString(i), true
 			}
+			cx.PollAt(int64(i))
 			k := storage.IndexKey(i)
 			d, ok := cx.GetOwnProperty(it.obj, k)
 			if !ok {
@@ -705,10 +710,8 @@ func (cx *ExecutionContext) forInNext(o *Object) (Value, bool) {
 			if k.IsSymbol() {
 				continue
 			}
-			if it.visited != nil {
-				if _, seen := it.visited[k]; seen {
-					continue
-				}
+			if it.visited != nil && it.hasVisited(k) {
+				continue
 			}
 			// A property that was deleted in the meantime is skipped, and one that is not
 			// enumerable still hides the properties of the same name further up.
@@ -778,22 +781,44 @@ func (cx *ExecutionContext) forInMayVisit(o *Object) bool {
 // forInVisitReceiver records the keys that the for-in iterator it visited on the receiver,
 // which it is done with, in it.visited.
 func (ag *agent) forInVisitReceiver(it *forIn) {
-	it.visited = make(map[PropKey]struct{}, int(it.indices)+len(it.keys)+1)
-	for i := range it.indices {
-		it.visited[storage.IndexKey(i)] = struct{}{}
-	}
+	it.receiverIndices = it.indices
+	it.visited = make(map[PropKey]struct{}, len(it.keys)+1)
 	if it.length {
 		it.visited[storage.NamedKey(ag.Key(KeyLength))] = struct{}{}
 	}
-	for _, k := range it.keys {
+	for i, k := range it.keys {
+		ag.PollAt(int64(i))
 		if !k.IsSymbol() {
 			it.visited[k] = struct{}{}
 		}
 	}
-	for _, k := range it.missing {
+	// The missing indices below receiverIndices come first.
+	n, _ := slices.BinarySearchFunc(it.missing, it.receiverIndices, func(k PropKey, end uint32) int {
+		if k.IsIndex() && k.Idx < end {
+			return -1
+		}
+		return 1
+	})
+	for i, k := range it.missing[n:] {
+		ag.PollAt(int64(i))
 		delete(it.visited, k)
 	}
-	it.missing = nil
+	it.missing = slices.Clip(it.missing[:n])
+}
+
+// hasVisited reports whether the for-in iterator it visited the key k. It must have moved on to a
+// prototype.
+func (it *forIn) hasVisited(k PropKey) bool {
+	if k.IsIndex() && k.Idx < it.receiverIndices {
+		_, missing := slices.BinarySearchFunc(it.missing, k.Idx, func(k PropKey, i uint32) int {
+			return cmp.Compare(k.Idx, i)
+		})
+		if !missing {
+			return true
+		}
+	}
+	_, ok := it.visited[k]
+	return ok
 }
 
 // templateObject returns the template object of a tagged template, creating it on first use.
