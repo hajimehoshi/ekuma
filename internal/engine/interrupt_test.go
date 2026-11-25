@@ -67,6 +67,13 @@ func TestLongPassesPoll(t *testing.T) {
 				o.HasElement()
 			},
 		},
+		{
+			name: "copy of elements",
+			src:  `o.p = 0; for (i = 0; i <= 1 << 20; i++) o[i] = 0;`,
+			pass: func(cx *engine.ExecutionContext, o *storage.Object) {
+				cx.NewOrdinaryObject().TakeDataProperties(o)
+			},
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			cx := newTestContext(t)

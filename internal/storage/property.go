@@ -268,13 +268,16 @@ func (dst *Object) TakeDataProperties(from *Object) bool {
 	if s == nil || containsHole(from.elems) {
 		return false
 	}
-	dst.shape = s
-	dst.fillSlots(from.slots[:s.Count])
 	// The keys of the elements come first, in index order, so the elements of dst are those of
 	// from.
-	if len(from.elems) != 0 {
+	switch n := len(from.elems); {
+	case n > PollChunk:
+		dst.InitElems(appendPolled(&s.Space.Poller, nil, from.elems))
+	case n > 0:
 		dst.InitElems(slices.Clone(from.elems))
 	}
+	dst.shape = s
+	dst.fillSlots(from.slots[:s.Count])
 	return true
 }
 
