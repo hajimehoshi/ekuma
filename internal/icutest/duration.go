@@ -68,7 +68,7 @@ func decimalDuration(amount string, unit string) map[string]any {
 	fields := map[string]any{unit: integer(whole)}
 	precision := 3 * (len(units) - 1)
 	if len(fraction) > precision {
-		panic("fixture exceeds nanosecond precision: " + amount)
+		panic("icutest: fixture exceeds nanosecond precision: " + amount)
 	}
 	fraction += strings.Repeat("0", precision-len(fraction))
 	for i, unit := range units[1:] {

@@ -67,7 +67,7 @@ func calendarAddUnit(field string) string {
 	case "YEAR":
 		return "years"
 	default:
-		panic("unexpected ICU add field " + field)
+		panic("icutest: unexpected ICU add field " + field)
 	}
 }
 

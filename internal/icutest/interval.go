@@ -138,7 +138,7 @@ func intervalOptions(in intervalInput) (map[string]any, string) {
 		case 'v':
 			opts["timeZoneName"] = name + "Generic"
 		default:
-			panic(fmt.Sprintf("unexpected ICU interval skeleton %q", in.skeleton))
+			panic(fmt.Sprintf("icutest: unexpected ICU interval skeleton %q", in.skeleton))
 		}
 	}
 	return opts, ""

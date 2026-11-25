@@ -149,7 +149,7 @@ func (h *v8Realms) change(index int, operation string) (bool, error) {
 		}
 		h.entries[index] = entry
 	default:
-		panic("unknown realm operation: " + operation)
+		panic("jstest: unknown realm operation: " + operation)
 	}
 	delete(h.scripts.contexts, r)
 	return true, nil

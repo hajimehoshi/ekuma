@@ -659,7 +659,7 @@ func (cx *ExecutionContext) arith(op bytecode.Opcode, x, y storage.Value) storag
 		case bytecode.OpUShr:
 			return storage.Number(float64(numconv.ToUint32(a) >> (numconv.ToUint32(b) & 31)))
 		}
-		panic("ekuma: not an arithmetic bytecode.Opcode")
+		panic("engine: not an arithmetic opcode")
 	}
 	if x.O == storage.NumberObject || y.O == storage.NumberObject {
 		cx.ThrowTypeError("cannot mix BigInt and other types, use explicit conversions")
@@ -745,7 +745,7 @@ func (cx *ExecutionContext) arith(op bytecode.Opcode, x, y storage.Value) storag
 	case bytecode.OpUShr:
 		cx.ThrowTypeError("BigInts have no unsigned right shift, use >> instead")
 	default:
-		panic("ekuma: not an arithmetic bytecode.Opcode")
+		panic("engine: not an arithmetic opcode")
 	}
 	return storage.NewBigInt(r)
 }

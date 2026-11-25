@@ -285,7 +285,7 @@ func resourceCases(f *formatFixture, visit func(resource, map[string]string, int
 func integer(s string) int {
 	n, err := strconv.Atoi(s)
 	if err != nil {
-		panic(fmt.Sprintf("invalid fixture integer %q", s))
+		panic(fmt.Sprintf("icutest: invalid fixture integer %q", s))
 	}
 	return n
 }

@@ -26,7 +26,7 @@ func (ag *agent) cacheFailure(fp *storage.FuncProto, pc int, cache string, key *
 	msg := storage.CacheMismatch(cache, got, want)
 	if fp == nil {
 		if len(ag.frames) == 0 {
-			return "ekumavalidate: " + msg
+			return "engine: " + msg
 		}
 		fr := &ag.frames[len(ag.frames)-1]
 		// A frame that runs slow code continues after its instruction.

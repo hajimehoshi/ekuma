@@ -131,7 +131,7 @@ func (r *RealmPart) RecordRegExpOriginals(protoKeys, ctorKeys []*Object) {
 		for _, k := range keys {
 			p, ok := holder.shape.Lookup(k)
 			if !ok || p.Slot < 0 {
-				panic("engine: RecordRegExpOriginals: missing property " + k.Text)
+				panic("storage: RecordRegExpOriginals: missing property " + k.Text)
 			}
 			v := holder.slots[p.Slot]
 			var val *Object
@@ -141,7 +141,7 @@ func (r *RealmPart) RecordRegExpOriginals(protoKeys, ctorKeys []*Object) {
 				val = v.O
 			}
 			if val == nil {
-				panic("engine: RecordRegExpOriginals: property " + k.Text + " holds no object")
+				panic("storage: RecordRegExpOriginals: property " + k.Text + " holds no object")
 			}
 			o.props = append(o.props, originalProp{
 				holder: holder,
@@ -233,7 +233,7 @@ func (r *RealmPart) matchResultShapesFor(array *Shape) *matchResultShapes {
 // [RealmPart.NewArrayWithRoom] that has no named properties.
 func (r *RealmPart) DefineMatchResultProperties(a *Object, index, input, groups Value) {
 	if a.shape != r.Shapes.Array || len(a.slots) != 0 {
-		panic("engine: DefineMatchResultProperties on an array that is not new")
+		panic("storage: DefineMatchResultProperties on an array that is not new")
 	}
 	a.shape = r.matchResultShapesFor(a.shape).plain
 	a.slots = append(a.slots, index, input, groups)
@@ -243,7 +243,7 @@ func (r *RealmPart) DefineMatchResultProperties(a *Object, index, input, groups 
 // the data property indices after groups.
 func (r *RealmPart) DefineMatchResultPropertiesWithIndices(a *Object, index, input, groups, indices Value) {
 	if a.shape != r.Shapes.Array || len(a.slots) != 0 {
-		panic("engine: DefineMatchResultPropertiesWithIndices on an array that is not new")
+		panic("storage: DefineMatchResultPropertiesWithIndices on an array that is not new")
 	}
 	a.shape = r.matchResultShapesFor(a.shape).withIndices
 	a.slots = append(a.slots, index, input, groups, indices)

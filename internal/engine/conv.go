@@ -210,7 +210,7 @@ func (cx *ExecutionContext) ToObject(v storage.Value) *storage.Object {
 	case storage.KindBigInt:
 		return storage.NewObjectWithState(cx.ShapeFor(cx.Intrinsic(storage.IntrinsicBigIntPrototype)), storage.ClassBigInt, v)
 	}
-	panic("ekuma: internal value reached ToObject")
+	panic("engine: internal value reached ToObject")
 }
 
 // NewStringObject returns the String object that wraps the string s.
@@ -257,7 +257,7 @@ func (cx *ExecutionContext) ToBigInt(v storage.Value) storage.Value {
 	case storage.KindSymbol:
 		cx.ThrowTypeError("cannot convert a Symbol value to a BigInt")
 	}
-	panic("ekuma: internal value reached ToBigInt")
+	panic("engine: internal value reached ToBigInt")
 }
 
 // looseEquals implements IsLooselyEqual.

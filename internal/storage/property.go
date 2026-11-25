@@ -58,7 +58,7 @@ func (sp *Space) Add(o *Object, key *Object, val Value, flags uint8) {
 // ExecutionContext.NewLazyObject must be initialized already.
 func (r *RealmPart) Define(o *Object, key *Object, val Value, flags uint8) {
 	if ValidateExec && o.Class == ClassLazy {
-		panic("engine: property definition on an uninitialized lazy object")
+		panic("storage: property definition on an uninitialized lazy object")
 	}
 	if o.flags&ObjExotic != 0 && o.Fn != nil {
 		r.Materialize(o)
@@ -535,7 +535,7 @@ func (o *Object) InitBinding(key *Object, v Value) {
 // StoreMapped stores v in p, an index property of the arguments object o that maps to a parameter.
 func (o *Object) StoreMapped(p Prop, v Value) {
 	if ValidateExec && o.Class != ClassArguments {
-		panic("engine: StoreMapped on an object of another class")
+		panic("storage: StoreMapped on an object of another class")
 	}
 	o.slots[p.Slot] = v
 }

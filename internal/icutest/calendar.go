@@ -72,7 +72,7 @@ func temporalFields(calendar string, fields map[string]int) map[string]any {
 		case "SECOND":
 			bag["second"] = v
 		default:
-			panic("unknown ICU date field " + key)
+			panic("icutest: unknown ICU date field " + key)
 		}
 	}
 	return bag

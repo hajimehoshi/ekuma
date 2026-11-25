@@ -436,7 +436,7 @@ func (o *Object) SetArrayIndex(i uint32) {
 // GrowLength makes the length of the array o n, which is greater.
 func (o *Object) GrowLength(n uint32) {
 	if ValidateExec && n < o.length {
-		panic("engine: GrowLength to a smaller length")
+		panic("storage: GrowLength to a smaller length")
 	}
 	o.length = n
 }

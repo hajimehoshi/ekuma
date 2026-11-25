@@ -194,7 +194,7 @@ func (c *execChecks) storage(n int) []storage.Value {
 	c.retired = slices.Delete(c.retired, 0, 1)
 	for i := range s {
 		if !sameBits(s[i], storage.StalePoison) {
-			panic(fmt.Sprintf("ekumavalidate: wrote to abandoned storage at the stack slot %d", i))
+			panic(fmt.Sprintf("engine: wrote to abandoned storage at the stack slot %d", i))
 		}
 	}
 	if cap(s) < n {
@@ -299,7 +299,7 @@ func (ag *agent) staleWrite(depth int) int {
 // checkAbandoned checks the storage that only loops from depth on referred to.
 func (ag *agent) checkAbandoned(depth int) {
 	if i := ag.staleWrite(depth); i >= 0 {
-		panic(fmt.Sprintf("ekumavalidate: wrote stale registers at the stack slot %d", i))
+		panic(fmt.Sprintf("engine: wrote stale registers at the stack slot %d", i))
 	}
 }
 
@@ -413,13 +413,13 @@ func (ag *agent) hasOpenUpval(s *execStep, r int) bool {
 // validationFailure describes a failed check at pc.
 func validationFailure(fp *storage.FuncProto, pc int, msg string) string {
 	in := fp.Code[pc]
-	return fmt.Sprintf("ekumavalidate: %s at %d of %s (%s): %s", in.Op, pc, fp.Name, fp.File, msg)
+	return fmt.Sprintf("engine: %s at %d of %s (%s): %s", in.Op, pc, fp.Name, fp.File, msg)
 }
 
 // checkActive checks that the active context is that of the running frame, whose code is fp.
 func (ag *agent) checkActive(fp *storage.FuncProto) {
 	if ag.active.realmPart != fp.Realm {
-		panic(fmt.Sprintf("ekumavalidate: active context is not that of the running frame of %s", fp.Name))
+		panic(fmt.Sprintf("engine: active context is not that of the running frame of %s", fp.Name))
 	}
 }
 
@@ -427,7 +427,7 @@ func (ag *agent) checkActive(fp *storage.FuncProto) {
 // with those of the storage operations.
 func (cx *ExecutionContext) checkAppend(o *storage.Object) {
 	if !o.ElemsResizable() || !cx.NewElementsPlain(o) {
-		panic("ekumavalidate: the interpreter loop appends to an array that is not plain")
+		panic("engine: the interpreter loop appends to an array that is not plain")
 	}
 }
 

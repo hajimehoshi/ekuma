@@ -54,7 +54,7 @@ type Function struct {
 // changing it.
 func (f *Function) ChangeableInfo() *NativeInfo {
 	if f.Info == &ProxyInfo {
-		panic("engine: change of the description of a proxy")
+		panic("storage: change of the description of a proxy")
 	}
 	return f.Info
 }

@@ -3211,7 +3211,7 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 			}
 
 		default:
-			panic("ekuma: unknown bytecode.Opcode")
+			panic("engine: unknown opcode")
 		}
 		continue
 
@@ -3259,7 +3259,7 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 				strict := i.Op == bytecode.OpGetGlobalStrict || i.Op == bytecode.OpGetGlobalOrUndefStrict
 				val = ag.active.getGlobal(fp.Keys[i.B], &fp.Globals[i.C], orUndef, strict)
 			default:
-				panic("ekuma: unexpected property read opcode: " + i.Op.String())
+				panic("engine: unexpected property read opcode: " + i.Op.String())
 			}
 			regs = ag.reload(regs, base, fp)
 			if getter != nil {
@@ -3291,7 +3291,7 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 				fr.pc = pc
 				setter = ag.active.setValue(receiver, key, rhs, i.Op == bytecode.OpSetIndexStrict || i.Op == bytecode.OpSetIndexIntStrict)
 			default:
-				panic("ekuma: unexpected property write opcode: " + i.Op.String())
+				panic("engine: unexpected property write opcode: " + i.Op.String())
 			}
 			if setter != nil {
 				argBase = ag.frames[len(ag.frames)-1].top()
@@ -3388,7 +3388,7 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 			if info := fn.Info; info != nil {
 				// The instructions that construct with a native function call Construct.
 				if validateExec && (isNew || newTarget != nil) {
-					panic("ekuma: construction in a call of a native function")
+					panic("engine: construction in a call of a native function")
 				}
 				if info.Native.HasFast() {
 					k := nativeFastOf(info.Native)

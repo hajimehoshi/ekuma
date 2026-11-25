@@ -654,7 +654,7 @@ func (o *Object) HasElementAt(i uint32) bool {
 // for i.
 func (o *Object) StoreElement(i uint32, v Value) {
 	if ValidateExec && !o.HasElementAt(i) {
-		panic("engine: StoreElement of an element that does not exist")
+		panic("storage: StoreElement of an element that does not exist")
 	}
 	o.elems[i] = v
 }

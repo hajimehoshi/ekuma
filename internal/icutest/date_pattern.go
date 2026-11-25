@@ -144,7 +144,7 @@ func datePatternOptions(id, skeleton, zone string) (string, map[string]any, stri
 		case "rg":
 			return "", nil, "ICU region override is outside DateTimeFormat's locale keys"
 		default:
-			panic("unexpected ICU locale keyword " + kv)
+			panic("icutest: unexpected ICU locale keyword " + kv)
 		}
 	}
 	opts["calendar"] = cal
@@ -233,7 +233,7 @@ func datePatternOptions(id, skeleton, zone string) (string, map[string]any, stri
 		case 'w', 'W', 'D', 'F', 'g', 'A':
 			return "", nil, "week number, ordinal day, Julian day or milliseconds in day"
 		default:
-			panic("unknown ICU skeleton field in " + skeleton)
+			panic("icutest: unknown ICU skeleton field in " + skeleton)
 		}
 	}
 	return loc, opts, ""
@@ -554,6 +554,6 @@ func patternField(ch byte, n int, loc string, opts map[string]any) (key, value s
 	case 'v':
 		return "timeZoneName", dateNameWidth(n) + "Generic", true
 	default:
-		panic(fmt.Sprintf("unhandled expected date pattern field %c", ch))
+		panic(fmt.Sprintf("icutest: unhandled expected date pattern field %c", ch))
 	}
 }

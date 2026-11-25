@@ -155,7 +155,7 @@ func originalFailure(cache string, key *Object, got, want string) string {
 	if key != nil {
 		cache += " of " + DisplayString(Value{O: key})
 	}
-	return "ekumavalidate: " + CacheMismatch(cache, got, want)
+	return "storage: " + CacheMismatch(cache, got, want)
 }
 
 // CacheMismatch describes a cache that answered with got where the lookup finds want.
@@ -244,7 +244,7 @@ func (r *RealmPart) checkRegExpShape(o *Object) {
 // checkEnumerable checks what the shared shape s remembers about its enumerable properties.
 func (s *Shape) checkEnumerable() {
 	if want := s.sharedHasEnumerableString(); (s.enumerable == enumerableSome) != want {
-		panic("ekumavalidate: " + CacheMismatch("the cache of enumerable properties", fmt.Sprint(!want), fmt.Sprint(want)))
+		panic("storage: " + CacheMismatch("the cache of enumerable properties", fmt.Sprint(!want), fmt.Sprint(want)))
 	}
 }
 
@@ -267,6 +267,6 @@ func (c *sparseIndexCache) checkSparseIndices(s *Shape) {
 	}
 	slices.Sort(want)
 	if !slices.Equal(c.indices, want) {
-		panic("ekumavalidate: " + CacheMismatch("the cache of array indices", fmt.Sprint(c.indices), fmt.Sprint(want)))
+		panic("storage: " + CacheMismatch("the cache of array indices", fmt.Sprint(c.indices), fmt.Sprint(want)))
 	}
 }

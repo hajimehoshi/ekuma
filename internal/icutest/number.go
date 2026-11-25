@@ -75,7 +75,7 @@ func scaleDecimal(s string, numerator, denominator int64) string {
 	}
 	v, ok := new(big.Rat).SetString(s)
 	if !ok {
-		panic("invalid decimal input " + s)
+		panic("icutest: invalid decimal input " + s)
 	}
 	v.Mul(v, big.NewRat(numerator, denominator))
 	if v.Sign() == 0 && strings.HasPrefix(s, "-") != (numerator < 0) {
@@ -83,7 +83,7 @@ func scaleDecimal(s string, numerator, denominator int64) string {
 	}
 	places, exact := v.FloatPrec()
 	if !exact {
-		panic("non-terminating decimal scale")
+		panic("icutest: non-terminating decimal scale")
 	}
 	return v.FloatString(places)
 }

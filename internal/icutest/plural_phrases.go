@@ -78,7 +78,7 @@ func matchesCardinalRelation(relation string, operands map[string]int) bool {
 	words := strings.Fields(relation)
 	value, ok := operands[words[0]]
 	if !ok {
-		panic("unknown plural operand in " + relation)
+		panic("icutest: unknown plural operand in " + relation)
 	}
 	if len(words) == 5 && words[1] == "%" {
 		if value >= 0 {
@@ -87,7 +87,7 @@ func matchesCardinalRelation(relation string, operands map[string]int) bool {
 		words = words[2:]
 	}
 	if len(words) != 3 || words[1] != "=" && words[1] != "!=" {
-		panic("unknown plural relation " + relation)
+		panic("icutest: unknown plural relation " + relation)
 	}
 	var member bool
 	for interval := range strings.SplitSeq(words[2], ",") {

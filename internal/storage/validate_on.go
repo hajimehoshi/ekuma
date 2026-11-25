@@ -33,7 +33,7 @@ func IsStale(v Value) bool {
 // CheckValue checks that v was not read from stale registers.
 func CheckValue(v Value) {
 	if IsStale(v) {
-		panic("ekumavalidate: a value was read from stale registers")
+		panic("storage: a value was read from stale registers")
 	}
 }
 
@@ -42,6 +42,6 @@ func CheckValue(v Value) {
 func (r *RealmPart) checkArrayProtoPlain() {
 	a := r.Intrinsic(IntrinsicArrayPrototype)
 	if a.Kind != KindArray || a.flags&ObjExotic != 0 || len(a.elems) != 0 || !a.InheritsNoIndex() {
-		panic("ekumavalidate: the prototypes of plain arrays are not plain")
+		panic("storage: the prototypes of plain arrays are not plain")
 	}
 }

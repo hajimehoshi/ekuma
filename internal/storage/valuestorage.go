@@ -24,7 +24,7 @@ func WithoutLast[T any](s []T) []T {
 // InitSlots makes storage the slots of an object that has none.
 func (p *objectProperties) InitSlots(storage []Value) {
 	if ValidateExec && len(p.slots) != 0 {
-		panic("engine: initSlots on an object with slots")
+		panic("storage: InitSlots on an object with slots")
 	}
 	p.slots = storage
 }
@@ -32,7 +32,7 @@ func (p *objectProperties) InitSlots(storage []Value) {
 // fillSlots copies vals to the slots of an object that has none.
 func (p *objectProperties) fillSlots(vals []Value) {
 	if ValidateExec && len(p.slots) != 0 {
-		panic("engine: fillSlots on an object with slots")
+		panic("storage: fillSlots on an object with slots")
 	}
 	p.slots = append(p.slots[:0], vals...)
 }
@@ -103,7 +103,7 @@ func (o *Object) removeSlot(i int) {
 // InitElems makes storage the elements of an object that has none.
 func (p *objectProperties) InitElems(storage []Value) {
 	if ValidateExec && len(p.elems) != 0 {
-		panic("engine: initElems on an object with elements")
+		panic("storage: InitElems on an object with elements")
 	}
 	p.elems = storage
 }

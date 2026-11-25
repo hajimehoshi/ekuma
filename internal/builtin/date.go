@@ -95,7 +95,7 @@ func formatDate(cx *engine.ExecutionContext, method string, tv float64) string {
 	case "toLocaleTimeString":
 		return datetime.LocaleTimeString(tv, tz)
 	}
-	panic("invalid Date format method")
+	panic("builtin: invalid Date format method")
 }
 
 var (

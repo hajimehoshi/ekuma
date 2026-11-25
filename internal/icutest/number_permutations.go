@@ -103,7 +103,7 @@ func numberSkeletonOptions(parts []string) (map[string]any, int, string) {
 		case "decimal-always":
 			return nil, 0, "Intl cannot force a decimal separator after an integer"
 		default:
-			panic("unknown ICU number skeleton " + part)
+			panic("icutest: unknown ICU number skeleton " + part)
 		}
 	}
 	if o["style"] == "currency" {

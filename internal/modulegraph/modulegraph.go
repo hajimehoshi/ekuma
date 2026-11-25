@@ -382,7 +382,7 @@ func (n *Node[M]) starTable() map[string]Resolution[M] {
 		}
 		provided[node] = t
 	}
-	panic("unreachable")
+	panic("not reached")
 }
 
 // setStarEntry sets the resolution r of name in the table t, creating t when it is nil, and
