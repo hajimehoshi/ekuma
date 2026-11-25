@@ -134,7 +134,7 @@ func testFastPathSource(t *testing.T, fset *token.FileSet, s ast.Stmt) {
 		case *ast.FuncLit, *ast.GoStmt, *ast.DeferStmt, *ast.SendStmt, *ast.SelectStmt:
 			t.Errorf("%v: %T", fset.Position(n.Pos()), n)
 		case *ast.CompositeLit:
-			if _, ok := n.Type.(*ast.Ident); !ok {
+			if _, ok := n.Type.(*ast.Ident); !ok && types.ExprString(n.Type) != "storage.Value" {
 				t.Errorf("%v: literal of %s", fset.Position(n.Pos()), types.ExprString(n.Type))
 			}
 		case *ast.UnaryExpr:

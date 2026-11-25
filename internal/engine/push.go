@@ -3,7 +3,10 @@
 
 package engine
 
-import "github.com/hajimehoshi/ekuma/internal/quiet"
+import (
+	"github.com/hajimehoshi/ekuma/internal/quiet"
+	"github.com/hajimehoshi/ekuma/internal/storage"
+)
 
 const pushSampleInterval = 8
 
@@ -11,7 +14,7 @@ const pushSampleInterval = 8
 type pushSizeHint struct {
 	pc int
 	// previous and current are the sampled sizes of successive runs at pc.
-	// A push reaching minElems+1 starts a new run.
+	// A push reaching storage.MinElems+1 starts a new run.
 	previous uint16
 	current  uint16
 	// target is the smaller of the two completed samples when a run starts.
@@ -21,12 +24,12 @@ type pushSizeHint struct {
 // PushElements appends vals to the array o and returns its new length and true.
 // If o requires the generic Array.prototype.push algorithm, it leaves o unchanged
 // and returns 0, false.
-func PushElements(q quiet.Context, o *Object, vals []Value) (uint32, bool) {
+func PushElements(q quiet.Context, o *storage.Object, vals []storage.Value) (uint32, bool) {
 	n, ok := q.AppendElements(o, vals)
 	// Sample single-element pushes so earlier array lengths at this call site can
 	// guide how much space to reserve.
-	if ok && len(vals) == 1 && n > minElems && n <= maxPresizedElems {
-		if n == minElems+1 || int(n) == cap(o.Elems) || n%pushSampleInterval == 0 {
+	if ok && len(vals) == 1 && n > storage.MinElems && n <= storage.MaxPresizedElems {
+		if n == storage.MinElems+1 || int(n) == cap(o.Elems) || n%pushSampleInterval == 0 {
 			observePush(q, o)
 		}
 	}
@@ -34,12 +37,12 @@ func PushElements(q quiet.Context, o *Object, vals []Value) (uint32, bool) {
 }
 
 // observePush is [agent.observePush].
-func observePush(q quiet.Context, o *Object) {
+func observePush(q quiet.Context, o *storage.Object) {
 	executionContextOf(q.Realm).observePush(o)
 }
 
 // observePush samples the array after a single-element push at the calling frame's pc.
-func (ag *agent) observePush(o *Object) {
+func (ag *agent) observePush(o *storage.Object) {
 	if len(ag.frames) == 0 {
 		return
 	}
@@ -62,13 +65,13 @@ func (ag *agent) observePush(o *Object) {
 			pc: fr.pc,
 		}
 	}
-	if n == minElems+1 {
+	if n == storage.MinElems+1 {
 		h.target, h.previous, h.current = min(h.previous, h.current), h.current, 0
 	}
 	if n >= 2*pushSampleInterval {
 		// The final length can fall between samples. Limit the allowance
 		// to space the array already acquired.
-		h.current = uint16(min(n+pushSampleInterval-1, cap(o.Elems), maxPresizedElems))
+		h.current = uint16(min(n+pushSampleInterval-1, cap(o.Elems), storage.MaxPresizedElems))
 	}
 	if n == cap(o.Elems) {
 		// Bound the cost of a short result following larger ones.

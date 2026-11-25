@@ -24,11 +24,11 @@ const (
 )
 
 // ToPrimitive implements ToPrimitive.
-func (cx *ExecutionContext) ToPrimitive(v Value, h Hint) Value {
+func (cx *ExecutionContext) ToPrimitive(v storage.Value, h Hint) storage.Value {
 	if !v.IsObject() {
 		return v
 	}
-	if m := cx.GetMethod(v, cx.WellKnownSymbol(SymbolToPrimitive)); m != nil {
+	if m := cx.GetMethod(v, cx.WellKnownSymbol(storage.SymbolToPrimitive)); m != nil {
 		var name wtf8.String = "default"
 		switch h {
 		case HintNumber:
@@ -46,13 +46,13 @@ func (cx *ExecutionContext) ToPrimitive(v Value, h Hint) Value {
 }
 
 // OrdinaryToPrimitive implements OrdinaryToPrimitive. h is [HintString] or [HintNumber].
-func (cx *ExecutionContext) OrdinaryToPrimitive(o *Object, h Hint) Value {
-	first, second := cx.Key(keyValueOf), cx.Key(KeyToString)
+func (cx *ExecutionContext) OrdinaryToPrimitive(o *storage.Object, h Hint) storage.Value {
+	first, second := cx.Key(storage.KeyValueOf), cx.Key(storage.KeyToString)
 	if h == HintString {
 		first, second = second, first
 	}
-	v := Value{O: o}
-	for _, name := range [2]*Object{first, second} {
+	v := storage.Value{O: o}
+	for _, name := range [2]*storage.Object{first, second} {
 		if m := cx.GetV(v, name); m.IsCallable() {
 			if r := cx.Call(m.O, v); !r.IsObject() {
 				return r
@@ -64,7 +64,7 @@ func (cx *ExecutionContext) OrdinaryToPrimitive(o *Object, h Hint) Value {
 }
 
 // GetMethod implements GetMethod: the callable property key of v, or nil when it is undefined or null.
-func (cx *ExecutionContext) GetMethod(v Value, key *Object) *Object {
+func (cx *ExecutionContext) GetMethod(v storage.Value, key *storage.Object) *storage.Object {
 	m := cx.GetV(v, key)
 	if m.IsNullish() {
 		return nil
@@ -76,7 +76,7 @@ func (cx *ExecutionContext) GetMethod(v Value, key *Object) *Object {
 }
 
 // ToNumber implements ToNumber.
-func (cx *ExecutionContext) ToNumber(v Value) float64 {
+func (cx *ExecutionContext) ToNumber(v storage.Value) float64 {
 	o := v.O
 	if o == nil {
 		return math.NaN()
@@ -85,41 +85,41 @@ func (cx *ExecutionContext) ToNumber(v Value) float64 {
 		return v.N
 	}
 	switch o.Kind {
-	case kindNull, kindFalse:
+	case storage.KindNull, storage.KindFalse:
 		return 0
-	case kindTrue:
+	case storage.KindTrue:
 		return 1
-	case kindString:
+	case storage.KindString:
 		if len(o.Text) <= shortstrings.MaxBytes {
 			if n, ok := shortstrings.ParseDecimal(math.Float64bits(v.N), len(o.Text)); ok {
 				return float64(n)
 			}
 		}
 		return numconv.StringToNumber(v.Str(), cx.Poll)
-	case kindSymbol:
+	case storage.KindSymbol:
 		cx.ThrowTypeError("cannot convert a Symbol value to a number")
-	case kindBigInt:
+	case storage.KindBigInt:
 		cx.ThrowTypeError("cannot convert a BigInt value to a number")
 	}
 	return cx.ToNumber(cx.ToPrimitive(v, HintNumber))
 }
 
 // ToNumeric implements ToNumeric: the result is a number or a BigInt.
-func (cx *ExecutionContext) ToNumeric(v Value) Value {
+func (cx *ExecutionContext) ToNumeric(v storage.Value) storage.Value {
 	if v.O == storage.NumberObject {
 		return v
 	}
 	if v.IsObject() {
 		v = cx.ToPrimitive(v, HintNumber)
 	}
-	if v.O != nil && v.O.Kind == kindBigInt {
+	if v.O != nil && v.O.Kind == storage.KindBigInt {
 		return v
 	}
 	return storage.Number(cx.ToNumber(v))
 }
 
 // ToIntegerOrInfinity implements ToIntegerOrInfinity.
-func (cx *ExecutionContext) ToIntegerOrInfinity(v Value) float64 {
+func (cx *ExecutionContext) ToIntegerOrInfinity(v storage.Value) float64 {
 	if v.O == storage.NumberObject {
 		return numconv.ToIntegerOrInfinity(v.N)
 	}
@@ -127,7 +127,7 @@ func (cx *ExecutionContext) ToIntegerOrInfinity(v Value) float64 {
 }
 
 // ToInt32 implements ToInt32.
-func (cx *ExecutionContext) ToInt32(v Value) int32 {
+func (cx *ExecutionContext) ToInt32(v storage.Value) int32 {
 	if v.O == storage.NumberObject {
 		return numconv.ToInt32(v.N)
 	}
@@ -135,7 +135,7 @@ func (cx *ExecutionContext) ToInt32(v Value) int32 {
 }
 
 // ToUint32 implements ToUint32.
-func (cx *ExecutionContext) ToUint32(v Value) uint32 {
+func (cx *ExecutionContext) ToUint32(v storage.Value) uint32 {
 	if v.O == storage.NumberObject {
 		return numconv.ToUint32(v.N)
 	}
@@ -143,7 +143,7 @@ func (cx *ExecutionContext) ToUint32(v Value) uint32 {
 }
 
 // ToString implements ToString.
-func (cx *ExecutionContext) ToString(v Value) wtf8.String {
+func (cx *ExecutionContext) ToString(v storage.Value) wtf8.String {
 	o := v.O
 	if o == nil {
 		return "undefined"
@@ -152,31 +152,31 @@ func (cx *ExecutionContext) ToString(v Value) wtf8.String {
 		return numconv.NumberToString(v.N)
 	}
 	switch o.Kind {
-	case kindString:
+	case storage.KindString:
 		return v.Str()
-	case kindNull:
+	case storage.KindNull:
 		return "null"
-	case kindFalse:
+	case storage.KindFalse:
 		return "false"
-	case kindTrue:
+	case storage.KindTrue:
 		return "true"
-	case kindSymbol:
+	case storage.KindSymbol:
 		cx.ThrowTypeError("cannot convert a Symbol value to a string")
-	case kindBigInt:
+	case storage.KindBigInt:
 		return cx.BigIntToString(v, 10)
 	}
 	return cx.ToString(cx.ToPrimitive(v, HintString))
 }
 
 // ToStringValue implements ToString and returns the result as a value.
-func (cx *ExecutionContext) ToStringValue(v Value) Value {
-	if v.O != nil && v.O.Kind == kindString {
+func (cx *ExecutionContext) ToStringValue(v storage.Value) storage.Value {
+	if v.O != nil && v.O.Kind == storage.KindString {
 		return v
 	}
 	return cx.toStringValue(v)
 }
 
-func (cx *ExecutionContext) toStringValue(v Value) Value {
+func (cx *ExecutionContext) toStringValue(v storage.Value) storage.Value {
 	if v.IsObject() {
 		return cx.ToStringValue(cx.ToPrimitive(v, HintString))
 	}
@@ -187,48 +187,48 @@ func (cx *ExecutionContext) toStringValue(v Value) Value {
 }
 
 // ToObject implements ToObject.
-func (cx *ExecutionContext) ToObject(v Value) *Object {
+func (cx *ExecutionContext) ToObject(v storage.Value) *storage.Object {
 	o := v.O
-	if o != nil && o.Kind >= kindFirstObject {
+	if o != nil && o.Kind >= storage.KindFirstObject {
 		return o
 	}
 	if o == nil {
 		cx.ThrowTypeError("cannot convert undefined or null to object")
 	}
 	if o == storage.NumberObject {
-		return storage.NewObjectWithState(cx.ShapeFor(cx.Intrinsic(IntrinsicNumberPrototype)), classNumber, v.N)
+		return storage.NewObjectWithState(cx.ShapeFor(cx.Intrinsic(storage.IntrinsicNumberPrototype)), storage.ClassNumber, v.N)
 	}
 	switch o.Kind {
-	case kindNull:
+	case storage.KindNull:
 		cx.ThrowTypeError("cannot convert undefined or null to object")
-	case kindFalse, kindTrue:
-		return storage.NewObjectWithState(cx.ShapeFor(cx.Intrinsic(IntrinsicBooleanPrototype)), classBoolean, o.Kind == kindTrue)
-	case kindString:
-		return cx.NewStringObject(v.StringObject(), cx.Intrinsic(IntrinsicStringPrototype))
-	case kindSymbol:
-		return storage.NewObjectWithState(cx.ShapeFor(cx.Intrinsic(IntrinsicSymbolPrototype)), classSymbol, o)
-	case kindBigInt:
-		return storage.NewObjectWithState(cx.ShapeFor(cx.Intrinsic(IntrinsicBigIntPrototype)), classBigInt, v)
+	case storage.KindFalse, storage.KindTrue:
+		return storage.NewObjectWithState(cx.ShapeFor(cx.Intrinsic(storage.IntrinsicBooleanPrototype)), storage.ClassBoolean, o.Kind == storage.KindTrue)
+	case storage.KindString:
+		return cx.NewStringObject(v.StringObject(), cx.Intrinsic(storage.IntrinsicStringPrototype))
+	case storage.KindSymbol:
+		return storage.NewObjectWithState(cx.ShapeFor(cx.Intrinsic(storage.IntrinsicSymbolPrototype)), storage.ClassSymbol, o)
+	case storage.KindBigInt:
+		return storage.NewObjectWithState(cx.ShapeFor(cx.Intrinsic(storage.IntrinsicBigIntPrototype)), storage.ClassBigInt, v)
 	}
 	panic("ekuma: internal value reached ToObject")
 }
 
 // NewStringObject returns the String object that wraps the string s.
-func (cx *ExecutionContext) NewStringObject(s *Object, proto *Object) *Object {
-	w := storage.NewObjectWithState(cx.ShapeFor(proto), classString, s)
-	cx.Add(w, cx.Key(KeyLength), storage.Number(float64(s.StringLength())), 0)
+func (cx *ExecutionContext) NewStringObject(s *storage.Object, proto *storage.Object) *storage.Object {
+	w := storage.NewObjectWithState(cx.ShapeFor(proto), storage.ClassString, s)
+	cx.Add(w, cx.Key(storage.KeyLength), storage.Number(float64(s.StringLength())), 0)
 	return w
 }
 
 // RequireObjectCoercible throws a TypeError when v is undefined or null.
-func (cx *ExecutionContext) RequireObjectCoercible(v Value, what string) {
+func (cx *ExecutionContext) RequireObjectCoercible(v storage.Value, what string) {
 	if v.IsNullish() {
 		cx.ThrowTypeError(what + " called on null or undefined")
 	}
 }
 
 // ToBigInt implements ToBigInt. The result is a BigInt.
-func (cx *ExecutionContext) ToBigInt(v Value) Value {
+func (cx *ExecutionContext) ToBigInt(v storage.Value) storage.Value {
 	p := cx.ToPrimitive(v, HintNumber)
 	if p.O == storage.NumberObject {
 		cx.ThrowTypeError("cannot convert " + wtf8.ToValidUTF8(numconv.NumberToString(p.N)) + " to a BigInt")
@@ -237,15 +237,15 @@ func (cx *ExecutionContext) ToBigInt(v Value) Value {
 		cx.ThrowTypeError("cannot convert undefined to a BigInt")
 	}
 	switch p.O.Kind {
-	case kindBigInt:
+	case storage.KindBigInt:
 		return p
-	case kindNull:
+	case storage.KindNull:
 		cx.ThrowTypeError("cannot convert " + wtf8.ToValidUTF8(cx.ToString(p)) + " to a BigInt")
-	case kindFalse:
+	case storage.KindFalse:
 		return storage.BigIntFromInt64(0)
-	case kindTrue:
+	case storage.KindTrue:
 		return storage.BigIntFromInt64(1)
-	case kindString:
+	case storage.KindString:
 		i, err := numconv.StringToBigInt(p.Str(), MaxBigIntBits, cx.Poll)
 		switch {
 		case errors.Is(err, numconv.ErrNotBigInt):
@@ -254,14 +254,14 @@ func (cx *ExecutionContext) ToBigInt(v Value) Value {
 			cx.ThrowRangeError("maximum BigInt size exceeded")
 		}
 		return storage.NewBigInt(i)
-	case kindSymbol:
+	case storage.KindSymbol:
 		cx.ThrowTypeError("cannot convert a Symbol value to a BigInt")
 	}
 	panic("ekuma: internal value reached ToBigInt")
 }
 
 // looseEquals implements IsLooselyEqual.
-func (cx *ExecutionContext) looseEquals(a, b Value) bool {
+func (cx *ExecutionContext) looseEquals(a, b storage.Value) bool {
 	for {
 		if a.O == storage.NumberObject && b.O == storage.NumberObject {
 			return a.N == b.N
@@ -286,10 +286,10 @@ func (cx *ExecutionContext) looseEquals(a, b Value) bool {
 			a = storage.Number(cx.ToNumber(a))
 		case b.IsBool():
 			b = storage.Number(cx.ToNumber(b))
-		case ak == kindSymbol || bk == kindSymbol:
+		case ak == storage.KindSymbol || bk == storage.KindSymbol:
 			return false
-		case ak == kindBigInt || bk == kindBigInt:
-			return cx.compareBigIntMixed(a, b) == cmpEqual
+		case ak == storage.KindBigInt || bk == storage.KindBigInt:
+			return cx.compareBigIntMixed(a, b) == storage.CmpEqual
 		default:
 			// A number and a string.
 			return cx.ToNumber(a) == cx.ToNumber(b)
@@ -298,15 +298,15 @@ func (cx *ExecutionContext) looseEquals(a, b Value) bool {
 }
 
 // kindOf returns the kind of v.
-func kindOf(v Value) kind {
+func kindOf(v storage.Value) storage.Kind {
 	if v.O == nil {
-		return kindUndefined
+		return storage.KindUndefined
 	}
 	return v.O.Kind
 }
 
 // compareBigIntMixed compares a BigInt with a BigInt, a number or a string, in either order.
-func (cx *ExecutionContext) compareBigIntMixed(a, b Value) cmpResult {
+func (cx *ExecutionContext) compareBigIntMixed(a, b storage.Value) storage.CmpResult {
 	if x, ok := a.BigInt64(); ok {
 		if y, ok := b.BigInt64(); ok {
 			return storage.CompareInt64s(x, y)
@@ -319,7 +319,7 @@ func (cx *ExecutionContext) compareBigIntMixed(a, b Value) cmpResult {
 	}
 	// toBig converts v to a BigInt or a number. huge is the sign of a string whose value is
 	// beyond the size of BigInts, or 0.
-	toBig := func(v Value) (i *big.Int, f float64, huge int, ok bool) {
+	toBig := func(v storage.Value) (i *big.Int, f float64, huge int, ok bool) {
 		if v.O == storage.NumberObject {
 			return nil, v.N, 0, true
 		}
@@ -327,9 +327,9 @@ func (cx *ExecutionContext) compareBigIntMixed(a, b Value) cmpResult {
 			return nil, 0, 0, false
 		}
 		switch v.O.Kind {
-		case kindBigInt:
+		case storage.KindBigInt:
 			return v.BigInt(), 0, 0, true
-		case kindString:
+		case storage.KindString:
 			i, err := numconv.StringToBigInt(v.Str(), MaxBigIntBits, cx.Poll)
 			switch {
 			case errors.Is(err, numconv.ErrNotBigInt):
@@ -343,44 +343,44 @@ func (cx *ExecutionContext) compareBigIntMixed(a, b Value) cmpResult {
 	}
 	x, xf, xHuge, ok := toBig(a)
 	if !ok {
-		return cmpUndefined
+		return storage.CmpUndefined
 	}
 	y, yf, yHuge, ok := toBig(b)
 	if !ok {
-		return cmpUndefined
+		return storage.CmpUndefined
 	}
 	// The other operand of a string is a BigInt, which is smaller in magnitude.
 	switch {
 	case xHuge != 0:
-		return cmpResult(xHuge + 1)
+		return storage.CmpResult(xHuge + 1)
 	case yHuge != 0:
-		return cmpResult(-yHuge + 1)
+		return storage.CmpResult(-yHuge + 1)
 	}
 	switch {
 	case x != nil && y != nil:
-		return cmpResult(x.Cmp(y) + 1)
+		return storage.CmpResult(x.Cmp(y) + 1)
 	case x != nil:
 		return compareBigFloat(x, yf)
 	case y != nil:
 		return compareBigFloat(y, xf).Reverse()
 	}
-	return cmpUndefined
+	return storage.CmpUndefined
 }
 
-func compareBigFloat(x *big.Int, f float64) cmpResult {
+func compareBigFloat(x *big.Int, f float64) storage.CmpResult {
 	switch {
 	case f != f:
-		return cmpUndefined
+		return storage.CmpUndefined
 	case math.IsInf(f, 1):
-		return cmpLess
+		return storage.CmpLess
 	case math.IsInf(f, -1):
-		return cmpGreater
+		return storage.CmpGreater
 	}
-	return cmpResult(new(big.Float).SetInt(x).Cmp(big.NewFloat(f)) + 1)
+	return storage.CmpResult(new(big.Float).SetInt(x).Cmp(big.NewFloat(f)) + 1)
 }
 
 // compare implements IsLessThan for a and b, converting a first when leftFirst is set.
-func (cx *ExecutionContext) compare(a, b Value, leftFirst bool) cmpResult {
+func (cx *ExecutionContext) compare(a, b storage.Value, leftFirst bool) storage.CmpResult {
 	if a.O == storage.NumberObject && b.O == storage.NumberObject {
 		return storage.CompareNumbers(a.N, b.N)
 	}
@@ -392,9 +392,9 @@ func (cx *ExecutionContext) compare(a, b Value, leftFirst bool) cmpResult {
 		a = cx.ToPrimitive(a, HintNumber)
 	}
 	if a.IsString() && b.IsString() {
-		return cmpResult(storage.CompareStrings(a, b) + 1)
+		return storage.CmpResult(storage.CompareStrings(a, b) + 1)
 	}
-	if kindOf(a) == kindBigInt || kindOf(b) == kindBigInt {
+	if kindOf(a) == storage.KindBigInt || kindOf(b) == storage.KindBigInt {
 		if !a.IsNumber() && !a.IsBigInt() && !a.IsString() {
 			a = storage.Number(cx.ToNumber(a))
 		}
@@ -407,7 +407,7 @@ func (cx *ExecutionContext) compare(a, b Value, leftFirst bool) cmpResult {
 }
 
 // addValues implements the + operator for operands that are not both numbers.
-func (cx *ExecutionContext) addValues(a, b Value) Value {
+func (cx *ExecutionContext) addValues(a, b storage.Value) storage.Value {
 	if x, ok := a.BigInt64(); ok {
 		if y, ok := b.BigInt64(); ok {
 			if s, ok := storage.Add64(x, y); ok {
@@ -458,9 +458,9 @@ func (cx *ExecutionContext) addValues(a, b Value) Value {
 }
 
 // LengthOfArrayLike implements LengthOfArrayLike.
-func (cx *ExecutionContext) LengthOfArrayLike(o *Object) int64 {
-	if o.Kind == kindArray {
+func (cx *ExecutionContext) LengthOfArrayLike(o *storage.Object) int64 {
+	if o.Kind == storage.KindArray {
 		return int64(o.Length)
 	}
-	return numconv.ToLength(cx.ToNumber(cx.GetV(Value{O: o}, cx.Key(KeyLength))))
+	return numconv.ToLength(cx.ToNumber(cx.GetV(storage.Value{O: o}, cx.Key(storage.KeyLength))))
 }

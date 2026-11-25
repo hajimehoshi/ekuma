@@ -27,7 +27,7 @@ func (cx *ExecutionContext) checkBigIntBits(n int64) {
 const bigIntProductWords = 256 / bits.UintSize
 
 // multiplyBigInts returns the product of two BigInts.
-func (cx *ExecutionContext) multiplyBigInts(x, y *big.Int) Value {
+func (cx *ExecutionContext) multiplyBigInts(x, y *big.Int) storage.Value {
 	if x.Sign() == 0 || y.Sign() == 0 {
 		return storage.BigIntFromInt64(0)
 	}
@@ -55,7 +55,7 @@ func (cx *ExecutionContext) multiplyBigInts(x, y *big.Int) Value {
 const bigIntSumWords = 256 / bits.UintSize
 
 // addBigInts returns the sum of two BigInts.
-func (cx *ExecutionContext) addBigInts(a, b Value) Value {
+func (cx *ExecutionContext) addBigInts(a, b storage.Value) storage.Value {
 	x, y := a.BigInt(), b.BigInt()
 	if a.O == storage.BigInt64Object && b.O == storage.BigInt64Object ||
 		x.Sign() != y.Sign() || len(x.Bits()) > bigIntSumWords || len(y.Bits()) > bigIntSumWords {
@@ -79,7 +79,7 @@ func (cx *ExecutionContext) addBigInts(a, b Value) Value {
 
 // BigIntToString implements BigInt::toString. It throws a RangeError when the result would be
 // longer than MaxStringLength.
-func (cx *ExecutionContext) BigIntToString(v Value, radix int) wtf8.String {
+func (cx *ExecutionContext) BigIntToString(v storage.Value, radix int) wtf8.String {
 	if i, ok := v.BigInt64(); ok {
 		return wtf8.String(strconv.FormatInt(i, radix))
 	}
@@ -93,14 +93,14 @@ func (cx *ExecutionContext) BigIntToString(v Value, radix int) wtf8.String {
 		if x.Sign() < 0 {
 			sign = 1
 		}
-		if sign+(n+k-1)/k > MaxStringLength {
+		if sign+(n+k-1)/k > storage.MaxStringLength {
 			cx.ThrowRangeError("invalid string length")
 		}
-	} else if float64(n-1)/math.Log2(float64(radix)) > MaxStringLength {
+	} else if float64(n-1)/math.Log2(float64(radix)) > storage.MaxStringLength {
 		cx.ThrowRangeError("invalid string length")
 	}
 	s := numconv.FormatBigInt(x, radix, cx.Poll)
-	if len(s) > MaxStringLength {
+	if len(s) > storage.MaxStringLength {
 		cx.ThrowRangeError("invalid string length")
 	}
 	return s

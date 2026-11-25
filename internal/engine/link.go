@@ -10,36 +10,36 @@ import (
 )
 
 // scriptOrModuleOf returns the [[ScriptOrModule]] of the functions.
-func scriptOrModuleOf(p *funcProto) *scriptOrModule {
+func scriptOrModuleOf(p *storage.FuncProto) *scriptOrModule {
 	return p.Script.(*scriptOrModule)
 }
 
 // link converts the compiled function f and the functions nested in it to their runtime form.
 // script is their [[ScriptOrModule]]. The constants and keys of f are no longer available
 // afterwards.
-func (cx *ExecutionContext) link(f *bytecode.Func, script *scriptOrModule) *funcProto {
+func (cx *ExecutionContext) link(f *bytecode.Func, script *scriptOrModule) *storage.FuncProto {
 	return cx.linkFunc(f, script, true)
 }
 
 // linkShared is like [ExecutionContext.link], but leaves f unchanged, so that any number of agents can link f,
 // also at the same time.
-func (cx *ExecutionContext) linkShared(f *bytecode.Func, script *scriptOrModule) *funcProto {
+func (cx *ExecutionContext) linkShared(f *bytecode.Func, script *scriptOrModule) *storage.FuncProto {
 	return cx.linkFunc(f, script, false)
 }
 
 // linkFunc implements [ExecutionContext.link] and [ExecutionContext.linkShared]. consume says whether the constants and keys
 // of f are dropped.
-func (cx *ExecutionContext) linkFunc(f *bytecode.Func, script *scriptOrModule, consume bool) *funcProto {
+func (cx *ExecutionContext) linkFunc(f *bytecode.Func, script *scriptOrModule, consume bool) *storage.FuncProto {
 	legacy := !f.Strict && !f.IsArrow && !f.IsMethod && !f.IsGenerator && !f.IsAsync && !f.IsClassConstructor
-	p := &funcProto{
+	p := &storage.FuncProto{
 		Func:               f,
 		Name:               f.Name,
 		Code:               f.Code,
-		Consts:             make([]Value, len(f.Consts)),
-		Keys:               make([]*Object, len(f.Keys)),
-		Protos:             make([]*funcProto, len(f.Protos)),
-		Templates:          make([]templateSite, len(f.Templates)),
-		RegExps:            make([]regExpSite, len(f.RegExps)),
+		Consts:             make([]storage.Value, len(f.Consts)),
+		Keys:               make([]*storage.Object, len(f.Keys)),
+		Protos:             make([]*storage.FuncProto, len(f.Protos)),
+		Templates:          make([]storage.TemplateSite, len(f.Templates)),
+		RegExps:            make([]storage.RegExpSite, len(f.RegExps)),
 		Length:             f.Length,
 		Nparams:            f.NumParams,
 		Nclear:             f.NumClear,
@@ -120,9 +120,9 @@ func (cx *ExecutionContext) linkFunc(f *bytecode.Func, script *scriptOrModule, c
 		p.RegExps[i].Literal = r
 	}
 	for i, t := range f.Templates {
-		site := templateSite{
-			Cooked: make([]Value, len(t.Cooked)),
-			Raw:    make([]Value, len(t.Raw)),
+		site := storage.TemplateSite{
+			Cooked: make([]storage.Value, len(t.Cooked)),
+			Raw:    make([]storage.Value, len(t.Raw)),
 		}
 		for j, s := range t.Cooked {
 			if t.HasCooked[j] {

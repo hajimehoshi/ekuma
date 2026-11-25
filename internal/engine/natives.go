@@ -19,16 +19,16 @@ var (
 // The native functions whose code leads to the code that makes their function objects. A
 // declaration cannot register them.
 var (
-	nativePromiseResolveFunction      Native
-	nativeAutoAccessorGetter          Native
-	nativeAutoAccessorSetter          Native
-	nativeDecoratorAccessGetter       Native
-	nativeDecoratorAccessSetter       Native
-	nativeDecoratorAccessHas          Native
-	nativeAsyncDisposeFunction        Native
-	nativeAsyncFromSyncIteratorNext   Native
-	nativeAsyncFromSyncIteratorReturn Native
-	nativeAsyncFromSyncIteratorThrow  Native
+	nativePromiseResolveFunction      storage.Native
+	nativeAutoAccessorGetter          storage.Native
+	nativeAutoAccessorSetter          storage.Native
+	nativeDecoratorAccessGetter       storage.Native
+	nativeDecoratorAccessSetter       storage.Native
+	nativeDecoratorAccessHas          storage.Native
+	nativeAsyncDisposeFunction        storage.Native
+	nativeAsyncFromSyncIteratorNext   storage.Native
+	nativeAsyncFromSyncIteratorReturn storage.Native
+	nativeAsyncFromSyncIteratorThrow  storage.Native
 )
 
 func init() {
@@ -46,6 +46,6 @@ func init() {
 }
 
 // functionPrototype is the code of %Function.prototype%.
-func functionPrototype(cx *ExecutionContext, this Value, args []Value) Value {
+func functionPrototype(cx *ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	return storage.Undefined
 }

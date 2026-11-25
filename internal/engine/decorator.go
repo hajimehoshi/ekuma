@@ -21,8 +21,8 @@ const elemInitializer = 16
 
 // decoratorDef is a DecoratorDefinition Record.
 type decoratorDef struct {
-	decorator Value
-	receiver  Value
+	decorator storage.Value
+	receiver  storage.Value
 }
 
 // elementDef is a ClassElementDefinition Record, or a static block.
@@ -30,22 +30,22 @@ type elementDef struct {
 	// kind is a bytecode Elem kind without [bytecode.ElemStatic].
 	kind   int
 	static bool
-	key    Value
+	key    storage.Value
 
 	// value is the function of a method, a getter or a setter, the initializer of a field or
 	// an auto-accessor, or nil, or the function of a static block.
-	value *Object
+	value *storage.Object
 
 	// getter, setter and storage are the getter, the setter and the backing private name of an auto-accessor.
-	getter, setter, storage *Object
+	getter, setter, storage *storage.Object
 
 	decorators []decoratorDef
-	dec        fieldDecoration
+	dec        storage.FieldDecoration
 }
 
 // classDecoration is the state of the evaluation of a class that has decorators.
 type classDecoration struct {
-	name Value
+	name storage.Value
 
 	// pending are the decorators of the element that is evaluated next, in source order.
 	pending []decoratorDef
@@ -54,10 +54,10 @@ type classDecoration struct {
 	elements        []*elementDef
 
 	// metadata is the object that the context objects of the decorators share.
-	metadata *Object
+	metadata *storage.Object
 
-	staticMethodInitializers []*Object
-	classInitializers        []*Object
+	staticMethodInitializers []*storage.Object
+	classInitializers        []*storage.Object
 }
 
 // decorationState is the Record that tells whether the call of a decorator has finished.
@@ -66,25 +66,25 @@ type decorationState struct {
 }
 
 // newClassDecoration returns a new state for the evaluation of the class with the name name.
-func (ag *agent) newClassDecoration(name Value) Value {
-	return Value{O: storage.NewObjectWithState(nil, classObject, &classDecoration{
+func (ag *agent) newClassDecoration(name storage.Value) storage.Value {
+	return storage.Value{O: storage.NewObjectWithState(nil, storage.ClassObject, &classDecoration{
 		name: name,
 	})}
 }
 
 // autoAccessorOp performs the instruction i, an [bytecode.OpAutoAccessor], on the registers regs.
-func (cx *ExecutionContext) autoAccessorOp(regs []Value, i *bytecode.Instr) {
-	storage, getter, setter := cx.makeAutoAccessor(regs[i.B])
-	regs[i.A] = Value{O: storage}
-	regs[i.A+1] = Value{O: getter}
-	regs[i.A+2] = Value{O: setter}
+func (cx *ExecutionContext) autoAccessorOp(regs []storage.Value, i *bytecode.Instr) {
+	privateName, getter, setter := cx.makeAutoAccessor(regs[i.B])
+	regs[i.A] = storage.Value{O: privateName}
+	regs[i.A+1] = storage.Value{O: getter}
+	regs[i.A+2] = storage.Value{O: setter}
 }
 
 // decorateOp performs the instruction i, one of [bytecode.OpDecorateBegin] through
 // [bytecode.OpDecorateFinish], on the registers regs; x is the [bytecode.OpExtra] after an
 // [bytecode.OpDecorateElement]. It returns the value for the register a of a step that has one.
 // The registers may move when it returns.
-func (cx *ExecutionContext) decorateOp(regs []Value, i, x *bytecode.Instr) (Value, bool) {
+func (cx *ExecutionContext) decorateOp(regs []storage.Value, i, x *bytecode.Instr) (storage.Value, bool) {
 	switch i.Op {
 	case bytecode.OpDecorateBegin:
 		return cx.newClassDecoration(regs[i.B]), true
@@ -102,7 +102,7 @@ func (cx *ExecutionContext) decorateOp(regs []Value, i, x *bytecode.Instr) (Valu
 		st.classDecorators = st.pending
 		st.pending = nil
 	case bytecode.OpDecorateElement:
-		var k, v Value
+		var k, v storage.Value
 		if i.B >= 0 {
 			k = regs[i.B]
 		}
@@ -118,7 +118,7 @@ func (cx *ExecutionContext) decorateOp(regs []Value, i, x *bytecode.Instr) (Valu
 
 // addDecoratedElement adds the class element of the Elem kind elem with the key k and the value
 // or initializer v, which may be nil, to the state st, with the decorators added so far.
-func (cx *ExecutionContext) addDecoratedElement(st *classDecoration, elem int, k Value, v *Object) {
+func (cx *ExecutionContext) addDecoratedElement(st *classDecoration, elem int, k storage.Value, v *storage.Object) {
 	e := &elementDef{
 		kind:       elem &^ bytecode.ElemStatic,
 		static:     elem&bytecode.ElemStatic != 0,
@@ -135,13 +135,13 @@ func (cx *ExecutionContext) addDecoratedElement(st *classDecoration, elem int, k
 
 // makeAutoAccessor returns the backing private name, the getter and the setter of an
 // auto-accessor with the key k, which is a property key or a private name.
-func (cx *ExecutionContext) makeAutoAccessor(k Value) (backing, getter, setter *Object) {
+func (cx *ExecutionContext) makeAutoAccessor(k storage.Value) (backing, getter, setter *storage.Object) {
 	name := cx.funcNameOfKey(k)
-	if len("get ")+len(name) > MaxStringLength {
+	if len("get ")+len(name) > storage.MaxStringLength {
 		cx.ThrowRangeError("invalid string length")
 	}
 	storageName := name
-	if k.O.Class == classPrivateName {
+	if k.O.Class == storage.ClassPrivateName {
 		storageName = k.O.Text
 	}
 	backing = storage.NewPrivateName(storageName + " accessor storage")
@@ -152,19 +152,19 @@ func (cx *ExecutionContext) makeAutoAccessor(k Value) (backing, getter, setter *
 
 // autoAccessorGetter is the code of the getters of auto-accessors. Their state is the backing
 // private name, an *Object.
-func autoAccessorGetter(cx *ExecutionContext, this Value, args []Value) Value {
-	return cx.PrivateGet(this, cx.ActiveNativeState().(*Object))
+func autoAccessorGetter(cx *ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
+	return cx.PrivateGet(this, cx.ActiveNativeState().(*storage.Object))
 }
 
 // autoAccessorSetter is the code of the setters of auto-accessors. Their state is the backing
 // private name, an *Object.
-func autoAccessorSetter(cx *ExecutionContext, this Value, args []Value) Value {
-	cx.PrivateSet(this, cx.ActiveNativeState().(*Object), argAt(args, 0))
+func autoAccessorSetter(cx *ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
+	cx.PrivateSet(this, cx.ActiveNativeState().(*storage.Object), argAt(args, 0))
 	return storage.Undefined
 }
 
 // PrivateGet implements PrivateGet.
-func (cx *ExecutionContext) PrivateGet(o Value, name *Object) Value {
+func (cx *ExecutionContext) PrivateGet(o storage.Value, name *storage.Object) storage.Value {
 	v, getter := cx.getPrivate(o, name)
 	if getter != nil {
 		return cx.Call(getter, o)
@@ -173,7 +173,7 @@ func (cx *ExecutionContext) PrivateGet(o Value, name *Object) Value {
 }
 
 // PrivateSet implements PrivateSet.
-func (cx *ExecutionContext) PrivateSet(o Value, name *Object, v Value) {
+func (cx *ExecutionContext) PrivateSet(o storage.Value, name *storage.Object, v storage.Value) {
 	if setter := cx.setPrivate(o, name, v); setter != nil {
 		cx.Call(setter, o, v)
 	}
@@ -182,21 +182,21 @@ func (cx *ExecutionContext) PrivateSet(o Value, name *Object, v Value) {
 // applyClassDecorators performs the steps of ClassDefinitionEvaluation from the application of
 // the decorators of the elements to the application of the decorators of the class F, and
 // returns the class that the decorators of the class returned.
-func (cx *ExecutionContext) applyClassDecorators(st *classDecoration, f *Object) Value {
+func (cx *ExecutionContext) applyClassDecorators(st *classDecoration, f *storage.Object) storage.Value {
 	proto := f.Fn.Home
 
 	// Nothing has had access to F yet, so its [[Prototype]] is still constructorParent. Without
 	// a ClassHeritage it is %Function.prototype%, whose non-configurable, non-writable
 	// @@metadata is null, as the spec gives for that case.
-	parent := cx.Get(f.Shape.Proto, storage.NamedKey(cx.WellKnownSymbol(SymbolMetadata)))
-	var metadataProto *Object
+	parent := cx.Get(f.Shape.Proto, storage.NamedKey(cx.WellKnownSymbol(storage.SymbolMetadata)))
+	var metadataProto *storage.Object
 	if parent.IsObject() {
 		metadataProto = parent.O
 	}
 	st.metadata = cx.NewObject(metadataProto)
-	var instanceMethodInitializers []*Object
+	var instanceMethodInitializers []*storage.Object
 
-	home := func(e *elementDef) *Object {
+	home := func(e *elementDef) *storage.Object {
 		if e.static {
 			return f
 		}
@@ -231,9 +231,9 @@ func (cx *ExecutionContext) applyClassDecorators(st *classDecoration, f *Object)
 
 	// The instance elements run in the order of InitializeInstanceElements: the private
 	// methods, the initializers of the methods and then the fields.
-	var fields []classElement
+	var fields []storage.ClassElement
 	for _, init := range instanceMethodInitializers {
-		fields = append(fields, classElement{
+		fields = append(fields, storage.ClassElement{
 			Kind: elemInitializer,
 			Val:  init,
 		})
@@ -254,24 +254,24 @@ func (cx *ExecutionContext) applyClassDecorators(st *classDecoration, f *Object)
 		}
 		for _, c := range e.appendElements(nil) {
 			if c.Kind != bytecode.ElemField {
-				cx.defineClassElement(Value{O: f}, &c)
+				cx.defineClassElement(storage.Value{O: f}, &c)
 			}
 		}
 	}
 
-	newF := cx.applyDecoratorsToClassDefinition(st, Value{O: f})
-	cx.DefinePropertyOrThrow(newF.O, storage.NamedKey(cx.WellKnownSymbol(SymbolMetadata)), storage.DataDesc(Value{O: st.metadata}, FlagsHidden))
+	newF := cx.applyDecoratorsToClassDefinition(st, storage.Value{O: f})
+	cx.DefinePropertyOrThrow(newF.O, storage.NamedKey(cx.WellKnownSymbol(storage.SymbolMetadata)), storage.DataDesc(storage.Value{O: st.metadata}, storage.FlagsHidden))
 	return newF
 }
 
 // appendElements appends the elements that the element e adds to an object to elems: the
 // private methods and accessors and the fields, including the backing storage of an auto-accessor.
-func (e *elementDef) appendElements(elems []classElement) []classElement {
-	private := e.key.O != nil && e.key.O.Class == classPrivateName
+func (e *elementDef) appendElements(elems []storage.ClassElement) []storage.ClassElement {
+	private := e.key.O != nil && e.key.O.Class == storage.ClassPrivateName
 	switch e.kind {
 	case bytecode.ElemMethod, bytecode.ElemGetter, bytecode.ElemSetter:
 		if private {
-			elems = append(elems, classElement{
+			elems = append(elems, storage.ClassElement{
 				Kind: e.kind,
 				Key:  e.key,
 				Val:  e.value,
@@ -279,24 +279,24 @@ func (e *elementDef) appendElements(elems []classElement) []classElement {
 		}
 	case bytecode.ElemAccessor:
 		if private {
-			elems = append(elems, classElement{
+			elems = append(elems, storage.ClassElement{
 				Kind: bytecode.ElemGetter,
 				Key:  e.key,
 				Val:  e.getter,
-			}, classElement{
+			}, storage.ClassElement{
 				Kind: bytecode.ElemSetter,
 				Key:  e.key,
 				Val:  e.setter,
 			})
 		}
-		elems = append(elems, classElement{
+		elems = append(elems, storage.ClassElement{
 			Kind: bytecode.ElemField,
-			Key:  Value{O: e.storage},
+			Key:  storage.Value{O: e.storage},
 			Val:  e.value,
 			Dec:  &e.dec,
 		})
 	case bytecode.ElemField:
-		elems = append(elems, classElement{
+		elems = append(elems, storage.ClassElement{
 			Kind: bytecode.ElemField,
 			Key:  e.key,
 			Val:  e.value,
@@ -308,16 +308,16 @@ func (e *elementDef) appendElements(elems []classElement) []classElement {
 
 // defineMethodProperty implements DefineMethodProperty for the method, getter, setter or
 // auto-accessor e of the class with the home object home.
-func (cx *ExecutionContext) defineMethodProperty(home *Object, e *elementDef) {
-	if e.key.O != nil && e.key.O.Class == classPrivateName {
+func (cx *ExecutionContext) defineMethodProperty(home *storage.Object, e *elementDef) {
+	if e.key.O != nil && e.key.O.Class == storage.ClassPrivateName {
 		return
 	}
-	var d PropDesc
+	var d storage.PropDesc
 	d.SetEnumerable(false)
 	d.SetConfigurable(true)
 	switch e.kind {
 	case bytecode.ElemMethod:
-		d = storage.DataDesc(Value{O: e.value}, FlagsHidden)
+		d = storage.DataDesc(storage.Value{O: e.value}, storage.FlagsHidden)
 	case bytecode.ElemGetter:
 		d.SetGetter(e.value)
 	case bytecode.ElemSetter:
@@ -331,7 +331,7 @@ func (cx *ExecutionContext) defineMethodProperty(home *Object, e *elementDef) {
 
 // applyDecoratorsToElementDefinition implements ApplyDecoratorsToElementDefinition.
 // The decorators of a field or an auto-accessor add their initializers to e.dec.
-func (cx *ExecutionContext) applyDecoratorsToElementDefinition(e *elementDef, extra *[]*Object, metadata *Object) {
+func (cx *ExecutionContext) applyDecoratorsToElementDefinition(e *elementDef, extra *[]*storage.Object, metadata *storage.Object) {
 	// The decorator closest to the element applies first.
 	for _, d := range slices.Backward(e.decorators) {
 		state := &decorationState{}
@@ -339,14 +339,14 @@ func (cx *ExecutionContext) applyDecoratorsToElementDefinition(e *elementDef, ex
 		value := storage.Undefined
 		switch e.kind {
 		case bytecode.ElemMethod, bytecode.ElemGetter, bytecode.ElemSetter:
-			value = Value{O: e.value}
+			value = storage.Value{O: e.value}
 		case bytecode.ElemAccessor:
 			o := cx.NewOrdinaryObject()
-			cx.CreateDataPropertyOrThrow(o, storage.NamedKey(cx.Key(KeyGet)), Value{O: e.getter})
-			cx.CreateDataPropertyOrThrow(o, storage.NamedKey(cx.Key(KeySet)), Value{O: e.setter})
-			value = Value{O: o}
+			cx.CreateDataPropertyOrThrow(o, storage.NamedKey(cx.Key(storage.KeyGet)), storage.Value{O: e.getter})
+			cx.CreateDataPropertyOrThrow(o, storage.NamedKey(cx.Key(storage.KeySet)), storage.Value{O: e.setter})
+			value = storage.Value{O: o}
 		}
-		nv := func() Value {
+		nv := func() storage.Value {
 			defer func() {
 				state.finished = true
 			}()
@@ -361,10 +361,10 @@ func (cx *ExecutionContext) applyDecoratorsToElementDefinition(e *elementDef, ex
 			}
 		case bytecode.ElemAccessor:
 			if nv.IsObject() {
-				if g := cx.decoratorResultFunction(nv, cx.Key(KeyGet)); g != nil {
+				if g := cx.decoratorResultFunction(nv, cx.Key(storage.KeyGet)); g != nil {
 					e.getter = g
 				}
-				if s := cx.decoratorResultFunction(nv, cx.Key(KeySet)); s != nil {
+				if s := cx.decoratorResultFunction(nv, cx.Key(storage.KeySet)); s != nil {
 					e.setter = s
 				}
 				if init := cx.decoratorResultFunction(nv, cx.Intern("init")); init != nil {
@@ -386,7 +386,7 @@ func (cx *ExecutionContext) applyDecoratorsToElementDefinition(e *elementDef, ex
 
 // decoratorResultFunction returns the property key of the object that an accessor decorator
 // returned when it is a function, or nil when it is undefined.
-func (cx *ExecutionContext) decoratorResultFunction(o Value, key *Object) *Object {
+func (cx *ExecutionContext) decoratorResultFunction(o storage.Value, key *storage.Object) *storage.Object {
 	v := cx.Get(o.O, storage.NamedKey(key))
 	if v.IsCallable() {
 		return v.O
@@ -398,11 +398,11 @@ func (cx *ExecutionContext) decoratorResultFunction(o Value, key *Object) *Objec
 }
 
 // applyDecoratorsToClassDefinition implements ApplyDecoratorsToClassDefinition.
-func (cx *ExecutionContext) applyDecoratorsToClassDefinition(st *classDecoration, classDef Value) Value {
+func (cx *ExecutionContext) applyDecoratorsToClassDefinition(st *classDecoration, classDef storage.Value) storage.Value {
 	for _, d := range slices.Backward(st.classDecorators) {
 		state := &decorationState{}
 		ctx := cx.createDecoratorContextObject(0, st.name, &st.classInitializers, state, st.metadata, false, true)
-		nd := func() Value {
+		nd := func() storage.Value {
 			defer func() {
 				state.finished = true
 			}()
@@ -420,7 +420,7 @@ func (cx *ExecutionContext) applyDecoratorsToClassDefinition(st *classDecoration
 
 // finishClass performs the last steps of ClassDefinitionEvaluation for the class f: the
 // initializers of the static methods, the static elements, and the initializers of the class.
-func (cx *ExecutionContext) finishClass(st *classDecoration, f Value) {
+func (cx *ExecutionContext) finishClass(st *classDecoration, f storage.Value) {
 	for _, init := range st.staticMethodInitializers {
 		cx.Call(init, f)
 	}
@@ -446,7 +446,7 @@ func (cx *ExecutionContext) finishClass(st *classDecoration, f Value) {
 
 // createDecoratorContextObject implements CreateDecoratorContextObject. kind is a bytecode
 // Elem kind, which isClass overrides.
-func (cx *ExecutionContext) createDecoratorContextObject(kind int, name Value, initializers *[]*Object, state *decorationState, metadata *Object, static, isClass bool) Value {
+func (cx *ExecutionContext) createDecoratorContextObject(kind int, name storage.Value, initializers *[]*storage.Object, state *decorationState, metadata *storage.Object, static, isClass bool) storage.Value {
 	ctx := cx.NewOrdinaryObject()
 	var kindStr wtf8.String
 	switch {
@@ -463,14 +463,14 @@ func (cx *ExecutionContext) createDecoratorContextObject(kind int, name Value, i
 	default:
 		kindStr = "field"
 	}
-	def := func(key wtf8.String, v Value) {
+	def := func(key wtf8.String, v storage.Value) {
 		cx.CreateDataPropertyOrThrow(ctx, storage.NamedKey(cx.Intern(key)), v)
 	}
 	def("kind", cx.NewString(kindStr))
 	if !isClass {
 		def("access", cx.createDecoratorAccessObject(kind, name))
 		def("static", storage.Bool(static))
-		if name.O != nil && name.O.Class == classPrivateName {
+		if name.O != nil && name.O.Class == storage.ClassPrivateName {
 			def("private", storage.True)
 			def("name", cx.NewString("#"+name.O.Text))
 		} else {
@@ -480,23 +480,23 @@ func (cx *ExecutionContext) createDecoratorContextObject(kind int, name Value, i
 	} else {
 		def("name", name)
 	}
-	def("addInitializer", Value{O: cx.NewNativeWithState("addInitializer", 1, nativeAddInitializerFunction, &addInitializerState{
+	def("addInitializer", storage.Value{O: cx.NewNativeWithState("addInitializer", 1, nativeAddInitializerFunction, &addInitializerState{
 		initializers: initializers,
 		decoration:   state,
 	})})
-	def("metadata", Value{O: metadata})
-	return Value{O: ctx}
+	def("metadata", storage.Value{O: metadata})
+	return storage.Value{O: ctx}
 }
 
 // addInitializerState is the state of an addInitializer function of a decorator context.
 type addInitializerState struct {
-	initializers *[]*Object
+	initializers *[]*storage.Object
 	decoration   *decorationState
 }
 
 // addInitializerFunction is the code of the addInitializer functions. Their state is an
 // *addInitializerState.
-func addInitializerFunction(cx *ExecutionContext, this Value, args []Value) Value {
+func addInitializerFunction(cx *ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	st := cx.ActiveNativeState().(*addInitializerState)
 	if st.decoration.finished {
 		cx.ThrowTypeError("addInitializer cannot be called after the decorator returned")
@@ -510,38 +510,38 @@ func addInitializerFunction(cx *ExecutionContext, this Value, args []Value) Valu
 }
 
 // createDecoratorAccessObject implements CreateDecoratorAccessObject.
-func (cx *ExecutionContext) createDecoratorAccessObject(kind int, name Value) Value {
+func (cx *ExecutionContext) createDecoratorAccessObject(kind int, name storage.Value) storage.Value {
 	access := cx.NewOrdinaryObject()
 	st := &decoratorAccess{
 		name: name,
 	}
 	if kind != bytecode.ElemSetter {
 		getter := cx.NewNativeWithState("", 1, nativeDecoratorAccessGetter, st)
-		cx.CreateDataPropertyOrThrow(access, storage.NamedKey(cx.Key(KeyGet)), Value{O: getter})
+		cx.CreateDataPropertyOrThrow(access, storage.NamedKey(cx.Key(storage.KeyGet)), storage.Value{O: getter})
 	}
 	if kind == bytecode.ElemField || kind == bytecode.ElemAccessor || kind == bytecode.ElemSetter {
 		setter := cx.NewNativeWithState("", 2, nativeDecoratorAccessSetter, st)
-		cx.CreateDataPropertyOrThrow(access, storage.NamedKey(cx.Key(KeySet)), Value{O: setter})
+		cx.CreateDataPropertyOrThrow(access, storage.NamedKey(cx.Key(storage.KeySet)), storage.Value{O: setter})
 	}
 	has := cx.NewNativeWithState("has", 1, nativeDecoratorAccessHas, st)
-	cx.CreateDataPropertyOrThrow(access, storage.NamedKey(cx.Intern("has")), Value{O: has})
-	return Value{O: access}
+	cx.CreateDataPropertyOrThrow(access, storage.NamedKey(cx.Intern("has")), storage.Value{O: has})
+	return storage.Value{O: access}
 }
 
 // decoratorAccess is the state of the functions of a decorator access object.
 type decoratorAccess struct {
 	// name is the property key or the private name of the decorated element.
-	name Value
+	name storage.Value
 }
 
 // private reports whether the name is a private name.
 func (a *decoratorAccess) private() bool {
-	return a.name.O != nil && a.name.O.Class == classPrivateName
+	return a.name.O != nil && a.name.O.Class == storage.ClassPrivateName
 }
 
 // checkDecoratorAccessObject throws when o, which a decorator access function was called for, is
 // not an object.
-func (cx *ExecutionContext) checkDecoratorAccessObject(o Value) {
+func (cx *ExecutionContext) checkDecoratorAccessObject(o storage.Value) {
 	if !o.IsObject() {
 		cx.ThrowTypeError("the object of a decorator access must be an object")
 	}
@@ -549,7 +549,7 @@ func (cx *ExecutionContext) checkDecoratorAccessObject(o Value) {
 
 // decoratorAccessGetter is the code of the get functions of decorator access objects. Their state
 // is a *decoratorAccess.
-func decoratorAccessGetter(cx *ExecutionContext, this Value, args []Value) Value {
+func decoratorAccessGetter(cx *ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	a := cx.ActiveNativeState().(*decoratorAccess)
 	o := argAt(args, 0)
 	cx.checkDecoratorAccessObject(o)
@@ -561,7 +561,7 @@ func decoratorAccessGetter(cx *ExecutionContext, this Value, args []Value) Value
 
 // decoratorAccessSetter is the code of the set functions of decorator access objects. Their state
 // is a *decoratorAccess.
-func decoratorAccessSetter(cx *ExecutionContext, this Value, args []Value) Value {
+func decoratorAccessSetter(cx *ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	a := cx.ActiveNativeState().(*decoratorAccess)
 	o := argAt(args, 0)
 	cx.checkDecoratorAccessObject(o)
@@ -575,7 +575,7 @@ func decoratorAccessSetter(cx *ExecutionContext, this Value, args []Value) Value
 
 // decoratorAccessHas is the code of the has functions of decorator access objects. Their state is
 // a *decoratorAccess.
-func decoratorAccessHas(cx *ExecutionContext, this Value, args []Value) Value {
+func decoratorAccessHas(cx *ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	a := cx.ActiveNativeState().(*decoratorAccess)
 	o := argAt(args, 0)
 	cx.checkDecoratorAccessObject(o)

@@ -12,36 +12,36 @@ type argumentsMap struct {
 	// params holds, by index, the storage of the parameter that the index property is mapped to,
 	// or nil for a property that is not mapped. The slot of a mapped property holds undefined, so
 	// that it does not keep a value alive that the parameter no longer has.
-	params []*upvalue
+	params []*storage.Upvalue
 }
 
 // forwardedArguments returns the arguments object shared by forwarding calls in the running frame.
-func (cx *ExecutionContext) forwardedArguments(argsReg int32) Value {
+func (cx *ExecutionContext) forwardedArguments(argsReg int32) storage.Value {
 	fr := &cx.frames[len(cx.frames)-1]
 	regs := cx.frameRegs(fr)
 	if regs[argsReg].IsUndefined() {
 		// Only functions with a simple parameter list forward their arguments.
-		regs[argsReg] = Value{O: cx.newArguments(fr, !fr.fp.Strict)}
+		regs[argsReg] = storage.Value{O: cx.newArguments(fr, !fr.fp.Strict)}
 	}
 	return regs[argsReg]
 }
 
 // newArguments returns the arguments object of the frame fr.
 // A mapped object links the indices below both the argument count and the parameter count to the parameters.
-func (cx *ExecutionContext) newArguments(fr *frame, mapped bool) *Object {
+func (cx *ExecutionContext) newArguments(fr *frame, mapped bool) *storage.Object {
 	o := cx.NewArgumentsObject(cx.frameRegs(fr)[:min(fr.argc, fr.fp.Nparams)], cx.extraArgs(fr))
 	if !mapped {
 		if cx.realm.StrictCallee.O == nil {
 			// An accessor pair is never changed in place, so the objects share it.
-			throwTypeError := cx.Intrinsic(IntrinsicThrowTypeError)
+			throwTypeError := cx.Intrinsic(storage.IntrinsicThrowTypeError)
 			cx.realm.StrictCallee = storage.NewAccessor(throwTypeError, throwTypeError)
 		}
-		cx.Add(o, cx.Key(keyCallee), cx.realm.StrictCallee, FlagAccessor)
+		cx.Add(o, cx.Key(storage.KeyCallee), cx.realm.StrictCallee, storage.FlagAccessor)
 		return o
 	}
 	if n := min(fr.argc, fr.fp.Nparams); n > 0 {
 		m := &argumentsMap{
-			params: make([]*upvalue, n),
+			params: make([]*storage.Upvalue, n),
 		}
 		shadowed := fr.fp.ShadowedParams
 		for i := range n {
@@ -50,20 +50,20 @@ func (cx *ExecutionContext) newArguments(fr *frame, mapped bool) *Object {
 			}
 			m.params[i] = cx.captureRegister(fr, i)
 			// A mapped property stays out of elems, so that every access to it takes a path that consults the map.
-			cx.Add(o, cx.IndexName(uint32(i)), storage.Undefined, FlagsData)
+			cx.Add(o, cx.IndexName(uint32(i)), storage.Undefined, storage.FlagsData)
 			o.Elems[i] = storage.Hole
 		}
-		o.Flags |= objSparse
+		o.Flags |= storage.ObjSparse
 		o.SetExtState(m)
 	}
-	cx.Add(o, cx.Key(keyCallee), Value{O: fr.cl}, FlagsHidden)
+	cx.Add(o, cx.Key(storage.KeyCallee), storage.Value{O: fr.cl}, storage.FlagsHidden)
 	return o
 }
 
 // mappedParam returns the storage of the parameter that the index property i of o is mapped to,
 // or nil when o is not an arguments object that maps i.
-func mappedParam(o *Object, i uint32) *upvalue {
-	if o.Class != classArguments {
+func mappedParam(o *storage.Object, i uint32) *storage.Upvalue {
+	if o.Class != storage.ClassArguments {
 		return nil
 	}
 	m, _ := o.ExtState().(*argumentsMap)
@@ -75,13 +75,13 @@ func mappedParam(o *Object, i uint32) *upvalue {
 
 // defineMappedArgument implements [[DefineOwnProperty]] of an arguments exotic object
 // for the index i, which is mapped to the parameter u.
-func (cx *ExecutionContext) defineMappedArgument(o *Object, i uint32, u *upvalue, d PropDesc) bool {
+func (cx *ExecutionContext) defineMappedArgument(o *storage.Object, i uint32, u *storage.Upvalue, d storage.PropDesc) bool {
 	m := o.ExtState().(*argumentsMap)
 	// The ordinary definition validates against the value in the slot.
 	p, _ := o.Shape.Lookup(cx.IndexName(i))
 	o.Slots[p.Slot] = *u.P
-	readOnly := d.HasFalse(HasWritable, FlagWritable)
-	if d.IsData() && !d.HasField(HasValue) && readOnly {
+	readOnly := d.HasFalse(storage.HasWritable, storage.FlagWritable)
+	if d.IsData() && !d.HasField(storage.HasValue) && readOnly {
 		d.SetValue(*u.P)
 	}
 	m.params[i] = nil
@@ -93,7 +93,7 @@ func (cx *ExecutionContext) defineMappedArgument(o *Object, i uint32, u *upvalue
 	if d.IsAccessor() {
 		return true
 	}
-	if d.HasField(HasValue) {
+	if d.HasField(storage.HasValue) {
 		*u.P = d.Value()
 	}
 	if !readOnly {
@@ -105,9 +105,9 @@ func (cx *ExecutionContext) defineMappedArgument(o *Object, i uint32, u *upvalue
 
 // deleteMappedArgument implements [[Delete]] of an arguments exotic object for the index i,
 // which is mapped to a parameter.
-func (cx *ExecutionContext) deleteMappedArgument(o *Object, i uint32) bool {
+func (cx *ExecutionContext) deleteMappedArgument(o *storage.Object, i uint32) bool {
 	key := cx.IndexName(i)
-	if p, _ := o.Shape.Lookup(key); p.Flags&FlagConfigurable == 0 {
+	if p, _ := o.Shape.Lookup(key); p.Flags&storage.FlagConfigurable == 0 {
 		return false
 	}
 	cx.remove(o, key)

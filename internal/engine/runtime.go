@@ -16,19 +16,19 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
-func (cx *ExecutionContext) throwTDZ(name *Object) {
+func (cx *ExecutionContext) throwTDZ(name *storage.Object) {
 	if name.Text == "this" {
 		cx.ThrowReferenceError("must call super constructor in derived class before accessing 'this' or returning from derived constructor")
 	}
 	cx.ThrowReferenceError("cannot access '" + wtf8.ToValidUTF8(name.Text) + "' before initialization")
 }
 
-func (cx *ExecutionContext) throwReadOnly(v Value, k PropKey) {
+func (cx *ExecutionContext) throwReadOnly(v storage.Value, k storage.PropKey) {
 	cx.ThrowTypeError("cannot assign to read only property '" + wtf8.ToValidUTF8(cx.KeyString(k)) + "' of " + cx.DisplayString(v))
 }
 
 // callAt returns the index of the call instruction of fp that ends before pc, past its extra.
-func callAt(fp *funcProto, pc int) int {
+func callAt(fp *storage.FuncProto, pc int) int {
 	pc--
 	for fp.Code[pc].Op == bytecode.OpExtra {
 		pc--
@@ -37,7 +37,7 @@ func callAt(fp *funcProto, pc int) int {
 }
 
 // calleeName names the function that the call instruction at pc calls, for an error message.
-func (ag *agent) calleeName(fp *funcProto, pc int) wtf8.String {
+func (ag *agent) calleeName(fp *storage.FuncProto, pc int) wtf8.String {
 	target := fp.Code[pc].B
 	for j := pc - 1; j >= 0 && j >= pc-64; j-- {
 		in := fp.Code[j]
@@ -57,7 +57,7 @@ func (ag *agent) calleeName(fp *funcProto, pc int) wtf8.String {
 
 // throwNotCallable throws the TypeError for the call instruction of fp that ends before pc,
 // whose callee is not a function.
-func (cx *ExecutionContext) throwNotCallable(fp *funcProto, pc int, regs []Value) {
+func (cx *ExecutionContext) throwNotCallable(fp *storage.FuncProto, pc int, regs []storage.Value) {
 	pc = callAt(fp, pc)
 	name := wtf8.ToValidUTF8(cx.calleeName(fp, pc))
 	if name == "" {
@@ -68,7 +68,7 @@ func (cx *ExecutionContext) throwNotCallable(fp *funcProto, pc int, regs []Value
 
 // throwNotConstructor throws the TypeError for the call instruction of fp that ends before pc,
 // whose callee is not a constructor.
-func (cx *ExecutionContext) throwNotConstructor(fp *funcProto, pc int, regs []Value) {
+func (cx *ExecutionContext) throwNotConstructor(fp *storage.FuncProto, pc int, regs []storage.Value) {
 	pc = callAt(fp, pc)
 	name := wtf8.ToValidUTF8(cx.calleeName(fp, pc))
 	if name == "" {
@@ -79,28 +79,28 @@ func (cx *ExecutionContext) throwNotConstructor(fp *funcProto, pc int, regs []Va
 
 // getGlobal reads the global variable key, as strict code does when strict is set. When it does
 // not exist, it throws a ReferenceError unless orUndef is set.
-func (cx *ExecutionContext) getGlobal(key *Object, c *globalCache, orUndef, strict bool) Value {
+func (cx *ExecutionContext) getGlobal(key *storage.Object, c *storage.GlobalCache, orUndef, strict bool) storage.Value {
 	r := cx.realmPart
 	g := r.Global
 	if v, ok := cx.getGlobalLexical(key, c); ok {
 		return v
 	}
-	if p, ok := g.Shape.Lookup(key); ok && p.Flags&FlagAccessor == 0 {
+	if p, ok := g.Shape.Lookup(key); ok && p.Flags&storage.FlagAccessor == 0 {
 		c.Holder = g
 		c.Shape = g.Shape
 		c.Ref = &g.Slots[p.Slot]
 		return g.Slots[p.Slot]
 	}
 	switch l := quiet.ContextOf(r).LookupNamed(g, key); l.Kind {
-	case lookupAbsent, lookupNumericMiss:
+	case storage.LookupAbsent, storage.LookupNumericMiss:
 		if orUndef {
 			return storage.Undefined
 		}
 		cx.ThrowReferenceError(wtf8.ToValidUTF8(key.Text) + " is not defined")
-	case lookupSlot:
+	case storage.LookupSlot:
 		v, getter := cx.ReadNamedSlot(g, l.Holder, l.Prop, nil)
 		if getter != nil {
-			return cx.Call(getter, Value{O: r.GlobalThis})
+			return cx.Call(getter, storage.Value{O: r.GlobalThis})
 		}
 		return v
 	}
@@ -122,10 +122,10 @@ func (cx *ExecutionContext) getGlobal(key *Object, c *globalCache, orUndef, stri
 		}
 		return storage.Undefined
 	}
-	return cx.getProp(g, k, Value{O: r.GlobalThis})
+	return cx.getProp(g, k, storage.Value{O: r.GlobalThis})
 }
 
-func (cx *ExecutionContext) getGlobalLexical(key *Object, c *globalCache) (Value, bool) {
+func (cx *ExecutionContext) getGlobalLexical(key *storage.Object, c *storage.GlobalCache) (storage.Value, bool) {
 	r := cx.realmPart
 	p, ok := r.GlobalLex.Shape.Lookup(key)
 	if !ok {
@@ -143,7 +143,7 @@ func (cx *ExecutionContext) getGlobalLexical(key *Object, c *globalCache) (Value
 }
 
 // resolveGlobal returns undefined for a global binding and null for an unresolvable name.
-func (cx *ExecutionContext) resolveGlobal(key *Object, c *globalCache) Value {
+func (cx *ExecutionContext) resolveGlobal(key *storage.Object, c *storage.GlobalCache) storage.Value {
 	g := cx.realm.Global
 	_, lex := cx.realm.GlobalLex.Shape.Lookup(key)
 	if _, own := g.Shape.Lookup(key); lex || own {
@@ -160,14 +160,14 @@ func (cx *ExecutionContext) resolveGlobal(key *Object, c *globalCache) Value {
 }
 
 // setGlobal writes a resolved binding in the global environment.
-func (cx *ExecutionContext) setGlobal(key *Object, val Value, c *globalCache, strict bool) {
+func (cx *ExecutionContext) setGlobal(key *storage.Object, val storage.Value, c *storage.GlobalCache, strict bool) {
 	r := cx.realm
 	g := r.Global
 	if p, ok := r.GlobalLex.Shape.Lookup(key); ok {
 		if r.GlobalLex.Slots[p.Slot].O == tdzObject {
 			cx.throwTDZ(key)
 		}
-		if p.Flags&FlagWritable == 0 {
+		if p.Flags&storage.FlagWritable == 0 {
 			cx.ThrowTypeError("assignment to constant variable '" + wtf8.ToValidUTF8(key.Text) + "'")
 		}
 		r.GlobalLex.Slots[p.Slot] = val
@@ -177,7 +177,7 @@ func (cx *ExecutionContext) setGlobal(key *Object, val Value, c *globalCache, st
 		c.Ref = &r.GlobalLex.Slots[p.Slot]
 		return
 	}
-	if p, ok := g.Shape.Lookup(key); ok && p.Flags&(FlagAccessor|FlagWritable) == FlagWritable {
+	if p, ok := g.Shape.Lookup(key); ok && p.Flags&(storage.FlagAccessor|storage.FlagWritable) == storage.FlagWritable {
 		g.Slots[p.Slot] = val
 		c.Holder = g
 		c.Shape = g.Shape
@@ -190,14 +190,14 @@ func (cx *ExecutionContext) setGlobal(key *Object, val Value, c *globalCache, st
 	if !cx.HasProperty(g, k) && strict {
 		cx.ThrowReferenceError(wtf8.ToValidUTF8(key.Text) + " is not defined")
 	}
-	if !cx.setProp(g, k, val, Value{O: r.GlobalThis}) && strict {
-		cx.throwReadOnly(Value{O: g}, k)
+	if !cx.setProp(g, k, val, storage.Value{O: r.GlobalThis}) && strict {
+		cx.throwReadOnly(storage.Value{O: g}, k)
 	}
 }
 
 // checkGlobalDecl throws when declaring key at the top level of a script would conflict
 // with an existing declaration. what is a bytecode Decl kind.
-func (cx *ExecutionContext) checkGlobalDecl(key *Object, what int) {
+func (cx *ExecutionContext) checkGlobalDecl(key *storage.Object, what int) {
 	r := cx.realm
 	_, lex := r.GlobalLex.Shape.Lookup(key)
 	switch what {
@@ -235,13 +235,13 @@ func (cx *ExecutionContext) checkGlobalDecl(key *Object, what int) {
 
 // declareGlobalVar implements CreateGlobalVarBinding, and CreateGlobalFunctionBinding when
 // flags has [bytecode.GlobalVarFunc]. flags is a set of the bytecode GlobalVar flags.
-func (cx *ExecutionContext) declareGlobalVar(key *Object, flags int, fn Value) {
+func (cx *ExecutionContext) declareGlobalVar(key *storage.Object, flags int, fn storage.Value) {
 	g := cx.realm.Global
 	k := storage.NamedKey(key)
 	d, ok := cx.GetOwnProperty(g, k)
-	attrs := FlagEnumerable | FlagWritable
+	attrs := storage.FlagEnumerable | storage.FlagWritable
 	if flags&bytecode.GlobalVarDeletable != 0 {
-		attrs |= FlagConfigurable
+		attrs |= storage.FlagConfigurable
 	}
 	if flags&bytecode.GlobalVarFunc == 0 {
 		if !ok {
@@ -260,7 +260,7 @@ func (cx *ExecutionContext) declareGlobalVar(key *Object, flags int, fn Value) {
 // code, as Annex B.3.2.2 and B.3.2.3 do, and reports whether it is declared. It declares
 // nothing when a global lexical declaration of key exists or CanDeclareGlobalVar(key) is false.
 // flags is a set of the bytecode GlobalVar flags.
-func (cx *ExecutionContext) declareGlobalAnnexB(key *Object, flags int) bool {
+func (cx *ExecutionContext) declareGlobalAnnexB(key *storage.Object, flags int) bool {
 	r := cx.realm
 	if _, lex := r.GlobalLex.Shape.Lookup(key); lex {
 		return false
@@ -273,11 +273,11 @@ func (cx *ExecutionContext) declareGlobalAnnexB(key *Object, flags int) bool {
 }
 
 // declareGlobalLex creates the uninitialized global lexical binding key.
-func (cx *ExecutionContext) declareGlobalLex(key *Object, isConst bool) {
+func (cx *ExecutionContext) declareGlobalLex(key *storage.Object, isConst bool) {
 	r := cx.realm
-	flags := FlagsData
+	flags := storage.FlagsData
 	if isConst {
-		flags = FlagEnumerable | FlagConfigurable
+		flags = storage.FlagEnumerable | storage.FlagConfigurable
 	}
 	cx.Add(r.GlobalLex, key, tdz, flags)
 	// The binding may hide a property of the global object, and the bindings may have moved,
@@ -285,22 +285,22 @@ func (cx *ExecutionContext) declareGlobalLex(key *Object, isConst bool) {
 	r.Global.RenewShape()
 }
 
-func (cx *ExecutionContext) initGlobalLex(key *Object, val Value) {
+func (cx *ExecutionContext) initGlobalLex(key *storage.Object, val storage.Value) {
 	r := cx.realm
 	p, _ := r.GlobalLex.Shape.Lookup(key)
 	r.GlobalLex.Slots[p.Slot] = val
 }
 
 // getValue returns v[k], or the getter to call.
-func (cx *ExecutionContext) getValue(v, k Value) (Value, *Object) {
+func (cx *ExecutionContext) getValue(v, k storage.Value) (storage.Value, *storage.Object) {
 	if ko := k.O; ko == storage.NumberObject {
 		if i, ok := storage.NumberIndex(k.N); ok {
-			if o := v.O; o != nil && o.Class == classTypedArray {
+			if o := v.O; o != nil && o.Class == storage.ClassTypedArray {
 				return storage.TypedArrayGet(o, i), nil
 			}
 			return cx.getIndex(v, i)
 		}
-	} else if ko != nil && ko.Kind == kindString {
+	} else if ko != nil && ko.Kind == storage.KindString {
 		// An element in elems is an own data property, whatever object v is.
 		if i, ok := ko.KnownArrayIndex(); ok {
 			if o := v.O; o != nil && o.ObjectProperties != nil && int64(i) < int64(len(o.Elems)) {
@@ -318,7 +318,7 @@ func (cx *ExecutionContext) getValue(v, k Value) (Value, *Object) {
 	if key.Key == nil {
 		return cx.getIndex(v, key.Idx)
 	}
-	if key.Idx == missingKey {
+	if key.Idx == storage.MissingKey {
 		return cx.getMissing(v, key)
 	}
 	return cx.getNamed(v, key.Key, nil)
@@ -326,7 +326,7 @@ func (cx *ExecutionContext) getValue(v, k Value) (Value, *Object) {
 
 // setValue stores v[k] = val and returns the setter to call, if any. A store that fails throws
 // a TypeError in strict mode.
-func (cx *ExecutionContext) setValue(v, k, val Value, strict bool) *Object {
+func (cx *ExecutionContext) setValue(v, k, val storage.Value, strict bool) *storage.Object {
 	setter, ok, key := cx.storeValue(v, k, val)
 	if !ok && strict {
 		cx.throwReadOnly(v, key)
@@ -336,21 +336,21 @@ func (cx *ExecutionContext) setValue(v, k, val Value, strict bool) *Object {
 
 // storeValue stores v[k] = val. The first two results are those of setNamed, and the last is k
 // converted to a property key when the store fails.
-func (cx *ExecutionContext) storeValue(v, k, val Value) (*Object, bool, PropKey) {
+func (cx *ExecutionContext) storeValue(v, k, val storage.Value) (*storage.Object, bool, storage.PropKey) {
 	if ko := k.O; ko == storage.NumberObject {
 		if i, ok := storage.NumberIndex(k.N); ok {
-			if o := v.O; o != nil && o.Class == classTypedArray {
+			if o := v.O; o != nil && o.Class == storage.ClassTypedArray {
 				return nil, cx.typedArraySet(o, i, val), storage.IndexKey(i)
 			}
 			setter, ok := cx.setIndex(v, i, val)
 			return setter, ok, storage.IndexKey(i)
 		}
-	} else if ko != nil && ko.Kind == kindString {
+	} else if ko != nil && ko.Kind == storage.KindString {
 		// An element in elems is a writable own data property, whatever object v is.
 		if i, ok := ko.KnownArrayIndex(); ok {
 			if o := v.O; o != nil && o.ObjectProperties != nil && int64(i) < int64(len(o.Elems)) && !o.Elems[i].IsHole() {
 				o.Elems[i] = val
-				return nil, true, PropKey{}
+				return nil, true, storage.PropKey{}
 			}
 		}
 	}
@@ -367,7 +367,7 @@ func (cx *ExecutionContext) storeValue(v, k, val Value) (*Object, bool, PropKey)
 }
 
 // deleteValue implements the delete operator on a property.
-func (cx *ExecutionContext) deleteValue(v, k Value, strict bool) Value {
+func (cx *ExecutionContext) deleteValue(v, k storage.Value, strict bool) storage.Value {
 	if v.IsNullish() {
 		cx.ThrowTypeError("cannot convert undefined or null to object")
 	}
@@ -381,7 +381,7 @@ func (cx *ExecutionContext) deleteValue(v, k Value, strict bool) Value {
 }
 
 // superBase implements GetSuperBase for the home object home.
-func (cx *ExecutionContext) superBase(home Value) Value {
+func (cx *ExecutionContext) superBase(home storage.Value) storage.Value {
 	if !home.IsObject() {
 		cx.ThrowSyntaxError("'super' keyword unexpected here")
 	}
@@ -392,7 +392,7 @@ func (cx *ExecutionContext) superBase(home Value) Value {
 }
 
 // superObject returns the object that a super property access with the super base base starts from.
-func (cx *ExecutionContext) superObject(base Value) *Object {
+func (cx *ExecutionContext) superObject(base storage.Value) *storage.Object {
 	if base.IsNull() {
 		cx.ThrowTypeError("cannot access a property of a null prototype through 'super'")
 	}
@@ -401,13 +401,13 @@ func (cx *ExecutionContext) superObject(base Value) *Object {
 
 // getSuper reads the property k of the super base base with the this value this,
 // and returns the property key as well.
-func (cx *ExecutionContext) getSuper(base, k, this Value) (Value, PropKey) {
+func (cx *ExecutionContext) getSuper(base, k, this storage.Value) (storage.Value, storage.PropKey) {
 	o := cx.superObject(base)
 	key := cx.ToPropertyKey(k)
 	return cx.getProp(o, key, this), key
 }
 
-func (cx *ExecutionContext) setSuper(base, k, val, this Value, strict bool) {
+func (cx *ExecutionContext) setSuper(base, k, val, this storage.Value, strict bool) {
 	o := cx.superObject(base)
 	key := cx.ToPropertyKey(k)
 	if !cx.setProp(o, key, val, this) && strict {
@@ -417,16 +417,16 @@ func (cx *ExecutionContext) setSuper(base, k, val, this Value, strict bool) {
 
 // instanceOf implements InstanceofOperator with cx active. site is the inline cache of the
 // OpInstanceof that evaluates it, or nil.
-func (cx *ExecutionContext) instanceOf(v, c Value, site *propCache) bool {
+func (cx *ExecutionContext) instanceOf(v, c storage.Value, site *storage.PropCache) bool {
 	if !c.IsObject() {
 		cx.ThrowTypeError("right-hand side of 'instanceof' is not an object")
 	}
-	defaultMethod := cx.Intrinsic(IntrinsicFunctionPrototypeHasInstance)
+	defaultMethod := cx.Intrinsic(storage.IntrinsicFunctionPrototypeHasInstance)
 	for {
 		method := defaultMethod
 		if !cx.InheritsHasInstance(c.O) {
 			site = nil
-			method = cx.GetMethod(c, cx.WellKnownSymbol(SymbolHasInstance))
+			method = cx.GetMethod(c, cx.WellKnownSymbol(storage.SymbolHasInstance))
 		}
 		if method == nil {
 			if !c.IsCallable() {
@@ -434,7 +434,7 @@ func (cx *ExecutionContext) instanceOf(v, c Value, site *propCache) bool {
 			}
 			// OrdinaryHasInstance of a bound function is InstanceofOperator of its target.
 			if b := c.O.Fn.Bound; b != nil {
-				c = Value{O: b.Target}
+				c = storage.Value{O: b.Target}
 				continue
 			}
 			return cx.OrdinaryHasInstance(c, v)
@@ -452,30 +452,30 @@ func (cx *ExecutionContext) instanceOf(v, c Value, site *propCache) bool {
 
 // defaultHasInstanceCall is a selected call of the current realm's default @@hasInstance.
 type defaultHasInstanceCall struct {
-	method   *Object
-	receiver *Object
+	method   *storage.Object
+	receiver *storage.Object
 }
 
 // enterThrough records the selected calls from the receiver through last. Each intervening
 // bound target was proved to inherit the same method before any observable operation.
-func (call defaultHasInstanceCall) enterThrough(cx *ExecutionContext, last *Object) int {
+func (call defaultHasInstanceCall) enterThrough(cx *ExecutionContext, last *storage.Object) int {
 	depth := len(cx.natives)
 	for ctor := call.receiver; ; ctor = ctor.Fn.Bound.Target {
-		cx.pushNative(call.method, Value{O: ctor}, nil)
+		cx.pushNative(call.method, storage.Value{O: ctor}, nil)
 		if ctor == last {
 			return depth
 		}
 	}
 }
 
-func (call defaultHasInstanceCall) run(cx *ExecutionContext, v Value, site *propCache) bool {
+func (call defaultHasInstanceCall) run(cx *ExecutionContext, v storage.Value, site *storage.PropCache) bool {
 	ctor := call.receiver
 	for ctor.Fn != nil && ctor.Fn.Bound != nil {
 		target := ctor.Fn.Bound.Target
 		if cx.InterruptFlag.Load() || !cx.InheritsHasInstance(target) {
 			// Looking up the target's method can observe the enclosing calls.
 			depth := call.enterThrough(cx, ctor)
-			result := cx.instanceOf(v, Value{O: target}, nil)
+			result := cx.instanceOf(v, storage.Value{O: target}, nil)
 			cx.truncateNatives(depth)
 			return result
 		}
@@ -487,7 +487,7 @@ func (call defaultHasInstanceCall) run(cx *ExecutionContext, v Value, site *prop
 	slot := cx.OwnFunctionPrototypeSlot(ctor, site)
 	h := v.O
 	if slot != nil && slot.IsObject() {
-		for h.Class != classProxy {
+		for h.Class != storage.ClassProxy {
 			h = h.Shape.Proto
 			if h == slot.O {
 				return true
@@ -504,14 +504,14 @@ func (call defaultHasInstanceCall) run(cx *ExecutionContext, v Value, site *prop
 }
 
 // OrdinaryHasInstance implements OrdinaryHasInstance.
-func (cx *ExecutionContext) OrdinaryHasInstance(c, v Value) bool {
+func (cx *ExecutionContext) OrdinaryHasInstance(c, v storage.Value) bool {
 	if !c.IsCallable() {
 		return false
 	}
 	if b := c.O.Fn.Bound; b != nil {
 		var result bool
 		cx.Run(func() {
-			result = cx.instanceOf(v, Value{O: b.Target}, nil)
+			result = cx.instanceOf(v, storage.Value{O: b.Target}, nil)
 		})
 		return result
 	}
@@ -522,15 +522,15 @@ func (cx *ExecutionContext) OrdinaryHasInstance(c, v Value) bool {
 	return cx.hasPrototype(v.O, cx.readInstancePrototype(c.O, slot))
 }
 
-func (cx *ExecutionContext) readInstancePrototype(ctor *Object, slot *Value) *Object {
-	var p Value
+func (cx *ExecutionContext) readInstancePrototype(ctor *storage.Object, slot *storage.Value) *storage.Object {
+	var p storage.Value
 	if slot == nil {
-		p = cx.GetV(Value{O: ctor}, cx.Key(KeyPrototype))
+		p = cx.GetV(storage.Value{O: ctor}, cx.Key(storage.KeyPrototype))
 	} else {
 		p = *slot
-		if p.O != nil && p.O.Kind == kindAccessor {
+		if p.O != nil && p.O.Kind == storage.KindAccessor {
 			if getter := p.Accessor().Getter; getter != nil {
-				p = cx.Call(getter, Value{O: ctor})
+				p = cx.Call(getter, storage.Value{O: ctor})
 			}
 		}
 	}
@@ -540,7 +540,7 @@ func (cx *ExecutionContext) readInstancePrototype(ctor *Object, slot *Value) *Ob
 	return p.O
 }
 
-func (cx *ExecutionContext) hasPrototype(o, proto *Object) bool {
+func (cx *ExecutionContext) hasPrototype(o, proto *storage.Object) bool {
 	for h := cx.ProtoOf(o); h != nil; h = cx.ProtoOf(h) {
 		if h == proto {
 			return true
@@ -550,9 +550,9 @@ func (cx *ExecutionContext) hasPrototype(o, proto *Object) bool {
 }
 
 // privateStorage returns the object holding o's private elements.
-func (cx *ExecutionContext) privateStorage(o *Object) *Object {
-	if o.Class == classProxy {
-		st := o.ExtState().(*proxyState)
+func (cx *ExecutionContext) privateStorage(o *storage.Object) *storage.Object {
+	if o.Class == storage.ClassProxy {
+		st := o.ExtState().(*storage.ProxyState)
 		if st.IsGlobal() {
 			if !st.AllowsGlobalAccess(cx.realm.globalProxyHandler) {
 				cx.ThrowTypeError("no access")
@@ -564,12 +564,12 @@ func (cx *ExecutionContext) privateStorage(o *Object) *Object {
 }
 
 // getPrivate returns the private element name of v, or the getter to call.
-func (cx *ExecutionContext) getPrivate(v Value, name *Object) (Value, *Object) {
+func (cx *ExecutionContext) getPrivate(v storage.Value, name *storage.Object) (storage.Value, *storage.Object) {
 	if v.IsObject() {
 		o := cx.privateStorage(v.O)
 		if p, ok := o.Shape.Lookup(name); ok {
 			val := o.Slots[p.Slot]
-			if p.Flags&FlagAccessor != 0 {
+			if p.Flags&storage.FlagAccessor != 0 {
 				g := val.Accessor().Getter
 				if g == nil {
 					cx.ThrowTypeError("'#" + wtf8.ToValidUTF8(name.Text) + "' was defined without a getter")
@@ -584,18 +584,18 @@ func (cx *ExecutionContext) getPrivate(v Value, name *Object) (Value, *Object) {
 }
 
 // setPrivate stores val as the private element name of v, or returns the setter to call.
-func (cx *ExecutionContext) setPrivate(v Value, name *Object, val Value) *Object {
+func (cx *ExecutionContext) setPrivate(v storage.Value, name *storage.Object, val storage.Value) *storage.Object {
 	if v.IsObject() {
 		o := cx.privateStorage(v.O)
 		if p, ok := o.Shape.Lookup(name); ok {
-			if p.Flags&FlagAccessor != 0 {
+			if p.Flags&storage.FlagAccessor != 0 {
 				s := o.Slots[p.Slot].Accessor().Setter
 				if s == nil {
 					cx.ThrowTypeError("'#" + wtf8.ToValidUTF8(name.Text) + "' was defined without a setter")
 				}
 				return s
 			}
-			if p.Flags&FlagWritable == 0 {
+			if p.Flags&storage.FlagWritable == 0 {
 				cx.ThrowTypeError("private method '#" + wtf8.ToValidUTF8(name.Text) + "' is not writable")
 			}
 			o.Slots[p.Slot] = val
@@ -607,7 +607,7 @@ func (cx *ExecutionContext) setPrivate(v Value, name *Object, val Value) *Object
 }
 
 // definePrivate adds the private element name to v. val is the field value, a method, or an accessor.
-func (cx *ExecutionContext) definePrivate(v Value, name *Object, val Value) {
+func (cx *ExecutionContext) definePrivate(v storage.Value, name *storage.Object, val storage.Value) {
 	if !v.IsObject() {
 		cx.ThrowTypeError("cannot define a private member on a non-object")
 	}
@@ -615,11 +615,11 @@ func (cx *ExecutionContext) definePrivate(v Value, name *Object, val Value) {
 	if _, ok := o.Shape.Lookup(name); ok {
 		cx.ThrowTypeError("cannot initialize #" + wtf8.ToValidUTF8(name.Text) + " twice on the same object")
 	}
-	flags := FlagWritable
+	flags := storage.FlagWritable
 	switch {
-	case val.O != nil && val.O.Kind == kindAccessor:
-		flags = FlagAccessor
-	case name.Flags&objFrozenLength != 0:
+	case val.O != nil && val.O.Kind == storage.KindAccessor:
+		flags = storage.FlagAccessor
+	case name.Flags&storage.ObjFrozenLength != 0:
 		// The name stands for a method, which cannot be assigned to.
 		flags = 0
 	}
@@ -628,14 +628,14 @@ func (cx *ExecutionContext) definePrivate(v Value, name *Object, val Value) {
 
 // ensureCanAddPrivate throws a TypeError if the private element name cannot be added to v
 // because v is not extensible.
-func (cx *ExecutionContext) ensureCanAddPrivate(v Value, name *Object) {
+func (cx *ExecutionContext) ensureCanAddPrivate(v storage.Value, name *storage.Object) {
 	if v.IsObject() && !cx.IsExtensible(cx.privateStorage(v.O)) {
 		cx.ThrowTypeError("cannot define private member #" + wtf8.ToValidUTF8(name.Text) + " on an object that is not extensible")
 	}
 }
 
 // arith implements the binary arithmetic operators other than + for operands that are not both numbers.
-func (cx *ExecutionContext) arith(op bytecode.Opcode, x, y Value) Value {
+func (cx *ExecutionContext) arith(op bytecode.Opcode, x, y storage.Value) storage.Value {
 	if xi, ok := x.BigInt64(); ok {
 		if yi, ok := y.BigInt64(); ok {
 			if r, ok := storage.ArithBigInt64(op, xi, yi); ok {
@@ -762,7 +762,7 @@ func (cx *ExecutionContext) arith(op bytecode.Opcode, x, y Value) Value {
 	return storage.NewBigInt(r)
 }
 
-func (cx *ExecutionContext) negate(x Value) Value {
+func (cx *ExecutionContext) negate(x storage.Value) storage.Value {
 	if i, ok := x.BigInt64(); ok && i != math.MinInt64 {
 		return storage.BigIntFromInt64(-i)
 	}
@@ -773,7 +773,7 @@ func (cx *ExecutionContext) negate(x Value) Value {
 	return storage.NewBigInt(new(big.Int).Neg(x.BigInt()))
 }
 
-func (cx *ExecutionContext) bitNot(x Value) Value {
+func (cx *ExecutionContext) bitNot(x storage.Value) storage.Value {
 	if i, ok := x.BigInt64(); ok {
 		return storage.BigIntFromInt64(^i)
 	}
@@ -787,7 +787,7 @@ func (cx *ExecutionContext) bitNot(x Value) Value {
 }
 
 // step implements ++ and -- for an operand that is not a number: it adds d to x.
-func (cx *ExecutionContext) step(x Value, d int64) Value {
+func (cx *ExecutionContext) step(x storage.Value, d int64) storage.Value {
 	if i, ok := x.BigInt64(); ok {
 		if s, ok := storage.Add64(i, d); ok {
 			return storage.BigIntFromInt64(s)
@@ -803,8 +803,8 @@ func (cx *ExecutionContext) step(x Value, d int64) Value {
 // addClassElement registers an instance element of the class ctor, or defines a static element at once.
 // For a field, v is the function that computes the initial value, or with [bytecode.ElemValue]
 // in kind, the initial value itself.
-func (cx *ExecutionContext) addClassElement(ctor *Object, key Value, v Value, kind int) {
-	e := classElement{
+func (cx *ExecutionContext) addClassElement(ctor *storage.Object, key storage.Value, v storage.Value, kind int) {
+	e := storage.ClassElement{
 		Kind: kind &^ (bytecode.ElemStatic | bytecode.ElemValue),
 		Key:  key,
 	}
@@ -814,17 +814,17 @@ func (cx *ExecutionContext) addClassElement(ctor *Object, key Value, v Value, ki
 		e.Val = v.O
 	}
 	if kind&bytecode.ElemStatic != 0 {
-		cx.defineClassElement(Value{O: ctor}, &e)
+		cx.defineClassElement(storage.Value{O: ctor}, &e)
 		return
 	}
 	if ctor.Fn.Fields == nil {
-		ctor.OwnFunction().Fields = &[]classElement{}
+		ctor.OwnFunction().Fields = &[]storage.ClassElement{}
 	}
 	*ctor.Fn.Fields = append(*ctor.Fn.Fields, e)
 }
 
 // initFields defines the instance elements of the class ctor on this.
-func (cx *ExecutionContext) initFields(ctor *Object, this Value) {
+func (cx *ExecutionContext) initFields(ctor *storage.Object, this storage.Value) {
 	fields := *ctor.Fn.Fields
 	// Private methods and accessors exist before any field initializer runs.
 	checked := false
@@ -847,8 +847,8 @@ func (cx *ExecutionContext) initFields(ctor *Object, this Value) {
 	}
 }
 
-func (cx *ExecutionContext) defineClassElement(this Value, e *classElement) {
-	private := e.Key.O != nil && e.Key.O.Class == classPrivateName
+func (cx *ExecutionContext) defineClassElement(this storage.Value, e *storage.ClassElement) {
+	private := e.Key.O != nil && e.Key.O.Class == storage.ClassPrivateName
 	switch e.Kind {
 	case bytecode.ElemField:
 		v := e.Init
@@ -872,11 +872,11 @@ func (cx *ExecutionContext) defineClassElement(this Value, e *classElement) {
 			}
 		}
 	case bytecode.ElemMethod:
-		cx.definePrivate(this, e.Key.O, Value{O: e.Val})
+		cx.definePrivate(this, e.Key.O, storage.Value{O: e.Val})
 	case bytecode.ElemGetter, bytecode.ElemSetter:
 		if this.IsObject() {
 			o := cx.privateStorage(this.O)
-			if p, ok := o.Shape.Lookup(e.Key.O); ok && p.Flags&FlagAccessor != 0 {
+			if p, ok := o.Shape.Lookup(e.Key.O); ok && p.Flags&storage.FlagAccessor != 0 {
 				a := o.Slots[p.Slot].Accessor()
 				if e.Kind == bytecode.ElemGetter && a.AddGetter(e.Val) {
 					return
@@ -896,19 +896,19 @@ func (cx *ExecutionContext) defineClassElement(this Value, e *classElement) {
 
 // defineField implements CreateDataPropertyOrThrow for a computed key, as object literals
 // and public class fields use it.
-func (cx *ExecutionContext) defineField(o *Object, k, val Value) {
+func (cx *ExecutionContext) defineField(o *storage.Object, k, val storage.Value) {
 	cx.CreateDataPropertyOrThrow(o, cx.ToPropertyKey(k), val)
 }
 
 // defineFieldK defines the enumerable data property key of o.
-func (cx *ExecutionContext) defineFieldK(o *Object, key *Object, val Value, c *propCache) {
-	if o.Class == classObject && o.Flags&(objNotExtensible|objIsProto|objExotic) == 0 {
+func (cx *ExecutionContext) defineFieldK(o *storage.Object, key *storage.Object, val storage.Value, c *storage.PropCache) {
+	if o.Class == storage.ClassObject && o.Flags&(storage.ObjNotExtensible|storage.ObjIsProto|storage.ObjExotic) == 0 {
 		if _, ok := o.Shape.Lookup(key); !ok {
 			old := o.Shape
-			cx.Add(o, key, val, FlagsData)
+			cx.Add(o, key, val, storage.FlagsData)
 			if !old.Private && !o.Shape.Private {
 				c.Shape = old
-				c.Kind = cacheAdd
+				c.Kind = storage.CacheAdd
 				c.Next = o.Shape
 			}
 			return
@@ -919,8 +919,8 @@ func (cx *ExecutionContext) defineFieldK(o *Object, key *Object, val Value, c *p
 
 // definePublicField implements CreateDataPropertyOrThrow for the public class field k of o.
 // c caches the shape transition of the field, whose key is always k.
-func (cx *ExecutionContext) definePublicField(o *Object, k, val Value, c *propCache) {
-	if o.Class == classObject && o.Flags&(objNotExtensible|objIsProto|objExotic) == 0 && o.Shape == c.Shape && c.Kind == cacheAdd {
+func (cx *ExecutionContext) definePublicField(o *storage.Object, k, val storage.Value, c *storage.PropCache) {
+	if o.Class == storage.ClassObject && o.Flags&(storage.ObjNotExtensible|storage.ObjIsProto|storage.ObjExotic) == 0 && o.Shape == c.Shape && c.Kind == storage.CacheAdd {
 		if validateExec {
 			cx.checkDefineHit(nil, 0, o, cx.ToPropertyKey(k).Key, c.Next)
 		}
@@ -936,15 +936,15 @@ func (cx *ExecutionContext) definePublicField(o *Object, k, val Value, c *propCa
 }
 
 // defineMethod defines the method f under the key k of o.
-func (cx *ExecutionContext) defineMethod(o *Object, k, f Value) {
+func (cx *ExecutionContext) defineMethod(o *storage.Object, k, f storage.Value) {
 	f.O.OwnFunction().Home = o
-	cx.DefinePropertyOrThrow(o, cx.ToPropertyKey(k), storage.DataDesc(f, FlagsHidden))
+	cx.DefinePropertyOrThrow(o, cx.ToPropertyKey(k), storage.DataDesc(f, storage.FlagsHidden))
 }
 
 // defineAccessor defines the getter or setter f under the key k of o.
-func (cx *ExecutionContext) defineAccessor(o *Object, k Value, f *Object, isSetter, enumerable bool) {
+func (cx *ExecutionContext) defineAccessor(o *storage.Object, k storage.Value, f *storage.Object, isSetter, enumerable bool) {
 	f.OwnFunction().Home = o
-	var d PropDesc
+	var d storage.PropDesc
 	d.SetEnumerable(enumerable)
 	d.SetConfigurable(true)
 	if isSetter {
@@ -956,14 +956,14 @@ func (cx *ExecutionContext) defineAccessor(o *Object, k Value, f *Object, isSett
 }
 
 // funcNameOfKey returns the name that SetFunctionName gives a function for the property key or private name k.
-func (cx *ExecutionContext) funcNameOfKey(k Value) wtf8.String {
+func (cx *ExecutionContext) funcNameOfKey(k storage.Value) wtf8.String {
 	switch {
 	case k.IsSymbol():
-		if k.O.Class == classPrivateName {
+		if k.O.Class == storage.ClassPrivateName {
 			return "#" + k.O.Text
 		}
 		if k.O.ExtState() != nil {
-			if len(k.O.Text)+2 > MaxStringLength {
+			if len(k.O.Text)+2 > storage.MaxStringLength {
 				cx.ThrowRangeError("invalid string length")
 			}
 			return "[" + k.O.Text + "]"
@@ -976,7 +976,7 @@ func (cx *ExecutionContext) funcNameOfKey(k Value) wtf8.String {
 }
 
 // setFuncName implements SetFunctionName for the function or class f, which must be anonymous.
-func (cx *ExecutionContext) setFuncName(f, k Value, prefix int) {
+func (cx *ExecutionContext) setFuncName(f, k storage.Value, prefix int) {
 	if !f.IsCallable() {
 		return
 	}
@@ -987,27 +987,27 @@ func (cx *ExecutionContext) setFuncName(f, k Value, prefix int) {
 	case bytecode.NamePrefixSet:
 		name = "set " + name
 	}
-	if len(name) > MaxStringLength {
+	if len(name) > storage.MaxStringLength {
 		cx.ThrowRangeError("invalid string length")
 	}
 	o := f.O
 	if o.Fn.Materialized {
-		if _, ok := o.Shape.Lookup(cx.Key(KeyName)); ok {
-			if d, _ := cx.GetOwnProperty(o, storage.NamedKey(cx.Key(KeyName))); d.IsAccessor() || !d.Value().IsString() || d.Value().RawString() != "" {
+		if _, ok := o.Shape.Lookup(cx.Key(storage.KeyName)); ok {
+			if d, _ := cx.GetOwnProperty(o, storage.NamedKey(cx.Key(storage.KeyName))); d.IsAccessor() || !d.Value().IsString() || d.Value().RawString() != "" {
 				return
 			}
 		}
-		cx.defineOwnProperty(o, storage.NamedKey(cx.Key(KeyName)), storage.DataDesc(cx.NewString(name), FlagConfigurable))
+		cx.defineOwnProperty(o, storage.NamedKey(cx.Key(storage.KeyName)), storage.DataDesc(cx.NewString(name), storage.FlagConfigurable))
 		return
 	}
 	// The name is part of the code of an unmaterialized function, which closures share,
 	// so give this one its properties now.
 	cx.Materialize(o)
-	cx.Define(o, cx.Key(KeyName), cx.NewString(name), FlagConfigurable)
+	cx.Define(o, cx.Key(storage.KeyName), cx.NewString(name), storage.FlagConfigurable)
 }
 
 // copyDataProperties implements CopyDataProperties.
-func (cx *ExecutionContext) copyDataProperties(dst *Object, src Value, excluded []Value) {
+func (cx *ExecutionContext) copyDataProperties(dst *storage.Object, src storage.Value, excluded []storage.Value) {
 	if src.IsNullish() {
 		return
 	}
@@ -1018,12 +1018,12 @@ func (cx *ExecutionContext) copyDataProperties(dst *Object, src Value, excluded 
 	if len(excluded) == 0 && dst.TakeDataProperties(from) {
 		return
 	}
-	var skip []PropKey
+	var skip []storage.PropKey
 	for _, e := range excluded {
 		skip = append(skip, cx.ToPropertyKey(e))
 	}
 	ks := cx.OwnKeys(from)
-	if dst.Flags&objExotic == 0 {
+	if dst.Flags&storage.ObjExotic == 0 {
 		// The keys of the elements come first, and the other keys usually get slots.
 		elems := 0
 		for elems < len(ks) && ks[elems].IsIndex() {
@@ -1045,8 +1045,8 @@ keys:
 			continue
 		}
 		val := d.Value()
-		if d.IsAccessor() || from.Class == classProxy {
-			val = cx.getProp(from, k, Value{O: from})
+		if d.IsAccessor() || from.Class == storage.ClassProxy {
+			val = cx.getProp(from, k, storage.Value{O: from})
 		}
 		cx.CreateDataPropertyOrThrow(dst, k, val)
 	}
@@ -1054,9 +1054,9 @@ keys:
 
 // setupClass makes the function ctor a class constructor that extends parent,
 // which is hole for a class without an extends clause. It returns the prototype object.
-func (cx *ExecutionContext) setupClass(ctor *Object, parent Value) *Object {
-	protoParent := cx.Intrinsic(IntrinsicObjectPrototype)
-	ctorParent := cx.Intrinsic(IntrinsicFunctionPrototype)
+func (cx *ExecutionContext) setupClass(ctor *storage.Object, parent storage.Value) *storage.Object {
+	protoParent := cx.Intrinsic(storage.IntrinsicObjectPrototype)
+	ctorParent := cx.Intrinsic(storage.IntrinsicFunctionPrototype)
 	if !parent.IsHole() {
 		switch {
 		case parent.IsNull():
@@ -1064,7 +1064,7 @@ func (cx *ExecutionContext) setupClass(ctor *Object, parent Value) *Object {
 		case !parent.IsCallable() || !cx.IsConstructor(parent.O):
 			cx.ThrowTypeError("class extends value " + cx.DisplayString(parent) + " is not a constructor or null")
 		default:
-			p := cx.GetV(parent, cx.Key(KeyPrototype))
+			p := cx.GetV(parent, cx.Key(storage.KeyPrototype))
 			switch {
 			case p.IsObject():
 				protoParent = p.O
@@ -1079,15 +1079,15 @@ func (cx *ExecutionContext) setupClass(ctor *Object, parent Value) *Object {
 	proto := cx.NewObject(protoParent)
 	fn := ctor.StartMaterialized(cx.ShapeFor(ctorParent))
 	fn.Home = proto
-	cx.Add(ctor, cx.Key(KeyLength), storage.Number(float64(fn.Code.Length)), FlagConfigurable)
-	cx.Add(ctor, cx.Key(KeyName), cx.NewString(fn.Code.Name), FlagConfigurable)
-	cx.Add(ctor, cx.Key(KeyPrototype), Value{O: proto}, 0)
-	cx.Add(proto, cx.Key(KeyConstructor), Value{O: ctor}, FlagsHidden)
+	cx.Add(ctor, cx.Key(storage.KeyLength), storage.Number(float64(fn.Code.Length)), storage.FlagConfigurable)
+	cx.Add(ctor, cx.Key(storage.KeyName), cx.NewString(fn.Code.Name), storage.FlagConfigurable)
+	cx.Add(ctor, cx.Key(storage.KeyPrototype), storage.Value{O: proto}, 0)
+	cx.Add(proto, cx.Key(storage.KeyConstructor), storage.Value{O: ctor}, storage.FlagsHidden)
 	return proto
 }
 
 // IsConstructor implements IsConstructor.
-func (cx *ExecutionContext) IsConstructor(f *Object) bool {
+func (cx *ExecutionContext) IsConstructor(f *storage.Object) bool {
 	fn := f.Fn
 	if fn == nil {
 		return false
@@ -1099,12 +1099,12 @@ func (cx *ExecutionContext) IsConstructor(f *Object) bool {
 }
 
 // Call calls the callable object f.
-func (cx *ExecutionContext) Call(f *Object, this Value, args ...Value) Value {
+func (cx *ExecutionContext) Call(f *storage.Object, this storage.Value, args ...storage.Value) storage.Value {
 	return cx.callOnStack(f, this, args)
 }
 
 // CallValue calls f, which must be callable, or throws a TypeError.
-func (cx *ExecutionContext) CallValue(f, this Value, args ...Value) Value {
+func (cx *ExecutionContext) CallValue(f, this storage.Value, args ...storage.Value) storage.Value {
 	if !f.IsCallable() {
 		cx.ThrowTypeError(cx.DisplayString(f) + " is not a function")
 	}
@@ -1112,7 +1112,7 @@ func (cx *ExecutionContext) CallValue(f, this Value, args ...Value) Value {
 }
 
 // callOnStack calls f with a copy of args on the agent stack, so that args does not escape.
-func (cx *ExecutionContext) callOnStack(f *Object, this Value, args []Value) Value {
+func (cx *ExecutionContext) callOnStack(f *storage.Object, this storage.Value, args []storage.Value) storage.Value {
 	base := cx.sp
 	n := len(args)
 	if fn := f.Fn; fn != nil && fn.Bound == nil && fn.Info == nil && !fn.ClassConstructor &&
@@ -1128,7 +1128,7 @@ func (cx *ExecutionContext) callOnStack(f *Object, this Value, args []Value) Val
 	cx.ensureStack(base + n)
 	copy(cx.stack[base:], args)
 	cx.sp = base + n
-	var r Value
+	var r storage.Value
 	if fn := f.Fn; fn != nil && fn.Info != nil && !cx.InterruptFlag.Load() {
 		// A native function needs none of the other checks of callSlow.
 		r = cx.callNative(f, this, cx.stack[base:base+n:base+n], nil)
@@ -1140,7 +1140,7 @@ func (cx *ExecutionContext) callOnStack(f *Object, this Value, args []Value) Val
 }
 
 // callSlow calls f with any kind of callee. With isNew set, this is the object under construction.
-func (cx *ExecutionContext) callSlow(f *Object, this Value, args []Value, isNew bool, newTarget *Object) Value {
+func (cx *ExecutionContext) callSlow(f *storage.Object, this storage.Value, args []storage.Value, isNew bool, newTarget *storage.Object) storage.Value {
 	if validateExec {
 		defer cx.releaseArgs(cx.holdArgs(args))
 	}
@@ -1149,7 +1149,7 @@ func (cx *ExecutionContext) callSlow(f *Object, this Value, args []Value, isNew 
 	}
 	fn := f.Fn
 	if fn == nil {
-		cx.ThrowTypeError(cx.DisplayString(Value{O: f}) + " is not a function")
+		cx.ThrowTypeError(cx.DisplayString(storage.Value{O: f}) + " is not a function")
 	}
 	if fn.Bound != nil {
 		return cx.callBound(f, args)
@@ -1177,8 +1177,8 @@ func (cx *ExecutionContext) callSlow(f *Object, this Value, args []Value, isNew 
 }
 
 // callBound calls the bound function f, unwrapping a chain of bound functions without recursion.
-func (cx *ExecutionContext) callBound(f *Object, args []Value) Value {
-	var this Value
+func (cx *ExecutionContext) callBound(f *storage.Object, args []storage.Value) storage.Value {
+	var this storage.Value
 	base := cx.sp
 	for b := f.Fn.Bound; b != nil; b = f.Fn.Bound {
 		if k := len(b.Args); k > 0 {
@@ -1204,7 +1204,7 @@ func (cx *ExecutionContext) callBound(f *Object, args []Value) Value {
 }
 
 // Construct implements Construct: new f(...args) with the given new.target.
-func (cx *ExecutionContext) Construct(f *Object, args []Value, newTarget *Object) *Object {
+func (cx *ExecutionContext) Construct(f *storage.Object, args []storage.Value, newTarget *storage.Object) *storage.Object {
 	if validateExec {
 		defer cx.releaseArgs(cx.holdArgs(args))
 	}
@@ -1214,7 +1214,7 @@ func (cx *ExecutionContext) Construct(f *Object, args []Value, newTarget *Object
 	fn := f.Fn
 	for b := fn.Bound; b != nil; b = fn.Bound {
 		if len(b.Args) > 0 {
-			args = append(append(make([]Value, 0, len(b.Args)+len(args)), b.Args...), args...)
+			args = append(append(make([]storage.Value, 0, len(b.Args)+len(args)), b.Args...), args...)
 		}
 		if newTarget == f {
 			newTarget = b.Target
@@ -1231,8 +1231,8 @@ func (cx *ExecutionContext) Construct(f *Object, args []Value, newTarget *Object
 	}
 	this := tdz
 	if !fn.Derived {
-		proto := cx.GetPrototypeFromConstructor(newTarget, IntrinsicObjectPrototype)
-		this = Value{O: storage.NewInstance(cx.ShapeForRealm(proto, fn.Code.Realm))}
+		proto := cx.GetPrototypeFromConstructor(newTarget, storage.IntrinsicObjectPrototype)
+		this = storage.Value{O: storage.NewInstance(cx.ShapeForRealm(proto, fn.Code.Realm))}
 	}
 	r := cx.callSlow(f, this, args, !fn.Derived, newTarget)
 	if !r.IsObject() {
@@ -1243,21 +1243,21 @@ func (cx *ExecutionContext) Construct(f *Object, args []Value, newTarget *Object
 
 // GetPrototypeFromConstructor implements GetPrototypeFromConstructor.
 // A nil ctor selects defaultProto in the current realm.
-func (cx *ExecutionContext) GetPrototypeFromConstructor(ctor *Object, defaultProto Intrinsic) *Object {
+func (cx *ExecutionContext) GetPrototypeFromConstructor(ctor *storage.Object, defaultProto storage.Intrinsic) *storage.Object {
 	r := cx.realm
 	if ctor != nil {
 		if f := ctor.Fn; f != nil && f.Info != nil && f.Info.FixedPrototype {
 			return f.Info.Realm.Intrinsics[f.Info.Prototype]
 		}
-		if p := cx.GetV(Value{O: ctor}, cx.Key(KeyPrototype)); p.IsObject() {
+		if p := cx.GetV(storage.Value{O: ctor}, cx.Key(storage.KeyPrototype)); p.IsObject() {
 			return p.O
 		}
 		r = cx.FunctionContext(ctor).realm
 	}
-	if IntrinsicTemporalInstantPrototype <= defaultProto && defaultProto <= IntrinsicIntlSegmenterPrototype {
-		ns := r.Intrinsics[IntrinsicTemporal]
-		if defaultProto >= IntrinsicIntlCollatorPrototype {
-			ns = r.Intrinsics[IntrinsicIntl]
+	if storage.IntrinsicTemporalInstantPrototype <= defaultProto && defaultProto <= storage.IntrinsicIntlSegmenterPrototype {
+		ns := r.Intrinsics[storage.IntrinsicTemporal]
+		if defaultProto >= storage.IntrinsicIntlCollatorPrototype {
+			ns = r.Intrinsics[storage.IntrinsicIntl]
 		}
 		if ns != nil {
 			cx.InitLazyObject(ns)
@@ -1270,15 +1270,15 @@ func (cx *ExecutionContext) GetPrototypeFromConstructor(ctor *Object, defaultPro
 }
 
 // NewNative returns a function object of the native function f.
-func (cx *ExecutionContext) NewNative(name wtf8.String, length int, f Native) *Object {
+func (cx *ExecutionContext) NewNative(name wtf8.String, length int, f storage.Native) *storage.Object {
 	return cx.NewNativeWithState(name, length, f, nil)
 }
 
 // NewNativeWithState returns a function object of the native function f whose internal slots are state.
 // f finds them with [agent.ActiveNativeState].
-func (cx *ExecutionContext) NewNativeWithState(name wtf8.String, length int, f Native, state any) *Object {
+func (cx *ExecutionContext) NewNativeWithState(name wtf8.String, length int, f storage.Native, state any) *storage.Object {
 	n := &nativeObject{
-		info: nativeInfo{
+		info: storage.NativeInfo{
 			Native: f,
 			Name:   name,
 			Length: int32(length),
@@ -1335,20 +1335,20 @@ type (
 )
 
 const (
-	ExtremumNone Extremum = iota
+	ExtremumNone storage.Extremum = iota
 	ExtremumMin
 	ExtremumMax
 )
 
 // SetExtremum says that the native function f is Math.min or Math.max, as e names. The contract of
 // its number kernels holds for what the interpreter computes.
-func (ag *agent) SetExtremum(f *Object, e Extremum) {
+func (ag *agent) SetExtremum(f *storage.Object, e storage.Extremum) {
 	f.Fn.ChangeableInfo().Extremum = e
 }
 
 // SetFrameless makes calls of the native function f show no frame: stack traces leave them out,
 // and the caller of a function that f calls is the one that called f.
-func (ag *agent) SetFrameless(f *Object) {
+func (ag *agent) SetFrameless(f *storage.Object) {
 	f.Fn.ChangeableInfo().Frameless = true
 }
 
@@ -1356,22 +1356,22 @@ func (ag *agent) SetFrameless(f *Object) {
 // one or two arguments. They neither throw nor run code, and report false when the function has
 // to be called instead.
 type (
-	MethodKernel0 func(q quiet.Context, this Value) (Value, bool)
-	MethodKernel1 func(q quiet.Context, this, x Value) (Value, bool)
-	MethodKernel2 func(q quiet.Context, this, x, y Value) (Value, bool)
+	MethodKernel0 func(q quiet.Context, this storage.Value) (storage.Value, bool)
+	MethodKernel1 func(q quiet.Context, this, x storage.Value) (storage.Value, bool)
+	MethodKernel2 func(q quiet.Context, this, x, y storage.Value) (storage.Value, bool)
 )
 
 // nativeObject is a native function object together with its function state and description,
 // so that creating one is a single allocation.
 type nativeObject struct {
 	propertyObject
-	state function
-	info  nativeInfo
+	state storage.Function
+	info  storage.NativeInfo
 }
 
 // NewNativeConstructor returns a function object of the native function f that can be called with new.
 // f learns the constructor it is constructing for from [agent.GetNewTarget].
-func (cx *ExecutionContext) NewNativeConstructor(name wtf8.String, length int, f Native) *Object {
+func (cx *ExecutionContext) NewNativeConstructor(name wtf8.String, length int, f storage.Native) *storage.Object {
 	o := cx.NewNative(name, length, f)
 	o.Fn.Constructor = true
 	return o
@@ -1380,15 +1380,15 @@ func (cx *ExecutionContext) NewNativeConstructor(name wtf8.String, length int, f
 // DefineConstructorPrototype defines the property prototype of the constructor c, which
 // NewNativeConstructor returned in the current realm, as the intrinsic id, which the property
 // then holds for good.
-func (cx *ExecutionContext) DefineConstructorPrototype(c *Object, id Intrinsic) {
-	cx.Define(c, cx.Key(KeyPrototype), Value{O: cx.Intrinsic(id)}, 0)
+func (cx *ExecutionContext) DefineConstructorPrototype(c *storage.Object, id storage.Intrinsic) {
+	cx.Define(c, cx.Key(storage.KeyPrototype), storage.Value{O: cx.Intrinsic(id)}, 0)
 	info := c.Fn.ChangeableInfo()
 	info.Prototype, info.FixedPrototype = id, true
 }
 
 // GetNewTarget implements GetNewTarget for the running native function: it returns the
 // constructor the function is being constructed for, or nil when it was called.
-func (ag *agent) GetNewTarget() *Object {
+func (ag *agent) GetNewTarget() *storage.Object {
 	if n := len(ag.natives); n > 0 {
 		return ag.natives[n-1].newTarget
 	}
@@ -1397,7 +1397,7 @@ func (ag *agent) GetNewTarget() *Object {
 
 // activeNative returns the active function object of the running native code, which is a native
 // function or a proxy. It is another one while that code calls functions.
-func (ag *agent) activeNative() *Object {
+func (ag *agent) activeNative() *storage.Object {
 	return ag.natives[len(ag.natives)-1].f
 }
 
@@ -1408,9 +1408,9 @@ func (ag *agent) ActiveNativeState() any {
 
 // findScope returns the innermost of the depth innermost dynamic scopes of the running
 // function cl that has the variable key, or nil.
-func (cx *ExecutionContext) findScope(cl *Object, key *Object, depth int) *Object {
+func (cx *ExecutionContext) findScope(cl *storage.Object, key *storage.Object, depth int) *storage.Object {
 	k := storage.NamedKey(key)
-	for _, scopes := range [...][]*Object{cx.frames[len(cx.frames)-1].scopes, cl.Fn.CapturedScopes()} {
+	for _, scopes := range [...][]*storage.Object{cx.frames[len(cx.frames)-1].scopes, cl.Fn.CapturedScopes()} {
 		for _, o := range slices.Backward(scopes) {
 			if depth == 0 {
 				return nil
@@ -1419,10 +1419,10 @@ func (cx *ExecutionContext) findScope(cl *Object, key *Object, depth int) *Objec
 			if !cx.HasProperty(o, k) {
 				continue
 			}
-			if o.Class == classEvalScope {
+			if o.Class == storage.ClassEvalScope {
 				return o
 			}
-			if u := cx.getProp(o, storage.NamedKey(cx.WellKnownSymbol(SymbolUnscopables)), Value{O: o}); u.IsObject() {
+			if u := cx.getProp(o, storage.NamedKey(cx.WellKnownSymbol(storage.SymbolUnscopables)), storage.Value{O: o}); u.IsObject() {
 				if storage.ToBoolean(cx.getProp(u.O, k, u)) {
 					continue
 				}
@@ -1435,7 +1435,7 @@ func (cx *ExecutionContext) findScope(cl *Object, key *Object, depth int) *Objec
 
 // openScopes returns a copy of the dynamic scopes that are open in the running function cl,
 // innermost last, or nil when none are.
-func (ag *agent) openScopes(cl *Object) *[]*Object {
+func (ag *agent) openScopes(cl *storage.Object) *[]*storage.Object {
 	scopes := slices.Concat(cl.Fn.CapturedScopes(), ag.frames[len(ag.frames)-1].scopes)
 	if len(scopes) == 0 {
 		return nil
@@ -1444,7 +1444,7 @@ func (ag *agent) openScopes(cl *Object) *[]*Object {
 }
 
 // getScoped implements GetBindingValue of the object environment record of the dynamic scope o.
-func (cx *ExecutionContext) getScoped(o *Object, key *Object, strict bool) Value {
+func (cx *ExecutionContext) getScoped(o *storage.Object, key *storage.Object, strict bool) storage.Value {
 	k := storage.NamedKey(key)
 	if !cx.HasProperty(o, k) {
 		if strict {
@@ -1452,30 +1452,30 @@ func (cx *ExecutionContext) getScoped(o *Object, key *Object, strict bool) Value
 		}
 		return storage.Undefined
 	}
-	return cx.getProp(o, k, Value{O: o})
+	return cx.getProp(o, k, storage.Value{O: o})
 }
 
 // setScoped writes to a dynamic scope or performs PutValue on an unresolvable reference.
-func (cx *ExecutionContext) setScoped(o *Object, key *Object, val Value, strict bool) {
+func (cx *ExecutionContext) setScoped(o *storage.Object, key *storage.Object, val storage.Value, strict bool) {
 	k := storage.NamedKey(key)
 	if o == storage.NullObject {
 		if strict {
 			cx.ThrowReferenceError(wtf8.ToValidUTF8(key.Text) + " is not defined")
 		}
 		r := cx.realm
-		cx.setProp(r.Global, k, val, Value{O: r.GlobalThis})
+		cx.setProp(r.Global, k, val, storage.Value{O: r.GlobalThis})
 		return
 	}
 	if !cx.HasProperty(o, k) && strict {
 		cx.ThrowReferenceError(wtf8.ToValidUTF8(key.Text) + " is not defined")
 	}
-	if !cx.setProp(o, k, val, Value{O: o}) && strict {
-		cx.throwReadOnly(Value{O: o}, k)
+	if !cx.setProp(o, k, val, storage.Value{O: o}) && strict {
+		cx.throwReadOnly(storage.Value{O: o}, k)
 	}
 }
 
 // deleteName deletes the global variable key.
-func (cx *ExecutionContext) deleteName(key *Object) bool {
+func (cx *ExecutionContext) deleteName(key *storage.Object) bool {
 	r := cx.realm
 	if _, ok := r.GlobalLex.Shape.Lookup(key); ok {
 		return false
@@ -1496,16 +1496,16 @@ func (cx *ExecutionContext) deleteName(key *Object) bool {
 }
 
 // BoundFunctionCreate implements BoundFunctionCreate. It copies args.
-func (cx *ExecutionContext) BoundFunctionCreate(target *Object, this Value, args []Value) *Object {
+func (cx *ExecutionContext) BoundFunctionCreate(target *storage.Object, this storage.Value, args []storage.Value) *storage.Object {
 	s := cx.ShapeForRealm(cx.ProtoOf(target), target.Shape.Realm)
 	b := &boundObject{
-		bound: boundFunc{
+		bound: storage.BoundFunc{
 			Target: target,
 			This:   this,
-			Args:   append([]Value(nil), args...),
+			Args:   append([]storage.Value(nil), args...),
 		},
 	}
-	b.state = function{
+	b.state = storage.Function{
 		Bound:        &b.bound,
 		Materialized: true,
 		// The state of a bound target already says whether its own target is a constructor.
@@ -1518,7 +1518,7 @@ func (cx *ExecutionContext) BoundFunctionCreate(target *Object, this Value, args
 // length and name properties, so that creating one is a single allocation.
 type boundObject struct {
 	propertyObject
-	state function
-	bound boundFunc
-	props [2]Value
+	state storage.Function
+	bound storage.BoundFunc
+	props [2]storage.Value
 }

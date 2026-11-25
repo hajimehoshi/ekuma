@@ -17,9 +17,9 @@ const (
 
 // disposableResource is a DisposableResource Record. A nil method is undefined.
 type disposableResource struct {
-	value  Value
+	value  storage.Value
 	hint   DisposeHint
-	method *Object
+	method *storage.Object
 }
 
 // DisposeCapability is a DisposeCapability Record.
@@ -28,7 +28,7 @@ type DisposeCapability struct {
 
 	// completion and thrown are the completion of a running DisposeResources:
 	// a throw completion of completion when thrown is set, and a normal one otherwise.
-	completion Value
+	completion storage.Value
 	thrown     bool
 
 	needsAwait, hasAwaited bool
@@ -40,10 +40,10 @@ func NewDisposeCapability() *DisposeCapability {
 }
 
 // AddDisposableResource implements AddDisposableResource. A nil method is not present.
-func (cx *ExecutionContext) AddDisposableResource(dc *DisposeCapability, v Value, hint DisposeHint, method *Object) {
+func (cx *ExecutionContext) AddDisposableResource(dc *DisposeCapability, v storage.Value, hint DisposeHint, method *storage.Object) {
 	if method != nil {
-		if !(Value{O: method}).IsCallable() {
-			cx.ThrowTypeError(cx.DisplayString(Value{O: method}) + " is not a function")
+		if !(storage.Value{O: method}).IsCallable() {
+			cx.ThrowTypeError(cx.DisplayString(storage.Value{O: method}) + " is not a function")
 		}
 		dc.stack = append(dc.stack, disposableResource{
 			value:  storage.Undefined,
@@ -77,14 +77,14 @@ func (cx *ExecutionContext) AddDisposableResource(dc *DisposeCapability, v Value
 }
 
 // getDisposeMethod implements GetDisposeMethod. It returns nil for undefined.
-func (cx *ExecutionContext) getDisposeMethod(v Value, hint DisposeHint) *Object {
+func (cx *ExecutionContext) getDisposeMethod(v storage.Value, hint DisposeHint) *storage.Object {
 	if hint == SyncDispose {
-		return cx.GetMethod(v, cx.WellKnownSymbol(SymbolDispose))
+		return cx.GetMethod(v, cx.WellKnownSymbol(storage.SymbolDispose))
 	}
-	if m := cx.GetMethod(v, cx.WellKnownSymbol(SymbolAsyncDispose)); m != nil {
+	if m := cx.GetMethod(v, cx.WellKnownSymbol(storage.SymbolAsyncDispose)); m != nil {
 		return m
 	}
-	m := cx.GetMethod(v, cx.WellKnownSymbol(SymbolDispose))
+	m := cx.GetMethod(v, cx.WellKnownSymbol(storage.SymbolDispose))
 	if m == nil {
 		return nil
 	}
@@ -93,22 +93,22 @@ func (cx *ExecutionContext) getDisposeMethod(v Value, hint DisposeHint) *Object 
 
 // asyncDisposeFunction is the code of the functions that GetDisposeMethod makes for a synchronous
 // dispose method. Their state is the method, an *Object.
-func asyncDisposeFunction(cx *ExecutionContext, this Value, args []Value) Value {
-	m := cx.ActiveNativeState().(*Object)
+func asyncDisposeFunction(cx *ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
+	m := cx.ActiveNativeState().(*storage.Object)
 	c := cx.newIntrinsicCapability()
 	if e, ok := cx.Completion(func() {
 		cx.Call(m, this)
 	}); !ok {
 		cx.RejectCapability(c, e)
-		return Value{O: c.promise}
+		return storage.Value{O: c.promise}
 	}
 	cx.ResolveCapability(c, storage.Undefined)
-	return Value{O: c.promise}
+	return storage.Value{O: c.promise}
 }
 
 // beginDispose starts DisposeResources on dc for the completion v, which is a throw
 // completion when thrown is set.
-func (dc *DisposeCapability) beginDispose(v Value, thrown bool) {
+func (dc *DisposeCapability) beginDispose(v storage.Value, thrown bool) {
 	dc.completion = v
 	dc.thrown = thrown
 	dc.needsAwait = false
@@ -117,7 +117,7 @@ func (dc *DisposeCapability) beginDispose(v Value, thrown bool) {
 
 // disposeStep continues DisposeResources on dc until it has to await. It reports the value
 // to await and true, or false when every resource is disposed.
-func (cx *ExecutionContext) disposeStep(dc *DisposeCapability) (Value, bool) {
+func (cx *ExecutionContext) disposeStep(dc *DisposeCapability) (storage.Value, bool) {
 	for len(dc.stack) > 0 {
 		r := dc.stack[len(dc.stack)-1]
 		if r.hint == SyncDispose && dc.needsAwait && !dc.hasAwaited {
@@ -129,7 +129,7 @@ func (cx *ExecutionContext) disposeStep(dc *DisposeCapability) (Value, bool) {
 			dc.needsAwait = true
 			continue
 		}
-		var result Value
+		var result storage.Value
 		if e, ok := cx.Completion(func() {
 			result = cx.Call(r.method, r.value)
 		}); !ok {
@@ -150,22 +150,22 @@ func (cx *ExecutionContext) disposeStep(dc *DisposeCapability) (Value, bool) {
 }
 
 // disposeError records that disposing a resource of dc threw e.
-func (cx *ExecutionContext) disposeError(dc *DisposeCapability, e Value) {
+func (cx *ExecutionContext) disposeError(dc *DisposeCapability, e storage.Value) {
 	if !dc.thrown {
 		dc.completion = e
 		dc.thrown = true
 		return
 	}
 	s := cx.NewErrorObject(cx.Intrinsic(ErrorPrototypeIntrinsic(ErrorKindSuppressed)))
-	cx.Define(s, cx.Key(KeyError), e, FlagsHidden)
+	cx.Define(s, cx.Key(storage.KeyError), e, storage.FlagsHidden)
 	suppressed, _ := unpackException(dc.completion)
-	cx.Define(s, cx.Key(KeySuppressed), suppressed, FlagsHidden)
+	cx.Define(s, cx.Key(storage.KeySuppressed), suppressed, storage.FlagsHidden)
 	s.SetExtState(cx.newErrorData(s, "", len(cx.frames), len(cx.natives)))
-	dc.completion = Value{O: s}
+	dc.completion = storage.Value{O: s}
 }
 
 // endDispose ends DisposeResources on dc and returns its completion.
-func (dc *DisposeCapability) endDispose() (Value, bool) {
+func (dc *DisposeCapability) endDispose() (storage.Value, bool) {
 	v, thrown := dc.completion, dc.thrown
 	dc.completion = storage.Undefined
 	return v, thrown
@@ -174,7 +174,7 @@ func (dc *DisposeCapability) endDispose() (Value, bool) {
 // DisposeResources implements DisposeResources for a built-in function, for the completion v,
 // which is a throw completion when thrown is set. k receives the resulting completion, now or,
 // when a disposal awaits, in a later job.
-func (cx *ExecutionContext) DisposeResources(dc *DisposeCapability, v Value, thrown bool, k AwaitHandler) {
+func (cx *ExecutionContext) DisposeResources(dc *DisposeCapability, v storage.Value, thrown bool, k AwaitHandler) {
 	dc.beginDispose(v, thrown)
 	cx.continueDispose(dc, k)
 }
@@ -188,7 +188,7 @@ func (cx *ExecutionContext) continueDispose(dc *DisposeCapability, k AwaitHandle
 			return
 		}
 		e, ok := cx.Completion(func() {
-			cx.Await(v, func(cx *ExecutionContext, v Value, rejected bool) {
+			cx.Await(v, func(cx *ExecutionContext, v storage.Value, rejected bool) {
 				if rejected {
 					cx.disposeError(dc, v)
 				}
@@ -204,9 +204,9 @@ func (cx *ExecutionContext) continueDispose(dc *DisposeCapability, k AwaitHandle
 
 // addDisposableOp adds v with hint to the dispose capability that the register value d holds,
 // creating it when d is undefined, and returns the new register value.
-func (cx *ExecutionContext) addDisposableOp(v, d Value, hint DisposeHint) Value {
+func (cx *ExecutionContext) addDisposableOp(v, d storage.Value, hint DisposeHint) storage.Value {
 	if d.IsUndefined() {
-		d = Value{O: storage.NewObjectWithState(nil, classObject, NewDisposeCapability())}
+		d = storage.Value{O: storage.NewObjectWithState(nil, storage.ClassObject, NewDisposeCapability())}
 	}
 	cx.AddDisposableResource(d.O.ExtState().(*DisposeCapability), v, hint, nil)
 	return d
@@ -215,7 +215,7 @@ func (cx *ExecutionContext) addDisposableOp(v, d Value, hint DisposeHint) Value 
 // beginDisposeOp starts DisposeResources on the dispose capability that the register value d
 // holds, if any, for the completion v of the kind k, which is a throw when it is 1.
 // A generator that is being closed has a return completion.
-func beginDisposeOp(d, v, k Value) {
+func beginDisposeOp(d, v, k storage.Value) {
 	if d.IsUndefined() {
 		return
 	}
@@ -223,7 +223,7 @@ func beginDisposeOp(d, v, k Value) {
 }
 
 // disposeStepOp is disposeStep on the dispose capability that the register value d holds, if any.
-func (cx *ExecutionContext) disposeStepOp(d Value) (Value, bool) {
+func (cx *ExecutionContext) disposeStepOp(d storage.Value) (storage.Value, bool) {
 	if d.IsUndefined() {
 		return storage.Undefined, false
 	}
@@ -232,7 +232,7 @@ func (cx *ExecutionContext) disposeStepOp(d Value) (Value, bool) {
 
 // endDisposeOp is endDispose on the dispose capability that the register value d holds.
 // It reports false when d holds none.
-func endDisposeOp(d Value) (Value, bool) {
+func endDisposeOp(d storage.Value) (storage.Value, bool) {
 	if d.IsUndefined() {
 		return storage.Undefined, false
 	}

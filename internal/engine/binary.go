@@ -25,7 +25,7 @@ func (cx *ExecutionContext) checkBufferLength(n int64) {
 // it returns a buffer object of byteLength zero bytes with the prototype proto.
 // maxByteLength is -1 for a buffer whose length is fixed. It throws a RangeError
 // when the lengths are too large.
-func (cx *ExecutionContext) NewArrayBufferObject(proto *Object, byteLength, maxByteLength int64, shared bool) *Object {
+func (cx *ExecutionContext) NewArrayBufferObject(proto *storage.Object, byteLength, maxByteLength int64, shared bool) *storage.Object {
 	cx.checkBufferLength(byteLength)
 	cx.checkBufferLength(maxByteLength)
 	if shared {
@@ -39,7 +39,7 @@ func (cx *ExecutionContext) NewArrayBufferObject(proto *Object, byteLength, maxB
 // zero-filled beyond its length, and detaches o. maxByteLength is -1 for a buffer whose length is fixed.
 // The new buffer is immutable when immutable is set. o must be mutable and have no detach key.
 // It throws a RangeError when the lengths are too large.
-func (cx *ExecutionContext) TransferArrayBuffer(o *Object, proto *Object, newByteLength, maxByteLength int64, immutable bool) *Object {
+func (cx *ExecutionContext) TransferArrayBuffer(o *storage.Object, proto *storage.Object, newByteLength, maxByteLength int64, immutable bool) *storage.Object {
 	cx.checkBufferLength(newByteLength)
 	cx.checkBufferLength(maxByteLength)
 	b := o.ExtState().(*storage.ArrayBuffer)
@@ -63,7 +63,7 @@ func (cx *ExecutionContext) TransferArrayBuffer(o *Object, proto *Object, newByt
 
 // ToElementValue converts v as TypedArraySetElement does for an element of the type t:
 // by ToBigInt for a BigInt type and by ToNumber otherwise.
-func (cx *ExecutionContext) ToElementValue(t element.Type, v Value) Value {
+func (cx *ExecutionContext) ToElementValue(t element.Type, v storage.Value) storage.Value {
 	if t.IsBigInt() {
 		return cx.ToBigInt(v)
 	}
@@ -75,7 +75,7 @@ func (cx *ExecutionContext) ToElementValue(t element.Type, v Value) Value {
 
 // typedArraySet implements [[Set]] of the typed array o for an array index and the receiver o.
 // It reports false when the buffer is immutable.
-func (cx *ExecutionContext) typedArraySet(o *Object, i uint32, val Value) bool {
+func (cx *ExecutionContext) typedArraySet(o *storage.Object, i uint32, val storage.Value) bool {
 	t := o.ExtState().(*storage.TypedArray)
 	if val.O == storage.NumberObject && t.NumberStore {
 		if data, f := t.Data.Data, val.N; !t.Tracking && uint(i) < uint(t.FixedLength) {
@@ -110,7 +110,7 @@ func (cx *ExecutionContext) typedArraySet(o *Object, i uint32, val Value) bool {
 }
 
 // typedArraySetElement implements TypedArraySetElement for the typed array t on a mutable buffer.
-func (cx *ExecutionContext) typedArraySetElement(t *storage.TypedArray, i uint32, val Value) {
+func (cx *ExecutionContext) typedArraySetElement(t *storage.TypedArray, i uint32, val storage.Value) {
 	val = cx.ToElementValue(t.Type, val)
 	if t.Data.IsShared() {
 		t.StoreElement(int(i), storage.ElementBits(t.Type, val))
@@ -123,39 +123,39 @@ func (cx *ExecutionContext) typedArraySetElement(t *storage.TypedArray, i uint32
 }
 
 // typedArrayDefine implements [[DefineOwnProperty]] of a typed array for an array index.
-func (cx *ExecutionContext) typedArrayDefine(o *Object, i uint32, d PropDesc) bool {
+func (cx *ExecutionContext) typedArrayDefine(o *storage.Object, i uint32, d storage.PropDesc) bool {
 	if !storage.TypedArrayHas(o, i) {
 		return false
 	}
 	if storage.TypedArrayImmutable(o) {
 		// ValidateAndApplyPropertyDescriptor against a non-configurable, non-writable element.
-		if d.HasTrue(HasConfigurable, FlagConfigurable) {
+		if d.HasTrue(storage.HasConfigurable, storage.FlagConfigurable) {
 			return false
 		}
-		if d.HasFalse(HasEnumerable, FlagEnumerable) {
+		if d.HasFalse(storage.HasEnumerable, storage.FlagEnumerable) {
 			return false
 		}
 		if d.IsAccessor() {
 			return false
 		}
-		if d.HasTrue(HasWritable, FlagWritable) {
+		if d.HasTrue(storage.HasWritable, storage.FlagWritable) {
 			return false
 		}
-		return !d.HasField(HasValue) || storage.SameValue(d.Value(), storage.TypedArrayGet(o, i))
+		return !d.HasField(storage.HasValue) || storage.SameValue(d.Value(), storage.TypedArrayGet(o, i))
 	}
-	if d.HasFalse(HasConfigurable, FlagConfigurable) {
+	if d.HasFalse(storage.HasConfigurable, storage.FlagConfigurable) {
 		return false
 	}
-	if d.HasFalse(HasEnumerable, FlagEnumerable) {
+	if d.HasFalse(storage.HasEnumerable, storage.FlagEnumerable) {
 		return false
 	}
 	if d.IsAccessor() {
 		return false
 	}
-	if d.HasFalse(HasWritable, FlagWritable) {
+	if d.HasFalse(storage.HasWritable, storage.FlagWritable) {
 		return false
 	}
-	if d.HasField(HasValue) {
+	if d.HasField(storage.HasValue) {
 		cx.typedArraySetElement(o.ExtState().(*storage.TypedArray), i, d.Value())
 	}
 	return true
@@ -163,7 +163,7 @@ func (cx *ExecutionContext) typedArrayDefine(o *Object, i uint32, d PropDesc) bo
 
 // typedArraySetNamed implements [[Set]] of the typed array o for a canonical numeric string that is
 // not an array index, which is never a valid integer index.
-func (cx *ExecutionContext) typedArraySetNamed(o *Object, val Value, receiver Value) {
+func (cx *ExecutionContext) typedArraySetNamed(o *storage.Object, val storage.Value, receiver storage.Value) {
 	if receiver.O == o {
 		cx.ToElementValue(o.ExtState().(*storage.TypedArray).Type, val)
 	}
@@ -171,6 +171,6 @@ func (cx *ExecutionContext) typedArraySetNamed(o *Object, val Value, receiver Va
 
 // isNumericKey reports whether k is an array index or a canonical numeric string,
 // which a typed array handles without looking at its properties.
-func isNumericKey(k PropKey) bool {
+func isNumericKey(k storage.PropKey) bool {
 	return k.Key == nil || storage.IsCanonicalNumericString(k.Key)
 }

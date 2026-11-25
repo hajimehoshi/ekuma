@@ -6,16 +6,19 @@
 // objects are in the package builtin.
 package engine
 
-import "github.com/hajimehoshi/ekuma/internal/wtf8"
+import (
+	"github.com/hajimehoshi/ekuma/internal/storage"
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
+)
 
 // typeofNames are the results of the typeof operator, indexed by the typeof constants.
-var typeofNames = [typeofCount]wtf8.String{
-	typeofUndefined: "undefined",
-	typeofNumber:    "number",
-	typeofBoolean:   "boolean",
-	typeofString:    "string",
-	typeofSymbol:    "symbol",
-	typeofBigInt:    "bigint",
-	typeofFunction:  "function",
-	typeofObject:    "object",
+var typeofNames = [storage.TypeofCount]wtf8.String{
+	storage.TypeofUndefined: "undefined",
+	storage.TypeofNumber:    "number",
+	storage.TypeofBoolean:   "boolean",
+	storage.TypeofString:    "string",
+	storage.TypeofSymbol:    "symbol",
+	storage.TypeofBigInt:    "bigint",
+	storage.TypeofFunction:  "function",
+	storage.TypeofObject:    "object",
 }

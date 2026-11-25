@@ -45,7 +45,7 @@ type waiterData struct {
 	agent *agent
 
 	// promise is the promise of [[PromiseCapability]] of an asynchronous wait.
-	promise *Object
+	promise *storage.Object
 
 	// promiseContext is the execution context that created promise.
 	promiseContext *ExecutionContext
@@ -173,7 +173,7 @@ func (ag *agent) AgentCanSuspend() bool {
 // [ExecutionContext.NotifyWaiters] in any agent notifies the waiter, or to "timed-out" after the timeout.
 //
 // An interruption ends a synchronous wait.
-func (cx *ExecutionContext) Wait(t *storage.TypedArray, i int, v uint64, timeout float64, async bool) (Value, bool) {
+func (cx *ExecutionContext) Wait(t *storage.TypedArray, i int, v uint64, timeout float64, async bool) (storage.Value, bool) {
 	blk := t.Data.SharedDataBlock()
 	byteIndex := t.Offset + i*t.Type.Size()
 	w := &waiter{
@@ -184,7 +184,7 @@ func (cx *ExecutionContext) Wait(t *storage.TypedArray, i int, v uint64, timeout
 		},
 	}
 	if async {
-		w.Data.promise = cx.NewPromiseObject(cx.Intrinsic(IntrinsicPromisePrototype))
+		w.Data.promise = cx.NewPromiseObject(cx.Intrinsic(storage.IntrinsicPromisePrototype))
 		w.Data.promiseContext = cx
 	} else {
 		w.Data.done = make(chan struct{})
@@ -207,7 +207,7 @@ func (cx *ExecutionContext) Wait(t *storage.TypedArray, i int, v uint64, timeout
 	if ns := timeout * float64(time.Millisecond); ns < math.MaxInt64 {
 		cx.asyncWaiters.setDeadline(w, cx.Now().Add(time.Duration(ns)))
 	}
-	return Value{O: w.Data.promise}, true
+	return storage.Value{O: w.Data.promise}, true
 }
 
 // compareAndAdd reports whether the element of the type t at byteIndex of blk has the encoding v,
@@ -259,7 +259,7 @@ func removeWaiters(blk *storage.SharedDataBlock, byteIndex int, count float64) [
 
 // suspend implements SuspendThisAgent for the synchronous waiter w, which is in its list,
 // and returns the result of the wait.
-func (cx *ExecutionContext) suspend(w *waiter, timeout float64) Value {
+func (cx *ExecutionContext) suspend(w *waiter, timeout float64) storage.Value {
 	// An interruption leaves the list.
 	defer unlist(w)
 	var deadline time.Time
@@ -400,7 +400,7 @@ func (ag *agent) Running() bool {
 // called while [agent.Running] reports true.
 func (cx *ExecutionContext) RunJobs() error {
 	// enter drains the pending jobs after this empty callback returns.
-	_, err := cx.enter(func() Value {
+	_, err := cx.enter(func() storage.Value {
 		return storage.Undefined
 	})
 	return err

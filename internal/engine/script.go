@@ -48,7 +48,7 @@ func itoa(n int) string {
 
 // Script is a Script Record.
 type Script struct {
-	code *funcProto
+	code *storage.FuncProto
 }
 
 // ParseScript implements ParseScript for the current realm. file names the script in error
@@ -73,10 +73,10 @@ func (cx *ExecutionContext) NewScript(code *bytecode.Func) *Script {
 
 // ScriptEvaluation evaluates s and runs pending jobs. completed reports whether
 // the script returned normally before the job checkpoint.
-func (s *Script) ScriptEvaluation() (Value, bool, error) {
+func (s *Script) ScriptEvaluation() (storage.Value, bool, error) {
 	cx := executionContextOf(s.code.Realm)
 	var completed bool
-	value, err := cx.enter(func() Value {
+	value, err := cx.enter(func() storage.Value {
 		v := s.CallScript()
 		completed = true
 		return v
@@ -85,12 +85,12 @@ func (s *Script) ScriptEvaluation() (Value, bool, error) {
 }
 
 // CallScript evaluates s from a running host function and propagates its exception.
-func (s *Script) CallScript() Value {
+func (s *Script) CallScript() storage.Value {
 	cx := executionContextOf(s.code.Realm)
 	previous := cx.enteredRealm
 	cx.enteredRealm = cx.realm
 	defer func() { cx.enteredRealm = previous }()
-	return cx.Call(cx.newScriptFunction(s.code), Value{O: cx.realm.GlobalThis})
+	return cx.Call(cx.newScriptFunction(s.code), storage.Value{O: cx.realm.GlobalThis})
 }
 
 // compileScriptCode parses and compiles the script src. The error is a [*SyntaxError] when src is
@@ -140,7 +140,7 @@ func (cx *ExecutionContext) BindScript(u *UnboundScript) *Script {
 
 // compileFunction compiles the function of [parser.ParseFunction] into a script that evaluates
 // to it.
-func (cx *ExecutionContext) compileFunction(file string, params, body wtf8.String, kind parser.FunctionKind) (*funcProto, error) {
+func (cx *ExecutionContext) compileFunction(file string, params, body wtf8.String, kind parser.FunctionKind) (*storage.FuncProto, error) {
 	prog, err := parser.ParseFunction(params, body, kind, parser.Options{
 		Poll: cx.Poll,
 	})
@@ -176,6 +176,6 @@ func toSyntaxError(file string, err error) error {
 }
 
 // newScriptFunction returns the function that runs the script fp.
-func (cx *ExecutionContext) newScriptFunction(fp *funcProto) *Object {
-	return storage.NewFunctionObject(cx.realm.Shapes.Function, &function{Code: fp})
+func (cx *ExecutionContext) newScriptFunction(fp *storage.FuncProto) *storage.Object {
+	return storage.NewFunctionObject(cx.realm.Shapes.Function, &storage.Function{Code: fp})
 }

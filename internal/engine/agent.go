@@ -21,7 +21,7 @@ import (
 //
 // args is only valid until the function returns. An exception is thrown with the Throw methods of
 // [ExecutionContext], which do not return.
-type NativeFunc func(cx *ExecutionContext, this Value, args []Value) Value
+type NativeFunc func(cx *ExecutionContext, this storage.Value, args []storage.Value) storage.Value
 
 // nativeFast holds the forms of a native function that its callers use instead of calling it.
 type nativeFast struct {
@@ -37,7 +37,7 @@ type nativeFast struct {
 	pairStep IteratorPairStepFunc
 
 	// arrayIndex is the indexed element read of the original array iterator next method.
-	arrayIndex func(cx *ExecutionContext, o *Object, i uint32) Value
+	arrayIndex func(cx *ExecutionContext, o *storage.Object, i uint32) storage.Value
 
 	// number1 and number2 compute the function for exactly one or two arguments that are
 	// numbers.
@@ -57,7 +57,7 @@ type nativeFast struct {
 
 // callMethod calls the method kernel in the realm r for this and the arguments args. It reports false when
 // there is none for as many arguments or the kernel declines.
-func (k *nativeFast) callMethod(r *realmPart, this Value, args []Value) (Value, bool) {
+func (k *nativeFast) callMethod(r *storage.RealmPart, this storage.Value, args []storage.Value) (storage.Value, bool) {
 	switch {
 	case len(args) == 0 && k.method0 != nil:
 		return k.method0(quiet.ContextOf(r), this)
@@ -66,16 +66,16 @@ func (k *nativeFast) callMethod(r *realmPart, this Value, args []Value) (Value, 
 	case len(args) == 2 && k.method2 != nil:
 		return k.method2(quiet.ContextOf(r), this, args[0], args[1])
 	}
-	return Value{}, false
+	return storage.Value{}, false
 }
 
 // hasIteratorFast reports whether f is a native function of the realm of cx with fast forms.
-func (cx *ExecutionContext) hasIteratorFast(f *function) bool {
+func (cx *ExecutionContext) hasIteratorFast(f *storage.Function) bool {
 	return f.Info != nil && f.Info.Native.HasFast() && f.Info.Realm == cx.realmPart
 }
 
 // iteratorPairStepOf returns the pair step of the next method f of a built-in iterator in realm r, or nil.
-func iteratorPairStepOf(f *function, r *realmPart) IteratorPairStepFunc {
+func iteratorPairStepOf(f *storage.Function, r *storage.RealmPart) IteratorPairStepFunc {
 	info := f.Info
 	if info == nil || !info.Native.HasFast() || info.Realm != r {
 		return nil
@@ -84,41 +84,41 @@ func iteratorPairStepOf(f *function, r *realmPart) IteratorPairStepFunc {
 }
 
 func (cx *ExecutionContext) initKeys() {
-	for k, name := range [commonKeyCount]wtf8.String{
-		KeyLength: "length", KeyPrototype: "prototype", KeyConstructor: "constructor", KeyName: "name",
-		KeyMessage: "message", KeyStack: "stack", KeyCause: "cause", KeyErrors: "errors",
-		KeyError: "error", KeySuppressed: "suppressed",
-		KeyToString: "toString", keyValueOf: "valueOf", KeyToJSON: "toJSON",
-		keyCall: "call", keyApply: "apply", keyBind: "bind",
-		KeyGet: "get", KeySet: "set", KeyValue: "value", KeyWritable: "writable",
-		KeyEnumerable: "enumerable", KeyConfigurable: "configurable",
-		KeyNext: "next", keyDone: "done", KeyReturn: "return", keyThrow: "throw", KeyThen: "then",
-		keyCallee: "callee", keyCaller: "caller", keyArguments: "arguments",
-		KeyIndex: "index", keyInput: "input", KeyGroups: "groups", KeyLastIndex: "lastIndex",
-		KeyRaw: "raw", KeySource: "source", KeyFlags: "flags", keyDefault: "default",
-		keyGetPrototypeOf: "getPrototypeOf", keySetPrototypeOf: "setPrototypeOf",
-		keyIsExtensible: "isExtensible", keyPreventExtensions: "preventExtensions",
-		keyGetOwnPropertyDescriptor: "getOwnPropertyDescriptor", keyDefineProperty: "defineProperty",
-		KeyHas: "has", keyDeleteProperty: "deleteProperty", keyOwnKeys: "ownKeys", keyConstruct: "construct",
-		KeyAdd: "add", KeyKeys: "keys", KeySize: "size", KeyStatus: "status", KeyReason: "reason",
-		KeyMode: "mode", KeyPadding: "padding",
-		KeyToLocaleString: "toLocaleString", KeyToISOString: "toISOString",
-		KeyHasIndices: "hasIndices", KeyGlobal: "global", KeyIgnoreCase: "ignoreCase",
-		KeyMultiline: "multiline", KeyDotAll: "dotAll", KeyUnicode: "unicode",
-		KeyUnicodeSets: "unicodeSets", KeySticky: "sticky",
-		KeyExec: "exec",
+	for k, name := range [storage.CommonKeyCount]wtf8.String{
+		storage.KeyLength: "length", storage.KeyPrototype: "prototype", storage.KeyConstructor: "constructor", storage.KeyName: "name",
+		storage.KeyMessage: "message", storage.KeyStack: "stack", storage.KeyCause: "cause", storage.KeyErrors: "errors",
+		storage.KeyError: "error", storage.KeySuppressed: "suppressed",
+		storage.KeyToString: "toString", storage.KeyValueOf: "valueOf", storage.KeyToJSON: "toJSON",
+		storage.KeyCall: "call", storage.KeyApply: "apply", storage.KeyBind: "bind",
+		storage.KeyGet: "get", storage.KeySet: "set", storage.KeyValue: "value", storage.KeyWritable: "writable",
+		storage.KeyEnumerable: "enumerable", storage.KeyConfigurable: "configurable",
+		storage.KeyNext: "next", storage.KeyDone: "done", storage.KeyReturn: "return", storage.KeyThrow: "throw", storage.KeyThen: "then",
+		storage.KeyCallee: "callee", storage.KeyCaller: "caller", storage.KeyArguments: "arguments",
+		storage.KeyIndex: "index", storage.KeyInput: "input", storage.KeyGroups: "groups", storage.KeyLastIndex: "lastIndex",
+		storage.KeyRaw: "raw", storage.KeySource: "source", storage.KeyFlags: "flags", storage.KeyDefault: "default",
+		storage.KeyGetPrototypeOf: "getPrototypeOf", storage.KeySetPrototypeOf: "setPrototypeOf",
+		storage.KeyIsExtensible: "isExtensible", storage.KeyPreventExtensions: "preventExtensions",
+		storage.KeyGetOwnPropertyDescriptor: "getOwnPropertyDescriptor", storage.KeyDefineProperty: "defineProperty",
+		storage.KeyHas: "has", storage.KeyDeleteProperty: "deleteProperty", storage.KeyOwnKeys: "ownKeys", storage.KeyConstruct: "construct",
+		storage.KeyAdd: "add", storage.KeyKeys: "keys", storage.KeySize: "size", storage.KeyStatus: "status", storage.KeyReason: "reason",
+		storage.KeyMode: "mode", storage.KeyPadding: "padding",
+		storage.KeyToLocaleString: "toLocaleString", storage.KeyToISOString: "toISOString",
+		storage.KeyHasIndices: "hasIndices", storage.KeyGlobal: "global", storage.KeyIgnoreCase: "ignoreCase",
+		storage.KeyMultiline: "multiline", storage.KeyDotAll: "dotAll", storage.KeyUnicode: "unicode",
+		storage.KeyUnicodeSets: "unicodeSets", storage.KeySticky: "sticky",
+		storage.KeyExec: "exec",
 	} {
 		cx.Keys.Common[k] = cx.Intern(name)
 	}
-	for s, name := range [wellKnownSymbolCount]wtf8.String{
-		SymbolIterator: "Symbol.iterator", SymbolAsyncIterator: "Symbol.asyncIterator",
-		SymbolHasInstance: "Symbol.hasInstance", SymbolToPrimitive: "Symbol.toPrimitive",
-		SymbolToStringTag: "Symbol.toStringTag", SymbolSpecies: "Symbol.species",
-		SymbolIsConcatSpreadable: "Symbol.isConcatSpreadable", SymbolUnscopables: "Symbol.unscopables",
-		SymbolMatch: "Symbol.match", SymbolMatchAll: "Symbol.matchAll", SymbolReplace: "Symbol.replace",
-		SymbolSearch: "Symbol.search", SymbolSplit: "Symbol.split",
-		SymbolDispose: "Symbol.dispose", SymbolAsyncDispose: "Symbol.asyncDispose",
-		SymbolMetadata: "Symbol.metadata",
+	for s, name := range [storage.WellKnownSymbolCount]wtf8.String{
+		storage.SymbolIterator: "Symbol.iterator", storage.SymbolAsyncIterator: "Symbol.asyncIterator",
+		storage.SymbolHasInstance: "Symbol.hasInstance", storage.SymbolToPrimitive: "Symbol.toPrimitive",
+		storage.SymbolToStringTag: "Symbol.toStringTag", storage.SymbolSpecies: "Symbol.species",
+		storage.SymbolIsConcatSpreadable: "Symbol.isConcatSpreadable", storage.SymbolUnscopables: "Symbol.unscopables",
+		storage.SymbolMatch: "Symbol.match", storage.SymbolMatchAll: "Symbol.matchAll", storage.SymbolReplace: "Symbol.replace",
+		storage.SymbolSearch: "Symbol.search", storage.SymbolSplit: "Symbol.split",
+		storage.SymbolDispose: "Symbol.dispose", storage.SymbolAsyncDispose: "Symbol.asyncDispose",
+		storage.SymbolMetadata: "Symbol.metadata",
 	} {
 		cx.Keys.WellKnown[s] = cx.NewSymbol(name, true)
 	}
@@ -157,7 +157,7 @@ func (e *PanicError) Unwrap() error {
 
 func isHostPanic(value any) bool {
 	switch value.(type) {
-	case *throwSignal, *interruptSignal:
+	case *throwSignal, *storage.InterruptSignal:
 		return false
 	default:
 		return true
@@ -182,7 +182,7 @@ func (ag *agent) ClearInterrupt() {
 
 // Poll stops the script when an interruption was requested. It also takes the notifications of
 // other agents, which raise the interrupt flag too. A loop calls it only between runs of many
-// steps, such as [PollInterval] steps.
+// steps, such as [storage.PollInterval] steps.
 func (ag *agent) Poll() {
 	ag.PollYield()
 	ag.ResumeInterruption()
@@ -202,23 +202,23 @@ var errThrow = &throwSignal{}
 // nativeCall is a running call of a native function or a proxy, which stack traces show as
 // [nativeCall.showsFrame] says.
 type nativeCall struct {
-	f *Object
+	f *storage.Object
 
 	// receiver supplies the type name of the receiver in stack traces.
-	receiver Value
+	receiver storage.Value
 
 	// frames is the number of frames when the call started.
 	frames int
 
 	// newTarget is the constructor that the function is being constructed for, and nil in a
 	// call.
-	newTarget *Object
+	newTarget *storage.Object
 }
 
 // pushNative records the start of the call of the native function f for newTarget, which is nil
 // in a call. A shortcut records the callee selected by method lookup. It throws a RangeError
 // when maxNatives calls of native functions are running.
-func (cx *ExecutionContext) pushNative(f *Object, this Value, newTarget *Object) {
+func (cx *ExecutionContext) pushNative(f *storage.Object, this storage.Value, newTarget *storage.Object) {
 	n := len(cx.natives)
 	if n == cap(cx.natives) {
 		cx.growNatives()
@@ -242,7 +242,7 @@ func (cx *ExecutionContext) growNatives() {
 }
 
 // callNative dispatches a native call or construction. A proxy inherits its caller's context.
-func (cx *ExecutionContext) callNative(f *Object, this Value, args []Value, newTarget *Object) Value {
+func (cx *ExecutionContext) callNative(f *storage.Object, this storage.Value, args []storage.Value, newTarget *storage.Object) storage.Value {
 	if r := f.Fn.Info.Realm; r != nil && r != cx.realmPart {
 		cx = executionContextOf(r)
 	}
@@ -253,7 +253,7 @@ func (cx *ExecutionContext) callNative(f *Object, this Value, args []Value, newT
 }
 
 // invokeNative runs f with the already active context.
-func (cx *ExecutionContext) invokeNative(f *Object, this Value, args []Value, newTarget *Object) Value {
+func (cx *ExecutionContext) invokeNative(f *storage.Object, this storage.Value, args []storage.Value, newTarget *storage.Object) storage.Value {
 	if validateExec {
 		defer cx.releaseArgs(cx.holdArgs(args))
 	}
@@ -276,7 +276,7 @@ func (cx *ExecutionContext) invokeNative(f *Object, this Value, args []Value, ne
 // showsFrame reports whether stack traces show the call c, and the functions that c calls have
 // no caller. A proxy shows its target or its trap instead, and a frameless function nothing.
 func (c *nativeCall) showsFrame() bool {
-	return c.f.Class != classProxy && !c.f.Fn.Frameless()
+	return c.f.Class != storage.ClassProxy && !c.f.Fn.Frameless()
 }
 
 // popNative records the end of the innermost call of a native function.
@@ -312,14 +312,14 @@ type agent struct {
 	// trackJobRealms selects handler realms for jobs in agents with multiple realms or global proxies.
 	trackJobRealms bool
 
-	stack  []Value
+	stack  []storage.Value
 	frames []frame
 
 	// natives are the calls of native functions that are running, innermost last.
 	natives []nativeCall
 
 	// openUpvals are the upvalues that refer to stack slots, ordered by index.
-	openUpvals []*upvalue
+	openUpvals []*storage.Upvalue
 
 	// sp is the first stack index that is not in use by the running function.
 	sp int
@@ -341,7 +341,7 @@ type agent struct {
 	// abortCause defers job and module abandonment until the outermost call ends.
 	abortCause error
 
-	thrown   Value
+	thrown   storage.Value
 	thrownAt throwSite
 
 	// captureThrowSites follows the reporter of the outermost host call across realms.
@@ -375,7 +375,7 @@ type agent struct {
 	active *ExecutionContext
 
 	// callerRealm is the realm that was current when the innermost interpreter loop started.
-	callerRealm *realmPart
+	callerRealm *storage.RealmPart
 
 	// timeZone is the time zone of local time, or nil for the one of the host.
 	timeZone datetime.TimeZone
@@ -413,8 +413,8 @@ const initialStackSize = 1 << 12
 func NewExecutionContext(hostDefined any) (*ExecutionContext, *Host) {
 	host := &Host{
 		HostDefinedValue:    hostDefined,
-		stack:               make([]Value, initialStackSize),
-		SymbolRegistry:      map[wtf8.String]*Object{},
+		stack:               make([]storage.Value, initialStackSize),
+		SymbolRegistry:      map[wtf8.String]*storage.Object{},
 		thrown:              storage.Undefined,
 		mailbox:             newMailbox(),
 		MaxBigIntResultBits: MaxBigIntBits,
@@ -422,9 +422,9 @@ func NewExecutionContext(hostDefined any) (*ExecutionContext, *Host) {
 	r := host.newRealm()
 	cx := &r.context
 	cx.activate()
-	cx.SymbolShape = &shape{
+	cx.SymbolShape = &storage.Shape{
 		Space: cx.space,
-		Small: []shapeEntry{},
+		Small: []storage.ShapeEntry{},
 	}
 	cx.initRealmPrototypes()
 
@@ -434,10 +434,10 @@ func NewExecutionContext(hostDefined any) (*ExecutionContext, *Host) {
 	for t, name := range typeofNames {
 		cx.Typeofs[t] = storage.ObjectValue(cx.Intern(name))
 	}
-	cx.MissHolder = (&propertyObject{
-		Kind:  kindObject,
-		Shape: r.Shapes.NullProto[ordinaryRoot],
-		Slots: []Value{storage.Undefined},
+	cx.MissHolder = (&storage.PropertyObject{
+		Kind:  storage.KindObject,
+		Shape: r.Shapes.NullProto[storage.OrdinaryRoot],
+		Slots: []storage.Value{storage.Undefined},
 	}).Init()
 	cx.initRealmGlobals()
 	cx.Strings.EndKeeping()
@@ -445,23 +445,23 @@ func NewExecutionContext(hostDefined any) (*ExecutionContext, *Host) {
 }
 
 // ErrorPrototypeIntrinsic returns the intrinsic that is the prototype of the native error type k.
-func ErrorPrototypeIntrinsic(k ErrorKind) Intrinsic {
-	return IntrinsicErrorPrototype + Intrinsic(k)
+func ErrorPrototypeIntrinsic(k ErrorKind) storage.Intrinsic {
+	return storage.IntrinsicErrorPrototype + storage.Intrinsic(k)
 }
 
 // TypedArrayConstructorIntrinsic returns the intrinsic constructor for the element type t.
-func TypedArrayConstructorIntrinsic(t element.Type) Intrinsic {
-	return IntrinsicInt8Array + Intrinsic(t)
+func TypedArrayConstructorIntrinsic(t element.Type) storage.Intrinsic {
+	return storage.IntrinsicInt8Array + storage.Intrinsic(t)
 }
 
 // TypedArrayPrototypeIntrinsic returns the intrinsic prototype for the element type t.
-func TypedArrayPrototypeIntrinsic(t element.Type) Intrinsic {
-	return IntrinsicInt8ArrayPrototype + Intrinsic(t)
+func TypedArrayPrototypeIntrinsic(t element.Type) storage.Intrinsic {
+	return storage.IntrinsicInt8ArrayPrototype + storage.Intrinsic(t)
 }
 
 // IntrinsicValue returns the intrinsic object id of the execution realm, which must be set, as a value.
-func (cx *ExecutionContext) IntrinsicValue(id Intrinsic) Value {
-	return Value{
+func (cx *ExecutionContext) IntrinsicValue(id storage.Intrinsic) storage.Value {
+	return storage.Value{
 		O: cx.realm.Intrinsics[id],
 	}
 }
@@ -483,12 +483,12 @@ const (
 )
 
 // Throw throws v as a JavaScript exception. It does not return.
-func (ag *agent) Throw(v Value) {
+func (ag *agent) Throw(v storage.Value) {
 	ag.recordThrow(v)
 	panic(errThrow)
 }
 
-func (ag *agent) recordThrow(v Value) {
+func (ag *agent) recordThrow(v storage.Value) {
 	if ag.captureThrowSites {
 		ag.thrownAt = throwSite{}
 		if n := len(ag.frames); n > 0 {
@@ -521,19 +521,19 @@ func (s throwSite) location() ExceptionLocation {
 // A finally handler keeps its pending exception in a private bytecode register.
 // Its source location must survive any further exceptions handled by the finalizer.
 type savedException struct {
-	value Value
+	value storage.Value
 	at    throwSite
 }
 
-func (ag *agent) saveException() Value {
-	return Value{O: storage.NewMarker(&savedException{
+func (ag *agent) saveException() storage.Value {
+	return storage.Value{O: storage.NewMarker(&savedException{
 		value: ag.thrown,
 		at:    ag.thrownAt,
 	})}
 }
 
-func unpackException(v Value) (Value, *throwSite) {
-	if v.O != nil && v.O.Kind == kindHole {
+func unpackException(v storage.Value) (storage.Value, *throwSite) {
+	if v.O != nil && v.O.Kind == storage.KindHole {
 		if saved, ok := v.O.Ext.(*savedException); ok {
 			return saved.value, &saved.at
 		}
@@ -541,7 +541,7 @@ func unpackException(v Value) (Value, *throwSite) {
 	return v, nil
 }
 
-func (ag *agent) restoreException(v Value) {
+func (ag *agent) restoreException(v storage.Value) {
 	value, site := unpackException(v)
 	ag.thrown = value
 	if site != nil {
@@ -550,16 +550,16 @@ func (ag *agent) restoreException(v Value) {
 }
 
 // newError returns a new error object of the given type in the execution realm.
-func (cx *ExecutionContext) newError(kind ErrorKind, msg string) *Object {
+func (cx *ExecutionContext) newError(kind ErrorKind, msg string) *storage.Object {
 	e := cx.NewErrorObject(cx.Intrinsic(ErrorPrototypeIntrinsic(kind)))
 	// A message that quotes a value of the script can be longer than a string may be.
-	cx.Define(e, cx.Key(KeyMessage), cx.NewString(storage.Clip(wtf8.FromValidUTF8(msg), MaxStringLength, "")), FlagsHidden)
+	cx.Define(e, cx.Key(storage.KeyMessage), cx.NewString(storage.Clip(wtf8.FromValidUTF8(msg), storage.MaxStringLength, "")), storage.FlagsHidden)
 	e.SetExtState(cx.newErrorData(e, msg, len(cx.frames), len(cx.natives)))
 	return e
 }
 
 func (cx *ExecutionContext) throwError(kind ErrorKind, msg string) {
-	cx.Throw(Value{O: cx.newError(kind, msg)})
+	cx.Throw(storage.Value{O: cx.newError(kind, msg)})
 }
 
 // ThrowTypeError throws a TypeError in the execution realm with the given message. It does not return.
@@ -585,7 +585,7 @@ func (cx *ExecutionContext) ThrowSyntaxError(msg string) {
 // RecordStack records the stack trace of the new error object e, whose message is msg in UTF-8,
 // as what [ErrorStack] returns. The running native function constructs e for newTarget: the trace
 // leaves out that function, and the frames up to the call of newTarget when newTarget is running.
-func (ag *agent) RecordStack(e *Object, msg string, newTarget *Object) {
+func (ag *agent) RecordStack(e *storage.Object, msg string, newTarget *storage.Object) {
 	frames, natives := len(ag.frames), max(len(ag.natives)-1, 0)
 	for i := frames - 1; i >= 0; i-- {
 		if ag.frames[i].cl == newTarget {
@@ -605,17 +605,17 @@ const maxStackFrames = 16
 // newErrorData returns the error data of the new error e, whose stack trace shows the first
 // frames frames and the first natives calls of native functions. The names that the trace
 // shows are read now, and the trace is formatted when it is first read.
-func (ag *agent) newErrorData(e *Object, msg string, frames, natives int) *errorData {
-	d := &errorData{
+func (ag *agent) newErrorData(e *storage.Object, msg string, frames, natives int) *storage.ErrorData {
+	d := &storage.ErrorData{
 		Name:    "Error",
 		Msg:     msg,
 		Pending: true,
 	}
-	if v, ok := storage.DiagnosticDataProperty(e, ag.Key(KeyName)); ok && v.IsString() {
+	if v, ok := storage.DiagnosticDataProperty(e, ag.Key(storage.KeyName)); ok && v.IsString() {
 		d.Name = v.Str()
 	}
 	if n := min(frames+natives, maxStackFrames); n > 0 {
-		d.Calls = make([]stackCall, 0, n)
+		d.Calls = make([]storage.StackCall, 0, n)
 	}
 	globalThis := e.CreationRealm().GlobalThis
 	j := natives - 1
@@ -626,7 +626,7 @@ func (ag *agent) newErrorData(e *Object, msg string, frames, natives int) *error
 			if !c.showsFrame() {
 				continue
 			}
-			d.Calls = append(d.Calls, stackCall{
+			d.Calls = append(d.Calls, storage.StackCall{
 				Name:  c.f.Fn.NativeName(),
 				Recv:  ag.receiverName(globalThis, c.newTarget != nil, c.receiver),
 				IsNew: c.newTarget != nil,
@@ -636,7 +636,7 @@ func (ag *agent) newErrorData(e *Object, msg string, frames, natives int) *error
 			break
 		}
 		fr := &ag.frames[i]
-		c := stackCall{
+		c := storage.StackCall{
 			Fp:    fr.fp,
 			Name:  fr.fp.Name,
 			Pc:    fr.pc,
@@ -654,7 +654,7 @@ func (ag *agent) newErrorData(e *Object, msg string, frames, natives int) *error
 
 // receiverName returns the type name that a stack trace shows for a call with this, or an
 // empty string when the call shows no receiver.
-func (ag *agent) receiverName(globalThis *Object, isNew bool, this Value) wtf8.String {
+func (ag *agent) receiverName(globalThis *storage.Object, isNew bool, this storage.Value) wtf8.String {
 	if isNew || this.IsObject() && this.O == globalThis || this.IsNullish() {
 		return ""
 	}
@@ -663,7 +663,7 @@ func (ag *agent) receiverName(globalThis *Object, isNew bool, this Value) wtf8.S
 
 // typeName returns the name of the type of v that a stack trace shows for a method called on v.
 // It runs no JavaScript.
-func (ag *agent) typeName(v Value) wtf8.String {
+func (ag *agent) typeName(v storage.Value) wtf8.String {
 	switch {
 	case v.IsString():
 		return "String"
@@ -678,17 +678,17 @@ func (ag *agent) typeName(v Value) wtf8.String {
 	}
 	o := v.O
 	if v.IsCallable() {
-		if n, ok := storage.DiagnosticDataProperty(o, ag.Key(KeyName)); ok && n.IsString() && n.Str() != "" {
+		if n, ok := storage.DiagnosticDataProperty(o, ag.Key(storage.KeyName)); ok && n.IsString() && n.Str() != "" {
 			return n.Str()
 		}
 		return "Function"
 	}
-	if c, ok := storage.DiagnosticDataProperty(o, ag.Key(KeyConstructor)); ok && c.IsCallable() {
-		if n, ok := storage.DiagnosticDataProperty(c.O, ag.Key(KeyName)); ok && n.IsString() && n.Str() != "" && n.Str() != "Object" {
+	if c, ok := storage.DiagnosticDataProperty(o, ag.Key(storage.KeyConstructor)); ok && c.IsCallable() {
+		if n, ok := storage.DiagnosticDataProperty(c.O, ag.Key(storage.KeyName)); ok && n.IsString() && n.Str() != "" && n.Str() != "Object" {
 			return n.Str()
 		}
 	}
-	if t, ok := storage.DiagnosticDataProperty(o, ag.WellKnownSymbol(SymbolToStringTag)); ok && t.IsString() && t.Str() != "" {
+	if t, ok := storage.DiagnosticDataProperty(o, ag.WellKnownSymbol(storage.SymbolToStringTag)); ok && t.IsString() && t.Str() != "" {
 		return t.Str()
 	}
 	return "Object"
@@ -702,13 +702,13 @@ func (ag *agent) takeException() error {
 }
 
 // NewError returns a new error object of the given type in the execution realm with the message msg, which is UTF-8.
-func (cx *ExecutionContext) NewError(kind ErrorKind, msg string) Value {
-	return Value{O: cx.newError(kind, msg)}
+func (cx *ExecutionContext) NewError(kind ErrorKind, msg string) storage.Value {
+	return storage.Value{O: cx.newError(kind, msg)}
 }
 
 // DisplayString describes v for messages, without running any JavaScript. A long string is
 // shortened.
-func (ag *agent) DisplayString(v Value) string {
+func (ag *agent) DisplayString(v storage.Value) string {
 	return storage.DisplayString(v)
 }
 

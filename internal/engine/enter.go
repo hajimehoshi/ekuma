@@ -44,7 +44,7 @@ func (cx *ExecutionContext) enterJob(continuationData any, f func()) {
 //
 // A Go panic restores each boundary it escapes. The outermost boundary discards pending
 // jobs and rejects unfinished module evaluations, including after a recovered inner panic.
-func (cx *ExecutionContext) enter(f func() Value) (result Value, err error) {
+func (cx *ExecutionContext) enter(f func() storage.Value) (result storage.Value, err error) {
 	if previous := cx.activate(); previous != cx {
 		defer previous.activate()
 	}
@@ -67,7 +67,7 @@ func (cx *ExecutionContext) enter(f func() Value) (result Value, err error) {
 }
 
 // enterBoundary implements [ExecutionContext.enter].
-func (cx *ExecutionContext) enterBoundary(f func() Value) (result Value, err error) {
+func (cx *ExecutionContext) enterBoundary(f func() storage.Value) (result storage.Value, err error) {
 	// A host callback that recovered an interruption runs no more JavaScript.
 	cx.ResumeInterruption()
 	frames, natives, sp, depth := len(cx.frames), len(cx.natives), cx.sp, cx.depth
@@ -96,7 +96,7 @@ func (cx *ExecutionContext) enterBoundary(f func() Value) (result Value, err err
 			}()
 		}
 		if r := recover(); r != nil {
-			sig, interrupted := r.(*interruptSignal)
+			sig, interrupted := r.(*storage.InterruptSignal)
 			internal, failed := r.(*xerrors.InternalError)
 			cx.hostContext = hostContext
 			// Only activations belonging to this boundary have lost their Go callers.
@@ -162,7 +162,7 @@ func (cx *ExecutionContext) enterBoundary(f func() Value) (result Value, err err
 	return result, nil
 }
 
-func (cx *ExecutionContext) reportUncaughtException(thrown Value, site throwSite) {
+func (cx *ExecutionContext) reportUncaughtException(thrown storage.Value, site throwSite) {
 	if cx.realm.exceptionReporter != nil {
 		cx.protect(func() {
 			cx.realm.exceptionReporter(thrown, site.location())

@@ -22,7 +22,7 @@ var asyncFunction = &asyncState{}
 // asyncGeneratorRequest is an AsyncGeneratorRequest Record.
 type asyncGeneratorRequest struct {
 	mode       ResumeMode
-	value      Value
+	value      storage.Value
 	capability *PromiseCapability
 }
 
@@ -57,21 +57,21 @@ func asyncGeneratorStateOf(g *generator) asyncGeneratorState {
 }
 
 // callAsync calls the async function f, which is not an async generator, from Go.
-func (cx *ExecutionContext) callAsync(f *Object, this Value, args []Value) Value {
+func (cx *ExecutionContext) callAsync(f *storage.Object, this storage.Value, args []storage.Value) storage.Value {
 	g := newGenerator(f, this, args)
 	g.async = asyncFunction
 	body := cx.contextOf(g.fp.Realm)
-	var promise *Object
+	var promise *storage.Object
 	body.Run(func() {
-		promise = body.NewPromiseObject(body.Intrinsic(IntrinsicPromisePrototype))
+		promise = body.NewPromiseObject(body.Intrinsic(storage.IntrinsicPromisePrototype))
 		g.object = promise
 		body.asyncFunctionResume(g, ResumeNext, storage.Undefined)
 	})
-	return Value{O: promise}
+	return storage.Value{O: promise}
 }
 
 // takeThrown returns the pending exception and clears it.
-func (ag *agent) takeThrown() Value {
+func (ag *agent) takeThrown() storage.Value {
 	e := ag.thrown
 	ag.thrown = storage.Undefined
 	return e
@@ -79,7 +79,7 @@ func (ag *agent) takeThrown() Value {
 
 // resumeAfterAwait continues the async function or async generator g, whose context is cx, after an
 // await.
-func (cx *ExecutionContext) resumeAfterAwait(g *generator, mode ResumeMode, v Value) {
+func (cx *ExecutionContext) resumeAfterAwait(g *generator, mode ResumeMode, v storage.Value) {
 	if g.async == asyncFunction {
 		cx.asyncFunctionResume(g, mode, v)
 		return
@@ -89,12 +89,12 @@ func (cx *ExecutionContext) resumeAfterAwait(g *generator, mode ResumeMode, v Va
 
 // asyncFunctionResume runs the async function g, whose context is cx, from its suspension until it
 // awaits or completes, and settles its promise when it completes.
-func (cx *ExecutionContext) asyncFunctionResume(g *generator, mode ResumeMode, v Value) {
+func (cx *ExecutionContext) asyncFunctionResume(g *generator, mode ResumeMode, v storage.Value) {
 	defer g.abortOnPanic()
 	promise := g.object
 	f, fp, this := g.f, g.fp, g.this
 	for {
-		var r Value
+		var r storage.Value
 		var done bool
 		if !cx.protect(func() {
 			r, done = cx.resume(g, mode, v)
@@ -135,10 +135,10 @@ func (g *generator) underFrame(f func()) {
 
 // asyncGeneratorResume runs the async generator g from its suspension until it awaits,
 // yields with no request left, or completes.
-func (resumer *ExecutionContext) asyncGeneratorResume(g *generator, mode ResumeMode, v Value) {
+func (resumer *ExecutionContext) asyncGeneratorResume(g *generator, mode ResumeMode, v storage.Value) {
 	a := g.async
 	for {
-		var r Value
+		var r storage.Value
 		var done bool
 		ok := resumer.protect(func() {
 			r, done = resumer.resume(g, mode, v)
@@ -183,7 +183,7 @@ func (resumer *ExecutionContext) asyncGeneratorResume(g *generator, mode ResumeM
 
 // asyncGeneratorCompleteStep implements AsyncGeneratorCompleteStep for a completion with
 // the value v, which is a throw completion when thrown is set.
-func (cx *ExecutionContext) asyncGeneratorCompleteStep(g *generator, v Value, thrown, done bool) {
+func (cx *ExecutionContext) asyncGeneratorCompleteStep(g *generator, v storage.Value, thrown, done bool) {
 	a := g.async
 	next := a.queue[0]
 	copy(a.queue, a.queue[1:])
@@ -230,7 +230,7 @@ func (cx *ExecutionContext) asyncGeneratorAwaitReturn(g *generator) {
 
 // ResumeAsyncGenerator implements the next, return and throw methods of async generators,
 // selected by mode, for the receiver gen. It returns the promise of the iterator result.
-func (cx *ExecutionContext) ResumeAsyncGenerator(gen Value, mode ResumeMode, v Value) Value {
+func (cx *ExecutionContext) ResumeAsyncGenerator(gen storage.Value, mode ResumeMode, v storage.Value) storage.Value {
 	c := cx.newIntrinsicCapability()
 	var g *generator
 	if gen.IsObject() {
@@ -284,29 +284,29 @@ func (cx *ExecutionContext) ResumeAsyncGenerator(gen Value, mode ResumeMode, v V
 
 // asyncFromSyncIterator is the [[SyncIteratorRecord]] of an %AsyncFromSyncIteratorPrototype% object.
 type asyncFromSyncIterator struct {
-	iterator, next Value
+	iterator, next storage.Value
 }
 
 // asyncFromSyncIterator implements CreateAsyncFromSyncIterator for the iterator it and
 // its next method, and returns the async iterator and its next method.
-func (cx *ExecutionContext) asyncFromSyncIterator(it, next Value) (Value, Value) {
+func (cx *ExecutionContext) asyncFromSyncIterator(it, next storage.Value) (storage.Value, storage.Value) {
 	if cx.realm.AsyncFromSyncProto == nil {
 		cx.initAsyncFromSyncIteratorPrototype()
 	}
-	o := storage.NewObjectWithState(cx.ShapeFor(cx.realm.AsyncFromSyncProto), classIterator, &asyncFromSyncIterator{
+	o := storage.NewObjectWithState(cx.ShapeFor(cx.realm.AsyncFromSyncProto), storage.ClassIterator, &asyncFromSyncIterator{
 		iterator: it,
 		next:     next,
 	})
-	return Value{O: o}, cx.GetV(Value{O: o}, cx.Key(KeyNext))
+	return storage.Value{O: o}, cx.GetV(storage.Value{O: o}, cx.Key(storage.KeyNext))
 }
 
 // CreateAsyncFromSyncIterator implements CreateAsyncFromSyncIterator for the iterator it and
 // its next method, and returns the async iterator and its next method.
-func (cx *ExecutionContext) CreateAsyncFromSyncIterator(it, next Value) (Value, Value) {
+func (cx *ExecutionContext) CreateAsyncFromSyncIterator(it, next storage.Value) (storage.Value, storage.Value) {
 	return cx.asyncFromSyncIterator(it, next)
 }
 
-func (cx *ExecutionContext) thisAsyncFromSyncIterator(this Value) *asyncFromSyncIterator {
+func (cx *ExecutionContext) thisAsyncFromSyncIterator(this storage.Value) *asyncFromSyncIterator {
 	var s *asyncFromSyncIterator
 	if this.IsObject() {
 		s, _ = this.O.ExtState().(*asyncFromSyncIterator)
@@ -319,18 +319,18 @@ func (cx *ExecutionContext) thisAsyncFromSyncIterator(this Value) *asyncFromSync
 
 // initAsyncFromSyncIteratorPrototype creates %AsyncFromSyncIteratorPrototype%.
 func (cx *ExecutionContext) initAsyncFromSyncIteratorPrototype() {
-	proto := cx.NewObject(cx.Intrinsic(IntrinsicAsyncIteratorPrototype))
+	proto := cx.NewObject(cx.Intrinsic(storage.IntrinsicAsyncIteratorPrototype))
 	cx.realm.AsyncFromSyncProto = proto
-	cx.Define(proto, cx.Key(KeyNext), Value{O: cx.NewNative("next", 0, nativeAsyncFromSyncIteratorNext)}, FlagsHidden)
-	cx.Define(proto, cx.Key(KeyReturn), Value{O: cx.NewNative("return", 0, nativeAsyncFromSyncIteratorReturn)}, FlagsHidden)
-	cx.Define(proto, cx.Key(keyThrow), Value{O: cx.NewNative("throw", 0, nativeAsyncFromSyncIteratorThrow)}, FlagsHidden)
+	cx.Define(proto, cx.Key(storage.KeyNext), storage.Value{O: cx.NewNative("next", 0, nativeAsyncFromSyncIteratorNext)}, storage.FlagsHidden)
+	cx.Define(proto, cx.Key(storage.KeyReturn), storage.Value{O: cx.NewNative("return", 0, nativeAsyncFromSyncIteratorReturn)}, storage.FlagsHidden)
+	cx.Define(proto, cx.Key(storage.KeyThrow), storage.Value{O: cx.NewNative("throw", 0, nativeAsyncFromSyncIteratorThrow)}, storage.FlagsHidden)
 }
 
 // asyncFromSyncIteratorNext is the code of %AsyncFromSyncIteratorPrototype%.next.
-func asyncFromSyncIteratorNext(cx *ExecutionContext, this Value, args []Value) Value {
+func asyncFromSyncIteratorNext(cx *ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s := cx.thisAsyncFromSyncIterator(this)
 	c := cx.newIntrinsicCapability()
-	var result Value
+	var result storage.Value
 	if !cx.IfAbruptRejectPromise(c, func() {
 		if len(args) > 0 {
 			result = cx.CallValue(s.next, s.iterator, args[0])
@@ -347,13 +347,13 @@ func asyncFromSyncIteratorNext(cx *ExecutionContext, this Value, args []Value) V
 }
 
 // asyncFromSyncIteratorReturn is the code of %AsyncFromSyncIteratorPrototype%.return.
-func asyncFromSyncIteratorReturn(cx *ExecutionContext, this Value, args []Value) Value {
+func asyncFromSyncIteratorReturn(cx *ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s := cx.thisAsyncFromSyncIterator(this)
 	c := cx.newIntrinsicCapability()
-	var result Value
+	var result storage.Value
 	var hasReturn bool
 	if !cx.IfAbruptRejectPromise(c, func() {
-		m := cx.GetMethod(s.iterator, cx.Key(KeyReturn))
+		m := cx.GetMethod(s.iterator, cx.Key(storage.KeyReturn))
 		if m == nil {
 			return
 		}
@@ -378,13 +378,13 @@ func asyncFromSyncIteratorReturn(cx *ExecutionContext, this Value, args []Value)
 }
 
 // asyncFromSyncIteratorThrow is the code of %AsyncFromSyncIteratorPrototype%.throw.
-func asyncFromSyncIteratorThrow(cx *ExecutionContext, this Value, args []Value) Value {
+func asyncFromSyncIteratorThrow(cx *ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	s := cx.thisAsyncFromSyncIterator(this)
 	c := cx.newIntrinsicCapability()
-	var result Value
+	var result storage.Value
 	var hasThrow bool
 	if !cx.IfAbruptRejectPromise(c, func() {
-		m := cx.GetMethod(s.iterator, cx.Key(keyThrow))
+		m := cx.GetMethod(s.iterator, cx.Key(storage.KeyThrow))
 		if m == nil {
 			cx.iteratorClose(s.iterator, false)
 			return
@@ -410,12 +410,12 @@ func asyncFromSyncIteratorThrow(cx *ExecutionContext, this Value, args []Value) 
 }
 
 // asyncFromSyncIteratorContinuation implements AsyncFromSyncIteratorContinuation.
-func (cx *ExecutionContext) asyncFromSyncIteratorContinuation(result Value, c *PromiseCapability, it Value, closeOnRejection bool) Value {
+func (cx *ExecutionContext) asyncFromSyncIteratorContinuation(result storage.Value, c *PromiseCapability, it storage.Value, closeOnRejection bool) storage.Value {
 	var done bool
-	var value Value
+	var value storage.Value
 	if !cx.IfAbruptRejectPromise(c, func() {
-		done = storage.ToBoolean(cx.GetV(result, cx.Key(keyDone)))
-		value = cx.GetV(result, cx.Key(KeyValue))
+		done = storage.ToBoolean(cx.GetV(result, cx.Key(storage.KeyDone)))
+		value = cx.GetV(result, cx.Key(storage.KeyValue))
 	}) {
 		return c.Promise()
 	}
@@ -441,7 +441,7 @@ func (cx *ExecutionContext) asyncFromSyncIteratorContinuation(result Value, c *P
 
 // Completion runs f and reports whether it completed normally. When it throws,
 // the result is the exception.
-func (cx *ExecutionContext) Completion(f func()) (Value, bool) {
+func (cx *ExecutionContext) Completion(f func()) (storage.Value, bool) {
 	if cx.protect(f) {
 		return storage.Undefined, true
 	}
@@ -451,17 +451,17 @@ func (cx *ExecutionContext) Completion(f func()) (Value, bool) {
 // AsyncIteratorClose implements AsyncIteratorClose for a built-in async function: it closes
 // the iterator it for the completion with the value v, which is a throw completion when
 // thrown is set, and calls k with the resulting completion, now or in a later job.
-func (cx *ExecutionContext) AsyncIteratorClose(it Value, v Value, thrown bool, k AwaitHandler) {
-	fail := func(e Value) {
+func (cx *ExecutionContext) AsyncIteratorClose(it storage.Value, v storage.Value, thrown bool, k AwaitHandler) {
+	fail := func(e storage.Value) {
 		if thrown {
 			k(cx, v, true)
 			return
 		}
 		k(cx, e, true)
 	}
-	var m *Object
+	var m *storage.Object
 	if e, ok := cx.Completion(func() {
-		m = cx.GetMethod(it, cx.Key(KeyReturn))
+		m = cx.GetMethod(it, cx.Key(storage.KeyReturn))
 	}); !ok {
 		fail(e)
 		return
@@ -470,7 +470,7 @@ func (cx *ExecutionContext) AsyncIteratorClose(it Value, v Value, thrown bool, k
 		k(cx, v, thrown)
 		return
 	}
-	var r Value
+	var r storage.Value
 	if e, ok := cx.Completion(func() {
 		r = cx.Call(m, it)
 	}); !ok {
@@ -478,7 +478,7 @@ func (cx *ExecutionContext) AsyncIteratorClose(it Value, v Value, thrown bool, k
 		return
 	}
 	if e, ok := cx.Completion(func() {
-		cx.Await(r, func(cx *ExecutionContext, r Value, rejected bool) {
+		cx.Await(r, func(cx *ExecutionContext, r storage.Value, rejected bool) {
 			switch {
 			case thrown:
 				k(cx, v, true)

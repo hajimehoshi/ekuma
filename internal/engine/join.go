@@ -3,16 +3,20 @@
 
 package engine
 
-import "slices"
+import (
+	"slices"
+
+	"github.com/hajimehoshi/ekuma/internal/storage"
+)
 
 // joinGuard holds the objects that are being joined, to stop at cycles.
 type joinGuard struct {
-	joining []*Object
+	joining []*storage.Object
 }
 
 // enter adds o and reports whether it was not being joined. leave must be called when it
 // reports true.
-func (g *joinGuard) enter(o *Object) bool {
+func (g *joinGuard) enter(o *storage.Object) bool {
 	if slices.Contains(g.joining, o) {
 		return false
 	}
@@ -29,7 +33,7 @@ func (g *joinGuard) leave() {
 
 // EnterJoin starts Array.prototype.join of the current realm for o and reports whether it was
 // not running for o. [ExecutionContext.LeaveJoin] must be called when it reports true.
-func (cx *ExecutionContext) EnterJoin(o *Object) bool {
+func (cx *ExecutionContext) EnterJoin(o *storage.Object) bool {
 	return cx.realm.joins.enter(o)
 }
 
@@ -39,7 +43,7 @@ func (cx *ExecutionContext) LeaveJoin() {
 }
 
 // EnterLocaleJoin is [ExecutionContext.EnterJoin] for Array.prototype.toLocaleString.
-func (cx *ExecutionContext) EnterLocaleJoin(o *Object) bool {
+func (cx *ExecutionContext) EnterLocaleJoin(o *storage.Object) bool {
 	return cx.realm.localeJoins.enter(o)
 }
 

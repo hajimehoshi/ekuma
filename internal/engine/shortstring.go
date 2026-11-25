@@ -7,13 +7,14 @@ import (
 	"math"
 
 	"github.com/hajimehoshi/ekuma/internal/shortstrings"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 	"github.com/hajimehoshi/ekuma/internal/xstrings"
 )
 
 // SubstringBetween is like [ExecutionContext.Substring] for the positions start and end in the text of s, which
 // must be in order.
-func (cx *ExecutionContext) SubstringBetween(s Value, start, end wtf8.Pos) Value {
+func (cx *ExecutionContext) SubstringBetween(s storage.Value, start, end wtf8.Pos) storage.Value {
 	if s.IsShortString() {
 		// The packed text gives the code units without a search.
 		return cx.Substring(s, start.Unit, end.Unit)
@@ -26,7 +27,7 @@ func (cx *ExecutionContext) SubstringBetween(s Value, start, end wtf8.Pos) Value
 }
 
 // ToWellFormed returns s with lone surrogates replaced by U+FFFD.
-func (cx *ExecutionContext) ToWellFormed(s Value) Value {
+func (cx *ExecutionContext) ToWellFormed(s storage.Value) storage.Value {
 	if s.IsShortString() {
 		return cx.toWellFormedShort(s, math.Float64bits(s.N), len(s.O.Text))
 	}
@@ -38,12 +39,12 @@ func (cx *ExecutionContext) ToWellFormed(s Value) Value {
 	return cx.NewString(repaired)
 }
 
-func (cx *ExecutionContext) toWellFormedShort(s Value, data uint64, n int) Value {
+func (cx *ExecutionContext) toWellFormedShort(s storage.Value, data uint64, n int) storage.Value {
 	repaired := shortstrings.ToWellFormed(data)
 	if repaired == data {
 		return s
 	}
-	return Value{
+	return storage.Value{
 		N: math.Float64frombits(repaired),
 		O: &cx.realm.Shapes.ShortStrings[n],
 	}
@@ -51,7 +52,7 @@ func (cx *ExecutionContext) toWellFormedShort(s Value, data uint64, n int) Value
 
 // MapASCII converts s to uppercase if upper is true, or lowercase otherwise.
 // s must be a string; false means it is non-ASCII or too long to pack.
-func (cx *ExecutionContext) MapASCII(s Value, upper bool) (mapped Value, ok bool) {
+func (cx *ExecutionContext) MapASCII(s storage.Value, upper bool) (mapped storage.Value, ok bool) {
 	if len(s.O.Text) > shortstrings.MaxBytes {
 		return
 	}
@@ -59,10 +60,10 @@ func (cx *ExecutionContext) MapASCII(s Value, upper bool) (mapped Value, ok bool
 	return
 }
 
-func (cx *ExecutionContext) mapASCII(s Value, upper bool) (Value, bool) {
+func (cx *ExecutionContext) mapASCII(s storage.Value, upper bool) (storage.Value, bool) {
 	data := math.Float64bits(s.N)
 	if !shortstrings.IsASCII(data) {
-		return Value{}, false
+		return storage.Value{}, false
 	}
 	n := len(s.O.Text)
 	var mapped uint64
@@ -77,14 +78,14 @@ func (cx *ExecutionContext) mapASCII(s Value, upper bool) (Value, bool) {
 	if n == 1 {
 		return cx.Strings.Character(byte(mapped)), true
 	}
-	return Value{
+	return storage.Value{
 		N: math.Float64frombits(mapped),
 		O: &cx.realm.Shapes.ShortStrings[n],
 	}, true
 }
 
 // TrimString trims whitespace from the selected ends of the string s.
-func (cx *ExecutionContext) TrimString(s Value, start, end bool) Value {
+func (cx *ExecutionContext) TrimString(s storage.Value, start, end bool) storage.Value {
 	if s.IsShortString() {
 		return cx.trimShortString(s, start, end)
 	}
@@ -96,7 +97,7 @@ func (cx *ExecutionContext) TrimString(s Value, start, end bool) Value {
 	return cx.NewString(trimmed)
 }
 
-func (cx *ExecutionContext) trimShortString(s Value, start, end bool) Value {
+func (cx *ExecutionContext) trimShortString(s storage.Value, start, end bool) storage.Value {
 	data := math.Float64bits(s.N)
 	n := len(s.O.Text)
 	var trimmed uint64
@@ -121,7 +122,7 @@ func (cx *ExecutionContext) trimShortString(s Value, start, end bool) Value {
 	if trimmedN == 1 && byte(trimmed) < 0x80 {
 		return cx.Strings.Character(byte(trimmed))
 	}
-	return Value{
+	return storage.Value{
 		N: math.Float64frombits(trimmed),
 		O: &cx.realm.Shapes.ShortStrings[trimmedN],
 	}
@@ -129,7 +130,7 @@ func (cx *ExecutionContext) trimShortString(s Value, start, end bool) Value {
 
 // RepeatShort returns count copies of s and reports whether the result fits a packed string.
 // s must be a string, and count must be nonnegative.
-func (cx *ExecutionContext) RepeatShort(s Value, count int) (repeated Value, ok bool) {
+func (cx *ExecutionContext) RepeatShort(s storage.Value, count int) (repeated storage.Value, ok bool) {
 	if len(s.O.Text) > shortstrings.MaxBytes && count != 0 {
 		return
 	}
@@ -137,7 +138,7 @@ func (cx *ExecutionContext) RepeatShort(s Value, count int) (repeated Value, ok 
 	return
 }
 
-func (cx *ExecutionContext) repeatShort(s Value, count int) (Value, bool) {
+func (cx *ExecutionContext) repeatShort(s storage.Value, count int) (storage.Value, bool) {
 	if count == 0 {
 		return cx.Strings.Empty, true
 	}
@@ -146,7 +147,7 @@ func (cx *ExecutionContext) repeatShort(s Value, count int) (Value, bool) {
 		return cx.Strings.Empty, true
 	}
 	if count > shortstrings.MaxBytes/n {
-		return Value{}, false
+		return storage.Value{}, false
 	}
 	if count == 1 {
 		return s, true
@@ -154,9 +155,9 @@ func (cx *ExecutionContext) repeatShort(s Value, count int) (Value, bool) {
 	data := math.Float64bits(s.N)
 	repeated, repeatedN, ok := shortstrings.Repeat(data, n, count)
 	if !ok {
-		return Value{}, false
+		return storage.Value{}, false
 	}
-	return Value{
+	return storage.Value{
 		N: math.Float64frombits(repeated),
 		O: &cx.realm.Shapes.ShortStrings[repeatedN],
 	}, true
@@ -164,7 +165,7 @@ func (cx *ExecutionContext) repeatShort(s Value, count int) (Value, bool) {
 
 // PadShort pads s with fill to target UTF-16 units and reports whether the result fits.
 // s and fill must be strings, fill must be nonempty, and need must be positive and equal target minus s's length.
-func (cx *ExecutionContext) PadShort(s, fill Value, target, need int, atStart bool) (padded Value, ok bool) {
+func (cx *ExecutionContext) PadShort(s, fill storage.Value, target, need int, atStart bool) (padded storage.Value, ok bool) {
 	if target > shortstrings.MaxBytes {
 		return
 	}
@@ -172,10 +173,10 @@ func (cx *ExecutionContext) PadShort(s, fill Value, target, need int, atStart bo
 	return
 }
 
-func (cx *ExecutionContext) padShort(s, fill Value, need int, atStart bool) (Value, bool) {
+func (cx *ExecutionContext) padShort(s, fill storage.Value, need int, atStart bool) (storage.Value, bool) {
 	n := s.StringByteLength()
 	if n > shortstrings.MaxBytes {
-		return Value{}, false
+		return storage.Value{}, false
 	}
 	data := math.Float64bits(s.N)
 	var fillData uint64
@@ -190,7 +191,7 @@ func (cx *ExecutionContext) padShort(s, fill Value, need int, atStart bool) (Val
 			fillN += 3
 		}
 		if fillN > shortstrings.MaxBytes {
-			return Value{}, false
+			return storage.Value{}, false
 		}
 		fillData = shortstrings.Pack(text[:end.Byte])
 		if end.Low {
@@ -206,13 +207,13 @@ func (cx *ExecutionContext) padShort(s, fill Value, need int, atStart bool) (Val
 	}
 	padding, paddingN, ok := shortstrings.Repeat(fillData, fillN, need/fillLen)
 	if !ok {
-		return Value{}, false
+		return storage.Value{}, false
 	}
 	if tailLen := need % fillLen; tailLen != 0 {
 		tail, tailN := shortstrings.Slice(fillData, 0, tailLen)
 		padding, paddingN, ok = shortstrings.Concat(padding, paddingN, tail, tailN)
 		if !ok {
-			return Value{}, false
+			return storage.Value{}, false
 		}
 	}
 	if atStart {
@@ -221,19 +222,19 @@ func (cx *ExecutionContext) padShort(s, fill Value, need int, atStart bool) (Val
 		data, n, ok = shortstrings.Concat(data, n, padding, paddingN)
 	}
 	if !ok {
-		return Value{}, false
+		return storage.Value{}, false
 	}
 	if n == 1 && byte(data) < 0x80 {
 		return cx.Strings.Character(byte(data)), true
 	}
-	return Value{
+	return storage.Value{
 		N: math.Float64frombits(data),
 		O: &cx.realm.Shapes.ShortStrings[n],
 	}, true
 }
 
 // NewStringBytes returns a string value containing the canonical WTF-8 bytes s.
-func (cx *ExecutionContext) NewStringBytes(s []byte) Value {
+func (cx *ExecutionContext) NewStringBytes(s []byte) storage.Value {
 	if len(s) == 0 {
 		return cx.Strings.Empty
 	}

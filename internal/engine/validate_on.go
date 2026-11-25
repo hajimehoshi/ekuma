@@ -21,7 +21,7 @@ const maxMovedStack = 1 << 12
 
 // abandonedStack is stack storage that the interpreter has moved away from.
 type abandonedStack struct {
-	slots []Value
+	slots []storage.Value
 
 	// args are the slots that running calls still read their arguments from, in order of start.
 	args []stackRange
@@ -49,7 +49,7 @@ type execChecks struct {
 	steps []execStep
 	top   int
 
-	observe func(*funcProto, int)
+	observe func(*storage.FuncProto, int)
 
 	// abandoned is the stack storage that interpreter loops may still refer to, ordered by depth.
 	abandoned []abandonedStack
@@ -60,7 +60,7 @@ type execChecks struct {
 	heldDepth int
 
 	// retired is the storage that nothing refers to any more, oldest first, for later moves.
-	retired [][]Value
+	retired [][]storage.Value
 
 	// args are the arguments of running calls in the current storage.
 	args []stackRange
@@ -69,7 +69,7 @@ type execChecks struct {
 	requests int
 }
 
-func (c *execChecks) observeSteps(observe func(*funcProto, int)) {
+func (c *execChecks) observeSteps(observe func(*storage.FuncProto, int)) {
 	c.observe = observe
 }
 
@@ -78,12 +78,12 @@ type execStep struct {
 	valid bool
 
 	// fp, base and gen identify the frame.
-	fp   *funcProto
+	fp   *storage.FuncProto
 	base int
 	gen  *generator
 
 	pc   int
-	regs []Value
+	regs []storage.Value
 }
 
 // enterChecks forgets the instructions of the running frame and of the frames after it, which
@@ -114,14 +114,14 @@ func (c *execChecks) forget(n int) {
 
 // checkStep checks the instruction that the running frame started last, which continues at pc
 // with the registers regs, and records the instruction at pc. fp is the code of the frame.
-func (ag *agent) checkStep(fp *funcProto, pc int, regs []Value) {
+func (ag *agent) checkStep(fp *storage.FuncProto, pc int, regs []storage.Value) {
 	c := &ag.checks
 	n := len(ag.frames) - 1
 	fr := &ag.frames[n]
 	if want := fr.fp.Nregs + 1; len(regs) != want {
 		panic(validationFailure(fp, pc, fmt.Sprintf("register count is %d, want %d", len(regs), want)))
 	}
-	var first *Value
+	var first *storage.Value
 	if fr.gen != nil {
 		first = &fr.gen.regs[0]
 	} else {
@@ -186,9 +186,9 @@ func (ag *agent) stackUsed() int {
 const maxRetired = 8
 
 // storage returns stack storage of n slots whose values the caller must overwrite.
-func (c *execChecks) storage(n int) []Value {
+func (c *execChecks) storage(n int) []storage.Value {
 	if len(c.retired) < maxRetired {
-		return make([]Value, n)
+		return make([]storage.Value, n)
 	}
 	s := c.retired[0]
 	c.retired = slices.Delete(c.retired, 0, 1)
@@ -198,7 +198,7 @@ func (c *execChecks) storage(n int) []Value {
 		}
 	}
 	if cap(s) < n {
-		return make([]Value, n)
+		return make([]storage.Value, n)
 	}
 	return s[:n]
 }
@@ -240,7 +240,7 @@ func (ag *agent) abandonStack() {
 	c.requests = 0
 }
 
-func fillStale(slots []Value) {
+func fillStale(slots []storage.Value) {
 	for i := range slots {
 		slots[i] = storage.StalePoison
 	}
@@ -257,7 +257,7 @@ func (ag *agent) holdStack() {
 
 // holdArgs keeps args readable when the stack moves, until releaseArgs is called with
 // the result. Arguments on the stack must end at its top.
-func (ag *agent) holdArgs(args []Value) int {
+func (ag *agent) holdArgs(args []storage.Value) int {
 	c := &ag.checks
 	for _, v := range args {
 		storage.CheckValue(v)
@@ -319,7 +319,7 @@ func (ag *agent) checkIdleStack() {
 
 // checkInstr checks the instruction of s, after which its frame continues at pc with the
 // registers regs. A dispatch may include a second instruction or continue at an exception handler.
-func (ag *agent) checkInstr(s *execStep, pc int, regs []Value) {
+func (ag *agent) checkInstr(s *execStep, pc int, regs []storage.Value) {
 	regs = regs[:len(s.regs)]
 	code := s.fp.Code
 	bad, reached := ag.fits(s, regs, pc, s.pc, -1)
@@ -363,7 +363,7 @@ func canFuse(first, second bytecode.Instr) bool {
 // fits reports whether the instructions at first and second of the frame of s, or the one at
 // first alone when second is -1, can continue at to, and returns a register that they changed
 // without writing it, or -1. The registers of the frame were s.regs before and are regs after.
-func (ag *agent) fits(s *execStep, regs []Value, to, first, second int) (bad int, reached bool) {
+func (ag *agent) fits(s *execStep, regs []storage.Value, to, first, second int) (bad int, reached bool) {
 	code := s.fp.Code
 	var continues bool
 	last := first
@@ -404,20 +404,20 @@ func (ag *agent) hasOpenUpval(s *execStep, r int) bool {
 	if s.gen != nil {
 		ups, index = s.gen.openUpvals, r
 	}
-	_, ok := slices.BinarySearchFunc(ups, index, func(u *upvalue, i int) int {
+	_, ok := slices.BinarySearchFunc(ups, index, func(u *storage.Upvalue, i int) int {
 		return cmp.Compare(u.Index, i)
 	})
 	return ok
 }
 
 // validationFailure describes a failed check at pc.
-func validationFailure(fp *funcProto, pc int, msg string) string {
+func validationFailure(fp *storage.FuncProto, pc int, msg string) string {
 	in := fp.Code[pc]
 	return fmt.Sprintf("ekumavalidate: %s at %d of %s (%s): %s", in.Op, pc, fp.Name, fp.File, msg)
 }
 
 // checkActive checks that the active context is that of the running frame, whose code is fp.
-func (ag *agent) checkActive(fp *funcProto) {
+func (ag *agent) checkActive(fp *storage.FuncProto) {
 	if ag.active.realmPart != fp.Realm {
 		panic(fmt.Sprintf("ekumavalidate: active context is not that of the running frame of %s", fp.Name))
 	}
@@ -425,14 +425,14 @@ func (ag *agent) checkActive(fp *funcProto) {
 
 // checkAppend checks that the conditions of the interpreter loop for an append to the array o agree
 // with those of the storage operations.
-func (cx *ExecutionContext) checkAppend(o *Object) {
+func (cx *ExecutionContext) checkAppend(o *storage.Object) {
 	if !o.ElemsResizable() || !cx.NewElementsPlain(o) {
 		panic("ekumavalidate: the interpreter loop appends to an array that is not plain")
 	}
 }
 
 // sameBits reports whether a and b are the same bits.
-func sameBits(a, b Value) bool {
+func sameBits(a, b storage.Value) bool {
 	return a.O == b.O && math.Float64bits(a.N) == math.Float64bits(b.N)
 }
 

@@ -22,7 +22,7 @@ type promiseData struct {
 	isHandled bool
 
 	// result is the [[PromiseResult]].
-	result Value
+	result storage.Value
 
 	// reactions are the pairs of [[PromiseFulfillReactions]] and [[PromiseRejectReactions]]
 	// that PerformPromiseThen appends together, in order.
@@ -58,7 +58,7 @@ const (
 // pendingReaction pairs the fulfill and reject reactions registered by PerformPromiseThen.
 type pendingReaction struct {
 	action                  reactionAction
-	onFulfilled, onRejected *Object
+	onFulfilled, onRejected *storage.Object
 	continuationData        any
 
 	// builtinContext binds an implicit built-in handler at registration.
@@ -74,20 +74,20 @@ type reactionAction struct {
 	capability *PromiseCapability
 	gen        *generator
 	native     AwaitHandler
-	iterator   *Object
+	iterator   *storage.Object
 }
 
 // AwaitHandler continues a built-in async function after an Await: v is the value of
 // the awaited promise, or its rejection reason when rejected is set.
-type AwaitHandler func(cx *ExecutionContext, v Value, rejected bool)
+type AwaitHandler func(cx *ExecutionContext, v storage.Value, rejected bool)
 
 // PromiseCapability is a PromiseCapability Record.
 type PromiseCapability struct {
-	promise *Object
+	promise *storage.Object
 
 	// resolve and reject are the [[Resolve]] and [[Reject]] functions. For a promise that
 	// the agent created itself, they are nil until something asks for them.
-	resolve, reject *Object
+	resolve, reject *storage.Object
 
 	// intrinsic is set when the agent created the promise and its resolving functions are
 	// the ones of CreateResolvingFunctions, which then share alreadyResolved.
@@ -96,8 +96,8 @@ type PromiseCapability struct {
 }
 
 // Promise returns the [[Promise]] of c.
-func (c *PromiseCapability) Promise() Value {
-	return Value{O: c.promise}
+func (c *PromiseCapability) Promise() storage.Value {
+	return storage.Value{O: c.promise}
 }
 
 type jobKind uint8
@@ -121,42 +121,42 @@ type job struct {
 	reaction         reactionAction
 
 	// argument is the settlement value, rejection reason or thenable.
-	argument Value
+	argument storage.Value
 
 	// promise is the promise to resolve in a thenable or resolve job.
-	promise *Object
+	promise *storage.Object
 
 	// callback is the selected reaction handler, then method or host callback.
-	callback *Object
+	callback *storage.Object
 }
 
 // IsPromise implements IsPromise.
-func IsPromise(v Value) bool {
-	return v.IsObject() && v.O.Class == classPromise
+func IsPromise(v storage.Value) bool {
+	return v.IsObject() && v.O.Class == storage.ClassPromise
 }
 
 // PromiseStateOf returns the [[PromiseState]] and the [[PromiseResult]] of the promise p.
-func PromiseStateOf(p Value) (PromiseState, Value) {
+func PromiseStateOf(p storage.Value) (PromiseState, storage.Value) {
 	d := promiseOf(p.O)
 	return d.state, d.result
 }
 
-func promiseOf(o *Object) *promiseData {
+func promiseOf(o *storage.Object) *promiseData {
 	return o.ExtState().(*promiseData)
 }
 
 // NewPromiseObject returns a pending Promise object with the prototype proto.
-func (cx *ExecutionContext) NewPromiseObject(proto *Object) *Object {
+func (cx *ExecutionContext) NewPromiseObject(proto *storage.Object) *storage.Object {
 	return newPromiseObject(cx.ShapeFor(proto))
 }
 
-func newPromiseObject(s *shape) *Object {
+func newPromiseObject(s *storage.Shape) *storage.Object {
 	w := &promiseObject{
 		state: promiseData{
 			result: storage.Undefined,
 		},
 	}
-	return w.InitWithState(s, classPromise, &w.state)
+	return w.InitWithState(s, storage.ClassPromise, &w.state)
 }
 
 // promiseObject is a Promise object together with its state, so that creating one is a single
@@ -169,7 +169,7 @@ type promiseObject struct {
 // newIntrinsicCapability returns the capability of a new promise of %Promise%,
 // as NewPromiseCapability(%Promise%) does.
 func (cx *ExecutionContext) newIntrinsicCapability() *PromiseCapability {
-	proto := cx.Intrinsic(IntrinsicPromisePrototype)
+	proto := cx.Intrinsic(storage.IntrinsicPromisePrototype)
 	return &PromiseCapability{
 		promise:   newPromiseObject(cx.ShapeForRealm(proto, cx.realmPart)),
 		intrinsic: true,
@@ -178,7 +178,7 @@ func (cx *ExecutionContext) newIntrinsicCapability() *PromiseCapability {
 
 // CreateResolvingFunctions implements CreateResolvingFunctions for the promise p.
 // The result is a capability whose resolving functions are those functions.
-func (cx *ExecutionContext) CreateResolvingFunctions(p *Object) *PromiseCapability {
+func (cx *ExecutionContext) CreateResolvingFunctions(p *storage.Object) *PromiseCapability {
 	c := &PromiseCapability{
 		promise:   p,
 		intrinsic: true,
@@ -194,7 +194,7 @@ func (cx *ExecutionContext) createResolvingFunctions(c *PromiseCapability) {
 
 // promiseResolveFunction is the code of the promise resolve functions. Their state is a
 // *PromiseCapability.
-func promiseResolveFunction(cx *ExecutionContext, this Value, args []Value) Value {
+func promiseResolveFunction(cx *ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	c := cx.ActiveNativeState().(*PromiseCapability)
 	if !c.alreadyResolved {
 		c.alreadyResolved = true
@@ -205,7 +205,7 @@ func promiseResolveFunction(cx *ExecutionContext, this Value, args []Value) Valu
 
 // promiseRejectFunction is the code of the promise reject functions. Their state is a
 // *PromiseCapability.
-func promiseRejectFunction(cx *ExecutionContext, this Value, args []Value) Value {
+func promiseRejectFunction(cx *ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	c := cx.ActiveNativeState().(*PromiseCapability)
 	if !c.alreadyResolved {
 		c.alreadyResolved = true
@@ -214,7 +214,7 @@ func promiseRejectFunction(cx *ExecutionContext, this Value, args []Value) Value
 	return storage.Undefined
 }
 
-func argAt(args []Value, i int) Value {
+func argAt(args []storage.Value, i int) storage.Value {
 	if i < len(args) {
 		return args[i]
 	}
@@ -222,11 +222,11 @@ func argAt(args []Value, i int) Value {
 }
 
 // NewPromiseCapability implements NewPromiseCapability.
-func (cx *ExecutionContext) NewPromiseCapability(c Value) *PromiseCapability {
+func (cx *ExecutionContext) NewPromiseCapability(c storage.Value) *PromiseCapability {
 	if !c.IsObject() || !cx.IsConstructor(c.O) {
 		cx.ThrowTypeError(cx.DisplayString(c) + " is not a constructor")
 	}
-	if c.O == cx.Intrinsic(IntrinsicPromise) {
+	if c.O == cx.Intrinsic(storage.IntrinsicPromise) {
 		// Constructing %Promise% with an executor observes nothing that this does not.
 		return cx.newIntrinsicCapability()
 	}
@@ -235,7 +235,7 @@ func (cx *ExecutionContext) NewPromiseCapability(c Value) *PromiseCapability {
 		reject:  storage.Undefined,
 	}
 	executor := cx.NewNativeWithState("", 2, nativeCapabilityExecutor, fs)
-	p := cx.Construct(c.O, []Value{{O: executor}}, c.O)
+	p := cx.Construct(c.O, []storage.Value{{O: executor}}, c.O)
 	if !fs.resolve.IsCallable() {
 		cx.ThrowTypeError("promise capability resolve function is not callable")
 	}
@@ -251,12 +251,12 @@ func (cx *ExecutionContext) NewPromiseCapability(c Value) *PromiseCapability {
 
 // resolvingFunctions is the Record that NewPromiseCapability collects the resolving functions in.
 type resolvingFunctions struct {
-	resolve, reject Value
+	resolve, reject storage.Value
 }
 
 // capabilityExecutor is the code of the executors of NewPromiseCapability. Their state is a
 // *resolvingFunctions.
-func capabilityExecutor(cx *ExecutionContext, this Value, args []Value) Value {
+func capabilityExecutor(cx *ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	fs := cx.ActiveNativeState().(*resolvingFunctions)
 	if !fs.resolve.IsUndefined() {
 		cx.ThrowTypeError("promise capability resolve function is already set")
@@ -276,19 +276,19 @@ func (ag *agent) ensureResolvingFunctions(c *PromiseCapability) {
 }
 
 // CapabilityResolve returns the [[Resolve]] function of c.
-func (ag *agent) CapabilityResolve(c *PromiseCapability) Value {
+func (ag *agent) CapabilityResolve(c *PromiseCapability) storage.Value {
 	ag.ensureResolvingFunctions(c)
-	return Value{O: c.resolve}
+	return storage.Value{O: c.resolve}
 }
 
 // CapabilityReject returns the [[Reject]] function of c.
-func (ag *agent) CapabilityReject(c *PromiseCapability) Value {
+func (ag *agent) CapabilityReject(c *PromiseCapability) storage.Value {
 	ag.ensureResolvingFunctions(c)
-	return Value{O: c.reject}
+	return storage.Value{O: c.reject}
 }
 
 // resolvingRealm returns the realm of an intrinsic capability's resolving functions.
-func (c *PromiseCapability) resolvingRealm() *realmPart {
+func (c *PromiseCapability) resolvingRealm() *storage.RealmPart {
 	if c.resolve != nil {
 		// A thenable job creates its own resolving functions in the job's realm.
 		return c.resolve.Fn.Info.Realm
@@ -302,7 +302,7 @@ func (c *PromiseCapability) canSettleDirectly(cx *ExecutionContext) bool {
 }
 
 // ResolveCapability calls the [[Resolve]] function of c with v.
-func (cx *ExecutionContext) ResolveCapability(c *PromiseCapability, v Value) {
+func (cx *ExecutionContext) ResolveCapability(c *PromiseCapability, v storage.Value) {
 	if c.canSettleDirectly(cx) {
 		if !c.alreadyResolved {
 			c.alreadyResolved = true
@@ -315,13 +315,13 @@ func (cx *ExecutionContext) ResolveCapability(c *PromiseCapability, v Value) {
 
 // CallCapabilityResolve calls the [[Resolve]] function of c with v, as [ExecutionContext.ResolveCapability]
 // does, and shows the frame of the function where the call can be observed.
-func (cx *ExecutionContext) CallCapabilityResolve(c *PromiseCapability, v Value) {
+func (cx *ExecutionContext) CallCapabilityResolve(c *PromiseCapability, v storage.Value) {
 	if !cx.quietJobs().tryCallCapabilityResolve(c, v) {
 		cx.Call(cx.CapabilityResolve(c).O, storage.Undefined, v)
 	}
 }
 
-func (q quietJobs) tryCallCapabilityResolve(c *PromiseCapability, v Value) bool {
+func (q quietJobs) tryCallCapabilityResolve(c *PromiseCapability, v storage.Value) bool {
 	if !c.canSettleDirectly(q.cx) {
 		return false
 	}
@@ -338,7 +338,7 @@ func (q quietJobs) tryCallCapabilityResolve(c *PromiseCapability, v Value) bool 
 }
 
 // RejectCapability calls the [[Reject]] function of c with v.
-func (cx *ExecutionContext) RejectCapability(c *PromiseCapability, v Value) {
+func (cx *ExecutionContext) RejectCapability(c *PromiseCapability, v storage.Value) {
 	if c.canSettleDirectly(cx) {
 		if !c.alreadyResolved {
 			c.alreadyResolved = true
@@ -363,7 +363,7 @@ func (cx *ExecutionContext) IfAbruptRejectPromise(c *PromiseCapability, f func()
 
 // resolvePromise is what a promise resolve function does with resolution once it was not
 // already resolved: the promise resolution procedure.
-func (cx *ExecutionContext) resolvePromise(resolverRealm *realmPart, p *Object, resolution Value) {
+func (cx *ExecutionContext) resolvePromise(resolverRealm *storage.RealmPart, p *storage.Object, resolution storage.Value) {
 	if resolution.O == p {
 		cx.rejectPromise(p, executionContextOf(resolverRealm).NewError(ErrorKindType, "chaining cycle detected for promise"))
 		return
@@ -372,9 +372,9 @@ func (cx *ExecutionContext) resolvePromise(resolverRealm *realmPart, p *Object, 
 		cx.fulfillPromise(p, resolution)
 		return
 	}
-	var then Value
+	var then storage.Value
 	if !cx.protect(func() {
-		then = cx.GetV(resolution, cx.Key(KeyThen))
+		then = cx.GetV(resolution, cx.Key(storage.KeyThen))
 	}) {
 		e := cx.thrown
 		cx.thrown = storage.Undefined
@@ -385,7 +385,7 @@ func (cx *ExecutionContext) resolvePromise(resolverRealm *realmPart, p *Object, 
 }
 
 // tryResolvePromise resolves p with v, or leaves p pending when resolution needs its caller's frame.
-func (q quietJobs) tryResolvePromise(p *Object, v Value) bool {
+func (q quietJobs) tryResolvePromise(p *storage.Object, v storage.Value) bool {
 	then, ok := q.cx.Quiet().ResolutionThen(p, v)
 	if ok {
 		q.cx.resolvePromiseWithThen(p, v, then)
@@ -394,7 +394,7 @@ func (q quietJobs) tryResolvePromise(p *Object, v Value) bool {
 }
 
 // resolvePromiseWithThen is the part of resolvePromise after the read of then from resolution.
-func (cx *ExecutionContext) resolvePromiseWithThen(p *Object, resolution, then Value) {
+func (cx *ExecutionContext) resolvePromiseWithThen(p *storage.Object, resolution, then storage.Value) {
 	if !then.IsCallable() {
 		cx.fulfillPromise(p, resolution)
 		return
@@ -403,7 +403,7 @@ func (cx *ExecutionContext) resolvePromiseWithThen(p *Object, resolution, then V
 }
 
 // enqueueThenableJob enqueues NewPromiseResolveThenableJob with the current continuation data.
-func (cx *ExecutionContext) enqueueThenableJob(p *Object, thenable, then Value) {
+func (cx *ExecutionContext) enqueueThenableJob(p *storage.Object, thenable, then storage.Value) {
 	cx.enqueuePromiseJob(job{
 		kind:             jobThenable,
 		context:          cx.promiseJobContext(then.O),
@@ -415,7 +415,7 @@ func (cx *ExecutionContext) enqueueThenableJob(p *Object, thenable, then Value) 
 }
 
 // fulfillPromise implements FulfillPromise.
-func (cx *ExecutionContext) fulfillPromise(p *Object, v Value) {
+func (cx *ExecutionContext) fulfillPromise(p *storage.Object, v storage.Value) {
 	d := promiseOf(p)
 	reactions := d.reactions
 	d.reactions = nil
@@ -425,7 +425,7 @@ func (cx *ExecutionContext) fulfillPromise(p *Object, v Value) {
 }
 
 // rejectPromise implements RejectPromise.
-func (cx *ExecutionContext) rejectPromise(p *Object, reason Value) {
+func (cx *ExecutionContext) rejectPromise(p *storage.Object, reason storage.Value) {
 	d := promiseOf(p)
 	reactions := d.reactions
 	d.reactions = nil
@@ -438,7 +438,7 @@ func (cx *ExecutionContext) rejectPromise(p *Object, reason Value) {
 }
 
 // triggerPromiseReactions implements TriggerPromiseReactions.
-func (cx *ExecutionContext) triggerPromiseReactions(reactions []pendingReaction, arg Value, rejected bool) {
+func (cx *ExecutionContext) triggerPromiseReactions(reactions []pendingReaction, arg storage.Value, rejected bool) {
 	for i := range reactions {
 		cx.enqueueReactionJob(&reactions[i], arg, rejected)
 	}
@@ -446,7 +446,7 @@ func (cx *ExecutionContext) triggerPromiseReactions(reactions []pendingReaction,
 
 // PerformPromiseThen implements PerformPromiseThen for the promise p. c is nil when
 // the result capability is undefined, and the result is then undefined.
-func (cx *ExecutionContext) PerformPromiseThen(p Value, onFulfilled, onRejected Value, c *PromiseCapability) Value {
+func (cx *ExecutionContext) PerformPromiseThen(p storage.Value, onFulfilled, onRejected storage.Value, c *PromiseCapability) storage.Value {
 	r := pendingReaction{
 		action: reactionAction{
 			kind:       reactionHandlers,
@@ -464,11 +464,11 @@ func (cx *ExecutionContext) PerformPromiseThen(p Value, onFulfilled, onRejected 
 	if c == nil {
 		return storage.Undefined
 	}
-	return Value{O: c.promise}
+	return storage.Value{O: c.promise}
 }
 
 // addReaction is the part of PerformPromiseThen after the reaction records are created.
-func (cx *ExecutionContext) addReaction(p *Object, r *pendingReaction) {
+func (cx *ExecutionContext) addReaction(p *storage.Object, r *pendingReaction) {
 	d := promiseOf(p)
 	switch d.state {
 	case PromisePending:
@@ -484,7 +484,7 @@ func (cx *ExecutionContext) addReaction(p *Object, r *pendingReaction) {
 	d.isHandled = true
 }
 
-func (cx *ExecutionContext) addNativeReaction(p *Object, handler AwaitHandler) {
+func (cx *ExecutionContext) addNativeReaction(p *storage.Object, handler AwaitHandler) {
 	cx.addReaction(p, &pendingReaction{
 		action: reactionAction{
 			kind:   reactionNative,
@@ -496,7 +496,7 @@ func (cx *ExecutionContext) addNativeReaction(p *Object, handler AwaitHandler) {
 }
 
 // enqueueReactionJob implements NewPromiseReactionJob and HostEnqueuePromiseJob.
-func (cx *ExecutionContext) enqueueReactionJob(r *pendingReaction, arg Value, rejected bool) {
+func (cx *ExecutionContext) enqueueReactionJob(r *pendingReaction, arg storage.Value, rejected bool) {
 	handler, other := r.onFulfilled, r.onRejected
 	if rejected {
 		handler, other = other, handler
@@ -523,21 +523,21 @@ func (cx *ExecutionContext) enqueueReactionJob(r *pendingReaction, arg Value, re
 }
 
 // PromiseResolve implements PromiseResolve for the constructor c.
-func (cx *ExecutionContext) PromiseResolve(c *Object, x Value) Value {
+func (cx *ExecutionContext) PromiseResolve(c *storage.Object, x storage.Value) storage.Value {
 	if IsPromise(x) {
-		if ctor := cx.GetV(x, cx.Key(KeyConstructor)); ctor.O == c {
+		if ctor := cx.GetV(x, cx.Key(storage.KeyConstructor)); ctor.O == c {
 			return x
 		}
 	}
-	pc := cx.NewPromiseCapability(Value{O: c})
+	pc := cx.NewPromiseCapability(storage.Value{O: c})
 	cx.ResolveCapability(pc, x)
-	return Value{O: pc.promise}
+	return storage.Value{O: pc.promise}
 }
 
 // Await implements Await for a built-in async function: k continues the function in
 // a later job with the value that v settles to. An exception that PromiseResolve throws
 // propagates, and k is not called then.
-func (cx *ExecutionContext) Await(v Value, k AwaitHandler) {
+func (cx *ExecutionContext) Await(v storage.Value, k AwaitHandler) {
 	cx.awaitValue(v, reactionAction{
 		kind:   reactionNative,
 		native: k,
@@ -546,7 +546,7 @@ func (cx *ExecutionContext) Await(v Value, k AwaitHandler) {
 
 // tryAwait suspends g, whose context is cx, on v, or leaves the exception pending if PromiseResolve
 // throws.
-func (cx *ExecutionContext) tryAwait(g *generator, v Value, kind reactionKind) bool {
+func (cx *ExecutionContext) tryAwait(g *generator, v storage.Value, kind reactionKind) bool {
 	action := reactionAction{
 		kind: kind,
 		gen:  g,
@@ -570,7 +570,7 @@ func (cx *ExecutionContext) tryAwait(g *generator, v Value, kind reactionKind) b
 }
 
 // tryAwait registers action for v, or does nothing and returns false when a property read can run code.
-func (q quietJobs) tryAwait(v Value, action reactionAction) bool {
+func (q quietJobs) tryAwait(v storage.Value, action reactionAction) bool {
 	cx := q.cx
 	r := pendingReaction{
 		action:           action,
@@ -578,11 +578,11 @@ func (q quietJobs) tryAwait(v Value, action reactionAction) bool {
 		builtinContext:   cx,
 	}
 	if IsPromise(v) {
-		ctor := cx.LookupDataSlot(v.O, cx.Key(KeyConstructor))
+		ctor := cx.LookupDataSlot(v.O, cx.Key(storage.KeyConstructor))
 		if ctor.Holder == nil {
 			return false
 		}
-		if ctor.Value().O == cx.Intrinsic(IntrinsicPromise) {
+		if ctor.Value().O == cx.Intrinsic(storage.IntrinsicPromise) {
 			cx.addReaction(v.O, &r)
 			return true
 		}
@@ -592,7 +592,7 @@ func (q quietJobs) tryAwait(v Value, action reactionAction) bool {
 		return false
 	}
 	if then.IsCallable() {
-		p := cx.NewPromiseObject(cx.Intrinsic(IntrinsicPromisePrototype))
+		p := cx.NewPromiseObject(cx.Intrinsic(storage.IntrinsicPromisePrototype))
 		cx.enqueueThenableJob(p, v, then)
 		cx.addReaction(p, &r)
 	} else {
@@ -603,25 +603,25 @@ func (q quietJobs) tryAwait(v Value, action reactionAction) bool {
 }
 
 // awaitValue performs PromiseResolve and registers the implicit handlers for an await.
-func (cx *ExecutionContext) awaitValue(v Value, action reactionAction) {
-	var p *Object
+func (cx *ExecutionContext) awaitValue(v storage.Value, action reactionAction) {
+	var p *storage.Object
 	var rejected bool
 	switch {
 	case IsPromise(v):
-		if ctor := cx.GetV(v, cx.Key(KeyConstructor)); ctor.O == cx.Intrinsic(IntrinsicPromise) {
+		if ctor := cx.GetV(v, cx.Key(storage.KeyConstructor)); ctor.O == cx.Intrinsic(storage.IntrinsicPromise) {
 			p = v.O
 		} else {
-			p = cx.NewPromiseObject(cx.Intrinsic(IntrinsicPromisePrototype))
+			p = cx.NewPromiseObject(cx.Intrinsic(storage.IntrinsicPromisePrototype))
 			cx.resolvePromise(cx.realmPart, p, v)
 		}
 	case v.IsObject():
-		var then Value
+		var then storage.Value
 		if e, ok := cx.Completion(func() {
-			then = cx.GetV(v, cx.Key(KeyThen))
+			then = cx.GetV(v, cx.Key(storage.KeyThen))
 		}); !ok {
 			v, rejected = e, true
 		} else if then.IsCallable() {
-			p = cx.NewPromiseObject(cx.Intrinsic(IntrinsicPromisePrototype))
+			p = cx.NewPromiseObject(cx.Intrinsic(storage.IntrinsicPromisePrototype))
 			cx.enqueueThenableJob(p, v, then)
 		}
 	}
@@ -643,7 +643,7 @@ func (cx *ExecutionContext) awaitValue(v Value, action reactionAction) {
 //
 // The promises that are rejected without a handler when the job queue is drained are
 // the unhandled rejections, which notifyRejectedPromises reports.
-func (ag *agent) hostPromiseRejectionTracker(p *Object, handle bool) {
+func (ag *agent) hostPromiseRejectionTracker(p *storage.Object, handle bool) {
 	if !handle {
 		ag.rejections.add(p)
 		return
@@ -653,7 +653,7 @@ func (ag *agent) hostPromiseRejectionTracker(p *Object, handle bool) {
 
 // UnhandledRejectionFunc is the type of the function that is told about a promise that was
 // rejected with reason and has no handler.
-type UnhandledRejectionFunc func(cx *ExecutionContext, promise, reason Value)
+type UnhandledRejectionFunc func(cx *ExecutionContext, promise, reason storage.Value)
 
 // SetHostUnhandledRejection sets f as the function that is told about the unhandled
 // rejections, in the order of rejection, after the jobs ran. f may call into ag. Without
@@ -668,7 +668,7 @@ func (ag *agent) DeferUnhandledRejections() {
 }
 
 // TakeUnhandledRejection ends deferral, returning the first unhandled reason and clearing all reports.
-func (ag *agent) TakeUnhandledRejection() (Value, bool) {
+func (ag *agent) TakeUnhandledRejection() (storage.Value, bool) {
 	p := ag.rejections.endDeferral()
 	if p == nil {
 		return storage.Undefined, false
@@ -679,7 +679,7 @@ func (ag *agent) TakeUnhandledRejection() (Value, bool) {
 // rejectionTracker holds the rejected promises without a handler.
 type rejectionTracker struct {
 	// promises are the rejected promises without a handler, in the order of rejection.
-	promises []*Object
+	promises []*storage.Object
 
 	// notify is the function that is told about the unhandled rejections, or nil.
 	notify UnhandledRejectionFunc
@@ -692,12 +692,12 @@ func (t *rejectionTracker) setNotify(f UnhandledRejectionFunc) {
 	t.notify = f
 }
 
-func (t *rejectionTracker) add(p *Object) {
+func (t *rejectionTracker) add(p *storage.Object) {
 	t.promises = append(t.promises, p)
 }
 
 // remove removes p, if it is there.
-func (t *rejectionTracker) remove(p *Object) {
+func (t *rejectionTracker) remove(p *storage.Object) {
 	for i, q := range t.promises {
 		if q == p {
 			copy(t.promises[i:], t.promises[i+1:])
@@ -719,7 +719,7 @@ func (t *rejectionTracker) deferReports() {
 
 // endDeferral ends the deferral of the reports and removes all the promises. It returns the first
 // one, or nil when there is none.
-func (t *rejectionTracker) endDeferral() *Object {
+func (t *rejectionTracker) endDeferral() *storage.Object {
 	t.deferred = false
 	if len(t.promises) == 0 {
 		return nil
@@ -731,7 +731,7 @@ func (t *rejectionTracker) endDeferral() *Object {
 
 // takeForReport removes and returns the promises to report, in the order of rejection. There is
 // none while the reports are deferred. Without a function to tell, the promises are discarded.
-func (t *rejectionTracker) takeForReport() []*Object {
+func (t *rejectionTracker) takeForReport() []*storage.Object {
 	if len(t.promises) == 0 || t.deferred {
 		return nil
 	}
@@ -793,7 +793,7 @@ func (q *jobQueue) dequeue() job {
 }
 
 // promiseJobContext implements the GetFunctionRealm step of both promise job constructors.
-func (cx *ExecutionContext) promiseJobContext(callback *Object) *ExecutionContext {
+func (cx *ExecutionContext) promiseJobContext(callback *storage.Object) *ExecutionContext {
 	if cx.trackJobRealms && callback != nil {
 		if r := cx.functionRealmOrNil(callback); r != nil {
 			return executionContextOf(r)
@@ -813,7 +813,7 @@ func (ag *agent) enqueuePromiseJob(j job) {
 // QueueMicrotask queues a call to callback with no arguments and reports an exception
 // in the callback's creation realm.
 // It throws a TypeError if callback is not callable.
-func (cx *ExecutionContext) QueueMicrotask(callback Value) {
+func (cx *ExecutionContext) QueueMicrotask(callback storage.Value) {
 	if !callback.IsCallable() {
 		cx.ThrowTypeError(cx.DisplayString(callback) + " is not a function")
 	}
@@ -893,7 +893,7 @@ func (cx *ExecutionContext) promiseReactionJob(j *job) {
 			return
 		}
 		if r.iterator != nil {
-			cx.iteratorClose(Value{O: r.iterator}, true)
+			cx.iteratorClose(storage.Value{O: r.iterator}, true)
 		}
 		cx.RejectCapability(r.capability, arg)
 		return
@@ -920,10 +920,10 @@ func (cx *ExecutionContext) promiseReactionJob(j *job) {
 }
 
 // promiseResolveThenableJob is the job of NewPromiseResolveThenableJob.
-func (cx *ExecutionContext) promiseResolveThenableJob(p *Object, thenable Value, then *Object) {
+func (cx *ExecutionContext) promiseResolveThenableJob(p *storage.Object, thenable storage.Value, then *storage.Object) {
 	c := cx.CreateResolvingFunctions(p)
 	if !cx.protect(func() {
-		cx.Call(then, thenable, Value{O: c.resolve}, Value{O: c.reject})
+		cx.Call(then, thenable, storage.Value{O: c.resolve}, storage.Value{O: c.reject})
 	}) {
 		cx.RejectCapability(c, cx.takeThrown())
 	}
@@ -996,7 +996,7 @@ func (cx *ExecutionContext) notifyRejectedPromises() bool {
 		if t.notify == nil {
 			break
 		}
-		t.notify(cx, Value{O: p}, d.result)
+		t.notify(cx, storage.Value{O: p}, d.result)
 		cx.ResumeInterruption()
 		if cx.abortCause != nil {
 			break

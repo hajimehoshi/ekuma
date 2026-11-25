@@ -3,6 +3,10 @@
 
 package engine
 
+import (
+	"github.com/hajimehoshi/ekuma/internal/storage"
+)
+
 // DefaultLocale returns the configured default locale, or empty for the host default.
 func (ag *agent) DefaultLocale() string {
 	return ag.defaultLocale
@@ -27,7 +31,7 @@ func (ag *agent) SetAvailableDefaultLocale(locale string) {
 }
 
 // IntlFallbackSymbol returns the [[FallbackSymbol]] of %Intl% of the execution realm.
-func (cx *ExecutionContext) IntlFallbackSymbol() *Object {
+func (cx *ExecutionContext) IntlFallbackSymbol() *storage.Object {
 	r := cx.realm
 	if r.intlFallbackSymbol == nil {
 		r.intlFallbackSymbol = cx.NewSymbol("IntlLegacyConstructedSymbol", true)

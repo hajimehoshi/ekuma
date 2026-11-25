@@ -20,15 +20,15 @@ import (
 // Frames are reused in place, so the code that pushes one assigns every field. It assigns the
 // pointer fields in one statement, which lets the compiler test for a write barrier once.
 type frame struct {
-	fp *funcProto
-	cl *Object
+	fp *storage.FuncProto
+	cl *storage.Object
 	pc int
 
 	// base is the stack index of register 0. For a generator, whose registers are not on the stack,
 	// it is the stack index from which the frame may place the arguments of its calls.
 	base int
 
-	this Value
+	this storage.Value
 
 	// ret is the register of the calling frame that receives the result.
 	ret int32
@@ -46,13 +46,13 @@ type frame struct {
 	// the registers when the function needs them, and -1 otherwise.
 	extraBase int
 
-	newTarget *Object
+	newTarget *storage.Object
 
 	// gen is the generator that the frame is an activation of.
 	gen *generator
 
 	// scopes are the dynamic scopes entered by with statements, innermost last.
-	scopes []*Object
+	scopes []*storage.Object
 }
 
 // leaveScopes leaves the dynamic scopes of fr beyond the first n. It stays out of line to keep
@@ -72,7 +72,7 @@ var thrownErrorKinds = [...]ErrorKind{
 }
 
 // primObjects maps the values that OpJumpNotSEqP compares with to their o.
-var primObjects = [...]*Object{
+var primObjects = [...]*storage.Object{
 	bytecode.PrimUndefined: nil,
 	bytecode.PrimNull:      storage.NullObject,
 	bytecode.PrimFalse:     storage.FalseObject,
@@ -85,7 +85,7 @@ const maxFrames = 10000
 var tdzObject = storage.NewMarker(nil)
 
 // tdz is the content of a binding that is not initialized yet.
-var tdz = Value{O: tdzObject}
+var tdz = storage.Value{O: tdzObject}
 
 type execStatus uint8
 
@@ -117,7 +117,7 @@ func (ag *agent) ensureStack(n int) {
 		}
 		return
 	}
-	s := make([]Value, max(n+stackHeadroom, len(ag.stack)*2))
+	s := make([]storage.Value, max(n+stackHeadroom, len(ag.stack)*2))
 	copy(s, ag.stack)
 	if validateExec {
 		ag.abandonStack()
@@ -141,9 +141,9 @@ func (ag *agent) releaseStack() {
 	if len(ag.stack) <= maxIdleStack || ag.sp+stackHeadroom > maxIdleStack {
 		return
 	}
-	var s []Value
+	var s []storage.Value
 	if ag.sp > 0 {
-		s = make([]Value, ag.sp+stackHeadroom)
+		s = make([]storage.Value, ag.sp+stackHeadroom)
 		copy(s, ag.stack[:ag.sp])
 	}
 	if validateExec {
@@ -184,7 +184,7 @@ func (ag *agent) appendFrame() *frame {
 
 // pushFrame starts the activation of the closure f, whose argc arguments are already at base.
 // It returns the stack index of register 0 of the new frame.
-func (ag *agent) pushFrame(f *Object, this Value, base, argc int, ret int32, isNew bool, newTarget *Object) int {
+func (ag *agent) pushFrame(f *storage.Object, this storage.Value, base, argc int, ret int32, isNew bool, newTarget *storage.Object) int {
 	// exec builds the same frame inline for OpCall and OpCallCall in its fast switch, and for
 	// OpApplyFwd in the switch after it, when the callee needs no surplus arguments; a change
 	// here belongs there too.
@@ -217,15 +217,15 @@ func (ag *agent) pushFrame(f *Object, this Value, base, argc int, ret int32, isN
 	return base
 }
 
-func clearFrameRegs(regs []Value, first, end int) {
+func clearFrameRegs(regs []storage.Value, first, end int) {
 	for j := first; j < end; j++ {
-		regs[j] = Value{}
+		regs[j] = storage.Value{}
 	}
 }
 
 // frameRegs returns fr's registers, including the slot for discarded results.
 // The slice is only valid until stack growth or reentry.
-func (ag *agent) frameRegs(fr *frame) []Value {
+func (ag *agent) frameRegs(fr *frame) []storage.Value {
 	return slices.Clip(fr.registers(ag.stack))
 }
 
@@ -243,7 +243,7 @@ func (ag *agent) placeCallArgs(firstReg, argc int) int {
 }
 
 // registers returns the registers of fr given its agent's stack.
-func (fr *frame) registers(stack []Value) []Value {
+func (fr *frame) registers(stack []storage.Value) []storage.Value {
 	// Keep the storage selection small enough to inline in exec.
 	if fr.gen != nil {
 		return fr.gen.regs
@@ -252,7 +252,7 @@ func (fr *frame) registers(stack []Value) []Value {
 }
 
 // captureRegister returns the shared upvalue for a register of fr.
-func (ag *agent) captureRegister(fr *frame, index int) *upvalue {
+func (ag *agent) captureRegister(fr *frame, index int) *storage.Upvalue {
 	if fr.gen != nil {
 		return fr.gen.findUpval(index)
 	}
@@ -270,7 +270,7 @@ func (ag *agent) closeFrameUpvals(fr *frame, from int) {
 
 // extraArgs returns the arguments of the frame fr beyond its parameters.
 // The result is only valid until the stack grows.
-func (ag *agent) extraArgs(fr *frame) []Value {
+func (ag *agent) extraArgs(fr *frame) []storage.Value {
 	if fr.gen != nil {
 		return fr.gen.extra
 	}
@@ -281,7 +281,7 @@ func (ag *agent) extraArgs(fr *frame) []Value {
 }
 
 // findUpval returns the upvalue for the stack slot index.
-func (ag *agent) findUpval(index int) *upvalue {
+func (ag *agent) findUpval(index int) *storage.Upvalue {
 	i := len(ag.openUpvals)
 	const tail = 4
 	if i > 2*tail && ag.openUpvals[i-tail].Index > index {
@@ -297,7 +297,7 @@ func (ag *agent) findUpval(index int) *upvalue {
 	if i > 0 && ag.openUpvals[i-1].Index == index {
 		return ag.openUpvals[i-1]
 	}
-	u := &upvalue{
+	u := &storage.Upvalue{
 		P:     &ag.stack[index],
 		Index: index,
 	}
@@ -322,7 +322,7 @@ func (ag *agent) closeUpvals(from int) {
 
 // unwind finds the handler for the pending exception, dropping the frames that have none.
 // It returns execCatch at a handler, or the completion that left the frame at stop.
-func (ag *agent) unwind(stop int) (Value, execStatus) {
+func (ag *agent) unwind(stop int) (storage.Value, execStatus) {
 	for {
 		n := len(ag.frames) - 1
 		fr := &ag.frames[n]
@@ -349,7 +349,7 @@ func (ag *agent) unwind(stop int) (Value, execStatus) {
 			ag.sp = fr.top()
 			return storage.Undefined, execCatch
 		}
-		var closeValue Value
+		var closeValue storage.Value
 		if fr.gen != nil {
 			closeValue = fr.gen.complete()
 		} else if len(ag.openUpvals) > 0 {
@@ -378,7 +378,7 @@ func (fr *frame) top() int {
 
 // run executes the top frame until the frame at index stop returns, and returns its value.
 // An exception that leaves that frame is thrown to the Go caller. r is the realm of the frame.
-func (cx *ExecutionContext) run(stop int, r *realmPart) Value {
+func (cx *ExecutionContext) run(stop int, r *storage.RealmPart) storage.Value {
 	v, ok := cx.runFrame(stop, r)
 	if !ok {
 		panic(errThrow)
@@ -389,7 +389,7 @@ func (cx *ExecutionContext) run(stop int, r *realmPart) Value {
 // runFrame executes the frame at stop, whose realm is r, until it returns, yields, or unwinds with an
 // exception. An unwound frame leaves the exception pending and returns false.
 // At the depth limit, the frames from stop are dropped and a RangeError is thrown.
-func (cx *ExecutionContext) runFrame(stop int, r *realmPart) (Value, bool) {
+func (cx *ExecutionContext) runFrame(stop int, r *storage.RealmPart) (storage.Value, bool) {
 	if cx.depth >= maxDepth {
 		cx.unwindTo(stop)
 		cx.ThrowRangeError("maximum call stack size exceeded")
@@ -434,20 +434,20 @@ func (cx *ExecutionContext) throwReturnError(stop, n, pc int, kind ErrorKind, ms
 }
 
 // restArray returns the arguments of fr starting at index start as a fresh array.
-func (cx *ExecutionContext) restArray(fr *frame, start int) *Object {
+func (cx *ExecutionContext) restArray(fr *frame, start int) *storage.Object {
 	n := min(fr.argc, fr.fp.Nparams)
 	extra := cx.extraArgs(fr)
 	if start >= n {
 		return cx.NewArrayCopy(extra[start-n:])
 	}
-	args := make([]Value, 0, fr.argc-start)
+	args := make([]storage.Value, 0, fr.argc-start)
 	args = append(args, cx.frameRegs(fr)[start:n]...)
 	args = append(args, extra...)
 	return cx.NewArray(args)
 }
 
 // exec is the interpreter loop. See run.
-func (ag *agent) exec(stop int) (result Value, status execStatus) {
+func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 	defer func() {
 		if r := recover(); r != nil {
 			if r != any(errThrow) {
@@ -490,7 +490,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			storage.SetNumber(&regs[i.A], float64(i.B))
 			continue
 		case bytecode.OpLoadUndef:
-			regs[i.A] = Value{}
+			regs[i.A] = storage.Value{}
 			continue
 		case bytecode.OpLoadNull:
 			regs[i.A] = storage.Null
@@ -544,23 +544,23 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			if validateExec {
 				ag.active.checkGlobalHit(fp, int(i.C-1), fp.Keys[fp.Code[i.C-1].B], g, true)
 			}
-			regs[i.A] = Value{}
+			regs[i.A] = storage.Value{}
 			c := &fp.Caches[fp.Code[pc].C]
 			o := regs[i.B].O
 			if o == nil || c.Shape != o.Shape {
 				continue
 			}
-			if c.Kind == cacheOwnGetter || c.Kind == cacheGetter {
+			if c.Kind == storage.CacheOwnGetter || c.Kind == storage.CacheGetter {
 				// The binding is resolved. Dispatch the read with its own call site.
 				i = &fp.Code[pc]
 				pc++
 				break
 			}
-			var v Value
+			var v storage.Value
 			switch c.Kind {
-			case cacheOwn:
+			case storage.CacheOwn:
 				v = o.Slots[c.Slot]
-			case cacheProto:
+			case storage.CacheProto:
 				if c.Epoch != ag.ProtoEpoch {
 					continue
 				}
@@ -583,11 +583,11 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			if validateExec {
 				ag.active.checkGlobalExists(fp, pc-1, fp.Keys[i.B], c)
 			}
-			regs[i.A] = Value{}
+			regs[i.A] = storage.Value{}
 			// A named read may supply the value of the assignment.
 			if n := &fp.Code[pc]; n.Op == bytecode.OpGetProp {
 				c := &fp.Caches[n.C]
-				if o := regs[n.B].O; o != nil && c.Kind == cacheOwn && c.Shape == o.Shape {
+				if o := regs[n.B].O; o != nil && c.Kind == storage.CacheOwn && c.Shape == o.Shape {
 					if validateExec {
 						ag.active.checkEntryRead(fp, pc, regs[n.B], o, fp.Keys[n.C], &c.CacheEntry)
 					}
@@ -608,8 +608,8 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 						break
 					}
 				}
-				if e.Kind != cacheOwn {
-					if e.Kind != cacheProto || e.Epoch != ag.ProtoEpoch {
+				if e.Kind != storage.CacheOwn {
+					if e.Kind != storage.CacheProto || e.Epoch != ag.ProtoEpoch {
 						break
 					}
 					if validateExec {
@@ -634,9 +634,9 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 						break
 					}
 				}
-				var w Value
-				if e.Kind != cacheOwn {
-					if e.Kind != cacheProto || e.Epoch != ag.ProtoEpoch {
+				var w storage.Value
+				if e.Kind != storage.CacheOwn {
+					if e.Kind != storage.CacheProto || e.Epoch != ag.ProtoEpoch {
 						break
 					}
 					w = *e.Ref
@@ -658,8 +658,8 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 							continue
 						}
 					}
-					if e.Kind != cacheOwn {
-						if e.Kind != cacheProto || e.Epoch != ag.ProtoEpoch {
+					if e.Kind != storage.CacheOwn {
+						if e.Kind != storage.CacheProto || e.Epoch != ag.ProtoEpoch {
 							continue
 						}
 						if validateExec {
@@ -686,14 +686,14 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 						break
 					}
 				}
-				if e.Kind == cacheOwn {
+				if e.Kind == storage.CacheOwn {
 					if validateExec {
 						ag.active.checkStoreHit(fp, pc-1, regs[i.A], fp.Keys[i.B], &o.Slots[e.Slot])
 					}
 					o.Slots[e.Slot] = regs[i.C]
 					continue
 				}
-				if e.Kind == cacheAdd && o.ObjectProperties != nil && e.Epoch == ag.ProtoEpoch && o.Flags&objIsProto == 0 {
+				if e.Kind == storage.CacheAdd && o.ObjectProperties != nil && e.Epoch == ag.ProtoEpoch && o.Flags&storage.ObjIsProto == 0 {
 					if n := len(o.Slots); n < cap(o.Slots) {
 						if validateExec {
 							ag.active.checkAddHit(fp, pc-1, o, fp.Keys[i.B], e.Next)
@@ -706,7 +706,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				}
 			}
 		case bytecode.OpGetLength:
-			if o := regs[i.B].O; o != nil && o.Kind == kindArray {
+			if o := regs[i.B].O; o != nil && o.Kind == storage.KindArray {
 				if validateExec {
 					ag.active.checkLengthHit(fp, pc-1, regs[i.B], float64(o.Length))
 				}
@@ -717,7 +717,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			// stay in registers across the tests, as in OpGetProp.
 			if a, c, o := i.A, &fp.Caches[i.C], regs[i.B].O; o != nil {
 				// The length of a string known to be ASCII, as in Value.StringLength.
-				if o.Kind == kindString && o.Flags&(objASCIIKnown|objASCII) == objASCIIKnown|objASCII {
+				if o.Kind == storage.KindString && o.Flags&(storage.ObjASCIIKnown|storage.ObjASCII) == storage.ObjASCIIKnown|storage.ObjASCII {
 					if validateExec {
 						ag.active.checkLengthHit(fp, pc-1, regs[i.B], float64(len(o.Text)))
 					}
@@ -729,7 +729,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				// shared or detached buffer is empty, so only an empty view of one passes the
 				// bounds check.
 				if t, ok := o.Ext.(*storage.TypedArray); ok && !t.Tracking && t.Offset+t.FixedLength*t.Type.Size() <= len(t.Data.Data) {
-					if o.Shape == c.Shape && c.Kind == cacheGetter && c.Epoch == ag.ProtoEpoch && c.Holder == ag.active.realm.Intrinsics[IntrinsicTypedArrayPrototypeLengthGetter] {
+					if o.Shape == c.Shape && c.Kind == storage.CacheGetter && c.Epoch == ag.ProtoEpoch && c.Holder == ag.active.realm.Intrinsics[storage.IntrinsicTypedArrayPrototypeLengthGetter] {
 						if validateExec {
 							ag.active.checkTypedArrayLengthHit(fp, pc-1, regs[i.B], float64(t.FixedLength))
 						}
@@ -743,16 +743,16 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 					e = &c.Second
 				}
 				if o.Shape == e.Shape {
-					if e.Kind == cacheOwn {
+					if e.Kind == storage.CacheOwn {
 						if validateExec {
-							ag.active.checkEntryRead(fp, pc-1, regs[i.B], o, ag.Key(KeyLength), e)
+							ag.active.checkEntryRead(fp, pc-1, regs[i.B], o, ag.Key(storage.KeyLength), e)
 						}
 						regs[a] = o.Slots[e.Slot]
 						continue
 					}
-					if e.Kind == cacheProto && e.Epoch == ag.ProtoEpoch {
+					if e.Kind == storage.CacheProto && e.Epoch == ag.ProtoEpoch {
 						if validateExec {
-							ag.active.checkEntryRead(fp, pc-1, regs[i.B], o, ag.Key(KeyLength), e)
+							ag.active.checkEntryRead(fp, pc-1, regs[i.B], o, ag.Key(storage.KeyLength), e)
 						}
 						regs[a] = *e.Ref
 						continue
@@ -809,11 +809,11 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 						}
 					}
 				}
-			} else if o != nil && o.Kind == kindString && o.Flags&(objASCIIKnown|objASCII) == objASCIIKnown|objASCII && k.O == storage.NumberObject {
+			} else if o != nil && o.Kind == storage.KindString && o.Flags&(storage.ObjASCIIKnown|storage.ObjASCII) == storage.ObjASCIIKnown|storage.ObjASCII && k.O == storage.NumberObject {
 				// A unit of a string known to be ASCII, as in asciiUnitAt. An index in its range is an
 				// own property that nothing shadows.
 				if j := int(k.N); float64(j) == k.N && uint(j) < uint(len(o.Text)) {
-					if o.Flags&objReversed != 0 {
+					if o.Flags&storage.ObjReversed != 0 {
 						j = len(o.Text) - 1 - j
 					}
 					regs[i.A] = ag.Strings.Ascii[o.Text[j]]
@@ -863,9 +863,9 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 					}
 				}
 				// The same as OpGetIndex for a string.
-				if o.Kind == kindString && o.Flags&(objASCIIKnown|objASCII) == objASCIIKnown|objASCII && uint(i.C) < uint(len(o.Text)) {
+				if o.Kind == storage.KindString && o.Flags&(storage.ObjASCIIKnown|storage.ObjASCII) == storage.ObjASCIIKnown|storage.ObjASCII && uint(i.C) < uint(len(o.Text)) {
 					j := int(i.C)
-					if o.Flags&objReversed != 0 {
+					if o.Flags&storage.ObjReversed != 0 {
 						j = len(o.Text) - 1 - j
 					}
 					regs[i.A] = ag.Strings.Ascii[o.Text[j]]
@@ -946,9 +946,9 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				// An append to a plain array that has room for it, as in the switch below, with the
 				// conditions of ElemsResizable and NewElementsPlain written out.
 				if j := int(k.N); j == len(o.Elems) && j < cap(o.Elems) &&
-					o.Kind == kindArray && uint32(j) == o.Length && o.Flags == 0 && float64(j) == k.N && o.Shape == ag.active.realm.Shapes.Array {
-					if a := ag.active.realm.Intrinsics[IntrinsicArrayPrototype]; len(a.Elems) == 0 && a.Flags&objSparse == 0 {
-						if p := a.Shape.Proto; p == ag.active.realm.Intrinsics[IntrinsicObjectPrototype] && len(p.Elems) == 0 && p.Flags&objSparse == 0 {
+					o.Kind == storage.KindArray && uint32(j) == o.Length && o.Flags == 0 && float64(j) == k.N && o.Shape == ag.active.realm.Shapes.Array {
+					if a := ag.active.realm.Intrinsics[storage.IntrinsicArrayPrototype]; len(a.Elems) == 0 && a.Flags&storage.ObjSparse == 0 {
+						if p := a.Shape.Proto; p == ag.active.realm.Intrinsics[storage.IntrinsicObjectPrototype] && len(p.Elems) == 0 && p.Flags&storage.ObjSparse == 0 {
 							if validateExec {
 								ag.active.checkAppend(o)
 							}
@@ -1131,9 +1131,9 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				eq = true
 			} else if xn, yn := x.IsNullish(), y.IsNullish(); xn || yn {
 				eq = xn && yn || x.IsHTMLDDA() || y.IsHTMLDDA()
-			} else if x.O.Kind >= kindFirstObject && y.O.Kind >= kindFirstObject {
+			} else if x.O.Kind >= storage.KindFirstObject && y.O.Kind >= storage.KindFirstObject {
 				eq = x.O == y.O
-			} else if x.O == y.O || x.O.Flags&y.O.Flags&objInterned == 0 {
+			} else if x.O == y.O || x.O.Flags&y.O.Flags&storage.ObjInterned == 0 {
 				known = false
 			}
 			if known {
@@ -1145,11 +1145,11 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			if v := regs[i.B]; v.O == storage.NumberObject {
 				regs[i.A] = storage.Bool(v.N == 0 || v.N != v.N)
 				continue
-			} else if o := v.O; o == nil || o.Kind <= kindFalse {
+			} else if o := v.O; o == nil || o.Kind <= storage.KindFalse {
 				regs[i.A] = storage.Bool(true)
 				continue
-			} else if o.Kind == kindTrue || o.Kind >= kindObject {
-				// kindHTMLDDA is below kindObject and takes the slow path.
+			} else if o.Kind == storage.KindTrue || o.Kind >= storage.KindObject {
+				// storage.KindHTMLDDA is below storage.KindObject and takes the slow path.
 				regs[i.A] = storage.Bool(false)
 				continue
 			}
@@ -1166,12 +1166,12 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				t = v.N != 0 && v.N == v.N
 			} else if o == nil {
 				t = false
-			} else if k := o.Kind; k == kindTrue {
+			} else if k := o.Kind; k == storage.KindTrue {
 				t = true
-			} else if k <= kindFalse {
+			} else if k <= storage.KindFalse {
 				t = false
-			} else if k >= kindObject {
-				// kindHTMLDDA is below kindObject and takes the slow path.
+			} else if k >= storage.KindObject {
+				// storage.KindHTMLDDA is below storage.KindObject and takes the slow path.
 				t = true
 			} else {
 				known = false
@@ -1240,9 +1240,9 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				eq = true
 			} else if xn, yn := x.IsNullish(), y.IsNullish(); xn || yn {
 				eq = xn && yn || x.IsHTMLDDA() || y.IsHTMLDDA()
-			} else if x.O.Kind >= kindFirstObject && y.O.Kind >= kindFirstObject {
+			} else if x.O.Kind >= storage.KindFirstObject && y.O.Kind >= storage.KindFirstObject {
 				eq = x.O == y.O
-			} else if x.O == y.O || x.O.Flags&y.O.Flags&objInterned == 0 {
+			} else if x.O == y.O || x.O.Flags&y.O.Flags&storage.ObjInterned == 0 {
 				known = false
 			}
 			if known {
@@ -1261,7 +1261,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				continue
 			} else if x.O == y.O && math.Float64bits(x.N) == math.Float64bits(y.N) {
 				continue
-			} else if x.O != y.O && x.O != nil && y.O != nil && x.O.Flags&y.O.Flags&objInterned != 0 {
+			} else if x.O != y.O && x.O != nil && y.O != nil && x.O.Flags&y.O.Flags&storage.ObjInterned != 0 {
 				pc = int(i.A)
 				continue
 			}
@@ -1275,7 +1275,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			} else if x.O == y.O && math.Float64bits(x.N) == math.Float64bits(y.N) {
 				pc = int(i.A)
 				continue
-			} else if x.O != y.O && x.O != nil && y.O != nil && x.O.Flags&y.O.Flags&objInterned != 0 {
+			} else if x.O != y.O && x.O != nil && y.O != nil && x.O.Flags&y.O.Flags&storage.ObjInterned != 0 {
 				continue
 			}
 		case bytecode.OpStrictEq, bytecode.OpStrictNe:
@@ -1286,7 +1286,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			} else if x.O == y.O && math.Float64bits(x.N) == math.Float64bits(y.N) {
 				regs[i.A] = storage.Bool(i.Op == bytecode.OpStrictEq)
 				continue
-			} else if x.O != y.O && x.O != nil && y.O != nil && x.O.Flags&y.O.Flags&objInterned != 0 {
+			} else if x.O != y.O && x.O != nil && y.O != nil && x.O.Flags&y.O.Flags&storage.ObjInterned != 0 {
 				regs[i.A] = storage.Bool(i.Op != bytecode.OpStrictEq)
 				continue
 			}
@@ -1349,12 +1349,12 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			// chain of b, unless a proxy is on it.
 			if co := regs[i.C].O; co != nil && !ag.InterruptFlag.Load() {
 				c := &fp.Caches[fp.Code[pc].A]
-				if co.Shape == c.Shape && c.Kind == cacheOwn && c.Epoch == ag.ProtoEpoch && co.Class == classFunction && co.Fn != nil && co.Fn.Bound == nil {
-					if p := co.Slots[c.Slot].O; p != nil && p.Kind >= kindFirstObject {
+				if co.Shape == c.Shape && c.Kind == storage.CacheOwn && c.Epoch == ag.ProtoEpoch && co.Class == storage.ClassFunction && co.Fn != nil && co.Fn.Bound == nil {
+					if p := co.Slots[c.Slot].O; p != nil && p.Kind >= storage.KindFirstObject {
 						r, known := false, true
-						if o := regs[i.B].O; o != nil && o.Kind >= kindFirstObject {
+						if o := regs[i.B].O; o != nil && o.Kind >= storage.KindFirstObject {
 							for h := o; ; {
-								if h.Class == classProxy {
+								if h.Class == storage.ClassProxy {
 									known = false
 									break
 								}
@@ -1388,7 +1388,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			}
 		case bytecode.OpDefineFieldK:
 			o := regs[i.A].O
-			if c := &fp.Caches[i.B]; o.Shape == c.Shape && c.Kind == cacheAdd {
+			if c := &fp.Caches[i.B]; o.Shape == c.Shape && c.Kind == storage.CacheAdd {
 				if n := len(o.Slots); n < cap(o.Slots) {
 					if validateExec {
 						ag.active.checkDefineHit(fp, pc-1, o, fp.Keys[i.B], c.Next)
@@ -1420,9 +1420,9 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 						break
 					}
 				}
-				var m Value
-				if e.Kind != cacheOwn {
-					if e.Kind != cacheProto || e.Epoch != ag.ProtoEpoch {
+				var m storage.Value
+				if e.Kind != storage.CacheOwn {
+					if e.Kind != storage.CacheProto || e.Epoch != ag.ProtoEpoch {
 						break
 					}
 					m = *e.Ref
@@ -1449,7 +1449,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			b := int(i.B)
 			f, first, argc := regs[b].O, b+2, int(i.C)
 			if i.Op == bytecode.OpCallCall {
-				if f != ag.active.realm.Intrinsics[IntrinsicFunctionPrototypeCall] {
+				if f != ag.active.realm.Intrinsics[storage.IntrinsicFunctionPrototypeCall] {
 					f = nil
 				} else {
 					f, first, argc = regs[b+1].O, b+3, max(argc-1, 0)
@@ -1463,12 +1463,12 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 					end := argBase + c.Nregs + 1
 					// The frames have room for at most maxFrames.
 					if (argc <= c.Nparams || !c.NeedsExtra) && end+stackHeadroom <= len(ag.stack) && n < cap(ag.frames) {
-						var this Value
+						var this storage.Value
 						if i.Op != bytecode.OpCallUndef && (i.Op != bytecode.OpCallCall || i.C > 0) {
 							this = regs[first-1]
 						}
 						if site := c.ReturnedProperty; site != nil && this.IsObject() {
-							if e := site.Entry(this.O.Shape); e != nil && e.Kind == cacheOwn {
+							if e := site.Entry(this.O.Shape); e != nil && e.Kind == storage.CacheOwn {
 								if validateExec {
 									ag.active.checkReturnedProperty(c, this, e)
 								}
@@ -1494,7 +1494,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 						ag.sp = end
 						fp, pc = c, 0
 						regs = ag.stack[argBase:end]
-						if r := c.ThisReg; r >= 0 && (!c.ThisSloppy || this.O != nil && this.O.Kind >= kindFirstObject) {
+						if r := c.ThisReg; r >= 0 && (!c.ThisSloppy || this.O != nil && this.O.Kind >= storage.KindFirstObject) {
 							// Do what the first instruction does, and start after it.
 							regs[r] = this
 							pc = 1
@@ -1523,13 +1523,13 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			// none refers to the registers of the frame when the last one lies below them.
 			// The value is read before the tests, so that the instruction need not stay in
 			// registers across them.
-			r := Value{}
+			r := storage.Value{}
 			if i.Op == bytecode.OpReturn {
 				r = regs[i.A]
 			}
 			n := len(ag.frames) - 1
 			if done := &ag.frames[n]; done.plainReturn && n != stop && (len(ag.openUpvals) == 0 || ag.openUpvals[len(ag.openUpvals)-1].Index < done.base) {
-				if done.isNew && (r.O == nil || r.O.Kind < kindFirstObject) {
+				if done.isNew && (r.O == nil || r.O.Kind < storage.KindFirstObject) {
 					r = done.this
 				}
 				ret := done.ret
@@ -1633,9 +1633,9 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 					}
 					break
 				}
-				if j == len(o.Elems) && j < cap(o.Elems) && o.Kind == kindArray && uint32(j) == o.Length && o.Flags == 0 && o.Shape == ag.active.realm.Shapes.Array {
-					if a := ag.active.realm.Intrinsics[IntrinsicArrayPrototype]; len(a.Elems) == 0 && a.Flags&objSparse == 0 {
-						if p := a.Shape.Proto; p == ag.active.realm.Intrinsics[IntrinsicObjectPrototype] && len(p.Elems) == 0 && p.Flags&objSparse == 0 {
+				if j == len(o.Elems) && j < cap(o.Elems) && o.Kind == storage.KindArray && uint32(j) == o.Length && o.Flags == 0 && o.Shape == ag.active.realm.Shapes.Array {
+					if a := ag.active.realm.Intrinsics[storage.IntrinsicArrayPrototype]; len(a.Elems) == 0 && a.Flags&storage.ObjSparse == 0 {
+						if p := a.Shape.Proto; p == ag.active.realm.Intrinsics[storage.IntrinsicObjectPrototype] && len(p.Elems) == 0 && p.Flags&storage.ObjSparse == 0 {
 							if validateExec {
 								ag.active.checkAppend(o)
 							}
@@ -1656,11 +1656,11 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				t = v.N != 0 && v.N == v.N
 			} else if o == nil {
 				t = false
-			} else if k := o.Kind; k == kindTrue {
+			} else if k := o.Kind; k == storage.KindTrue {
 				t = true
-			} else if k <= kindFalse {
+			} else if k <= storage.KindFalse {
 				t = false
-			} else if k >= kindObject {
+			} else if k >= storage.KindObject {
 				t = true
 			} else {
 				known = false
@@ -1790,20 +1790,20 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 		}
 		// The state of a call in preparation, shared by every instruction that ends in a call.
 		var (
-			f           *Object
-			callThis    Value
+			f           *storage.Object
+			callThis    storage.Value
 			firstArgReg int
 			argBase     int
 			argc        int
 			ret         int32
 			isNew       bool
-			newTarget   *Object
+			newTarget   *storage.Object
 		)
 
 		// Slow property operations take their operands by value across reentry.
-		var receiver, key, rhs Value
-		var setter, name *Object
-		var site *propCache
+		var receiver, key, rhs storage.Value
+		var setter, name *storage.Object
+		var site *storage.PropCache
 
 		// Every instruction that the fast paths above leave, in full.
 		switch i.Op {
@@ -1836,7 +1836,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			goto readProperty
 		case bytecode.OpDeclareGlobalVar:
 			ag.frames[len(ag.frames)-1].pc = pc
-			var fn Value
+			var fn storage.Value
 			if i.C >= 0 {
 				fn = regs[i.C]
 			}
@@ -1859,9 +1859,9 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			p := fp.Protos[i.B]
 			o, copies := storage.NewClosure(p)
 			fn := o.Fn
-			o.Kind = kindFunction
-			o.Class = classFunction
-			o.Flags = objExotic
+			o.Kind = storage.KindFunction
+			o.Class = storage.ClassFunction
+			o.Flags = storage.ObjExotic
 			o.Shape = ag.active.realm.Shapes.Function
 			if p.IsGenerator || p.IsAsync {
 				o.Shape = ag.active.FunctionShapeFor(p.ClosurePrototype())
@@ -1881,52 +1881,52 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 					fn.Upvals[j] = ag.captureRegister(cur, int(d.Index))
 				}
 			}
-			regs[i.A] = Value{O: o}
+			regs[i.A] = storage.Value{O: o}
 
 		case bytecode.OpLoadThis:
 			regs[i.A] = ag.frames[len(ag.frames)-1].this
 		case bytecode.OpLoadThisSloppy:
 			t := ag.frames[len(ag.frames)-1].this
-			if t.O == nil || t.O.Kind < kindFirstObject {
+			if t.O == nil || t.O.Kind < storage.KindFirstObject {
 				if t.IsNullish() {
-					t = Value{O: ag.active.realm.GlobalThis}
+					t = storage.Value{O: ag.active.realm.GlobalThis}
 				} else {
-					t = Value{O: ag.active.ToObject(t)}
+					t = storage.Value{O: ag.active.ToObject(t)}
 				}
 			}
 			regs[i.A] = t
 		case bytecode.OpLoadCallee:
-			regs[i.A] = Value{O: ag.frames[len(ag.frames)-1].cl}
+			regs[i.A] = storage.Value{O: ag.frames[len(ag.frames)-1].cl}
 		case bytecode.OpLoadNewTarget:
 			if nt := ag.frames[len(ag.frames)-1].newTarget; nt != nil {
-				regs[i.A] = Value{O: nt}
+				regs[i.A] = storage.Value{O: nt}
 			} else {
 				regs[i.A] = storage.Undefined
 			}
 		case bytecode.OpLoadHome:
 			if h := ag.frames[len(ag.frames)-1].cl.Fn.Home; h != nil {
-				regs[i.A] = Value{O: h}
+				regs[i.A] = storage.Value{O: h}
 			} else {
 				regs[i.A] = storage.Undefined
 			}
 		case bytecode.OpArguments:
 			cur := &ag.frames[len(ag.frames)-1]
-			regs[i.A] = Value{O: ag.active.newArguments(cur, i.B != 0)}
+			regs[i.A] = storage.Value{O: ag.active.newArguments(cur, i.B != 0)}
 		case bytecode.OpRestArgs:
 			cur := &ag.frames[len(ag.frames)-1]
-			var rest *Object
+			var rest *storage.Object
 			if int(i.B) < cur.argc {
 				rest = ag.active.restArray(cur, int(i.B))
 			} else {
 				rest = ag.active.NewArray(nil)
 			}
-			regs[i.A] = Value{O: rest}
+			regs[i.A] = storage.Value{O: rest}
 		case bytecode.OpGetArgsLength, bytecode.OpGetArgsIndex:
 			// A prototype getter must see the arguments object shared by later reads.
 			ag.frames[len(ag.frames)-1].pc = pc
 			receiver = ag.active.forwardedArguments(i.B)
 			if i.Op == bytecode.OpGetArgsLength {
-				name = ag.Key(KeyLength)
+				name = ag.Key(storage.KeyLength)
 			} else {
 				key = regs[i.C]
 			}
@@ -1945,8 +1945,8 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			if o == storage.NumberObject {
 				// getNamed starts at Number.prototype for a number. Its own slot
 				// stays valid for its shape, and the method receives v as this.
-				o = ag.active.realm.Intrinsics[IntrinsicNumberPrototype]
-				if c.Kind == cacheOwn && c.Shape == o.Shape {
+				o = ag.active.realm.Intrinsics[storage.IntrinsicNumberPrototype]
+				if c.Kind == storage.CacheOwn && c.Shape == o.Shape {
 					if validateExec {
 						ag.active.checkEntryRead(fp, pc-1, v, o, fp.Keys[i.C], &c.CacheEntry)
 					}
@@ -1956,14 +1956,14 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			}
 			if o != nil {
 				if e := c.Entry(o.Shape); e != nil {
-					if e.Kind == cacheGetter && e.Epoch == ag.ProtoEpoch {
+					if e.Kind == storage.CacheGetter && e.Epoch == ag.ProtoEpoch {
 						if validateExec {
 							ag.active.checkGetterHit(fp, pc-1, v, fp.Keys[i.C], e.Holder)
 						}
 						f, callThis, argc, ret = e.Holder, v, 0, i.A
 						goto callAbove
 					}
-					if e.Kind == cacheOwnGetter {
+					if e.Kind == storage.CacheOwnGetter {
 						if validateExec {
 							ag.active.checkOwnGetterHit(fp, pc-1, v, fp.Keys[i.C], &o.Slots[e.Slot])
 						}
@@ -1985,8 +1985,8 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			if o := v.O; o != nil {
 				if e := c.Entry(o.Shape); e != nil {
 					switch e.Kind {
-					case cacheAdd:
-						if o.ObjectProperties != nil && e.Epoch == ag.ProtoEpoch && o.Flags&objIsProto == 0 {
+					case storage.CacheAdd:
+						if o.ObjectProperties != nil && e.Epoch == ag.ProtoEpoch && o.Flags&storage.ObjIsProto == 0 {
 							if validateExec {
 								ag.active.checkAddHit(fp, pc-1, o, fp.Keys[i.B], e.Next)
 							}
@@ -1994,7 +1994,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 							o.AppendSlot(regs[i.C])
 							continue
 						}
-					case cacheSetter:
+					case storage.CacheSetter:
 						if e.Epoch == ag.ProtoEpoch {
 							if validateExec {
 								ag.active.checkSetterHit(fp, pc-1, v, fp.Keys[i.B], e.Holder)
@@ -2016,7 +2016,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				storage.SetNumber(&regs[i.A], float64(v.StringLength()))
 				continue
 			}
-			receiver, name, site = v, ag.Key(KeyLength), &fp.Caches[i.C]
+			receiver, name, site = v, ag.Key(storage.KeyLength), &fp.Caches[i.C]
 			goto readProperty
 		case bytecode.OpGetIndex:
 			receiver, key = regs[i.B], regs[i.C]
@@ -2026,14 +2026,14 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			goto readProperty
 		case bytecode.OpSetIndex, bytecode.OpSetIndexStrict, bytecode.OpSetIndexInt, bytecode.OpSetIndexIntStrict:
 			// OpSetIndexInt and OpSetIndexIntStrict follow OpSetIndex and OpSetIndexStrict.
-			v, k := regs[i.A], Value{}
+			v, k := regs[i.A], storage.Value{}
 			if i.Op < bytecode.OpSetIndexInt {
 				k = regs[i.B]
 			} else {
 				k = storage.Number(float64(i.B))
 			}
 			if o := v.O; o != nil && o.ObjectProperties != nil && k.O == storage.NumberObject {
-				if j := int(k.N); j == len(o.Elems) && o.Kind == kindArray && uint32(j) == o.Length && o.Flags == 0 && float64(j) == k.N && o.Shape == ag.active.realm.Shapes.Array && ag.active.ArrayProtoPlain() {
+				if j := int(k.N); j == len(o.Elems) && o.Kind == storage.KindArray && uint32(j) == o.Length && o.Flags == 0 && float64(j) == k.N && o.Shape == ag.active.realm.Shapes.Array && ag.active.ArrayProtoPlain() {
 					// Appending to a plain array, as in the first switch.
 					if validateExec {
 						ag.active.checkAppend(o)
@@ -2083,7 +2083,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			if k := ag.active.QueryKey(regs[i.C]); k.Missing() {
 				r = ag.active.queryMissing(o.O, k)
 			} else {
-				r = ag.active.HasProperty(o.O, PropKey(k))
+				r = ag.active.HasProperty(o.O, storage.PropKey(k))
 			}
 			regs = ag.reload(regs, ag.frameBase(), fp)
 			regs[i.A] = storage.Bool(r)
@@ -2126,7 +2126,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 		case bytecode.OpToPropertyKey:
 			v := regs[i.B]
 			// The read and the write of a compound assignment convert an index alike.
-			if v.O != nil && (v.O.Kind == kindString || v.O.Kind == kindSymbol) || v.O == storage.NumberObject && i.C >= 0 && float64(uint32(v.N)) == v.N {
+			if v.O != nil && (v.O.Kind == storage.KindString || v.O.Kind == storage.KindSymbol) || v.O == storage.NumberObject && i.C >= 0 && float64(uint32(v.N)) == v.N {
 				regs[i.A] = v
 				continue
 			}
@@ -2143,7 +2143,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 		case bytecode.OpAdd:
 			x, y := regs[i.B], regs[i.C]
 			ag.frames[len(ag.frames)-1].pc = pc
-			if x.O != nil && y.O != nil && x.O.Kind == kindString && y.O.Kind == kindString {
+			if x.O != nil && y.O != nil && x.O.Kind == storage.KindString && y.O.Kind == storage.KindString {
 				regs[i.A] = ag.active.Concat(x, y)
 				continue
 			}
@@ -2231,7 +2231,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			regs[i.B] = ag.active.step(v, d)
 		case bytecode.OpToString:
 			x := regs[i.B]
-			if x.O != nil && x.O.Kind == kindString {
+			if x.O != nil && x.O.Kind == storage.KindString {
 				regs[i.A] = x
 				continue
 			}
@@ -2258,7 +2258,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 		case bytecode.OpLt:
 			x, y := regs[i.B], regs[i.C]
 			ag.frames[len(ag.frames)-1].pc = pc
-			r := ag.active.compare(x, y, true) == cmpLess
+			r := ag.active.compare(x, y, true) == storage.CmpLess
 			regs = ag.reload(regs, ag.frameBase(), fp)
 			regs[i.A] = storage.Bool(r)
 		case bytecode.OpLe:
@@ -2266,11 +2266,11 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			ag.frames[len(ag.frames)-1].pc = pc
 			c := ag.active.compare(y, x, false)
 			regs = ag.reload(regs, ag.frameBase(), fp)
-			regs[i.A] = storage.Bool(c == cmpGreater || c == cmpEqual)
+			regs[i.A] = storage.Bool(c == storage.CmpGreater || c == storage.CmpEqual)
 		case bytecode.OpGt:
 			x, y := regs[i.B], regs[i.C]
 			ag.frames[len(ag.frames)-1].pc = pc
-			r := ag.active.compare(y, x, false) == cmpLess
+			r := ag.active.compare(y, x, false) == storage.CmpLess
 			regs = ag.reload(regs, ag.frameBase(), fp)
 			regs[i.A] = storage.Bool(r)
 		case bytecode.OpGe:
@@ -2278,7 +2278,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			ag.frames[len(ag.frames)-1].pc = pc
 			c := ag.active.compare(x, y, true)
 			regs = ag.reload(regs, ag.frameBase(), fp)
-			regs[i.A] = storage.Bool(c == cmpGreater || c == cmpEqual)
+			regs[i.A] = storage.Bool(c == storage.CmpGreater || c == storage.CmpEqual)
 		case bytecode.OpEq, bytecode.OpNe:
 			ag.frames[len(ag.frames)-1].pc = pc
 			r := ag.active.looseEquals(regs[i.B], regs[i.C])
@@ -2304,7 +2304,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 		case bytecode.OpJumpNotLt:
 			x, y := regs[i.B], regs[i.C]
 			ag.frames[len(ag.frames)-1].pc = pc
-			r := ag.active.compare(x, y, true) == cmpLess
+			r := ag.active.compare(x, y, true) == storage.CmpLess
 			regs = ag.reload(regs, ag.frameBase(), fp)
 			if !r {
 				pc = int(i.A)
@@ -2314,13 +2314,13 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			ag.frames[len(ag.frames)-1].pc = pc
 			c := ag.active.compare(y, x, false)
 			regs = ag.reload(regs, ag.frameBase(), fp)
-			if !(c == cmpGreater || c == cmpEqual) {
+			if !(c == storage.CmpGreater || c == storage.CmpEqual) {
 				pc = int(i.A)
 			}
 		case bytecode.OpJumpNotGt:
 			x, y := regs[i.B], regs[i.C]
 			ag.frames[len(ag.frames)-1].pc = pc
-			r := ag.active.compare(y, x, false) == cmpLess
+			r := ag.active.compare(y, x, false) == storage.CmpLess
 			regs = ag.reload(regs, ag.frameBase(), fp)
 			if !r {
 				pc = int(i.A)
@@ -2330,7 +2330,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			ag.frames[len(ag.frames)-1].pc = pc
 			c := ag.active.compare(x, y, true)
 			regs = ag.reload(regs, ag.frameBase(), fp)
-			if !(c == cmpGreater || c == cmpEqual) {
+			if !(c == storage.CmpGreater || c == storage.CmpEqual) {
 				pc = int(i.A)
 			}
 		case bytecode.OpJumpNotEq, bytecode.OpJumpNotNe:
@@ -2355,7 +2355,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				x = ag.active.ToNumeric(ag.active.ToPrimitive(x, HintNumber))
 				regs = ag.reload(regs, ag.frameBase(), fp)
 				if x.O != storage.NumberObject {
-					if ag.active.compareBigIntMixed(x, fp.Consts[i.C]) != cmpLess {
+					if ag.active.compareBigIntMixed(x, fp.Consts[i.C]) != storage.CmpLess {
 						pc = int(i.A)
 					}
 					continue
@@ -2371,7 +2371,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				x = ag.active.ToNumeric(ag.active.ToPrimitive(x, HintNumber))
 				regs = ag.reload(regs, ag.frameBase(), fp)
 				if x.O != storage.NumberObject {
-					if c := ag.active.compareBigIntMixed(x, fp.Consts[i.C]); c != cmpLess && c != cmpEqual {
+					if c := ag.active.compareBigIntMixed(x, fp.Consts[i.C]); c != storage.CmpLess && c != storage.CmpEqual {
 						pc = int(i.A)
 					}
 					continue
@@ -2387,7 +2387,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				x = ag.active.ToNumeric(ag.active.ToPrimitive(x, HintNumber))
 				regs = ag.reload(regs, ag.frameBase(), fp)
 				if x.O != storage.NumberObject {
-					if ag.active.compareBigIntMixed(x, fp.Consts[i.C]) != cmpGreater {
+					if ag.active.compareBigIntMixed(x, fp.Consts[i.C]) != storage.CmpGreater {
 						pc = int(i.A)
 					}
 					continue
@@ -2403,7 +2403,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				x = ag.active.ToNumeric(ag.active.ToPrimitive(x, HintNumber))
 				regs = ag.reload(regs, ag.frameBase(), fp)
 				if x.O != storage.NumberObject {
-					if c := ag.active.compareBigIntMixed(x, fp.Consts[i.C]); c != cmpGreater && c != cmpEqual {
+					if c := ag.active.compareBigIntMixed(x, fp.Consts[i.C]); c != storage.CmpGreater && c != storage.CmpEqual {
 						pc = int(i.A)
 					}
 					continue
@@ -2459,7 +2459,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			goto callRegs
 		case bytecode.OpCallCall:
 			b := int(i.B)
-			if regs[b].O == ag.active.realm.Intrinsics[IntrinsicFunctionPrototypeCall] {
+			if regs[b].O == ag.active.realm.Intrinsics[storage.IntrinsicFunctionPrototypeCall] {
 				f, callThis, firstArgReg, argc, ret, isNew, newTarget = regs[b+1].O, regs[b+2], b+3, int(i.C)-1, i.A, false, nil
 				if argc < 0 {
 					callThis, argc = storage.Undefined, 0
@@ -2472,7 +2472,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			argsReg := fp.Code[pc].A
 			pc++
 			b := int(i.B)
-			if !regs[argsReg].IsUndefined() || regs[b].O != ag.active.realm.Intrinsics[IntrinsicFunctionPrototypeApply] {
+			if !regs[argsReg].IsUndefined() || regs[b].O != ag.active.realm.Intrinsics[storage.IntrinsicFunctionPrototypeApply] {
 				// Once exposed, the arguments object's length and indexed properties can change.
 				regs[b+2] = regs[i.C]
 				regs[b+3] = ag.active.forwardedArguments(argsReg)
@@ -2521,7 +2521,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 							ag.sp = argBase + c.Nregs + 1
 							fp, pc = c, 0
 							regs = ag.stack[argBase:ag.sp]
-							if r := c.ThisReg; r >= 0 && (!c.ThisSloppy || this.O != nil && this.O.Kind >= kindFirstObject) {
+							if r := c.ThisReg; r >= 0 && (!c.ThisSloppy || this.O != nil && this.O.Kind >= storage.KindFirstObject) {
 								regs[r] = this
 								pc = 1
 							}
@@ -2613,21 +2613,21 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			if f != nil && f.Fn != nil && f.Fn.Code != nil && f.Fn.Constructor && !f.Fn.Derived {
 				// The common case: a plain constructor function, whose prototype property is cached.
 				c := &fp.Caches[site]
-				var proto Value
-				if f.Shape == c.Shape && c.Kind == cacheOwn {
+				var proto storage.Value
+				if f.Shape == c.Shape && c.Kind == storage.CacheOwn {
 					if validateExec {
-						ag.active.checkEntryRead(fp, pc-2, Value{O: f}, f, ag.Key(KeyPrototype), &c.CacheEntry)
+						ag.active.checkEntryRead(fp, pc-2, storage.Value{O: f}, f, ag.Key(storage.KeyPrototype), &c.CacheEntry)
 					}
 					proto = f.Slots[c.Slot]
 				} else {
 					ag.frames[len(ag.frames)-1].pc = pc
-					proto, _ = ag.active.getNamed(Value{O: f}, ag.Key(KeyPrototype), c)
+					proto, _ = ag.active.getNamed(storage.Value{O: f}, ag.Key(storage.KeyPrototype), c)
 					regs = ag.reload(regs, ag.frameBase(), fp)
 				}
-				if proto.O == nil || proto.O.Kind < kindFirstObject {
-					proto = Value{O: f.Fn.Code.Realm.Intrinsics[IntrinsicObjectPrototype]}
+				if proto.O == nil || proto.O.Kind < storage.KindFirstObject {
+					proto = storage.Value{O: f.Fn.Code.Realm.Intrinsics[storage.IntrinsicObjectPrototype]}
 				}
-				var shape *shape
+				var shape *storage.Shape
 				if proto.O == c.Holder && c.Next != nil && c.Next.Realm == f.Fn.Code.Realm {
 					if validateExec {
 						ag.active.checkInstanceShape(fp, pc-2, proto.O, f.Fn.Code.Realm, c.Next)
@@ -2635,11 +2635,11 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 					shape = c.Next
 				} else {
 					shape = ag.active.ShapeForRealm(proto.O, f.Fn.Code.Realm)
-					if c.Kind == cacheOwn {
+					if c.Kind == storage.CacheOwn {
 						c.Holder, c.Next = proto.O, shape
 					}
 				}
-				callThis = Value{O: storage.NewInstance(shape)}
+				callThis = storage.Value{O: storage.NewInstance(shape)}
 				isNew, newTarget = true, f
 				goto call
 			}
@@ -2669,7 +2669,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 						ag.active.throwReturnError(stop, n, pc, ErrorKindReference, "must call super constructor in derived class before accessing 'this' or returning from derived constructor")
 					}
 				}
-			} else if done.isNew && (r.O == nil || r.O.Kind < kindFirstObject) {
+			} else if done.isNew && (r.O == nil || r.O.Kind < storage.KindFirstObject) {
 				r = done.this
 			}
 			if g := done.gen; g != nil {
@@ -2720,14 +2720,14 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			*cur = frame{}
 			ag.frames = ag.frames[:n]
 			if n == stop {
-				return Value{O: o}, execReturn
+				return storage.Value{O: o}, execReturn
 			}
 			fr := &ag.frames[n-1]
 			fp = fr.fp
 			pc = fr.pc
 			regs = fr.registers(ag.stack)
 			ag.sp = fr.top()
-			regs[ret] = Value{O: o}
+			regs[ret] = storage.Value{O: o}
 			if fp.Realm != ag.active.realmPart {
 				goto enter
 			}
@@ -2765,31 +2765,31 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			if !r.IsObject() {
 				ag.active.ThrowTypeError("iterator result " + ag.DisplayString(r) + " is not an object")
 			}
-			done := storage.ToBoolean(ag.active.GetV(r, ag.Key(keyDone)))
+			done := storage.ToBoolean(ag.active.GetV(r, ag.Key(storage.KeyDone)))
 			regs = ag.reload(regs, ag.frameBase(), fp)
 			if !done {
 				pc = int(i.C)
 				continue
 			}
-			v := ag.active.GetV(r, ag.Key(KeyValue))
+			v := ag.active.GetV(r, ag.Key(storage.KeyValue))
 			regs = ag.reload(regs, ag.frameBase(), fp)
 			regs[i.A] = v
 
 		case bytecode.OpNewObject:
 			o, slots := storage.NewObjectWithStorage(int(i.C))
-			o.Kind = kindObject
+			o.Kind = storage.KindObject
 			o.Shape = ag.active.realm.Shapes.Object
 			o.Slots = slots[:0]
-			regs[i.A] = Value{O: o}
+			regs[i.A] = storage.Value{O: o}
 		case bytecode.OpNewArray:
 			o, elems := storage.NewObjectWithStorage(int(i.C))
-			o.Kind = kindArray
-			o.Class = classArray
+			o.Kind = storage.KindArray
+			o.Class = storage.ClassArray
 			o.Shape = ag.active.realm.Shapes.Array
 			o.Elems = elems[:0]
-			regs[i.A] = Value{O: o}
+			regs[i.A] = storage.Value{O: o}
 		case bytecode.OpNewArrayK:
-			regs[i.A] = Value{O: ag.active.NewArrayCopy(fp.Consts[i.B : i.B+i.C])}
+			regs[i.A] = storage.Value{O: ag.active.NewArrayCopy(fp.Consts[i.B : i.B+i.C])}
 		case bytecode.OpArrayPush:
 			o := regs[i.A].O
 			o.AppendElem(regs[i.B])
@@ -2807,10 +2807,10 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			ag.frames[len(ag.frames)-1].pc = pc
 			o := ag.active.spreadArgs(regs[i.B])
 			regs = ag.reload(regs, ag.frameBase(), fp)
-			regs[i.A] = Value{O: o}
+			regs[i.A] = storage.Value{O: o}
 		case bytecode.OpRegExp:
 			ag.frames[len(ag.frames)-1].pc = pc
-			regs[i.A] = Value{O: ag.active.newRegExpLiteral(&fp.RegExps[i.B])}
+			regs[i.A] = storage.Value{O: ag.active.newRegExpLiteral(&fp.RegExps[i.B])}
 		case bytecode.OpRegExpArg:
 			ag.frames[len(ag.frames)-1].pc = pc
 			ag.active.lendRegExpLiteral(slices.Clip(regs), i.A, i.C, &fp.RegExps[i.B])
@@ -2818,9 +2818,9 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			ag.frames[len(ag.frames)-1].pc = pc
 			m, this := ag.active.regExpLiteralMethod(&fp.RegExps[i.B], fp.Keys[i.C], &fp.Caches[i.C])
 			regs = ag.reload(regs, ag.frameBase(), fp)
-			regs[i.A], regs[i.A+1] = m, Value{O: this}
+			regs[i.A], regs[i.A+1] = m, storage.Value{O: this}
 		case bytecode.OpTemplate:
-			regs[i.A] = Value{O: ag.active.templateObject(&fp.Templates[i.B])}
+			regs[i.A] = storage.Value{O: ag.active.templateObject(&fp.Templates[i.B])}
 		case bytecode.OpDefineField:
 			ag.frames[len(ag.frames)-1].pc = pc
 			ag.active.defineField(regs[i.A].O, regs[i.B], regs[i.C])
@@ -2828,7 +2828,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 		case bytecode.OpDefineFieldK:
 			o := regs[i.A].O
 			c := &fp.Caches[i.B]
-			if o.Shape == c.Shape && c.Kind == cacheAdd {
+			if o.Shape == c.Shape && c.Kind == storage.CacheAdd {
 				if validateExec {
 					ag.active.checkDefineHit(fp, pc-1, o, fp.Keys[i.B], c.Next)
 				}
@@ -2862,10 +2862,10 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			n := int(fp.Code[pc].A)
 			pc++
 			o := ag.active.NewOrdinaryObject()
-			excluded := append([]Value(nil), slices.Clip(regs)[i.C:int(i.C)+n]...)
+			excluded := append([]storage.Value(nil), slices.Clip(regs)[i.C:int(i.C)+n]...)
 			ag.active.copyDataProperties(o, regs[i.B], excluded)
 			regs = ag.reload(regs, ag.frameBase(), fp)
-			regs[i.A] = Value{O: o}
+			regs[i.A] = storage.Value{O: o}
 		case bytecode.OpSetProto:
 			if p := regs[i.B]; p.IsObject() {
 				ag.active.SetProto(regs[i.A].O, p.O)
@@ -2880,17 +2880,17 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			}
 			proto := ag.active.setupClass(regs[i.B].O, parent)
 			regs = ag.reload(regs, ag.frameBase(), fp)
-			regs[i.A] = Value{O: proto}
+			regs[i.A] = storage.Value{O: proto}
 		case bytecode.OpPrivateName:
-			name := &Object{
-				Kind:  kindSymbol,
-				Class: classPrivateName,
+			name := &storage.Object{
+				Kind:  storage.KindSymbol,
+				Class: storage.ClassPrivateName,
 				Text:  fp.Keys[i.B].Text,
 			}
 			if i.C != 0 {
-				name.Flags |= objFrozenLength
+				name.Flags |= storage.ObjFrozenLength
 			}
-			regs[i.A] = Value{O: name}
+			regs[i.A] = storage.Value{O: name}
 		case bytecode.OpInitFields:
 			if regs[i.A].O.Fn.Fields != nil {
 				ag.frames[len(ag.frames)-1].pc = pc
@@ -2931,7 +2931,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			regs[i.A] = k
 		case bytecode.OpGetIterator:
 			v := regs[i.B]
-			if i.C == bytecode.IterSync && v.O != nil && v.O.Kind == kindArray && ag.active.ArrayIterationPlain(v.O) {
+			if i.C == bytecode.IterSync && v.O != nil && v.O.Kind == storage.KindArray && ag.active.ArrayIterationPlain(v.O) {
 				// A numeric iterator slot identifies an indexed array with the original next method.
 				regs[i.A] = storage.Number(0)
 				regs[i.A+1] = v
@@ -2972,7 +2972,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				v := ag.active.plainArrayIteratorIndex(o, j)
 				regs = ag.reload(regs, ag.frameBase(), fp)
 				regs[i.B] = storage.Number(idx.N + 1)
-				regs[i.B+1] = Value{O: o}
+				regs[i.B+1] = storage.Value{O: o}
 				regs[i.A] = v
 				continue
 			}
@@ -3025,7 +3025,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			if next.O == nil || next.O.Fn == nil || ag.InterruptFlag.Load() {
 				continue
 			}
-			var x, y Value
+			var x, y storage.Value
 			var st quiet.PairStep
 			pairRealm := ag.active.realmPart
 			if step := iteratorPairStepOf(next.O.Fn, ag.active.realmPart); step != nil {
@@ -3033,7 +3033,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				if st == quiet.PairYielded {
 					pairRealm = it.O.Shape.Realm
 				}
-			} else if next.O == ag.active.realm.Intrinsics[IntrinsicArrayIteratorPrototypeNext] {
+			} else if next.O == ag.active.realm.Intrinsics[storage.IntrinsicArrayIteratorPrototypeNext] {
 				// Reading an array entry can run JavaScript. A throwing step finishes the iterator.
 				ag.frames[len(ag.frames)-1].pc = pc
 				regs[i.B] = storage.Undefined
@@ -3047,7 +3047,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			case quiet.PairYielded:
 				if !ag.PairDestructuringPlain(pairRealm) {
 					// The outer iterator has stepped. Supply its pair to the ordinary binding.
-					regs[fp.Code[pc].A] = Value{O: pairRealm.NewArrayPair(x, y)}
+					regs[fp.Code[pc].A] = storage.Value{O: pairRealm.NewArrayPair(x, y)}
 					pc++
 					continue
 				}
@@ -3160,7 +3160,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			o := ag.active.findScope(ag.frames[len(ag.frames)-1].cl, fp.Keys[i.B], int(i.C))
 			regs = ag.reload(regs, ag.frameBase(), fp)
 			if o != nil {
-				regs[i.A] = Value{O: o}
+				regs[i.A] = storage.Value{O: o}
 			} else {
 				regs[i.A] = storage.Undefined
 			}
@@ -3175,7 +3175,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			regs = ag.reload(regs, ag.frameBase(), fp)
 		case bytecode.OpDeleteScoped:
 			ag.frames[len(ag.frames)-1].pc = pc
-			ok := ag.active.DeleteProp(regs[i.B].O, PropKey{Key: fp.Keys[i.C]})
+			ok := ag.active.DeleteProp(regs[i.B].O, storage.PropKey{Key: fp.Keys[i.C]})
 			regs = ag.reload(regs, ag.frameBase(), fp)
 			regs[i.A] = storage.Bool(ok)
 		case bytecode.OpDeleteName:
@@ -3240,8 +3240,8 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			fr := &ag.frames[len(ag.frames)-1]
 			base, dst := fr.base, i.A
 			fr.pc = pc
-			var val Value
-			var getter *Object
+			var val storage.Value
+			var getter *storage.Object
 			switch i.Op {
 			case bytecode.OpGetProp, bytecode.OpGetPropChain, bytecode.OpGetMethod, bytecode.OpGetLength:
 				val, getter = ag.active.getNamedAtSite(receiver, name, site)
@@ -3283,7 +3283,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 					var ok bool
 					setter, ok = ag.active.setNamed(receiver, name, rhs, site)
 					if !ok && i.Op == bytecode.OpSetPropStrict {
-						ag.active.throwReadOnly(receiver, PropKey{Key: name})
+						ag.active.throwReadOnly(receiver, storage.PropKey{Key: name})
 					}
 				}
 			case bytecode.OpSetGlobal, bytecode.OpSetGlobalStrict:
@@ -3362,7 +3362,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 					ag.active.ThrowRangeError("maximum call stack size exceeded")
 				}
 				if site := c.ReturnedProperty; site != nil && !isNew && newTarget == nil && c.Realm == fp.Realm && callThis.IsObject() {
-					if e := site.Entry(callThis.O.Shape); e != nil && e.Kind == cacheOwn {
+					if e := site.Entry(callThis.O.Shape); e != nil && e.Kind == storage.CacheOwn {
 						if validateExec {
 							ag.active.checkReturnedProperty(c, callThis, e)
 						}
@@ -3377,7 +3377,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				pc = 0
 				if r := c.ThisReg; r >= 0 {
 					// Do what the first instruction does, and start after it.
-					if t := ag.frames[len(ag.frames)-1].this; !c.ThisSloppy || t.O != nil && t.O.Kind >= kindFirstObject {
+					if t := ag.frames[len(ag.frames)-1].this; !c.ThisSloppy || t.O != nil && t.O.Kind >= storage.KindFirstObject {
 						regs[r] = t
 						pc = 1
 					}
@@ -3490,7 +3490,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			r := ag.active.Construct(f, ag.stack[argBase:argBase+argc:argBase+argc], f)
 			ag.sp = saved
 			regs = ag.reload(regs, ag.frameBase(), fp)
-			regs[ret] = Value{O: r}
+			regs[ret] = storage.Value{O: r}
 			continue
 		}
 
@@ -3508,7 +3508,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			r := ag.active.Construct(parent, ag.stack[argBase:argBase+argc:argBase+argc], newTarget)
 			ag.sp = saved
 			regs = ag.reload(regs, ag.frameBase(), fp)
-			regs[ret] = Value{O: r}
+			regs[ret] = storage.Value{O: r}
 			continue
 		}
 
@@ -3538,8 +3538,8 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 
 // unbindPlain returns the target and the this value that a call of the bound function f
 // passes its arguments to, following bound functions without bound arguments.
-func (ag *agent) unbindPlain(f *Object) (*Object, Value) {
-	var this Value
+func (ag *agent) unbindPlain(f *storage.Object) (*storage.Object, storage.Value) {
+	var this storage.Value
 	for b := f.Fn.Bound; b != nil && len(b.Args) == 0; b = f.Fn.Bound {
 		f, this = b.Target, b.This
 	}
@@ -3552,7 +3552,7 @@ func (ag *agent) unbindPlain(f *Object) (*Object, Value) {
 // Function.prototype.call of the running realm for its callable this value, and
 // Function.prototype.apply of the running realm for its callable this value when its argument
 // list can be made without running JavaScript.
-func (cx *ExecutionContext) unbind(f *Object, this Value, argBase, argc int) (*Object, Value, int, int) {
+func (cx *ExecutionContext) unbind(f *storage.Object, this storage.Value, argBase, argc int) (*storage.Object, storage.Value, int, int) {
 	for f != nil && f.Fn != nil {
 		if b := f.Fn.Bound; b != nil {
 			if k := len(b.Args); k > 0 {
@@ -3569,7 +3569,7 @@ func (cx *ExecutionContext) unbind(f *Object, this Value, argBase, argc int) (*O
 		}
 		// Function.prototype.call and apply end in a tail call of their this value.
 		switch f {
-		case cx.Intrinsic(IntrinsicFunctionPrototypeCall):
+		case cx.Intrinsic(storage.IntrinsicFunctionPrototypeCall):
 			f, this = this.O, storage.Undefined
 			if argc > 0 {
 				this = cx.stack[argBase]
@@ -3577,8 +3577,8 @@ func (cx *ExecutionContext) unbind(f *Object, this Value, argBase, argc int) (*O
 				argc--
 			}
 			continue
-		case cx.Intrinsic(IntrinsicFunctionPrototypeApply):
-			var list []Value
+		case cx.Intrinsic(storage.IntrinsicFunctionPrototypeApply):
+			var list []storage.Value
 			if argc > 1 {
 				if a := cx.stack[argBase+1]; !a.IsNullish() {
 					var ok bool
@@ -3606,7 +3606,7 @@ func (cx *ExecutionContext) unbind(f *Object, this Value, argBase, argc int) (*O
 // replaceFrame replaces the running frame with a frame of f for the argc arguments at argBase on
 // the stack, which returns to the caller of the running frame. It reports false, changing nothing,
 // when f is not an ordinary function written in JavaScript or the running frame constructs an object.
-func (cx *ExecutionContext) replaceFrame(f *Object, this Value, argBase, argc int) bool {
+func (cx *ExecutionContext) replaceFrame(f *storage.Object, this storage.Value, argBase, argc int) bool {
 	n := len(cx.frames) - 1
 	cur := &cx.frames[n]
 	if f == nil || f.Fn == nil || cur.isNew || cur.newTarget != nil {
@@ -3645,7 +3645,7 @@ func (ag *agent) frameBase() int {
 }
 
 // reload returns the registers of the running frame after a call that may have moved the stack.
-func (ag *agent) reload(regs []Value, base int, fp *funcProto) []Value {
+func (ag *agent) reload(regs []storage.Value, base int, fp *storage.FuncProto) []storage.Value {
 	if validateExec {
 		ag.checkActive(fp)
 	}
@@ -3660,37 +3660,37 @@ func (ag *agent) reload(regs []Value, base int, fp *funcProto) []Value {
 
 // loopHolds reports whether the comparison of the loop jump op, one of [bytecode.OpLoopLt]
 // through [bytecode.OpLoopGe], holds for x and y.
-func (cx *ExecutionContext) loopHolds(op bytecode.Opcode, x, y Value) bool {
+func (cx *ExecutionContext) loopHolds(op bytecode.Opcode, x, y storage.Value) bool {
 	switch op {
 	case bytecode.OpLoopLt:
-		return cx.compare(x, y, true) == cmpLess
+		return cx.compare(x, y, true) == storage.CmpLess
 	case bytecode.OpLoopLe:
 		c := cx.compare(y, x, false)
-		return c == cmpGreater || c == cmpEqual
+		return c == storage.CmpGreater || c == storage.CmpEqual
 	case bytecode.OpLoopGt:
-		return cx.compare(y, x, false) == cmpLess
+		return cx.compare(y, x, false) == storage.CmpLess
 	default:
 		c := cx.compare(x, y, true)
-		return c == cmpGreater || c == cmpEqual
+		return c == storage.CmpGreater || c == storage.CmpEqual
 	}
 }
 
 // loopHoldsK reports whether the comparison of the loop jump op, one of [bytecode.OpLoopLtK]
 // through [bytecode.OpLoopGeK], holds for x and the number k.
-func (cx *ExecutionContext) loopHoldsK(op bytecode.Opcode, x, k Value) bool {
+func (cx *ExecutionContext) loopHoldsK(op bytecode.Opcode, x, k storage.Value) bool {
 	if x.O != storage.NumberObject {
 		x = cx.ToNumeric(cx.ToPrimitive(x, HintNumber))
 		if x.O != storage.NumberObject {
 			c := cx.compareBigIntMixed(x, k)
 			switch op {
 			case bytecode.OpLoopLtK:
-				return c == cmpLess
+				return c == storage.CmpLess
 			case bytecode.OpLoopLeK:
-				return c == cmpLess || c == cmpEqual
+				return c == storage.CmpLess || c == storage.CmpEqual
 			case bytecode.OpLoopGtK:
-				return c == cmpGreater
+				return c == storage.CmpGreater
 			default:
-				return c == cmpGreater || c == cmpEqual
+				return c == storage.CmpGreater || c == storage.CmpEqual
 			}
 		}
 	}
@@ -3708,7 +3708,7 @@ func (cx *ExecutionContext) loopHoldsK(op bytecode.Opcode, x, k Value) bool {
 
 // loopHoldsP reports whether the comparison of the loop jump op, one of [bytecode.OpLoopSEqP]
 // through [bytecode.OpLoopNotNullish], holds for x and the operand c.
-func (ag *agent) loopHoldsP(op bytecode.Opcode, x Value, c int32) bool {
+func (ag *agent) loopHoldsP(op bytecode.Opcode, x storage.Value, c int32) bool {
 	switch op {
 	case bytecode.OpLoopSEqP:
 		return x.O == primObjects[c]

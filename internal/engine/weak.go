@@ -16,35 +16,35 @@ import (
 // This file holds the weak collections, WeakRef and FinalizationRegistry.
 
 // NewWeakMapObject returns a WeakMap object without entries with the prototype proto.
-func (cx *ExecutionContext) NewWeakMapObject(proto *Object) *Object {
-	return storage.NewObjectWithState(cx.ShapeFor(proto), classWeakMap, storage.NewWeakTable())
+func (cx *ExecutionContext) NewWeakMapObject(proto *storage.Object) *storage.Object {
+	return storage.NewObjectWithState(cx.ShapeFor(proto), storage.ClassWeakMap, storage.NewWeakTable())
 }
 
 // WeakMapData returns the [[WeakMapData]] of the WeakMap object v, or nil when v is not a WeakMap object.
-func WeakMapData(v Value) *WeakTable {
-	if v.IsObject() && v.O.Class == classWeakMap {
-		return v.O.ExtState().(*WeakTable)
+func WeakMapData(v storage.Value) *storage.WeakTable {
+	if v.IsObject() && v.O.Class == storage.ClassWeakMap {
+		return v.O.ExtState().(*storage.WeakTable)
 	}
 	return nil
 }
 
 // NewWeakSetObject returns a WeakSet object without entries with the prototype proto.
-func (cx *ExecutionContext) NewWeakSetObject(proto *Object) *Object {
-	return storage.NewObjectWithState(cx.ShapeFor(proto), classWeakSet, storage.NewWeakTable())
+func (cx *ExecutionContext) NewWeakSetObject(proto *storage.Object) *storage.Object {
+	return storage.NewObjectWithState(cx.ShapeFor(proto), storage.ClassWeakSet, storage.NewWeakTable())
 }
 
 // WeakSetData returns the [[WeakSetData]] of the WeakSet object v, or nil when v is not a WeakSet object.
-func WeakSetData(v Value) *WeakTable {
-	if v.IsObject() && v.O.Class == classWeakSet {
-		return v.O.ExtState().(*WeakTable)
+func WeakSetData(v storage.Value) *storage.WeakTable {
+	if v.IsObject() && v.O.Class == storage.ClassWeakSet {
+		return v.O.ExtState().(*storage.WeakTable)
 	}
 	return nil
 }
 
 // NewWeakRefObject returns a WeakRef object with the prototype proto whose target is v,
 // for which CanBeHeldWeakly must hold.
-func (cx *ExecutionContext) NewWeakRefObject(proto *Object, v Value) *Object {
-	return storage.NewObjectWithState(cx.ShapeFor(proto), classWeakRef, weak.Make(v.O))
+func (cx *ExecutionContext) NewWeakRefObject(proto *storage.Object, v storage.Value) *storage.Object {
+	return storage.NewObjectWithState(cx.ShapeFor(proto), storage.ClassWeakRef, weak.Make(v.O))
 }
 
 // FinalizationRegistry is the state of a FinalizationRegistry object.
@@ -52,7 +52,7 @@ type FinalizationRegistry struct {
 	self weak.Pointer[FinalizationRegistry]
 
 	// callback is the [[CleanupCallback]].
-	callback *Object
+	callback *storage.Object
 
 	// Cleanup callbacks enter the context captured when the registry was created.
 	context          *ExecutionContext
@@ -68,15 +68,15 @@ type FinalizationRegistry struct {
 	cleanups *cellCleanups
 
 	// tokens maps an unregister token to the identifiers of its cells.
-	tokens map[weak.Pointer[Object]][]uint64
+	tokens map[weak.Pointer[storage.Object]][]uint64
 
 	lastID uint64
 }
 
 // finalizationCell is a record of the [[Cells]] of a FinalizationRegistry.
 type finalizationCell struct {
-	held     Value
-	token    weak.Pointer[Object]
+	held     storage.Value
+	token    weak.Pointer[storage.Object]
 	hasToken bool
 
 	// tokenIndex is the index of the cell in the identifiers of the cells of its token.
@@ -132,7 +132,7 @@ func (q *finalizationQueue) pop() (deadCell, bool) {
 
 // NewFinalizationRegistryObject returns a FinalizationRegistry object with the prototype proto
 // and the cleanup callback callback.
-func (cx *ExecutionContext) NewFinalizationRegistryObject(proto *Object, callback *Object) *Object {
+func (cx *ExecutionContext) NewFinalizationRegistryObject(proto *storage.Object, callback *storage.Object) *storage.Object {
 	if cx.finalization == nil {
 		cx.finalization = &finalizationQueue{}
 	}
@@ -148,13 +148,13 @@ func (cx *ExecutionContext) NewFinalizationRegistryObject(proto *Object, callbac
 	}
 	r.self = weak.Make(r)
 	runtime.AddCleanup(r, (*cellCleanups).stopAll, r.cleanups)
-	return storage.NewObjectWithState(cx.ShapeFor(proto), classFinalizationRegistry, r)
+	return storage.NewObjectWithState(cx.ShapeFor(proto), storage.ClassFinalizationRegistry, r)
 }
 
 // FinalizationRegistryData returns the state of the FinalizationRegistry object v,
 // or nil when v is not a FinalizationRegistry object.
-func FinalizationRegistryData(v Value) *FinalizationRegistry {
-	if v.IsObject() && v.O.Class == classFinalizationRegistry {
+func FinalizationRegistryData(v storage.Value) *FinalizationRegistry {
+	if v.IsObject() && v.O.Class == storage.ClassFinalizationRegistry {
 		return v.O.ExtState().(*FinalizationRegistry)
 	}
 	return nil
@@ -163,7 +163,7 @@ func FinalizationRegistryData(v Value) *FinalizationRegistry {
 // Register adds a cell with the target target, the held value held and the unregister
 // token token. target, and token unless it is undefined, must be values for which
 // CanBeHeldWeakly holds.
-func (r *FinalizationRegistry) Register(target, held, token Value) {
+func (r *FinalizationRegistry) Register(target, held, token storage.Value) {
 	r.lastID++
 	id := r.lastID
 	c := &finalizationCell{held: held}
@@ -171,7 +171,7 @@ func (r *FinalizationRegistry) Register(target, held, token Value) {
 		c.token = weak.Make(token.O)
 		c.hasToken = true
 		if r.tokens == nil {
-			r.tokens = map[weak.Pointer[Object]][]uint64{}
+			r.tokens = map[weak.Pointer[storage.Object]][]uint64{}
 		}
 		c.tokenIndex = len(r.tokens[c.token])
 		r.tokens[c.token] = append(r.tokens[c.token], id)
@@ -190,7 +190,7 @@ func (r *FinalizationRegistry) Register(target, held, token Value) {
 // token must be a value for which CanBeHeldWeakly holds. poll, which may be nil, is called now
 // and then over many cells and may stop the removal by panicking, leaving the cells that were
 // not removed yet.
-func (r *FinalizationRegistry) Unregister(token Value, poll func()) bool {
+func (r *FinalizationRegistry) Unregister(token storage.Value, poll func()) bool {
 	w := weak.Make(token.O)
 	ids, ok := r.tokens[w]
 	if !ok {

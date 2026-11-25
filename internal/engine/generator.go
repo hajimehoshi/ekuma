@@ -37,20 +37,20 @@ var closeSignal = storage.NewMarker(nil)
 // Its registers are not on the stack, so that closures can keep referring to them.
 type generator struct {
 	// object is the generator object, or the promise of an async function.
-	object *Object
+	object *storage.Object
 
-	f     *Object
-	fp    *funcProto // The linked code carries the body's bound context across suspensions.
-	this  Value
+	f     *storage.Object
+	fp    *storage.FuncProto // The linked code carries the body's bound context across suspensions.
+	this  storage.Value
 	argc  int
-	extra []Value
+	extra []storage.Value
 
 	state genState
 	pc    int
-	regs  []Value
+	regs  []storage.Value
 
 	// scopes are the with scopes that are open at the suspension.
-	scopes []*Object
+	scopes []*storage.Object
 
 	// resumeReg receives the value passed to the resumption.
 	resumeReg int32
@@ -64,10 +64,10 @@ type generator struct {
 	// delegating is set when the code after the suspension handles every way of resuming itself.
 	delegating bool
 
-	closeValue Value
+	closeValue storage.Value
 
 	// openUpvals are the upvalues that point into regs, ordered by register index.
-	openUpvals []*upvalue
+	openUpvals []*storage.Upvalue
 
 	// async is the state of an async function or async generator.
 	async *asyncState
@@ -93,7 +93,7 @@ func (g *generator) abort() {
 }
 
 // complete releases the activation and returns its pending return value.
-func (g *generator) complete() Value {
+func (g *generator) complete() storage.Value {
 	if len(g.openUpvals) > 0 {
 		g.closeUpvals(0)
 	}
@@ -111,7 +111,7 @@ func (g *generator) completeAt(pc int) {
 	g.pc = pc
 }
 
-func (g *generator) findUpval(index int) *upvalue {
+func (g *generator) findUpval(index int) *storage.Upvalue {
 	i := len(g.openUpvals)
 	if i > 0 && g.openUpvals[i-1].Index > index {
 		i = sort.Search(i-1, func(j int) bool {
@@ -121,7 +121,7 @@ func (g *generator) findUpval(index int) *upvalue {
 	if i > 0 && g.openUpvals[i-1].Index == index {
 		return g.openUpvals[i-1]
 	}
-	u := &upvalue{
+	u := &storage.Upvalue{
 		P:     &g.regs[index],
 		Index: index,
 	}
@@ -143,7 +143,7 @@ func (g *generator) closeUpvals(from int) {
 }
 
 // newGenerator creates the activation of the generator or async function f without an object.
-func newGenerator(f *Object, this Value, args []Value) *generator {
+func newGenerator(f *storage.Object, this storage.Value, args []storage.Value) *generator {
 	fp := f.Fn.Code
 	fp.Prepare()
 	g := &generator{
@@ -151,7 +151,7 @@ func newGenerator(f *Object, this Value, args []Value) *generator {
 		fp:   fp,
 		this: this,
 		argc: len(args),
-		regs: make([]Value, fp.Nregs+1),
+		regs: make([]storage.Value, fp.Nregs+1),
 	}
 	copy(g.regs[:fp.Nparams], args)
 	if len(args) > fp.Nparams && fp.NeedsExtra {
@@ -163,7 +163,7 @@ func newGenerator(f *Object, this Value, args []Value) *generator {
 // pushGenerator creates the activation of a generator or async generator for a call of f and
 // pushes its frame, so that the caller can run it up to its initial suspension, which creates
 // the generator object.
-func (ag *agent) pushGenerator(f *Object, this Value, args []Value, ret int32) {
+func (ag *agent) pushGenerator(f *storage.Object, this storage.Value, args []storage.Value, ret int32) {
 	g := newGenerator(f, this, args)
 	if g.fp.IsAsync {
 		g.async = &asyncState{}
@@ -172,16 +172,16 @@ func (ag *agent) pushGenerator(f *Object, this Value, args []Value, ret int32) {
 }
 
 // newGeneratorObject creates the generator object of g, whose parameters are instantiated.
-func (cx *ExecutionContext) newGeneratorObject(g *generator) *Object {
+func (cx *ExecutionContext) newGeneratorObject(g *generator) *storage.Object {
 	r := g.fp.Realm
-	proto := r.Intrinsics[IntrinsicGeneratorPrototype]
+	proto := r.Intrinsics[storage.IntrinsicGeneratorPrototype]
 	if g.async != nil {
-		proto = r.Intrinsics[IntrinsicAsyncGeneratorPrototype]
+		proto = r.Intrinsics[storage.IntrinsicAsyncGeneratorPrototype]
 	}
-	if p := cx.GetV(Value{O: g.f}, cx.Key(KeyPrototype)); p.IsObject() {
+	if p := cx.GetV(storage.Value{O: g.f}, cx.Key(storage.KeyPrototype)); p.IsObject() {
 		proto = p.O
 	}
-	o := storage.NewObjectWithState(cx.ShapeForRealm(proto, r), classGenerator, g)
+	o := storage.NewObjectWithState(cx.ShapeForRealm(proto, r), storage.ClassGenerator, g)
 	g.object = o
 	return o
 }
@@ -211,7 +211,7 @@ func (ag *agent) pushGenFrame(g *generator, ret int32) {
 }
 
 // callCoroutine calls the generator, async function or async generator f from Go.
-func (cx *ExecutionContext) callCoroutine(f *Object, this Value, args []Value) Value {
+func (cx *ExecutionContext) callCoroutine(f *storage.Object, this storage.Value, args []storage.Value) storage.Value {
 	c := f.Fn.Code
 	if c.IsAsync && !c.IsGenerator {
 		return cx.callAsync(f, this, args)
@@ -225,7 +225,7 @@ func (cx *ExecutionContext) callCoroutine(f *Object, this Value, args []Value) V
 
 // resume continues the suspended generator g. It returns the yielded or returned value
 // and whether g completed. An exception that leaves g is thrown.
-func (resumer *ExecutionContext) resume(g *generator, mode ResumeMode, v Value) (Value, bool) {
+func (resumer *ExecutionContext) resume(g *generator, mode ResumeMode, v storage.Value) (storage.Value, bool) {
 	switch g.state {
 	case genRunning:
 		resumer.ThrowTypeError("generator is already running")
@@ -274,7 +274,7 @@ func (resumer *ExecutionContext) resume(g *generator, mode ResumeMode, v Value) 
 			resumer.thrown = v
 		case ResumeReturn:
 			g.closeValue = v
-			resumer.thrown = Value{O: closeSignal}
+			resumer.thrown = storage.Value{O: closeSignal}
 		}
 		g.mode = ResumeNext
 		r, status := resumer.unwind(stop)
@@ -296,7 +296,7 @@ func (resumer *ExecutionContext) resume(g *generator, mode ResumeMode, v Value) 
 }
 
 // isSyncGenerator reports whether v is a generator object that is not an async generator.
-func isSyncGenerator(v Value) bool {
+func isSyncGenerator(v storage.Value) bool {
 	if !v.IsObject() {
 		return false
 	}
@@ -306,7 +306,7 @@ func isSyncGenerator(v Value) bool {
 
 // ResumeGenerator continues the generator gen with the value v and returns the iterator result.
 // It reports false, without running anything, when gen is not a generator.
-func (cx *ExecutionContext) ResumeGenerator(gen Value, mode ResumeMode, v Value) (Value, bool) {
+func (cx *ExecutionContext) ResumeGenerator(gen storage.Value, mode ResumeMode, v storage.Value) (storage.Value, bool) {
 	var g *generator
 	if gen.IsObject() {
 		g, _ = gen.O.ExtState().(*generator)

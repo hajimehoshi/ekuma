@@ -16,20 +16,20 @@ type moduleNamespace struct {
 	module *Module
 
 	// keys are the [[Exports]] as property keys, sorted in code unit order.
-	keys []PropKey
+	keys []storage.PropKey
 
 	// targets holds the resolved binding of each of keys.
 	targets []modulegraph.Resolution[*Module]
 
 	// index maps a key to its index in keys.
-	index map[PropKey]int
+	index map[storage.PropKey]int
 
 	// deferred is the [[Deferred]]: the module is evaluated when the exports are first used.
 	deferred bool
 }
 
 // moduleNamespace implements GetModuleNamespace for the evaluation phase.
-func (cx *ExecutionContext) moduleNamespace(m *Module) *Object {
+func (cx *ExecutionContext) moduleNamespace(m *Module) *storage.Object {
 	if m.namespace == nil {
 		m.namespace = cx.newModuleNamespace(m, false)
 	}
@@ -37,7 +37,7 @@ func (cx *ExecutionContext) moduleNamespace(m *Module) *Object {
 }
 
 // deferredModuleNamespace implements GetModuleNamespace for the defer phase.
-func (cx *ExecutionContext) deferredModuleNamespace(m *Module) *Object {
+func (cx *ExecutionContext) deferredModuleNamespace(m *Module) *storage.Object {
 	if m.deferredNamespace == nil {
 		m.deferredNamespace = cx.newModuleNamespace(m, true)
 	}
@@ -45,7 +45,7 @@ func (cx *ExecutionContext) deferredModuleNamespace(m *Module) *Object {
 }
 
 // newModuleNamespace collects the exports for the requested phase and implements ModuleNamespaceCreate.
-func (cx *ExecutionContext) newModuleNamespace(m *Module, deferred bool) *Object {
+func (cx *ExecutionContext) newModuleNamespace(m *Module, deferred bool) *storage.Object {
 	exports := m.node.Exports()
 	if deferred {
 		exports = slices.DeleteFunc(exports, func(e modulegraph.Export[*Module]) bool {
@@ -54,9 +54,9 @@ func (cx *ExecutionContext) newModuleNamespace(m *Module, deferred bool) *Object
 	}
 	ns := &moduleNamespace{
 		module:   m,
-		keys:     make([]PropKey, len(exports)),
+		keys:     make([]storage.PropKey, len(exports)),
 		targets:  make([]modulegraph.Resolution[*Module], len(exports)),
-		index:    make(map[PropKey]int, len(exports)),
+		index:    make(map[storage.PropKey]int, len(exports)),
 		deferred: deferred,
 	}
 	for i, e := range exports {
@@ -65,31 +65,31 @@ func (cx *ExecutionContext) newModuleNamespace(m *Module, deferred bool) *Object
 		ns.targets[i] = e.Resolution
 		ns.index[k] = i
 	}
-	o := storage.NewNamespaceObject(cx.RootShape(nil, cx.realmPart, delegatedRoot), ns)
+	o := storage.NewNamespaceObject(cx.RootShape(nil, cx.realmPart, storage.DelegatedRoot), ns)
 	tag := wtf8.String("Module")
 	if deferred {
 		tag = "Deferred Module"
 	}
-	cx.Add(o, cx.WellKnownSymbol(SymbolToStringTag), cx.NewString(tag), 0)
+	cx.Add(o, cx.WellKnownSymbol(storage.SymbolToStringTag), cx.NewString(tag), 0)
 	return o
 }
 
-func namespaceOf(o *Object) *moduleNamespace {
+func namespaceOf(o *storage.Object) *moduleNamespace {
 	return o.ExtState().(*moduleNamespace)
 }
 
 // isNamespaceExportKey reports whether k is a key that the module namespace object o
 // handles as an export name, which is not what IsSymbolLikeNamespaceKey says.
-func (ag *agent) isNamespaceExportKey(o *Object, k PropKey) bool {
+func (ag *agent) isNamespaceExportKey(o *storage.Object, k storage.PropKey) bool {
 	if k.IsSymbol() {
 		return false
 	}
-	return !namespaceOf(o).deferred || k.Key != ag.Key(KeyThen)
+	return !namespaceOf(o).deferred || k.Key != ag.Key(storage.KeyThen)
 }
 
 // namespaceExports implements GetModuleExportsList: it returns the namespace data of the
 // module namespace object o, evaluating the module of a deferred one.
-func (cx *ExecutionContext) namespaceExports(o *Object) *moduleNamespace {
+func (cx *ExecutionContext) namespaceExports(o *storage.Object) *moduleNamespace {
 	ns := namespaceOf(o)
 	if ns.deferred {
 		cx.evaluateModuleSync(ns.module)
@@ -98,7 +98,7 @@ func (cx *ExecutionContext) namespaceExports(o *Object) *moduleNamespace {
 }
 
 // namespaceGet implements [[Get]] of the module namespace object o for an export key.
-func (cx *ExecutionContext) namespaceGet(o *Object, k PropKey) Value {
+func (cx *ExecutionContext) namespaceGet(o *storage.Object, k storage.PropKey) storage.Value {
 	ns := cx.namespaceExports(o)
 	i, ok := ns.index[k]
 	if !ok {
@@ -107,12 +107,12 @@ func (cx *ExecutionContext) namespaceGet(o *Object, k PropKey) Value {
 	r := ns.targets[i]
 	switch r.Binding {
 	case modulegraph.BindingNamespace:
-		return Value{O: cx.moduleNamespace(r.Module)}
+		return storage.Value{O: cx.moduleNamespace(r.Module)}
 	case modulegraph.BindingSource:
 		if r.Module.source == nil {
 			cx.ThrowReferenceError("the module source of '" + wtf8.ToValidUTF8(cx.KeyString(k)) + "' is not available")
 		}
-		return Value{O: r.Module.source}
+		return storage.Value{O: r.Module.source}
 	}
 	v := *r.Module.env[r.Binding].P
 	if v.O == tdzObject {
@@ -122,47 +122,47 @@ func (cx *ExecutionContext) namespaceGet(o *Object, k PropKey) Value {
 }
 
 // namespaceHas implements [[HasProperty]] of the module namespace object o for an export key.
-func (cx *ExecutionContext) namespaceHas(o *Object, k PropKey) bool {
+func (cx *ExecutionContext) namespaceHas(o *storage.Object, k storage.PropKey) bool {
 	_, ok := cx.namespaceExports(o).index[k]
 	return ok
 }
 
 // namespaceGetOwnProperty implements [[GetOwnProperty]] of the module namespace object o
 // for an export key.
-func (cx *ExecutionContext) namespaceGetOwnProperty(o *Object, k PropKey) (PropDesc, bool) {
+func (cx *ExecutionContext) namespaceGetOwnProperty(o *storage.Object, k storage.PropKey) (storage.PropDesc, bool) {
 	if !cx.namespaceHas(o, k) {
-		return PropDesc{}, false
+		return storage.PropDesc{}, false
 	}
-	return storage.DataDesc(cx.namespaceGet(o, k), FlagEnumerable|FlagWritable), true
+	return storage.DataDesc(cx.namespaceGet(o, k), storage.FlagEnumerable|storage.FlagWritable), true
 }
 
 // namespaceDefineOwnProperty implements [[DefineOwnProperty]] of the module namespace object o
 // for an export key.
-func (cx *ExecutionContext) namespaceDefineOwnProperty(o *Object, k PropKey, d PropDesc) bool {
+func (cx *ExecutionContext) namespaceDefineOwnProperty(o *storage.Object, k storage.PropKey, d storage.PropDesc) bool {
 	cur, ok := cx.namespaceGetOwnProperty(o, k)
 	if !ok {
 		return false
 	}
-	if d.HasTrue(HasConfigurable, FlagConfigurable) {
+	if d.HasTrue(storage.HasConfigurable, storage.FlagConfigurable) {
 		return false
 	}
-	if d.HasFalse(HasEnumerable, FlagEnumerable) {
+	if d.HasFalse(storage.HasEnumerable, storage.FlagEnumerable) {
 		return false
 	}
 	if d.IsAccessor() {
 		return false
 	}
-	if d.HasFalse(HasWritable, FlagWritable) {
+	if d.HasFalse(storage.HasWritable, storage.FlagWritable) {
 		return false
 	}
-	if d.HasField(HasValue) {
+	if d.HasField(storage.HasValue) {
 		return storage.SameValue(d.Value(), cur.Value())
 	}
 	return true
 }
 
 // namespaceOwnKeys implements [[OwnPropertyKeys]] of the module namespace object o.
-func (cx *ExecutionContext) namespaceOwnKeys(o *Object) []PropKey {
+func (cx *ExecutionContext) namespaceOwnKeys(o *storage.Object) []storage.PropKey {
 	keys := slices.Clone(cx.namespaceExports(o).keys)
 	for _, k := range o.Shape.Keys() {
 		keys = append(keys, storage.NamedKey(k))
@@ -171,6 +171,6 @@ func (cx *ExecutionContext) namespaceOwnKeys(o *Object) []PropKey {
 }
 
 // namespaceDelete implements [[Delete]] of the module namespace object o for an export key.
-func (cx *ExecutionContext) namespaceDelete(o *Object, k PropKey) bool {
+func (cx *ExecutionContext) namespaceDelete(o *storage.Object, k storage.PropKey) bool {
 	return !cx.namespaceHas(o, k)
 }

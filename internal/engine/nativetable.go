@@ -18,11 +18,11 @@ const maxNativeFasts = 1 << 8
 // nativeTable holds the registered native functions. It does not change after the initialization
 // of the packages.
 var nativeTable struct {
-	// codes holds the code of the functions by the index of their [Native].
+	// codes holds the code of the functions by the index of their [storage.Native].
 	codes [nativeTableSize]NativeFunc
 
 	// fasts holds what callers use instead of calling the functions by the FastIndex of their
-	// [Native]. The entry at index 0 is nil.
+	// [storage.Native]. The entry at index 0 is nil.
 	fasts [maxNativeFasts]*nativeFast
 
 	// count is the number of registered functions. The entry at index 0 is that of the
@@ -34,18 +34,18 @@ var nativeTable struct {
 }
 
 func init() {
-	nativeTable.codes[0] = func(*ExecutionContext, Value, []Value) Value {
+	nativeTable.codes[0] = func(*ExecutionContext, storage.Value, []storage.Value) storage.Value {
 		panic("engine: call of no native function")
 	}
 }
 
 // RegisterNative registers the native function with the code f. It must be called only in the
 // initialization of a package.
-func RegisterNative(f NativeFunc) Native {
+func RegisterNative(f NativeFunc) storage.Native {
 	return registerNative(f, nil)
 }
 
-func registerNative(f NativeFunc, fast *nativeFast) Native {
+func registerNative(f NativeFunc, fast *nativeFast) storage.Native {
 	if f == nil {
 		panic("engine: registration of a nil native function")
 	}
@@ -55,7 +55,7 @@ func registerNative(f NativeFunc, fast *nativeFast) Native {
 	}
 	nativeTable.codes[i] = f
 	nativeTable.count = i
-	return Native{
+	return storage.Native{
 		Index:     uint16(i),
 		FastIndex: addNativeFast(fast),
 	}
@@ -76,12 +76,12 @@ func addNativeFast(fast *nativeFast) uint8 {
 }
 
 // nativeCodeOf returns the code of n.
-func nativeCodeOf(n Native) NativeFunc {
+func nativeCodeOf(n storage.Native) NativeFunc {
 	return nativeTable.codes[n.Index%nativeTableSize]
 }
 
 // nativeFastOf returns what the callers of n use instead of calling it, or nil.
-func nativeFastOf(n Native) *nativeFast {
+func nativeFastOf(n storage.Native) *nativeFast {
 	return nativeTable.fasts[uint(n.FastIndex)]
 }
 
@@ -103,7 +103,7 @@ type Kernels struct {
 }
 
 // RegisterNativeWithKernels is [RegisterNative] for a function with the kernels k.
-func RegisterNativeWithKernels(f NativeFunc, k Kernels) Native {
+func RegisterNativeWithKernels(f NativeFunc, k Kernels) storage.Native {
 	return registerNative(f, &nativeFast{
 		number1:  k.Number1,
 		number2:  k.Number2,
@@ -116,8 +116,8 @@ func RegisterNativeWithKernels(f NativeFunc, k Kernels) Native {
 
 // RegisterIteratorNext registers the next method of built-in iterators, which returns the iterator
 // result for what step returns. It must be called only in the initialization of a package.
-func RegisterIteratorNext(yieldRealm IteratorYieldRealm, step IteratorStepFunc) Native {
-	code := func(cx *ExecutionContext, this Value, args []Value) Value {
+func RegisterIteratorNext(yieldRealm IteratorYieldRealm, step IteratorStepFunc) storage.Native {
+	code := func(cx *ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 		v, ok := step(cx, this)
 		if !ok {
 			return cx.CreateIterResultObject(storage.Undefined, true)
@@ -137,8 +137,8 @@ func RegisterIteratorNext(yieldRealm IteratorYieldRealm, step IteratorStepFunc) 
 // For a compatible receiver, step must neither throw nor run JavaScript. pairStep is the pair step
 // of the method, for which the same contract holds, or nil. RegisterPlainIteratorNext must be
 // called only in the initialization of a package.
-func RegisterPlainIteratorNext[T any](yieldRealm IteratorYieldRealm, receiverError string, step func(quiet.Context, *Object, T) (Value, bool), pairStep IteratorPairStepFunc) Native {
-	code := func(cx *ExecutionContext, this Value, args []Value) Value {
+func RegisterPlainIteratorNext[T any](yieldRealm IteratorYieldRealm, receiverError string, step func(quiet.Context, *storage.Object, T) (storage.Value, bool), pairStep IteratorPairStepFunc) storage.Native {
+	code := func(cx *ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 		state, ok := storage.IteratorState(this).(T)
 		if !ok {
 			cx.ThrowTypeError(receiverError)
@@ -150,12 +150,12 @@ func RegisterPlainIteratorNext[T any](yieldRealm IteratorYieldRealm, receiverErr
 		return newIteratorResult(cx, yieldRealm, this, v)
 	}
 	return registerNative(code, &nativeFast{
-		step: func(cx *ExecutionContext, this Value) (Value, bool) {
+		step: func(cx *ExecutionContext, this storage.Value) (storage.Value, bool) {
 			if state, ok := storage.IteratorState(this).(T); ok {
 				return step(cx.Quiet(), this.O, state)
 			}
 			// The receiver error belongs to the native next call.
-			return Value{O: stepDeclined}, false
+			return storage.Value{O: stepDeclined}, false
 		},
 		pairStep: pairStep,
 		contract: ShortcutContract{
@@ -166,7 +166,7 @@ func RegisterPlainIteratorNext[T any](yieldRealm IteratorYieldRealm, receiverErr
 }
 
 // newIteratorResult returns the result of the next method of the built-in iterator this that yields v.
-func newIteratorResult(cx *ExecutionContext, yieldRealm IteratorYieldRealm, this, v Value) Value {
+func newIteratorResult(cx *ExecutionContext, yieldRealm IteratorYieldRealm, this, v storage.Value) storage.Value {
 	if yieldRealm == IteratorClosureRealm {
 		return CreationContext(this.O).CreateIterResultObject(v, false)
 	}

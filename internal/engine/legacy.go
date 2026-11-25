@@ -10,7 +10,7 @@ import (
 // FunctionCaller returns the value of the caller property of the non-strict ordinary function f:
 // the function that made the innermost running call of f, or null. It throws a TypeError when f
 // is not such a function.
-func (cx *ExecutionContext) FunctionCaller(f Value) Value {
+func (cx *ExecutionContext) FunctionCaller(f storage.Value) storage.Value {
 	i := cx.innermostCall(f)
 	if i < 0 {
 		return storage.Null
@@ -21,18 +21,18 @@ func (cx *ExecutionContext) FunctionCaller(f Value) Value {
 // FunctionArguments returns the value of the arguments property of the non-strict ordinary
 // function f: a new arguments object of the innermost running call of f, or null. It throws a
 // TypeError when f is not such a function.
-func (cx *ExecutionContext) FunctionArguments(f Value) Value {
+func (cx *ExecutionContext) FunctionArguments(f storage.Value) storage.Value {
 	i := cx.innermostCall(f)
 	if i < 0 {
 		return storage.Null
 	}
-	return Value{O: cx.callArguments(i)}
+	return storage.Value{O: cx.callArguments(i)}
 }
 
 // innermostCall returns the index of the frame of the innermost running call of the non-strict
 // ordinary function f, or -1 when f is not running. It throws a TypeError when f is not such a
 // function.
-func (cx *ExecutionContext) innermostCall(f Value) int {
+func (cx *ExecutionContext) innermostCall(f storage.Value) int {
 	o := f.O
 	if o == nil || o.Fn == nil || o.Fn.Code == nil || !o.Fn.Code.LegacyCallerArguments {
 		cx.ThrowTypeError("'caller' and 'arguments' are only available on non-strict functions")
@@ -46,10 +46,10 @@ func (cx *ExecutionContext) innermostCall(f Value) int {
 
 // callArguments returns a new arguments object with the current arguments of the call of
 // frames[i], which are not mapped to its parameters.
-func (cx *ExecutionContext) callArguments(i int) *Object {
+func (cx *ExecutionContext) callArguments(i int) *storage.Object {
 	fr := &cx.frames[i]
 	o := cx.NewArgumentsObject(cx.frameRegs(fr)[:min(fr.argc, fr.fp.Nparams)], cx.extraArgs(fr))
-	cx.Add(o, cx.Key(keyCallee), Value{O: fr.cl}, FlagsHidden)
+	cx.Add(o, cx.Key(storage.KeyCallee), storage.Value{O: fr.cl}, storage.FlagsHidden)
 	return o
 }
 
@@ -57,7 +57,7 @@ func (cx *ExecutionContext) callArguments(i int) *Object {
 // from a native function that shows a frame or from script code, or when the caller is strict, a
 // generator or an async function. After a proper tail call, the caller is that of the function
 // that made it.
-func (ag *agent) callerOf(i int) Value {
+func (ag *agent) callerOf(i int) storage.Value {
 	// Eval code runs on behalf of the code that calls eval.
 	j := i - 1
 	for j >= 0 && ag.frames[j].fp.IsEval {
@@ -77,5 +77,5 @@ func (ag *agent) callerOf(i int) Value {
 	if fp.IsScript || fp.Strict || fp.IsGenerator || fp.IsAsync {
 		return storage.Null
 	}
-	return Value{O: ag.frames[j].cl}
+	return storage.Value{O: ag.frames[j].cl}
 }
