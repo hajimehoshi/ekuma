@@ -143,12 +143,3 @@ func reverseBytes(dst []byte, src wtf8.String) {
 		dst[i] = src[n-1-i]
 	}
 }
-
-// IsASCII reports whether s, which is the str of v when v is a string, consists of ASCII
-// characters only.
-func IsASCII(v Value, s wtf8.String) bool {
-	if v.IsString() && !v.IsShortString() {
-		return v.O.IsASCII()
-	}
-	return wtf8.IsASCII(s)
-}

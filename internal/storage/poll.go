@@ -5,7 +5,53 @@ package storage
 
 import (
 	"math/big"
+	"sync/atomic"
 )
+
+// InterruptSignal is what an interruption unwinds Go frames with. No JavaScript code can catch it.
+type InterruptSignal struct {
+	// Cause is the Cause of the interruption.
+	Cause error
+}
+
+// Poller is what a long operation needs to stop at an interruption.
+type Poller struct {
+	InterruptFlag interruptFlag
+
+	// InterruptCause is the cause of the pending interruption.
+	InterruptCause atomic.Pointer[error]
+
+	// Raised is the interruption that is unwinding to the outermost call from Go.
+	Raised *InterruptSignal
+}
+
+// Poll is agent.Poll without taking notifications. It leaves the flag set, so that the next
+// Poll of the agent takes them.
+func (p *Poller) Poll() {
+	p.PollYield()
+	p.ResumeInterruption()
+	if p.InterruptFlag.Load() {
+		p.Raise()
+	}
+}
+
+// Raise panics with the pending interruption, if there is one.
+func (p *Poller) Raise() {
+	if c := p.InterruptCause.Swap(nil); c != nil {
+		p.Raised = &InterruptSignal{
+			Cause: *c,
+		}
+		panic(p.Raised)
+	}
+}
+
+// ResumeInterruption panics again with an interruption that a host callback recovered before
+// the interruption reached the outermost call from Go.
+func (p *Poller) ResumeInterruption() {
+	if p.Raised != nil {
+		panic(p.Raised)
+	}
+}
 
 // PollInterval is the number of steps of a loop that runs no JavaScript, such as reading,
 // comparing or storing an element, between two checks for an interruption.

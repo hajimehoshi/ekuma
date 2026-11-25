@@ -10,6 +10,19 @@ type ProxyState struct {
 	Handler *Object
 }
 
+// NewProxyObject is [NewExoticObject] for a proxy, whose [[Call]] and [[Construct]] are fn. fn is
+// nil for a proxy that is not callable.
+func NewProxyObject(s *Shape, state any, fn *Function) *Object {
+	return (&PropertyObject{
+		Kind:  KindObject,
+		Class: ClassProxy,
+		Flags: ObjExotic,
+		Shape: s,
+		Fn:    fn,
+		Ext:   state,
+	}).Init()
+}
+
 func (s *ProxyState) IsGlobal() bool {
 	return s.Handler != nil && s.Handler.Class == ClassGlobalProxyHandler
 }

@@ -287,47 +287,8 @@ func typeOf(v Value) int {
 	return TypeofObject
 }
 
-// IsStrictlyEqual implements IsStrictlyEqual.
-func IsStrictlyEqual(a, b Value) bool {
-	if a.O == NumberObject || b.O == NumberObject {
-		return a.O == b.O && a.N == b.N
-	}
-	if a.IsShortString() || b.IsShortString() {
-		return a.IsString() && b.IsString() && len(a.O.Text) == len(b.O.Text) && math.Float64bits(a.N) == math.Float64bits(b.N)
-	}
-	if a.O == b.O {
-		return a.O != BigInt64Object || math.Float64bits(a.N) == math.Float64bits(b.N)
-	}
-	if a.O == nil || b.O == nil || a.O.Kind != b.O.Kind {
-		return false
-	}
-	switch a.O.Kind {
-	case KindString:
-		return sameStrings(a.O, b.O)
-	case KindBigInt:
-		// A BigInt that fits in an int64 never equals one that does not.
-		return a.O != BigInt64Object && b.O != BigInt64Object && a.O.ExtState().(*big.Int).Cmp(b.O.ExtState().(*big.Int)) == 0
-	}
-	return false
-}
-
-// SameValueZero implements SameValueZero.
-func SameValueZero(a, b Value) bool {
-	if a.O == NumberObject && b.O == NumberObject {
-		return a.N == b.N || (a.N != a.N && b.N != b.N)
-	}
-	return IsStrictlyEqual(a, b)
-}
-
-// SameValue implements SameValue.
-func SameValue(a, b Value) bool {
-	if a.O == NumberObject && b.O == NumberObject {
-		if a.N != a.N {
-			return b.N != b.N
-		}
-		return a.N == b.N && math.Signbit(a.N) == math.Signbit(b.N)
-	}
-	return IsStrictlyEqual(a, b)
+func (sp *Space) TypeofValue(v Value) Value {
+	return sp.Typeofs[typeOf(v)]
 }
 
 // MaxArrayIndex is the largest array index, 2**32 - 2.

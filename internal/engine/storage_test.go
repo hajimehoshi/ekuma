@@ -13,7 +13,7 @@ import (
 	"testing"
 )
 
-// storageException is a function outside storage.go that assigns value storage itself.
+// storageException is a function outside valuestorage.go that assigns value storage itself.
 type storageException struct {
 	// count is the number of places where the function does so.
 	count int
@@ -121,7 +121,7 @@ var bufferExceptions = map[string]storageException{
 	},
 }
 
-// TestValueStorageOwnership tests that only storage.go changes which storage holds the slots and
+// TestValueStorageOwnership tests that only valuestorage.go changes which storage holds the slots and
 // the elements of objects, and that other long-lived buffers of values are shortened only with
 // truncated and withoutLast, which clear what they give up.
 //
@@ -196,7 +196,7 @@ func TestValueStorageOwnership(t *testing.T) {
 		}
 
 		for _, file := range p.files {
-			if p.path == storagePath && filepath.Base(p.fset.Position(file.Pos()).Filename) == "storage.go" {
+			if p.path == storagePath && filepath.Base(p.fset.Position(file.Pos()).Filename) == "valuestorage.go" {
 				continue
 			}
 			for _, decl := range file.Decls {

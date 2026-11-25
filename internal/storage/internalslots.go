@@ -3,60 +3,6 @@
 
 package storage
 
-import (
-	"github.com/hajimehoshi/ekuma/internal/wtf8"
-)
-
-// ErrorData is the internal state of an error object that has a recorded stack trace.
-type ErrorData struct {
-	stack wtf8.String
-
-	// Pending is set until stack is formatted from name, msg and calls.
-	Pending bool
-
-	// Name in WTF-8 and msg in UTF-8 begin the stack trace, and calls are its lines.
-	Name  wtf8.String
-	Msg   string
-	Calls []StackCall
-
-	// GoErr is the Go error that the error object was made from, or nil.
-	GoErr error
-}
-
-// IsError reports whether v is an object with an [[ErrorData]] internal slot.
-func IsError(v Value) bool {
-	return v.IsObject() && v.O.Class == ClassError
-}
-
-// ErrorStack returns the stack trace that agent.RecordStack recorded for the error object v.
-// It reports false when v has no [[ErrorData]] internal slot or no recorded stack trace.
-func ErrorStack(v Value) (wtf8.String, bool) {
-	if !IsError(v) {
-		return "", false
-	}
-	d, ok := v.O.ExtState().(*ErrorData)
-	if !ok {
-		return "", false
-	}
-	if d.Pending {
-		d.stack = formatStack(d.Name, d.Msg, d.Calls)
-		d.Pending = false
-		d.Name, d.Msg, d.Calls = "", "", nil
-	}
-	return d.stack, true
-}
-
-// GoError returns the Go error that v was made from by ExecutionContext.NewGoError, or nil when it was not.
-func GoError(v Value) error {
-	if !IsError(v) {
-		return nil
-	}
-	if d, ok := v.O.ExtState().(*ErrorData); ok {
-		return d.GoErr
-	}
-	return nil
-}
-
 // NewMapObject returns a Map object with the prototype proto whose [[MapData]] is data.
 func (r *RealmPart) NewMapObject(proto *Object, data any) *Object {
 	return NewObjectWithState(r.ShapeFor(proto), ClassMap, data)
@@ -174,16 +120,6 @@ func ThisSymbolValue(v Value) (*Object, bool) {
 		return v.O.ExtState().(*Object), true
 	}
 	return nil, false
-}
-
-// SymbolDescription returns the description of the symbol sym and whether it has one.
-func SymbolDescription(sym *Object) (wtf8.String, bool) {
-	return sym.Text, sym.ExtState() != nil
-}
-
-// IsRegExpObject reports whether o is a RegExp object.
-func (o *Object) IsRegExpObject() bool {
-	return o.Class == ClassRegExp
 }
 
 // IsRawJSON reports whether o has the internal slot [[IsRawJSON]].

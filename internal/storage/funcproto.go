@@ -111,3 +111,16 @@ func (p *FuncProto) Prepare() {
 		}
 	}
 }
+
+// ClosurePrototype returns the prototype of the closures of p, which is a generator or async function.
+func (p *FuncProto) ClosurePrototype() *Object {
+	switch {
+	case p.IsGenerator && p.IsAsync:
+		return p.Realm.Intrinsics[IntrinsicAsyncGeneratorFunctionPrototype]
+	case p.IsGenerator:
+		return p.Realm.Intrinsics[IntrinsicGeneratorFunctionPrototype]
+	case p.IsAsync:
+		return p.Realm.Intrinsics[IntrinsicAsyncFunctionPrototype]
+	}
+	return p.Realm.Intrinsics[IntrinsicFunctionPrototype]
+}

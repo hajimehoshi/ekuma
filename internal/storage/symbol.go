@@ -48,3 +48,8 @@ func (sp *Space) KeyForSymbol(sym *Object) (wtf8.String, bool) {
 	}
 	return sym.Text, true
 }
+
+// SymbolDescription returns the description of the symbol sym and whether it has one.
+func SymbolDescription(sym *Object) (wtf8.String, bool) {
+	return sym.Text, sym.ExtState() != nil
+}

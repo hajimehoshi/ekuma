@@ -7,6 +7,137 @@ import (
 	"slices"
 )
 
+// Property attributes.
+const (
+	FlagEnumerable uint8 = 1 << iota
+	FlagWritable
+	FlagConfigurable
+	FlagAccessor
+
+	FlagsData   = FlagEnumerable | FlagWritable | FlagConfigurable
+	FlagsHidden = FlagWritable | FlagConfigurable
+)
+
+// getOwn returns the own named property key of o.
+func (o *Object) getOwn(key *Object) (Prop, bool) {
+	return o.Shape.Lookup(key)
+}
+
+// Add gives o the new own property key. The caller has checked that o has no such property.
+func (sp *Space) Add(o *Object, key *Object, val Value, flags uint8) {
+	s := o.Shape
+	if !s.Private && (s.Count >= PrivateShapeThreshold || sp.Builtins.building) {
+		s = s.privateCopy()
+		o.Shape = s
+		if sp.Builtins.building {
+			sp.Builtins.Objects = append(sp.Builtins.Objects, o)
+		}
+	}
+	if s.Private {
+		// Growing the slots moves the addresses held by global variable caches, which
+		// rely on the shape. No code runs while the built-ins are created.
+		if s.renewOnAdd || len(o.Slots) == cap(o.Slots) && !sp.Builtins.building {
+			s = s.handOver()
+			o.Shape = s
+		}
+		s.Table[key] = Prop{
+			Slot:  int32(len(s.Order)),
+			Flags: flags,
+		}
+		s.Order = append(s.Order, key)
+		s.Count++
+	} else {
+		o.Shape = s.With(key, flags)
+	}
+	o.AppendSlot(val)
+	sp.TouchProto(o)
+}
+
+// Define creates or replaces the own named property key of o with the given attributes,
+// without any of the checks of the JavaScript operations. An object of
+// ExecutionContext.NewLazyObject must be initialized already.
+func (r *RealmPart) Define(o *Object, key *Object, val Value, flags uint8) {
+	if ValidateExec && o.Class == ClassLazy {
+		panic("engine: property definition on an uninitialized lazy object")
+	}
+	if o.Flags&ObjExotic != 0 && o.Fn != nil {
+		r.Materialize(o)
+	}
+	p, ok := o.Shape.Lookup(key)
+	if !ok {
+		r.Add(o, key, val, flags)
+		return
+	}
+	if p.Flags != flags {
+		r.setFlags(o, key, p, flags)
+	}
+	o.Slots[p.Slot] = val
+	r.TouchProto(o)
+}
+
+// DefineAccessor creates or replaces the own accessor property key of o with the given
+// attributes. getter and setter may be nil.
+func (r *RealmPart) DefineAccessor(o *Object, key *Object, getter, setter *Object, flags uint8) {
+	r.Define(o, key, NewAccessor(getter, setter), flags|FlagAccessor)
+}
+
+// setFlags changes the attributes of the existing own property key of o.
+func (sp *Space) setFlags(o *Object, key *Object, p Prop, flags uint8) {
+	// An inline cache may remember the shape, so the changed layout needs another one.
+	o.RenewShape()
+	o.Shape.Table[key] = Prop{
+		Slot:  p.Slot,
+		Flags: flags,
+	}
+	sp.TouchProto(o)
+}
+
+// ReplaceOwn stores the value and attributes of the existing own property k of o.
+func (r *RealmPart) ReplaceOwn(o *Object, k PropKey, val Value, flags uint8) {
+	name := k.Key
+	if name == nil {
+		if int64(k.Idx) < int64(len(o.Elems)) && !o.Elems[k.Idx].IsHole() {
+			if flags == FlagsData {
+				o.Elems[k.Idx] = val
+				return
+			}
+			// The property no longer fits in elems.
+			o.Elems[k.Idx] = Hole
+			o.Flags |= ObjSparse
+			r.Add(o, r.IndexName(k.Idx), val, flags)
+			return
+		}
+		name = r.IndexName(k.Idx)
+	}
+	r.Define(o, name, val, flags)
+}
+
+// RemoveFromPrivate deletes the own named property key of o, which must exist, from the private
+// shape of o. The new shape takes over the storage of the old one, which only o has.
+func (sp *Space) RemoveFromPrivate(o *Object, key *Object) {
+	old := o.Shape
+	s := old.handOver()
+	o.Shape = s
+	s.Count--
+	i := s.Table[key].Slot
+	delete(s.Table, key)
+	s.Order[i] = nil
+	o.Slots[i] = Value{}
+	// Trailing deleted slots go at once, and the others once they outnumber the keys, which
+	// bounds the cost of compacting by that of the deletions.
+	n := len(s.Order)
+	for n > 0 && s.Order[n-1] == nil {
+		n--
+	}
+	s.Order = s.Order[:n]
+	o.truncateSlots(n)
+	if n-int(s.Count) > int(s.Count) {
+		o.compact()
+	}
+	sp.sparseIndices.remove(old, s, key)
+	sp.TouchProto(o)
+}
+
 type namedLookupKind uint8
 
 const (
@@ -103,39 +234,6 @@ func (sp *Space) ReadNamedSlot(start, holder *Object, p Prop, c *PropCache) (val
 		}
 	}
 	return val, nil
-}
-
-// RememberRead records the location of p for subsequent reads from start's shape.
-func (c *PropCache) RememberRead(sp *Space, start, holder *Object, p Prop) {
-	s := start.Shape
-	if s.ReadID == 0 {
-		if sp.lastReadShapeID == ^uint32(0) {
-			return
-		}
-		sp.lastReadShapeID++
-		s.ReadID = sp.lastReadShapeID
-	}
-	r := c.Reads
-	if r == nil {
-		r = &namedReads{
-			Shapes: make(map[uint32]namedRead),
-		}
-		c.Reads = r
-	}
-	if r.Space != sp || r.Epoch != sp.ProtoEpoch || len(r.Shapes) >= 64 {
-		clear(r.Shapes)
-		r.Space = sp
-		r.Epoch = sp.ProtoEpoch
-	}
-	var depth int32
-	for h := start; h != holder; h = h.Shape.Proto {
-		depth++
-	}
-	r.Shapes[s.ReadID] = namedRead{
-		Depth: depth,
-		Count: s.Count,
-		Prop:  p,
-	}
 }
 
 // dataSlot is the slot of a data property in the object that holds it.

@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/hajimehoshi/ekuma/internal/numconv"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
@@ -129,4 +130,61 @@ func EnumerableKey(key *Object, flags uint8) PropKey {
 		return PropKey{Key: key}
 	}
 	return PropKey{}
+}
+
+// maxNumberStringLen bounds the length of the string of a number, such as
+// "-1.2345678901234567e-308".
+const maxNumberStringLen = 32
+
+// IsCanonicalNumericString reports whether CanonicalNumericIndexString returns a number for the string key.
+// The array indices are not named keys, so they are not considered.
+func IsCanonicalNumericString(key *Object) bool {
+	if key.Kind != KindString {
+		return false
+	}
+	s := key.Text
+	if len(s) == 0 {
+		return false
+	}
+	if c := s[0]; c != '-' && c != 'I' && c != 'N' && (c < '0' || c > '9') {
+		return false
+	}
+	if s == "-0" {
+		return true
+	}
+	// The string of a number is short.
+	if len(s) > maxNumberStringLen {
+		return false
+	}
+	return numconv.NumberToString(numconv.StringToNumber(s, nil)) == s
+}
+
+// AppendIndexRun appends the keys of the indices from i up to j to keys.
+func AppendIndexRun(keys []PropKey, i, j int) []PropKey {
+	for ; i < j; i++ {
+		keys = append(keys, IndexKey(uint32(i)))
+	}
+	return keys
+}
+
+// AppendElemRun appends the keys of the elements in elems, the first of which has the index
+// base, to keys.
+func AppendElemRun(keys []PropKey, elems []Value, base int) []PropKey {
+	for i, e := range elems {
+		if !e.IsHole() {
+			keys = append(keys, IndexKey(uint32(base+i)))
+		}
+	}
+	return keys
+}
+
+// AppendEnumerableNames appends the enumerable string keys among names, which are keys of the
+// private shape s, to keys.
+func AppendEnumerableNames(keys []PropKey, s *Shape, names []*Object) []PropKey {
+	for _, k := range names {
+		if k != nil && k.Kind == KindString && s.Table[k].Flags&FlagEnumerable != 0 {
+			keys = append(keys, NamedKey(k))
+		}
+	}
+	return keys
 }

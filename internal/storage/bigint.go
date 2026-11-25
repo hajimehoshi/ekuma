@@ -7,10 +7,8 @@ import (
 	"math"
 	"math/big"
 	"math/bits"
-	"strconv"
 
 	"github.com/hajimehoshi/ekuma/internal/bytecode"
-	"github.com/hajimehoshi/ekuma/internal/numconv"
 )
 
 // BigIntObject holds a BigInt and its integer header in one allocation.
@@ -31,29 +29,6 @@ func NewBigInt(i *big.Int) Value {
 		o.Integer.Neg(&o.Integer)
 	}
 	return o.InitBigInt(&o.Integer)
-}
-
-// maxDisplayBigIntBits is the number of bits up to which a message shows every digit of a BigInt.
-const maxDisplayBigIntBits = 1 << 12
-
-// displayBigInt describes the BigInt v for messages. A long one is shown as its leading
-// hexadecimal digits and its number of bits, which take no division to find.
-func displayBigInt(v Value) string {
-	if i, ok := v.BigInt64(); ok {
-		return strconv.FormatInt(i, 10)
-	}
-	x := v.BigInt()
-	n := x.BitLen()
-	if n <= maxDisplayBigIntBits {
-		return string(numconv.FormatBigInt(x, 10, nil))
-	}
-	// The shift is a multiple of 4, so the digits are those of x.
-	lead := new(big.Int).Rsh(new(big.Int).Abs(x), uint(n-64)&^3)
-	sign := ""
-	if x.Sign() < 0 {
-		sign = "-"
-	}
-	return sign + "0x" + lead.Text(16) + "... (" + strconv.Itoa(n) + " bits)"
 }
 
 // Add64 returns x + y, and reports whether it does not overflow.
@@ -148,43 +123,4 @@ func ArithBigInt64(op bytecode.Opcode, x, y int64) (Value, bool) {
 		return Value{}, false
 	}
 	return BigIntFromInt64(r), true
-}
-
-// CompareInt64Number compares the integer x with the number f.
-func CompareInt64Number(x int64, f float64) CmpResult {
-	switch {
-	case f != f:
-		return CmpUndefined
-	case f >= 1<<63:
-		return CmpLess
-	case f < -1<<63:
-		return CmpGreater
-	}
-	// t lies in the range of int64 and converts exactly.
-	t := math.Trunc(f)
-	if c := CompareInt64s(x, int64(t)); c != CmpEqual {
-		return c
-	}
-	return CompareNumbers(t, f)
-}
-
-func CompareInt64s(x, y int64) CmpResult {
-	switch {
-	case x < y:
-		return CmpLess
-	case x > y:
-		return CmpGreater
-	}
-	return CmpEqual
-}
-
-// Reverse returns the result of comparing b with a, given that of comparing a with b.
-func (c CmpResult) Reverse() CmpResult {
-	switch c {
-	case CmpLess:
-		return CmpGreater
-	case CmpGreater:
-		return CmpLess
-	}
-	return c
 }

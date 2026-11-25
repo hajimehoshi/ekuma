@@ -3,6 +3,122 @@
 
 package storage
 
+// closureObject is a function object together with its function state.
+type closureObject struct {
+	PropertyObject
+	state Function
+}
+
+// closureObjectWith is a closureObject together with the storage of its upvalues and of the
+// upvalues that hold copies of variables.
+type closureObjectWith[U, C any] struct {
+	closureObject
+
+	// copies comes first so that an empty C adds no padding at the end.
+	copies C
+	upvals U
+}
+
+// NewClosure returns a fresh function object and the storage for its copied upvalues.
+func NewClosure(p *FuncProto) (*Object, []Upvalue) {
+	if len(p.Upvals) == 0 && !p.IsMethod && !p.IsClassConstructor {
+		if p.plainFunction == nil {
+			p.plainFunction = &Function{
+				Code:        p,
+				Constructor: p.IsConstructor,
+				shared:      true,
+			}
+		}
+		return (&PropertyObject{
+			Fn: p.plainFunction,
+		}).Init(), nil
+	}
+	o, copies := newClosureObject(len(p.Upvals), p.Ncopied)
+	o.Fn.Code = p
+	o.Fn.Constructor = p.IsConstructor
+	o.Fn.ClassConstructor = p.IsClassConstructor
+	o.Fn.Derived = p.IsDerived
+	return o, copies
+}
+
+// OwnFunction gives o its own function state before an instance-specific change.
+func (o *Object) OwnFunction() *Function {
+	if o.Fn.shared {
+		f := *o.Fn
+		f.shared = false
+		o.Fn = &f
+	}
+	return o.Fn
+}
+
+// newClosureObject returns a zero object whose function state has n nil upvalues, and
+// storage for the ncopied of them that hold copies of variables. Small closures are a single
+// allocation.
+func newClosureObject(n, ncopied int) (*Object, []Upvalue) {
+	var c *closureObject
+	var upvals []*Upvalue
+	var copies []Upvalue
+	switch n<<2 | ncopied {
+	case 0:
+		c = &closureObject{}
+	case 1 << 2:
+		w := &closureObjectWith[[1]*Upvalue, struct{}]{}
+		c, upvals = &w.closureObject, w.upvals[:]
+	case 1<<2 | 1:
+		w := &closureObjectWith[[1]*Upvalue, [1]Upvalue]{}
+		c, upvals, copies = &w.closureObject, w.upvals[:], w.copies[:]
+	case 2 << 2:
+		w := &closureObjectWith[[2]*Upvalue, struct{}]{}
+		c, upvals = &w.closureObject, w.upvals[:]
+	case 2<<2 | 1:
+		w := &closureObjectWith[[2]*Upvalue, [1]Upvalue]{}
+		c, upvals, copies = &w.closureObject, w.upvals[:], w.copies[:]
+	case 2<<2 | 2:
+		w := &closureObjectWith[[2]*Upvalue, [2]Upvalue]{}
+		c, upvals, copies = &w.closureObject, w.upvals[:], w.copies[:]
+	case 3 << 2:
+		w := &closureObjectWith[[3]*Upvalue, struct{}]{}
+		c, upvals = &w.closureObject, w.upvals[:]
+	case 3<<2 | 1:
+		w := &closureObjectWith[[3]*Upvalue, [1]Upvalue]{}
+		c, upvals, copies = &w.closureObject, w.upvals[:], w.copies[:]
+	case 3<<2 | 2:
+		w := &closureObjectWith[[3]*Upvalue, [2]Upvalue]{}
+		c, upvals, copies = &w.closureObject, w.upvals[:], w.copies[:]
+	case 3<<2 | 3:
+		w := &closureObjectWith[[3]*Upvalue, [3]Upvalue]{}
+		c, upvals, copies = &w.closureObject, w.upvals[:], w.copies[:]
+	default:
+		// The capacities fill an allocation size class.
+		switch {
+		case n <= 5 && ncopied == 0:
+			w := &closureObjectWith[[5]*Upvalue, struct{}]{}
+			c, upvals = &w.closureObject, w.upvals[:n:n]
+		case n <= 7 && ncopied == 0:
+			w := &closureObjectWith[[7]*Upvalue, struct{}]{}
+			c, upvals = &w.closureObject, w.upvals[:n:n]
+		case n <= 11 && ncopied == 0:
+			w := &closureObjectWith[[11]*Upvalue, struct{}]{}
+			c, upvals = &w.closureObject, w.upvals[:n:n]
+		case n <= 15 && ncopied == 0:
+			w := &closureObjectWith[[15]*Upvalue, struct{}]{}
+			c, upvals = &w.closureObject, w.upvals[:n:n]
+		case n <= 15 && ncopied > 4 && ncopied <= 8:
+			w := &closureObjectWith[[15]*Upvalue, [8]Upvalue]{}
+			c, upvals, copies = &w.closureObject, w.upvals[:n:n], w.copies[:ncopied:ncopied]
+		default:
+			c = &closureObject{}
+			upvals = make([]*Upvalue, n)
+			if ncopied > 0 {
+				copies = make([]Upvalue, ncopied)
+			}
+		}
+	}
+	c.state.Upvals = upvals
+	c.Fn = &c.state
+	return c.Init(), copies
+}
+
 // NewFunctionObject returns a new function object with the shape s and the function state fn,
 // whose initial properties are implicit (see [RealmPart.FunctionShapeFor]).
 func NewFunctionObject(s *Shape, fn *Function) *Object {

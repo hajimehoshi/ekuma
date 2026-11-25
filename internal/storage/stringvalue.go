@@ -6,7 +6,9 @@ package storage
 import (
 	"math"
 	"strings"
+	"unicode/utf8"
 
+	"github.com/hajimehoshi/ekuma/internal/numconv"
 	"github.com/hajimehoshi/ekuma/internal/shortstrings"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
@@ -21,6 +23,107 @@ func (r *RealmPart) ShortString(s wtf8.String) Value {
 		N: math.Float64frombits(shortstrings.Pack(s)),
 		O: &r.Shapes.ShortStrings[len(s)],
 	}
+}
+
+// NewString returns the string s as a value.
+func (r *RealmPart) NewString(s wtf8.String) Value {
+	switch len(s) {
+	case 0:
+		return r.Strings.Empty
+	case 1:
+		if s[0] < 0x80 {
+			return r.Strings.Character(s[0])
+		}
+	}
+	if len(s) <= shortstrings.MaxBytes {
+		return r.ShortString(s)
+	}
+	return Value{
+		O: &Object{
+			Kind:  KindString,
+			Shape: r.Shapes.String,
+			Text:  s,
+		},
+	}
+}
+
+// SharedString returns the string s as a value that may be the same object as a property key
+// with the same contents.
+func (r *RealmPart) SharedString(s wtf8.String) Value {
+	if o := r.Strings.lookup(s); o != nil {
+		return ObjectValue(o)
+	}
+	return r.NewString(s)
+}
+
+// UnitString returns the string that consists of the code unit u.
+func (r *RealmPart) UnitString(u uint16) Value {
+	if u < 0x80 {
+		return r.Strings.Character(byte(u))
+	}
+	var buf [utf8.UTFMax]byte
+	return r.ShortString(wtf8.String(wtf8.AppendRune(buf[:0], rune(u))))
+}
+
+// StringFromCodeUnits returns the string value whose code units are units.
+func (r *RealmPart) StringFromCodeUnits(units []uint16) Value {
+	// Every code unit takes at least one byte.
+	if len(units) > shortstrings.MaxBytes {
+		return r.NewString(wtf8.FromUTF16(units))
+	}
+	var b shortstrings.Builder
+	for _, u := range units {
+		b.WriteUnit(u)
+	}
+	return r.builtString(&b)
+}
+
+// CodePointsToString returns the string value of points, code points that may be surrogates.
+func (r *RealmPart) CodePointsToString(points []rune) Value {
+	// Every code point takes at least one byte.
+	if len(points) > shortstrings.MaxBytes {
+		var b wtf8.Buffer
+		for _, c := range points {
+			b.WriteRune(c)
+		}
+		return r.NewString(b.String())
+	}
+	var b shortstrings.Builder
+	for _, c := range points {
+		b.WriteRune(c)
+	}
+	return r.builtString(&b)
+}
+
+// builtString returns b's string as a string value.
+func (r *RealmPart) builtString(b *shortstrings.Builder) Value {
+	data, n, ok := b.Packed()
+	if !ok {
+		return r.NewString(b.String())
+	}
+	if n == 0 {
+		return r.Strings.Empty
+	}
+	if n == 1 && byte(data) < 0x80 {
+		return r.Strings.Character(byte(data))
+	}
+	return Value{
+		N: math.Float64frombits(data),
+		O: &r.Shapes.ShortStrings[n],
+	}
+}
+
+// NumberToString is quiet.Context.NumberToString.
+func (r *RealmPart) NumberToString(n float64) Value {
+	var buf [32]byte
+	text := numconv.AppendNumber(buf[:0], n)
+	if len(text) == 1 {
+		return r.Strings.Character(text[0])
+	}
+	if len(text) <= shortstrings.MaxBytes {
+		return r.ShortString(wtf8.String(text))
+	}
+	return r.NewString(wtf8.String(text))
 }
 
 func (v Value) ShortText() wtf8.String {
@@ -231,16 +334,6 @@ func (v Value) IsWellFormed() bool {
 	return wtf8.IsWellFormed(v.O.Str())
 }
 
-// CompareStrings orders a and b by UTF-16 code units and returns -1, 0, or 1.
-// Both values must be strings.
-func CompareStrings(a, b Value) int {
-	aN, bN := a.StringByteLength(), b.StringByteLength()
-	if aN <= shortstrings.MaxBytes && bN <= shortstrings.MaxBytes {
-		return shortstrings.Compare(math.Float64bits(a.N), aN, math.Float64bits(b.N), bN)
-	}
-	return wtf8.Compare(a.Str(), b.Str())
-}
-
 // AppendStringBytes appends the string value's canonical WTF-8 bytes to dst.
 func (v Value) AppendStringBytes(dst []byte) []byte {
 	if v.IsShortString() {
@@ -248,4 +341,13 @@ func (v Value) AppendStringBytes(dst []byte) []byte {
 		return append(dst, data[:len(v.O.Text)]...)
 	}
 	return append(dst, v.O.Str()...)
+}
+
+// IsASCII reports whether s, which is the str of v when v is a string, consists of ASCII
+// characters only.
+func IsASCII(v Value, s wtf8.String) bool {
+	if v.IsString() && !v.IsShortString() {
+		return v.O.IsASCII()
+	}
+	return wtf8.IsASCII(s)
 }

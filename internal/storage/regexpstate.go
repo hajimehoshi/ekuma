@@ -35,6 +35,11 @@ type RegExpSite struct {
 	Lent *Object
 }
 
+// IsRegExpObject reports whether o is a RegExp object.
+func (o *Object) IsRegExpObject() bool {
+	return o.Class == ClassRegExp
+}
+
 // RegExpMatcher returns the compiled pattern of the RegExp object o,
 // or nil when o is not a RegExp object.
 func (o *Object) RegExpMatcher() *regexp.Regexp {

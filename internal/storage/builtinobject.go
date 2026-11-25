@@ -61,19 +61,6 @@ func NewNamespaceObject(s *Shape, state any) *Object {
 	}).Init()
 }
 
-// NewProxyObject is [NewExoticObject] for a proxy, whose [[Call]] and [[Construct]] are fn. fn is
-// nil for a proxy that is not callable.
-func NewProxyObject(s *Shape, state any, fn *Function) *Object {
-	return (&PropertyObject{
-		Kind:  KindObject,
-		Class: ClassProxy,
-		Flags: ObjExotic,
-		Shape: s,
-		Fn:    fn,
-		Ext:   state,
-	}).Init()
-}
-
 // NewGlobalObject returns a new object for global bindings with the shape s and room for n
 // properties. The inline caches of global variables point into its slots.
 func NewGlobalObject(s *Shape, n int) *Object {
