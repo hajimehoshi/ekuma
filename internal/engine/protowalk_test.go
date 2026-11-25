@@ -32,7 +32,7 @@ var protoReads = useCounts{
 		"space.noArrayIteratorReturn":    1,
 		"Context.delegates":              1,
 		"realmPart.assignDataProperties": 1,
-		"ExecutionContext.forInMayVisit": 1,
+		"ExecutionContext.forInAhead":    1,
 	},
 	protoAsks: {
 		"ExecutionContext.getIndex":             1,

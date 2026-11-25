@@ -256,12 +256,17 @@ const (
 	enumerableSome
 )
 
-// HasEnumerableString reports whether s has an enumerable property whose key is a string.
+// HasEnumerableString reports whether s has an enumerable property whose key is a string, checking
+// for an interruption while it looks at many.
 func (s *Shape) HasEnumerableString() bool {
 	if s.Private {
+		var n int
 		for k, p := range s.Table {
 			if isEnumerableString(k, p.Flags) {
 				return true
+			}
+			if n++; n%PollInterval == 0 {
+				s.Space.Poll()
 			}
 		}
 		return false

@@ -1903,6 +1903,49 @@ func TestCancelSearches(t *testing.T) {
 	}
 }
 
+// TestCancelScans checks that a loop of a built-in or of a for-in statement that looks for elements or
+// properties stops at its next step when its context is done, however few steps it takes.
+func TestCancelScans(t *testing.T) {
+	// No step after the cancellation calls a function, which would stop the script.
+	for _, tc := range []struct {
+		name string
+		src  string
+	}{
+		{
+			name: "for-in",
+			src: `
+				var o = Object.create({ a: 1 });
+				for (var k in (cancel(), o)) var after = true;`,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				var vm ekuma.VM
+				ctx, cancel := context.WithCancel(t.Context())
+				defer cancel()
+				if err := vm.Global().Set("cancel", vm.FuncOf("cancel", func(ekuma.Value, []ekuma.Value) (any, error) {
+					if ctx.Err() != nil {
+						t.Errorf("the scan continued after the cancellation")
+					}
+					cancel()
+					// Wait until the VM has received the cancellation.
+					synctest.Wait()
+					return nil, nil
+				})); err != nil {
+					t.Fatal(err)
+				}
+				_, err := runScript(ctx, &vm, "scan", tc.src+"\nvar after = true;")
+				if !errors.Is(err, context.Canceled) {
+					t.Errorf("got %v, want context.Canceled", err)
+				}
+				if v, err := vm.Global().Get("after"); err != nil || v.Truthy() {
+					t.Errorf("after = %v, %v: the script continued after the scan", v, err)
+				}
+			})
+		})
+	}
+}
+
 func TestInternalError(t *testing.T) {
 	var vm ekuma.VM
 	cause := errors.New("broken data")

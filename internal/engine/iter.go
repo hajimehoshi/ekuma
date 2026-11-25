@@ -543,6 +543,10 @@ type forIn struct {
 	// obj is the object whose keys come next, or nil when the loop is done.
 	obj *storage.Object
 
+	// ahead is the object last found on the prototype chain whose keys the loop might visit: obj or
+	// an object after it. The objects between them only hide keys. It is nil before the first search.
+	ahead *storage.Object
+
 	// The keys of obj that are left are the indices from index on that are below indices,
 	// which are elements of the receiver, followed by keys[pos:].
 	index, indices uint32
@@ -611,7 +615,8 @@ func (cx *ExecutionContext) forInNext(o *storage.Object) (storage.Value, bool) {
 				return cx.indexString(i), true
 			}
 		}
-		for it.pos < len(it.keys) {
+		// The post statement runs only after a key that does not come up.
+		for ; it.pos < len(it.keys); cx.PollAt(int64(it.pos)) {
 			k := it.keys[it.pos]
 			it.pos++
 			if k.IsSymbol() {
@@ -646,9 +651,13 @@ func (cx *ExecutionContext) forInNext(o *storage.Object) (storage.Value, bool) {
 // prototype of that object.
 func (cx *ExecutionContext) forInNextObject(it *forIn) {
 	proto := cx.ProtoOf(it.obj)
-	if !cx.forInMayVisit(proto) {
-		it.obj = nil
-		return
+	if it.ahead == nil || it.ahead == it.obj {
+		if it.ahead = cx.forInAhead(proto); it.ahead == nil {
+			it.obj = nil
+			return
+		}
+	} else {
+		cx.PollStep()
 	}
 	if it.visited == nil {
 		cx.forInVisitReceiver(it)
@@ -659,30 +668,31 @@ func (cx *ExecutionContext) forInNextObject(it *forIn) {
 	it.pos = 0
 }
 
-// forInMayVisit reports whether a for-in loop might visit a key of o or of its prototypes. When
-// it reports false, visiting the keys of those objects would have no observable effect.
-func (cx *ExecutionContext) forInMayVisit(o *storage.Object) bool {
+// forInAhead returns the first of o and its prototypes whose keys a for-in loop might visit. When
+// it returns nil, visiting the keys of those objects would have no observable effect.
+func (cx *ExecutionContext) forInAhead(o *storage.Object) *storage.Object {
 	for ; o != nil; o = o.Shape().Proto {
+		cx.PollStep()
 		if o.Class == storage.ClassProxy || o.Class == storage.ClassModuleNamespace {
-			return true
+			return o
 		}
 		if o.Flags()&storage.ObjExotic != 0 {
 			cx.resolve(o)
 			if o.Flags()&storage.ObjExotic != 0 {
-				return true
+				return o
 			}
 		}
 		if o.Class == storage.ClassString && o.ExtState().(*storage.Object).StringLength() > 0 {
-			return true
+			return o
 		}
 		if o.HasElement() {
-			return true
+			return o
 		}
 		if o.Shape().HasEnumerableString() {
-			return true
+			return o
 		}
 	}
-	return false
+	return nil
 }
 
 // forInVisitReceiver records the keys that the for-in iterator it visited on the receiver,

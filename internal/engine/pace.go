@@ -39,6 +39,14 @@ func (ag *agent) PollAt(i int64) {
 	}
 }
 
+// PollStep calls [agent.Poll] when an interruption may be pending. It is for every step of a loop
+// whose steps can be long, such as looking up a property in a long prototype chain.
+func (ag *agent) PollStep() {
+	if ag.InterruptFlag.Load() {
+		ag.Poll()
+	}
+}
+
 // CopyPolled is copy for slices that do not overlap, checking for an interruption while it
 // copies many elements.
 func CopyPolled[T any](cx *ExecutionContext, dst, src []T) int {

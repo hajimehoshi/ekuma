@@ -637,9 +637,18 @@ func (o *Object) StoreElement(i uint32, v Value) {
 	o.elems[i] = v
 }
 
-// HasElement reports whether o holds an element.
+// HasElement reports whether o holds an element, checking for an interruption while it looks at
+// many.
 func (o *Object) HasElement() bool {
-	return slices.ContainsFunc(o.elems, func(e Value) bool { return !e.IsHole() })
+	for i, e := range o.elems {
+		if !e.IsHole() {
+			return true
+		}
+		if i%PollInterval == PollInterval-1 {
+			o.shape.Space.Poll()
+		}
+	}
+	return false
 }
 
 // HasHole reports whether one of the elements of o is a hole.

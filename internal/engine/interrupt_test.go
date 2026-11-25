@@ -44,3 +44,44 @@ func TestSearchPollsForLongPattern(t *testing.T) {
 		t.Errorf("got %d polls, want at least %d", polls, want)
 	}
 }
+
+// TestLongPassesPoll checks that a pass over many properties or elements of one object stops when
+// an interruption is pending.
+func TestLongPassesPoll(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		src  string
+		pass func(cx *engine.ExecutionContext, o *storage.Object)
+	}{
+		{
+			name: "search for an enumerable property",
+			src:  `for (i = 0; i < 1 << 16; i++) Object.defineProperty(o, "p" + i, { value: 0 });`,
+			pass: func(cx *engine.ExecutionContext, o *storage.Object) {
+				o.Shape().HasEnumerableString()
+			},
+		},
+		{
+			name: "search for an element",
+			src:  `for (i = 0; i < 1 << 16; i++) o[i] = 0; for (i in o) delete o[i];`,
+			pass: func(cx *engine.ExecutionContext, o *storage.Object) {
+				o.HasElement()
+			},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cx := newTestContext(t)
+			pass := cx.NewFunction("pass", func(cx *engine.ExecutionContext, _ storage.Value, args []storage.Value) storage.Value {
+				cx.Interrupt(nil)
+				tc.pass(cx, args[0].Object())
+				t.Error("the pass ended")
+				return storage.Undefined
+			})
+			if err := cx.HostSet(cx.GlobalObject(), cx.StringFromGo("pass"), pass); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := runScript(cx, "pass", `var i, o = {}; `+tc.src+` pass(o);`); err == nil {
+				t.Error("the script was not interrupted")
+			}
+		})
+	}
+}
