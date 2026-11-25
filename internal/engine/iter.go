@@ -79,12 +79,6 @@ const (
 // It must decline incompatible state without advancing, and must neither throw nor run JavaScript.
 type IteratorPairStepFunc func(state any) (a, b Value, st PairStep)
 
-// SetIteratorPairStep registers the pair step of a built-in next method, for which the contract
-// of its step holds.
-func (ag *agent) SetIteratorPairStep(next *Object, step IteratorPairStepFunc) {
-	next.fn.info.fast.pairStep = step
-}
-
 // IteratorYieldRealm identifies where a built-in iterator creates a yielded result.
 type IteratorYieldRealm uint8
 
@@ -95,65 +89,6 @@ const (
 	// IteratorClosureRealm is the creation realm of an iterator produced by CreateIteratorFromClosure.
 	IteratorClosureRealm
 )
-
-// newIteratorNext creates the result-returning form of an iterator's next method.
-func (cx *ExecutionContext) newIteratorNext(yieldRealm IteratorYieldRealm, step IteratorStepFunc) *Object {
-	return cx.NewNative("next", 0, func(cx *ExecutionContext, this Value, args []Value) Value {
-		v, ok := step(cx, this)
-		if !ok {
-			return cx.CreateIterResultObject(Undefined, true)
-		}
-		if yieldRealm == IteratorClosureRealm {
-			return this.o.CreationContext().CreateIterResultObject(v, false)
-		}
-		return cx.CreateIterResultObject(v, false)
-	})
-}
-
-// NewIteratorNext returns the next method of a built-in iterator, which returns the iterator
-// result for what step returns.
-func (cx *ExecutionContext) NewIteratorNext(yieldRealm IteratorYieldRealm, step IteratorStepFunc) *Object {
-	o := cx.newIteratorNext(yieldRealm, step)
-	o.fn.info.fast = &nativeFast{
-		step: func(cx *ExecutionContext, this Value) (Value, bool) {
-			cx.pushNative(o, this, nil)
-			v, ok := step(cx, this)
-			cx.popNative()
-			return v, ok
-		},
-		contract: ShortcutContract{
-			Frame: FrameRecorded,
-			Pace:  PacePolled,
-		},
-	}
-	return o
-}
-
-// NewPlainIteratorNext returns a next method for iterators with state T.
-// For a compatible receiver, step must neither throw nor run JavaScript.
-func NewPlainIteratorNext[T any](cx *ExecutionContext, yieldRealm IteratorYieldRealm, receiverError string, step func(QuietContext, *Object, T) (Value, bool)) *Object {
-	next := cx.newIteratorNext(yieldRealm, func(cx *ExecutionContext, this Value) (Value, bool) {
-		state, ok := IteratorState(this).(T)
-		if !ok {
-			cx.ThrowTypeError(receiverError)
-		}
-		return step(cx.Quiet(), this.o, state)
-	})
-	next.fn.info.fast = &nativeFast{
-		step: func(cx *ExecutionContext, this Value) (Value, bool) {
-			if state, ok := IteratorState(this).(T); ok {
-				return step(cx.Quiet(), this.o, state)
-			}
-			// The receiver error belongs to the native next call.
-			return cx.Call(next, this), false
-		},
-		contract: ShortcutContract{
-			Frame: FrameUnobservable,
-			Pace:  PaceShort,
-		},
-	}
-	return next
-}
 
 // IterationKind identifies what an iterator yields.
 type IterationKind uint8
@@ -183,49 +118,60 @@ func (cx *ExecutionContext) newArrayIterator(o *Object, kind IterationKind, next
 	})
 }
 
+// nativeArrayIteratorNext is the next method of array iterators.
+var nativeArrayIteratorNext = registerNative(arrayIteratorNext, &nativeFast{
+	step:       arrayIteratorFastStep,
+	arrayIndex: arrayIteratorIndex,
+	contract: ShortcutContract{
+		Frame: FrameRecorded,
+		Pace:  PacePolled,
+	},
+})
+
 // NewArrayIteratorNext returns the next method of array iterators.
 func (cx *ExecutionContext) NewArrayIteratorNext() *Object {
-	next := cx.newIteratorNext(IteratorMethodRealm, func(cx *ExecutionContext, this Value) (Value, bool) {
-		it, _ := IteratorState(this).(*arrayIterator)
-		key, value, st := it.stepPlain(cx.Quiet())
-		if st == PairDeclined {
-			key, value, st = it.step(cx)
-		}
-		if st != PairYielded {
-			return Undefined, false
-		}
-		return it.result(cx.Quiet(), key, value), true
-	})
-	next.fn.info.fast = &nativeFast{
-		step: func(cx *ExecutionContext, this Value) (Value, bool) {
-			it, _ := IteratorState(this).(*arrayIterator)
-			key, value, st := it.stepPlain(cx.Quiet())
-			if st == PairDeclined {
-				cx.pushNative(next, this, nil)
-				key, value, st = it.step(cx)
-				cx.popNative()
-			}
-			if st != PairYielded {
-				return Undefined, false
-			}
-			return it.result(cx.Quiet(), key, value), true
-		},
-		arrayIndex: func(cx *ExecutionContext, o *Object, i uint32) Value {
-			// Only the receiver's type name is visible on a native frame. The
-			// unmaterialized iterator inherits that name from its prototype.
-			proto := cx.Intrinsic(IntrinsicArrayIteratorPrototype)
-			cx.pushNative(next, Value{o: proto}, nil)
-			cx.Poll()
-			v := cx.Index(Value{o: o}, i)
-			cx.popNative()
-			return v
-		},
-		contract: ShortcutContract{
-			Frame: FrameRecorded,
-			Pace:  PacePolled,
-		},
+	return cx.NewNative("next", 0, nativeArrayIteratorNext)
+}
+
+// arrayIteratorNext is the code of the next method of array iterators.
+func arrayIteratorNext(cx *ExecutionContext, this Value, args []Value) Value {
+	it, _ := IteratorState(this).(*arrayIterator)
+	key, value, st := it.stepPlain(cx.Quiet())
+	if st == PairDeclined {
+		key, value, st = it.step(cx)
 	}
-	return next
+	if st != PairYielded {
+		return cx.CreateIterResultObject(Undefined, true)
+	}
+	return cx.CreateIterResultObject(it.result(cx.Quiet(), key, value), false)
+}
+
+// arrayIteratorFastStep is the step of the next method of array iterators of the running realm.
+func arrayIteratorFastStep(cx *ExecutionContext, this Value) (Value, bool) {
+	it, _ := IteratorState(this).(*arrayIterator)
+	key, value, st := it.stepPlain(cx.Quiet())
+	if st == PairDeclined {
+		cx.pushNative(cx.Intrinsic(IntrinsicArrayIteratorPrototypeNext), this, nil)
+		key, value, st = it.step(cx)
+		cx.popNative()
+	}
+	if st != PairYielded {
+		return Undefined, false
+	}
+	return it.result(cx.Quiet(), key, value), true
+}
+
+// arrayIteratorIndex reads the element i of o for the next method of array iterators of the running
+// realm.
+func arrayIteratorIndex(cx *ExecutionContext, o *Object, i uint32) Value {
+	// Only the receiver's type name is visible on a native frame. The
+	// unmaterialized iterator inherits that name from its prototype.
+	proto := cx.Intrinsic(IntrinsicArrayIteratorPrototype)
+	cx.pushNative(cx.Intrinsic(IntrinsicArrayIteratorPrototypeNext), Value{o: proto}, nil)
+	cx.Poll()
+	v := cx.Index(Value{o: o}, i)
+	cx.popNative()
+	return v
 }
 
 func (cx *ExecutionContext) arrayIteratorPairStep(it, next Value) (Value, Value, PairStep) {
@@ -352,6 +298,9 @@ const (
 	iterFailed
 )
 
+// stepDeclined is the value of a step that declines. No iterator yields it.
+var stepDeclined = &Object{kind: kindHole}
+
 // iterNext calls the next method next of the iterator it, as for-of and destructuring do.
 // It returns the value with iterValue, or iterDone when the iterator is done. When the result
 // is not an object or reading it throws, it returns iterFailed with the exception pending:
@@ -361,21 +310,30 @@ const (
 // the iterator result, whose reading would have no observable effect.
 func (cx *ExecutionContext) iterNext(it, next Value) (Value, int) {
 	f := next.o
-	var step IteratorStepFunc
 	if f != nil && f.fn != nil {
-		step = f.fn.iteratorStep(cx.realm)
+		if fast := f.fn.iteratorFast(cx.realm); fast != nil {
+			if fast.step != nil {
+				if cx.interrupt.Load() {
+					cx.Poll()
+				}
+				v, ok := fast.step(cx, it)
+				if ok {
+					return v, iterValue
+				}
+				if v.o != stepDeclined {
+					return Undefined, iterDone
+				}
+			} else if fast.framedStep != nil {
+				v, ok := cx.stepFramed(f, fast.framedStep, it)
+				if !ok {
+					return Undefined, iterDone
+				}
+				return v, iterValue
+			}
+		}
 	}
 	var r Value
 	switch {
-	case step != nil:
-		if cx.interrupt.Load() {
-			cx.Poll()
-		}
-		v, ok := step(cx, it)
-		if !ok {
-			return Undefined, iterDone
-		}
-		return v, iterValue
 	case f != nil && f == cx.Intrinsic(IntrinsicGeneratorPrototypeNext) && isSyncGenerator(it):
 		if cx.interrupt.Load() {
 			cx.Poll()
@@ -414,6 +372,17 @@ func (cx *ExecutionContext) iterNext(it, next Value) (Value, int) {
 	return v, iterValue
 }
 
+// stepFramed steps the iterator it with step in the frame of its next method next.
+func (cx *ExecutionContext) stepFramed(next *Object, step IteratorStepFunc, it Value) (Value, bool) {
+	if cx.interrupt.Load() {
+		cx.Poll()
+	}
+	cx.pushNative(next, it, nil)
+	v, ok := step(cx, it)
+	cx.popNative()
+	return v, ok
+}
+
 // IteratorStepValue implements IteratorStepValue for the iterator it and its next method next:
 // it returns the next value, or reports false when the iterator is done.
 func (cx *ExecutionContext) IteratorStepValue(it, next Value) (Value, bool) {
@@ -424,12 +393,18 @@ func (cx *ExecutionContext) IteratorStepValue(it, next Value) (Value, bool) {
 // without the result: it reports false when the iterator is done.
 func (cx *ExecutionContext) IteratorStep(it, next Value) bool {
 	if f := next.o; f != nil && f.fn != nil {
-		if step := f.fn.iteratorStep(cx.realm); step != nil {
-			if cx.interrupt.Load() {
-				cx.Poll()
+		if fast := f.fn.iteratorFast(cx.realm); fast != nil {
+			if fast.step != nil {
+				if cx.interrupt.Load() {
+					cx.Poll()
+				}
+				if v, ok := fast.step(cx, it); ok || v.o != stepDeclined {
+					return ok
+				}
+			} else if fast.framedStep != nil {
+				_, ok := cx.stepFramed(f, fast.framedStep, it)
+				return ok
 			}
-			_, ok := step(cx, it)
-			return ok
 		}
 	}
 	r := cx.CallValue(next, it)

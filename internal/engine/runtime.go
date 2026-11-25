@@ -1525,33 +1525,31 @@ func (cx *ExecutionContext) GetPrototypeFromConstructor(ctor *Object, defaultPro
 	panic("engine: uninitialized intrinsic prototype " + strconv.Itoa(int(defaultProto)))
 }
 
-// NewNative returns a function implemented in Go.
-func (cx *ExecutionContext) NewNative(name wtf8.String, length int, f NativeFunc) *Object {
+// NewNative returns a function object of the native function f.
+func (cx *ExecutionContext) NewNative(name wtf8.String, length int, f Native) *Object {
+	return cx.NewNativeWithState(name, length, f, nil)
+}
+
+// NewNativeWithState returns a function object of the native function f whose internal slots are state.
+// f finds them with [agent.ActiveNativeState].
+func (cx *ExecutionContext) NewNativeWithState(name wtf8.String, length int, f Native, state any) *Object {
 	n := &nativeObject{
 		kind:  kindFunction,
 		class: classFunction,
 		flags: objExotic,
 		shape: cx.realm.shapes.function,
-		state: function{
-			native: f,
-		},
+		ext:   state,
 		info: nativeInfo{
+			native: f,
 			name:   name,
 			length: int32(length),
+			fast:   f.fast(),
 			realm:  cx.realm,
 		},
 	}
 	n.fn = &n.state
 	n.state.info = &n.info
 	return n.init()
-}
-
-// NewNativeWithState returns a function implemented in Go whose internal slots are state.
-// f finds them with [agent.ActiveNativeState].
-func (cx *ExecutionContext) NewNativeWithState(name wtf8.String, length int, f NativeFunc, state any) *Object {
-	o := cx.NewNative(name, length, f)
-	o.ext = state
-	return o
 }
 
 // ShortcutFrame states how a shortcut accounts for the frame that calls of its function show.
@@ -1599,19 +1597,6 @@ type (
 	NumberKernel2 func(x, y float64) float64
 )
 
-// SetNumberKernels makes a call of the native function f with exactly one or two arguments that
-// are numbers call k1 or k2 instead, which must return what f returns for those arguments.
-// Either may be nil. c is the contract of the kernels.
-func (ag *agent) SetNumberKernels(f *Object, c ShortcutContract, k1 NumberKernel1, k2 NumberKernel2) {
-	info := f.fn.changeableInfo()
-	if info.fast == nil {
-		info.fast = &nativeFast{}
-	}
-	info.fast.contract = c
-	info.fast.number1 = k1
-	info.fast.number2 = k2
-}
-
 // Extremum identifies Math.min or Math.max for [agent.SetExtremum].
 type Extremum uint8
 
@@ -1642,20 +1627,6 @@ type (
 	MethodKernel2 func(q QuietContext, this, x, y Value) (Value, bool)
 )
 
-// SetMethodKernels makes a call of the native function f with exactly no, one or two arguments
-// try k0, k1 or k2 first. When the kernel reports true, its result must be what f returns for the
-// call. Any of them may be nil. c is the contract of the kernels.
-func (ag *agent) SetMethodKernels(f *Object, c ShortcutContract, k0 MethodKernel0, k1 MethodKernel1, k2 MethodKernel2) {
-	info := f.fn.changeableInfo()
-	if info.fast == nil {
-		info.fast = &nativeFast{}
-	}
-	info.fast.contract = c
-	info.fast.method0 = k0
-	info.fast.method1 = k1
-	info.fast.method2 = k2
-}
-
 // nativeObject is a native function object together with its function state and description,
 // so that creating one is a single allocation.
 type nativeObject struct {
@@ -1664,9 +1635,9 @@ type nativeObject struct {
 	info  nativeInfo
 }
 
-// NewNativeConstructor returns a function implemented in Go that can be called with new.
+// NewNativeConstructor returns a function object of the native function f that can be called with new.
 // f learns the constructor it is constructing for from [agent.GetNewTarget].
-func (cx *ExecutionContext) NewNativeConstructor(name wtf8.String, length int, f NativeFunc) *Object {
+func (cx *ExecutionContext) NewNativeConstructor(name wtf8.String, length int, f Native) *Object {
 	o := cx.NewNative(name, length, f)
 	o.fn.constructor = true
 	return o

@@ -125,10 +125,20 @@ func setIgnoringIteratorPrototype(cx *engine.ExecutionContext, this engine.Value
 	setterThatIgnoresPrototypeProperties(cx, this, cx.Intrinsic(engine.IntrinsicIteratorPrototype), engine.NamedKey(key), v, "Iterator.prototype setter")
 }
 
+var (
+	nativeIteratorConstructor       = engine.RegisterNative(iteratorConstructor)
+	nativeIteratorConstructorGetter = engine.RegisterNative(iteratorConstructorGetter)
+	nativeIteratorConstructorSetter = engine.RegisterNative(iteratorConstructorSetter)
+	nativeIteratorToStringTagGetter = engine.RegisterNative(iteratorToStringTagGetter)
+	nativeIteratorToStringTagSetter = engine.RegisterNative(iteratorToStringTagSetter)
+	nativeIteratorDispose           = engine.RegisterNative(iteratorDispose)
+	nativeIteratorHelperReturn      = engine.RegisterNative(iteratorHelperReturn)
+)
+
 // initIteratorHelpers defines Iterator and the iterator helpers.
 func initIteratorHelpers(cx *engine.ExecutionContext) {
 	proto := cx.Intrinsic(engine.IntrinsicIteratorPrototype)
-	ctor := cx.NewNativeConstructor("Iterator", 0, iteratorConstructor)
+	ctor := cx.NewNativeConstructor("Iterator", 0, nativeIteratorConstructor)
 	cx.SetIntrinsic(engine.IntrinsicIterator, ctor)
 	cx.DefineConstructorPrototype(ctor, engine.IntrinsicIteratorPrototype)
 	cx.Define(cx.GlobalObject().Object(), cx.Intern("Iterator"), engine.ObjectValue(ctor), engine.FlagsHidden)
@@ -136,21 +146,21 @@ func initIteratorHelpers(cx *engine.ExecutionContext) {
 	// The properties that Iterator.prototype had in earlier editions are accessors whose setters
 	// ignore the prototype.
 	cx.DefineAccessor(proto, cx.Key(engine.KeyConstructor),
-		cx.NewNative("get constructor", 0, iteratorConstructorGetter),
-		cx.NewNative("set constructor", 1, iteratorConstructorSetter),
+		cx.NewNative("get constructor", 0, nativeIteratorConstructorGetter),
+		cx.NewNative("set constructor", 1, nativeIteratorConstructorSetter),
 		engine.FlagConfigurable)
 	tag := cx.SharedString("Iterator")
 	cx.DefineAccessor(proto, cx.WellKnownSymbol(engine.SymbolToStringTag),
-		cx.NewNativeWithState("get [Symbol.toStringTag]", 0, iteratorToStringTagGetter, &tag),
-		cx.NewNative("set [Symbol.toStringTag]", 1, iteratorToStringTagSetter),
+		cx.NewNativeWithState("get [Symbol.toStringTag]", 0, nativeIteratorToStringTagGetter, &tag),
+		cx.NewNative("set [Symbol.toStringTag]", 1, nativeIteratorToStringTagSetter),
 		engine.FlagConfigurable)
 
-	symMethod(cx, proto, cx.WellKnownSymbol(engine.SymbolDispose), "[Symbol.dispose]", 0, iteratorDispose)
+	symMethod(cx, proto, cx.WellKnownSymbol(engine.SymbolDispose), "[Symbol.dispose]", 0, nativeIteratorDispose)
 
 	helperProto := cx.NewObject(proto)
 	cx.SetIntrinsic(engine.IntrinsicIteratorHelperPrototype, helperProto)
-	iteratorNext(cx, helperProto, engine.IteratorClosureRealm, iteratorHelperStep)
-	method(cx, helperProto, "return", 0, iteratorHelperReturn)
+	method(cx, helperProto, "next", 0, nativeIteratorHelperNext)
+	method(cx, helperProto, "return", 0, nativeIteratorHelperReturn)
 	cx.Define(helperProto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Iterator Helper"), engine.FlagConfigurable)
 
 	initIteratorFrom(cx, ctor)
@@ -193,6 +203,9 @@ func iteratorDispose(cx *engine.ExecutionContext, this engine.Value, args []engi
 	return engine.Undefined
 }
 
+// nativeIteratorHelperNext is %IteratorHelperPrototype%.next.
+var nativeIteratorHelperNext = engine.RegisterIteratorNext(engine.IteratorClosureRealm, iteratorHelperStep)
+
 func iteratorHelperStep(cx *engine.ExecutionContext, this engine.Value) (engine.Value, bool) {
 	return resumeHelper(cx, this, engine.ResumeNext)
 }
@@ -217,12 +230,18 @@ func throwNotWrappedIterator(cx *engine.ExecutionContext, what string) {
 	cx.ThrowTypeError("%WrapForValidIteratorPrototype%." + what + " called on an incompatible receiver")
 }
 
+var (
+	nativeWrappedIteratorNext   = engine.RegisterNative(wrappedIteratorNext)
+	nativeWrappedIteratorReturn = engine.RegisterNative(wrappedIteratorReturn)
+	nativeIteratorFrom          = engine.RegisterNative(iteratorFrom)
+)
+
 func initIteratorFrom(cx *engine.ExecutionContext, ctor *engine.Object) {
 	wrapProto := cx.NewObject(cx.Intrinsic(engine.IntrinsicIteratorPrototype))
 	cx.SetIntrinsic(engine.IntrinsicWrapForValidIteratorPrototype, wrapProto)
-	method(cx, wrapProto, "next", 0, wrappedIteratorNext)
-	method(cx, wrapProto, "return", 0, wrappedIteratorReturn)
-	method(cx, ctor, "from", 1, iteratorFrom)
+	method(cx, wrapProto, "next", 0, nativeWrappedIteratorNext)
+	method(cx, wrapProto, "return", 0, nativeWrappedIteratorReturn)
+	method(cx, ctor, "from", 1, nativeIteratorFrom)
 }
 
 func wrappedIteratorNext(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -285,8 +304,10 @@ func (h *concatHelper) close(cx *engine.ExecutionContext) {
 	}
 }
 
+var nativeIteratorConcat = engine.RegisterNative(iteratorConcat)
+
 func initIteratorConcat(cx *engine.ExecutionContext, ctor *engine.Object) {
-	method(cx, ctor, "concat", 0, iteratorConcat)
+	method(cx, ctor, "concat", 0, nativeIteratorConcat)
 }
 
 func iteratorConcat(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -455,9 +476,14 @@ func zipOptions(cx *engine.ExecutionContext, iterables, opts engine.Value) (zipM
 	return mode, pad
 }
 
+var (
+	nativeIteratorZip      = engine.RegisterNative(iteratorZip)
+	nativeIteratorZipKeyed = engine.RegisterNative(iteratorZipKeyed)
+)
+
 func initIteratorZip(cx *engine.ExecutionContext, ctor *engine.Object) {
-	method(cx, ctor, "zip", 1, iteratorZip)
-	method(cx, ctor, "zipKeyed", 1, iteratorZipKeyed)
+	method(cx, ctor, "zip", 1, nativeIteratorZip)
+	method(cx, ctor, "zipKeyed", 1, nativeIteratorZipKeyed)
 }
 
 func iteratorZip(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -796,16 +822,26 @@ func (h *chunksHelper) close(cx *engine.ExecutionContext) {
 	}
 }
 
+var (
+	nativeIteratorMap     = engine.RegisterNative(iteratorMap)
+	nativeIteratorFilter  = engine.RegisterNative(iteratorFilter)
+	nativeIteratorTake    = engine.RegisterNative(iteratorTake)
+	nativeIteratorDrop    = engine.RegisterNative(iteratorDrop)
+	nativeIteratorFlatMap = engine.RegisterNative(iteratorFlatMap)
+	nativeIteratorChunks  = engine.RegisterNative(iteratorChunks)
+	nativeIteratorWindows = engine.RegisterNative(iteratorWindows)
+)
+
 // initLazyIteratorMethods defines the methods of Iterator.prototype that return iterator helpers.
 func initLazyIteratorMethods(cx *engine.ExecutionContext) {
 	proto := cx.Intrinsic(engine.IntrinsicIteratorPrototype)
-	method(cx, proto, "map", 1, iteratorMap)
-	method(cx, proto, "filter", 1, iteratorFilter)
-	method(cx, proto, "take", 1, iteratorTake)
-	method(cx, proto, "drop", 1, iteratorDrop)
-	method(cx, proto, "flatMap", 1, iteratorFlatMap)
-	method(cx, proto, "chunks", 1, iteratorChunks)
-	method(cx, proto, "windows", 1, iteratorWindows)
+	method(cx, proto, "map", 1, nativeIteratorMap)
+	method(cx, proto, "filter", 1, nativeIteratorFilter)
+	method(cx, proto, "take", 1, nativeIteratorTake)
+	method(cx, proto, "drop", 1, nativeIteratorDrop)
+	method(cx, proto, "flatMap", 1, nativeIteratorFlatMap)
+	method(cx, proto, "chunks", 1, nativeIteratorChunks)
+	method(cx, proto, "windows", 1, nativeIteratorWindows)
 }
 
 func iteratorMap(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -903,17 +939,28 @@ func searchIterator(cx *engine.ExecutionContext, this engine.Value, args []engin
 	return result, found
 }
 
+var (
+	nativeIteratorReduce   = engine.RegisterNative(iteratorReduce)
+	nativeIteratorToArray  = engine.RegisterNative(iteratorToArray)
+	nativeIteratorForEach  = engine.RegisterNative(iteratorForEach)
+	nativeIteratorSome     = engine.RegisterNative(iteratorSome)
+	nativeIteratorEvery    = engine.RegisterNative(iteratorEvery)
+	nativeIteratorFind     = engine.RegisterNative(iteratorFind)
+	nativeIteratorIncludes = engine.RegisterNative(iteratorIncludes)
+	nativeIteratorJoin     = engine.RegisterNative(iteratorJoin)
+)
+
 // initEagerIteratorMethods defines the methods of Iterator.prototype that consume the iterator.
 func initEagerIteratorMethods(cx *engine.ExecutionContext) {
 	proto := cx.Intrinsic(engine.IntrinsicIteratorPrototype)
-	method(cx, proto, "reduce", 1, iteratorReduce)
-	method(cx, proto, "toArray", 0, iteratorToArray)
-	method(cx, proto, "forEach", 1, iteratorForEach)
-	method(cx, proto, "some", 1, iteratorSome)
-	method(cx, proto, "every", 1, iteratorEvery)
-	method(cx, proto, "find", 1, iteratorFind)
-	method(cx, proto, "includes", 1, iteratorIncludes)
-	method(cx, proto, "join", 1, iteratorJoin)
+	method(cx, proto, "reduce", 1, nativeIteratorReduce)
+	method(cx, proto, "toArray", 0, nativeIteratorToArray)
+	method(cx, proto, "forEach", 1, nativeIteratorForEach)
+	method(cx, proto, "some", 1, nativeIteratorSome)
+	method(cx, proto, "every", 1, nativeIteratorEvery)
+	method(cx, proto, "find", 1, nativeIteratorFind)
+	method(cx, proto, "includes", 1, nativeIteratorIncludes)
+	method(cx, proto, "join", 1, nativeIteratorJoin)
 }
 
 func iteratorReduce(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {

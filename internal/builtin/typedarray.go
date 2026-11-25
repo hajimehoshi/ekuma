@@ -607,56 +607,84 @@ func throwNotTypedArray(cx *engine.ExecutionContext, what string) {
 	cx.ThrowTypeError("%TypedArray%.prototype." + what + ": this is not a typed array")
 }
 
+var (
+	nativeTypedArrayConstructor    = engine.RegisterNative(typedArrayConstructor)
+	nativeTypedArrayFrom           = engine.RegisterNative(typedArrayFrom)
+	nativeTypedArrayOf             = engine.RegisterNative(typedArrayOf)
+	nativeTypedArrayBuffer         = engine.RegisterNative(typedArrayBuffer)
+	nativeTypedArrayByteLength     = engine.RegisterNative(typedArrayByteLength)
+	nativeTypedArrayByteOffset     = engine.RegisterNative(typedArrayByteOffset)
+	nativeTypedArrayLengthGetter   = engine.RegisterNative(typedArrayLengthGetter)
+	nativeTypedArrayToStringTag    = engine.RegisterNative(typedArrayToStringTag)
+	nativeTypedArrayAt             = engine.RegisterNative(typedArrayAt)
+	nativeTypedArrayCopyWithin     = engine.RegisterNative(typedArrayCopyWithin)
+	nativeTypedArrayEvery          = engine.RegisterNative(typedArrayEvery)
+	nativeTypedArrayForEach        = engine.RegisterNative(typedArrayForEach)
+	nativeTypedArrayFill           = engine.RegisterNative(typedArrayFill)
+	nativeTypedArrayFilter         = engine.RegisterNative(typedArrayFilter)
+	nativeTypedArrayJoin           = engine.RegisterNative(typedArrayJoin)
+	nativeTypedArrayMap            = engine.RegisterNative(typedArrayMap)
+	nativeTypedArrayReverse        = engine.RegisterNative(typedArrayReverse)
+	nativeTypedArraySet            = engine.RegisterNative(typedArraySet)
+	nativeTypedArraySlice          = engine.RegisterNative(typedArraySlice)
+	nativeTypedArraySort           = engine.RegisterNative(typedArraySort)
+	nativeTypedArraySubarray       = engine.RegisterNative(typedArraySubarray)
+	nativeTypedArrayToLocaleString = engine.RegisterNative(typedArrayToLocaleString)
+	nativeTypedArrayToReversed     = engine.RegisterNative(typedArrayToReversed)
+	nativeTypedArrayToSorted       = engine.RegisterNative(typedArrayToSorted)
+	nativeTypedArrayWith           = engine.RegisterNative(typedArrayWith)
+)
+
 func initTypedArrays(cx *engine.ExecutionContext) {
 	proto := cx.NewOrdinaryObject()
-	ctor := cx.NewNativeConstructor("TypedArray", 0, typedArrayConstructor)
+	ctor := cx.NewNativeConstructor("TypedArray", 0, nativeTypedArrayConstructor)
 	cx.Define(ctor, cx.Key(engine.KeyPrototype), engine.ObjectValue(proto), 0)
 	cx.Define(proto, cx.Key(engine.KeyConstructor), engine.ObjectValue(ctor), engine.FlagsHidden)
 	speciesGetter(cx, ctor)
 
-	method(cx, ctor, "from", 1, typedArrayFrom)
-	method(cx, ctor, "of", 0, typedArrayOf)
+	method(cx, ctor, "from", 1, nativeTypedArrayFrom)
+	method(cx, ctor, "of", 0, nativeTypedArrayOf)
 
-	getter(cx, proto, cx.Intern("buffer"), "buffer", typedArrayBuffer)
-	getter(cx, proto, cx.Intern("byteLength"), "byteLength", typedArrayByteLength)
-	getter(cx, proto, cx.Intern("byteOffset"), "byteOffset", typedArrayByteOffset)
-	lengthGetter := cx.NewNative("get length", 0, typedArrayLengthGetter)
+	getter(cx, proto, cx.Intern("buffer"), "buffer", nativeTypedArrayBuffer)
+	getter(cx, proto, cx.Intern("byteLength"), "byteLength", nativeTypedArrayByteLength)
+	getter(cx, proto, cx.Intern("byteOffset"), "byteOffset", nativeTypedArrayByteOffset)
+	lengthGetter := cx.NewNative("get length", 0, nativeTypedArrayLengthGetter)
 	cx.SetIntrinsic(engine.IntrinsicTypedArrayPrototypeLengthGetter, lengthGetter)
 	cx.DefineAccessor(proto, cx.Key(engine.KeyLength), lengthGetter, nil, engine.FlagConfigurable)
-	getter(cx, proto, cx.WellKnownSymbol(engine.SymbolToStringTag), "[Symbol.toStringTag]", typedArrayToStringTag)
+	getter(cx, proto, cx.WellKnownSymbol(engine.SymbolToStringTag), "[Symbol.toStringTag]", nativeTypedArrayToStringTag)
 
-	method(cx, proto, "at", 1, typedArrayAt)
-	method(cx, proto, "copyWithin", 2, typedArrayCopyWithin)
-	method(cx, proto, "entries", 0, typedArrayEntries)
-	method(cx, proto, "keys", 0, typedArrayKeys)
-	values := method(cx, proto, "values", 0, typedArrayValues)
+	method(cx, proto, "at", 1, nativeTypedArrayAt)
+	method(cx, proto, "copyWithin", 2, nativeTypedArrayCopyWithin)
+	method(cx, proto, "entries", 0, nativeTypedArrayEntries)
+	method(cx, proto, "keys", 0, nativeTypedArrayKeys)
+	values := method(cx, proto, "values", 0, nativeTypedArrayValues)
 	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolIterator), engine.ObjectValue(values), engine.FlagsHidden)
 
-	method(cx, proto, "find", 1, typedArrayFind)
-	method(cx, proto, "findIndex", 1, typedArrayFindIndex)
-	method(cx, proto, "findLast", 1, typedArrayFindLast)
-	method(cx, proto, "findLastIndex", 1, typedArrayFindLastIndex)
-	method(cx, proto, "some", 1, typedArraySome)
-	method(cx, proto, "every", 1, typedArrayEvery)
-	method(cx, proto, "forEach", 1, typedArrayForEach)
-	method(cx, proto, "fill", 1, typedArrayFill)
-	method(cx, proto, "filter", 1, typedArrayFilter)
-	method(cx, proto, "includes", 1, typedArrayIncludes)
-	method(cx, proto, "indexOf", 1, typedArrayIndexOf)
-	method(cx, proto, "lastIndexOf", 1, typedArrayLastIndexOf)
-	method(cx, proto, "join", 1, typedArrayJoin)
-	method(cx, proto, "map", 1, typedArrayMap)
-	method(cx, proto, "reduce", 1, typedArrayReduce)
-	method(cx, proto, "reduceRight", 1, typedArrayReduceRight)
-	method(cx, proto, "reverse", 0, typedArrayReverse)
-	method(cx, proto, "set", 1, typedArraySet)
-	method(cx, proto, "slice", 2, typedArraySlice)
-	method(cx, proto, "sort", 1, typedArraySort)
-	method(cx, proto, "subarray", 2, typedArraySubarray)
-	method(cx, proto, "toLocaleString", 0, typedArrayToLocaleString)
-	method(cx, proto, "toReversed", 0, typedArrayToReversed)
-	method(cx, proto, "toSorted", 1, typedArrayToSorted)
-	method(cx, proto, "with", 2, typedArrayWith)
+	method(cx, proto, "find", 1, nativeTypedArrayFind)
+	method(cx, proto, "findIndex", 1, nativeTypedArrayFindIndex)
+	method(cx, proto, "findLast", 1, nativeTypedArrayFindLast)
+	method(cx, proto, "findLastIndex", 1, nativeTypedArrayFindLastIndex)
+	method(cx, proto, "some", 1, nativeTypedArraySome)
+	method(cx, proto, "every", 1, nativeTypedArrayEvery)
+	method(cx, proto, "forEach", 1, nativeTypedArrayForEach)
+	method(cx, proto, "fill", 1, nativeTypedArrayFill)
+	method(cx, proto, "filter", 1, nativeTypedArrayFilter)
+	method(cx, proto, "includes", 1, nativeTypedArrayIncludes)
+	method(cx, proto, "indexOf", 1, nativeTypedArrayIndexOf)
+	method(cx, proto, "lastIndexOf", 1, nativeTypedArrayLastIndexOf)
+	method(cx, proto, "join", 1, nativeTypedArrayJoin)
+	method(cx, proto, "map", 1, nativeTypedArrayMap)
+	method(cx, proto, "reduce", 1, nativeTypedArrayReduce)
+	method(cx, proto, "reduceRight", 1, nativeTypedArrayReduceRight)
+	method(cx, proto, "reverse", 0, nativeTypedArrayReverse)
+	method(cx, proto, "set", 1, nativeTypedArraySet)
+	method(cx, proto, "slice", 2, nativeTypedArraySlice)
+	method(cx, proto, "sort", 1, nativeTypedArraySort)
+	method(cx, proto, "subarray", 2, nativeTypedArraySubarray)
+	method(cx, proto, "toLocaleString", 0, nativeTypedArrayToLocaleString)
+	method(cx, proto, "toReversed", 0, nativeTypedArrayToReversed)
+	method(cx, proto, "toSorted", 1, nativeTypedArrayToSorted)
+	method(cx, proto, "with", 2, nativeTypedArrayWith)
 	toString := cx.Get(cx.Intrinsic(engine.IntrinsicArrayPrototype), engine.NamedKey(cx.Key(engine.KeyToString)))
 	cx.Define(proto, cx.Key(engine.KeyToString), toString, engine.FlagsHidden)
 
@@ -799,9 +827,9 @@ func typedArrayCopyWithin(cx *engine.ExecutionContext, this engine.Value, args [
 }
 
 var (
-	typedArrayEntries = typedArrayIterationNative("entries", engine.IterateEntries)
-	typedArrayKeys    = typedArrayIterationNative("keys", engine.IterateKeys)
-	typedArrayValues  = typedArrayIterationNative("values", engine.IterateValues)
+	nativeTypedArrayEntries = engine.RegisterNative(typedArrayIterationNative("entries", engine.IterateEntries))
+	nativeTypedArrayKeys    = engine.RegisterNative(typedArrayIterationNative("keys", engine.IterateKeys))
+	nativeTypedArrayValues  = engine.RegisterNative(typedArrayIterationNative("values", engine.IterateValues))
 )
 
 // typedArrayIterationNative returns the method name of %TypedArray%.prototype, which returns an
@@ -816,11 +844,11 @@ func typedArrayIterationNative(name string, kind engine.IterationKind) engine.Na
 }
 
 var (
-	typedArrayFind          = typedArrayFindNative("find", false, foundElement)
-	typedArrayFindIndex     = typedArrayFindNative("findIndex", false, foundIndex)
-	typedArrayFindLast      = typedArrayFindNative("findLast", true, foundElement)
-	typedArrayFindLastIndex = typedArrayFindNative("findLastIndex", true, foundIndex)
-	typedArraySome          = typedArrayFindNative("some", false, foundAny)
+	nativeTypedArrayFind          = engine.RegisterNative(typedArrayFindNative("find", false, foundElement))
+	nativeTypedArrayFindIndex     = engine.RegisterNative(typedArrayFindNative("findIndex", false, foundIndex))
+	nativeTypedArrayFindLast      = engine.RegisterNative(typedArrayFindNative("findLast", true, foundElement))
+	nativeTypedArrayFindLastIndex = engine.RegisterNative(typedArrayFindNative("findLastIndex", true, foundIndex))
+	nativeTypedArraySome          = engine.RegisterNative(typedArrayFindNative("some", false, foundAny))
 )
 
 // typedArrayFindNative returns the method name of %TypedArray%.prototype, which calls a callback for
@@ -918,9 +946,9 @@ func typedArrayFilter(cx *engine.ExecutionContext, this engine.Value, args []eng
 }
 
 var (
-	typedArrayIncludes    = typedArraySearchNative("includes", false, true)
-	typedArrayIndexOf     = typedArraySearchNative("indexOf", false, false)
-	typedArrayLastIndexOf = typedArraySearchNative("lastIndexOf", true, false)
+	nativeTypedArrayIncludes    = engine.RegisterNative(typedArraySearchNative("includes", false, true))
+	nativeTypedArrayIndexOf     = engine.RegisterNative(typedArraySearchNative("indexOf", false, false))
+	nativeTypedArrayLastIndexOf = engine.RegisterNative(typedArraySearchNative("lastIndexOf", true, false))
 )
 
 // typedArraySearchNative returns the method name of %TypedArray%.prototype, which searches a typed
@@ -1015,8 +1043,8 @@ func typedArrayMap(cx *engine.ExecutionContext, this engine.Value, args []engine
 }
 
 var (
-	typedArrayReduce      = typedArrayReduceNative("reduce", false)
-	typedArrayReduceRight = typedArrayReduceNative("reduceRight", true)
+	nativeTypedArrayReduce      = engine.RegisterNative(typedArrayReduceNative("reduce", false))
+	nativeTypedArrayReduceRight = engine.RegisterNative(typedArrayReduceNative("reduceRight", true))
 )
 
 // typedArrayReduceNative returns the method name of %TypedArray%.prototype, which reduces a typed
@@ -1221,19 +1249,19 @@ func typedArrayWith(cx *engine.ExecutionContext, this engine.Value, args []engin
 	return engine.ObjectValue(a)
 }
 
-var typedArrayConstructors = [element.TypeCount]engine.NativeFunc{
-	element.Int8:         typedArrayConstructorNative(element.Int8),
-	element.Uint8:        typedArrayConstructorNative(element.Uint8),
-	element.Uint8Clamped: typedArrayConstructorNative(element.Uint8Clamped),
-	element.Int16:        typedArrayConstructorNative(element.Int16),
-	element.Uint16:       typedArrayConstructorNative(element.Uint16),
-	element.Int32:        typedArrayConstructorNative(element.Int32),
-	element.Uint32:       typedArrayConstructorNative(element.Uint32),
-	element.Float16:      typedArrayConstructorNative(element.Float16),
-	element.Float32:      typedArrayConstructorNative(element.Float32),
-	element.Float64:      typedArrayConstructorNative(element.Float64),
-	element.BigInt64:     typedArrayConstructorNative(element.BigInt64),
-	element.BigUint64:    typedArrayConstructorNative(element.BigUint64),
+var typedArrayConstructors = [element.TypeCount]engine.Native{
+	element.Int8:         engine.RegisterNative(typedArrayConstructorNative(element.Int8)),
+	element.Uint8:        engine.RegisterNative(typedArrayConstructorNative(element.Uint8)),
+	element.Uint8Clamped: engine.RegisterNative(typedArrayConstructorNative(element.Uint8Clamped)),
+	element.Int16:        engine.RegisterNative(typedArrayConstructorNative(element.Int16)),
+	element.Uint16:       engine.RegisterNative(typedArrayConstructorNative(element.Uint16)),
+	element.Int32:        engine.RegisterNative(typedArrayConstructorNative(element.Int32)),
+	element.Uint32:       engine.RegisterNative(typedArrayConstructorNative(element.Uint32)),
+	element.Float16:      engine.RegisterNative(typedArrayConstructorNative(element.Float16)),
+	element.Float32:      engine.RegisterNative(typedArrayConstructorNative(element.Float32)),
+	element.Float64:      engine.RegisterNative(typedArrayConstructorNative(element.Float64)),
+	element.BigInt64:     engine.RegisterNative(typedArrayConstructorNative(element.BigInt64)),
+	element.BigUint64:    engine.RegisterNative(typedArrayConstructorNative(element.BigUint64)),
 }
 
 // typedArrayConstructorNative returns the constructor of the typed arrays with elements of typ.

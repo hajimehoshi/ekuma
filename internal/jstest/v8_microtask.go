@@ -10,16 +10,20 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/engine"
 )
 
+var nativeQueueMicrotask = engine.RegisterNative(queueMicrotask)
+
 func installV8QueueMicrotask(cx *engine.ExecutionContext) {
-	queueMicrotask := cx.NewNative("queueMicrotask", 1, func(cx *engine.ExecutionContext, _ engine.Value, args []engine.Value) engine.Value {
-		var callback engine.Value
-		if len(args) != 0 {
-			callback = args[0]
-		}
-		cx.QueueMicrotask(callback)
-		return engine.Undefined
-	})
-	cx.Define(cx.GlobalObject().Object(), cx.Intern("queueMicrotask"), engine.ObjectValue(queueMicrotask), engine.FlagsHidden)
+	f := cx.NewNative("queueMicrotask", 1, nativeQueueMicrotask)
+	cx.Define(cx.GlobalObject().Object(), cx.Intern("queueMicrotask"), engine.ObjectValue(f), engine.FlagsHidden)
+}
+
+func queueMicrotask(cx *engine.ExecutionContext, _ engine.Value, args []engine.Value) engine.Value {
+	var callback engine.Value
+	if len(args) != 0 {
+		callback = args[0]
+	}
+	cx.QueueMicrotask(callback)
+	return engine.Undefined
 }
 
 // CheckQueueMicrotask checks the d8 binding and its microtask checkpoint.

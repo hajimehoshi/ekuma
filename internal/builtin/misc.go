@@ -43,11 +43,28 @@ func thisBoolean(cx *engine.ExecutionContext, this engine.Value, what string) bo
 	return b
 }
 
+var (
+	nativeNumberConstructor    = engine.RegisterNative(numberConstructor)
+	nativeNumberIsInteger      = engine.RegisterNative(numberIsInteger)
+	nativeNumberIsSafeInteger  = engine.RegisterNative(numberIsSafeInteger)
+	nativeNumberIsFinite       = engine.RegisterNative(numberIsFinite)
+	nativeNumberIsNaN          = engine.RegisterNative(numberIsNaN)
+	nativeNumberValueOf        = engine.RegisterNative(numberValueOf)
+	nativeNumberToString       = engine.RegisterNative(numberToString)
+	nativeNumberToLocaleString = engine.RegisterNative(numberToLocaleString)
+	nativeNumberToFixed        = engine.RegisterNative(numberToFixed)
+	nativeNumberToPrecision    = engine.RegisterNative(numberToPrecision)
+	nativeNumberToExponential  = engine.RegisterNative(numberToExponential)
+	nativeBooleanConstructor   = engine.RegisterNative(booleanConstructor)
+	nativeBooleanValueOf       = engine.RegisterNative(booleanValueOf)
+	nativeBooleanToString      = engine.RegisterNative(booleanToString)
+)
+
 // initNumber defines Number and Boolean.
 // parseFloat and parseInt are the functions to define as properties of Number.
 func initNumber(cx *engine.ExecutionContext, parseFloat, parseInt *engine.Object) {
 	proto := cx.Intrinsic(engine.IntrinsicNumberPrototype)
-	ctor := constructor(cx, "Number", 1, engine.IntrinsicNumberPrototype, numberConstructor)
+	ctor := constructor(cx, "Number", 1, engine.IntrinsicNumberPrototype, nativeNumberConstructor)
 	constant(cx, ctor, "MAX_SAFE_INTEGER", engine.Number(numconv.MaxSafeInteger))
 	constant(cx, ctor, "MIN_SAFE_INTEGER", engine.Number(-numconv.MaxSafeInteger))
 	constant(cx, ctor, "MAX_VALUE", engine.Number(math.MaxFloat64))
@@ -56,24 +73,24 @@ func initNumber(cx *engine.ExecutionContext, parseFloat, parseInt *engine.Object
 	constant(cx, ctor, "POSITIVE_INFINITY", engine.Number(math.Inf(1)))
 	constant(cx, ctor, "NEGATIVE_INFINITY", engine.Number(math.Inf(-1)))
 	constant(cx, ctor, "NaN", engine.Number(math.NaN()))
-	method(cx, ctor, "isInteger", 1, numberIsInteger)
-	method(cx, ctor, "isSafeInteger", 1, numberIsSafeInteger)
-	method(cx, ctor, "isFinite", 1, numberIsFinite)
-	method(cx, ctor, "isNaN", 1, numberIsNaN)
+	method(cx, ctor, "isInteger", 1, nativeNumberIsInteger)
+	method(cx, ctor, "isSafeInteger", 1, nativeNumberIsSafeInteger)
+	method(cx, ctor, "isFinite", 1, nativeNumberIsFinite)
+	method(cx, ctor, "isNaN", 1, nativeNumberIsNaN)
 	cx.Define(ctor, cx.Intern("parseFloat"), engine.ObjectValue(parseFloat), engine.FlagsHidden)
 	cx.Define(ctor, cx.Intern("parseInt"), engine.ObjectValue(parseInt), engine.FlagsHidden)
 
-	method(cx, proto, "valueOf", 0, numberValueOf)
-	method(cx, proto, "toString", 1, numberToString)
-	method(cx, proto, "toLocaleString", 0, numberToLocaleString)
-	method(cx, proto, "toFixed", 1, numberToFixed)
-	method(cx, proto, "toPrecision", 1, numberToPrecision)
-	method(cx, proto, "toExponential", 1, numberToExponential)
+	method(cx, proto, "valueOf", 0, nativeNumberValueOf)
+	method(cx, proto, "toString", 1, nativeNumberToString)
+	method(cx, proto, "toLocaleString", 0, nativeNumberToLocaleString)
+	method(cx, proto, "toFixed", 1, nativeNumberToFixed)
+	method(cx, proto, "toPrecision", 1, nativeNumberToPrecision)
+	method(cx, proto, "toExponential", 1, nativeNumberToExponential)
 
 	bproto := cx.Intrinsic(engine.IntrinsicBooleanPrototype)
-	constructor(cx, "Boolean", 1, engine.IntrinsicBooleanPrototype, booleanConstructor)
-	method(cx, bproto, "valueOf", 0, booleanValueOf)
-	method(cx, bproto, "toString", 0, booleanToString)
+	constructor(cx, "Boolean", 1, engine.IntrinsicBooleanPrototype, nativeBooleanConstructor)
+	method(cx, bproto, "valueOf", 0, nativeBooleanValueOf)
+	method(cx, bproto, "toString", 0, nativeBooleanToString)
 }
 
 func numberConstructor(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -652,9 +669,19 @@ func thisSymbol(cx *engine.ExecutionContext, this engine.Value, what string) *en
 	return s
 }
 
+var (
+	nativeSymbolConstructor = engine.RegisterNative(symbolConstructor)
+	nativeSymbolFor         = engine.RegisterNative(symbolFor)
+	nativeSymbolKeyFor      = engine.RegisterNative(symbolKeyFor)
+	nativeSymbolToString    = engine.RegisterNative(symbolToString)
+	nativeSymbolValueOf     = engine.RegisterNative(symbolValueOf)
+	nativeSymbolDescription = engine.RegisterNative(symbolDescription)
+	nativeSymbolToPrimitive = engine.RegisterNative(symbolToPrimitive)
+)
+
 func initSymbol(cx *engine.ExecutionContext) {
 	proto := cx.Intrinsic(engine.IntrinsicSymbolPrototype)
-	ctor := constructor(cx, "Symbol", 0, engine.IntrinsicSymbolPrototype, symbolConstructor)
+	ctor := constructor(cx, "Symbol", 0, engine.IntrinsicSymbolPrototype, nativeSymbolConstructor)
 	for sym, name := range [...]string{
 		engine.SymbolIterator: "iterator", engine.SymbolAsyncIterator: "asyncIterator", engine.SymbolHasInstance: "hasInstance",
 		engine.SymbolToPrimitive: "toPrimitive", engine.SymbolToStringTag: "toStringTag", engine.SymbolSpecies: "species",
@@ -666,13 +693,13 @@ func initSymbol(cx *engine.ExecutionContext) {
 	} {
 		constant(cx, ctor, wtf8.String(name), engine.ObjectValue(cx.WellKnownSymbol(engine.WellKnownSymbol(sym))))
 	}
-	method(cx, ctor, "for", 1, symbolFor)
-	method(cx, ctor, "keyFor", 1, symbolKeyFor)
-	method(cx, proto, "toString", 0, symbolToString)
-	method(cx, proto, "valueOf", 0, symbolValueOf)
-	getter(cx, proto, cx.Intern("description"), "description", symbolDescription)
+	method(cx, ctor, "for", 1, nativeSymbolFor)
+	method(cx, ctor, "keyFor", 1, nativeSymbolKeyFor)
+	method(cx, proto, "toString", 0, nativeSymbolToString)
+	method(cx, proto, "valueOf", 0, nativeSymbolValueOf)
+	getter(cx, proto, cx.Intern("description"), "description", nativeSymbolDescription)
 	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Symbol"), engine.FlagConfigurable)
-	fn := cx.NewNative("[Symbol.toPrimitive]", 1, symbolToPrimitive)
+	fn := cx.NewNative("[Symbol.toPrimitive]", 1, nativeSymbolToPrimitive)
 	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToPrimitive), engine.ObjectValue(fn), engine.FlagConfigurable)
 }
 
@@ -725,6 +752,20 @@ func symbolToPrimitive(cx *engine.ExecutionContext, this engine.Value, args []en
 	return engine.ObjectValue(thisSymbol(cx, this, "[Symbol.toPrimitive]"))
 }
 
+var (
+	nativeMathRandom = engine.RegisterNative(mathRandom)
+	nativeMathMax    = engine.RegisterNativeWithKernels(mathMax, engine.Kernels{
+		Number2:  mathMaxKernel,
+		Contract: shortContract,
+	})
+	nativeMathMin = engine.RegisterNativeWithKernels(mathMin, engine.Kernels{
+		Number2:  mathMinKernel,
+		Contract: shortContract,
+	})
+	nativeMathSumPrecise = engine.RegisterNative(mathSumPrecise)
+	nativeMathHypot      = engine.RegisterNative(mathHypot)
+)
+
 func initMath(cx *engine.ExecutionContext) {
 	m := cx.NewOrdinaryObject()
 	cx.Define(cx.GlobalObject().Object(), cx.Intern("Math"), engine.ObjectValue(m), engine.FlagsHidden)
@@ -744,92 +785,91 @@ func initMath(cx *engine.ExecutionContext) {
 	} {
 		constant(cx, m, wtf8.String(c.name), engine.Number(c.value))
 	}
-	// unary and binary define the functions f of numbers, whose kernels do the same.
-	unary := func(name string, f engine.NativeFunc, kernel func(x float64) float64) {
-		cx.SetNumberKernels(method(cx, m, wtf8.String(name), 1, f), shortContract, kernel, nil)
-	}
-	binary := func(name string, f engine.NativeFunc, kernel func(x, y float64) float64) {
-		cx.SetNumberKernels(method(cx, m, wtf8.String(name), 2, f), shortContract, nil, kernel)
-	}
-	unary("abs", mathAbs, math.Abs)
-	unary("acos", mathAcos, math.Acos)
-	unary("acosh", mathAcosh, math.Acosh)
-	unary("asin", mathAsin, math.Asin)
-	unary("asinh", mathAsinh, math.Asinh)
-	unary("atan", mathAtan, math.Atan)
-	unary("atanh", mathAtanh, math.Atanh)
-	unary("cbrt", mathCbrt, math.Cbrt)
-	unary("ceil", mathCeil, math.Ceil)
-	unary("cos", mathCos, math.Cos)
-	unary("cosh", mathCosh, cosh)
-	unary("exp", mathExp, exp)
-	unary("expm1", mathExpm1, expm1)
-	unary("floor", mathFloor, math.Floor)
-	unary("fround", mathFround, mathFroundKernel)
-	unary("f16round", mathF16round, numconv.RoundFloat16)
-	unary("log", mathLog, math.Log)
-	unary("log1p", mathLog1p, math.Log1p)
-	unary("log10", mathLog10, log10)
-	unary("log2", mathLog2, log2)
-	unary("round", mathRound, mathRoundKernel)
-	unary("sign", mathSign, mathSignKernel)
-	unary("sin", mathSin, math.Sin)
-	unary("sinh", mathSinh, sinh)
-	unary("sqrt", mathSqrt, math.Sqrt)
-	unary("tan", mathTan, math.Tan)
-	unary("tanh", mathTanh, math.Tanh)
-	unary("trunc", mathTrunc, math.Trunc)
-	unary("clz32", mathClz32, mathClz32Kernel)
-	binary("atan2", mathAtan2, atan2)
-	binary("pow", mathPow, numconv.NumberPow)
-	binary("imul", mathImul, mathImulKernel)
-	method(cx, m, "random", 0, mathRandom)
+	method(cx, m, "abs", 1, nativeMathAbs)
+	method(cx, m, "acos", 1, nativeMathAcos)
+	method(cx, m, "acosh", 1, nativeMathAcosh)
+	method(cx, m, "asin", 1, nativeMathAsin)
+	method(cx, m, "asinh", 1, nativeMathAsinh)
+	method(cx, m, "atan", 1, nativeMathAtan)
+	method(cx, m, "atanh", 1, nativeMathAtanh)
+	method(cx, m, "cbrt", 1, nativeMathCbrt)
+	method(cx, m, "ceil", 1, nativeMathCeil)
+	method(cx, m, "cos", 1, nativeMathCos)
+	method(cx, m, "cosh", 1, nativeMathCosh)
+	method(cx, m, "exp", 1, nativeMathExp)
+	method(cx, m, "expm1", 1, nativeMathExpm1)
+	method(cx, m, "floor", 1, nativeMathFloor)
+	method(cx, m, "fround", 1, nativeMathFround)
+	method(cx, m, "f16round", 1, nativeMathF16round)
+	method(cx, m, "log", 1, nativeMathLog)
+	method(cx, m, "log1p", 1, nativeMathLog1p)
+	method(cx, m, "log10", 1, nativeMathLog10)
+	method(cx, m, "log2", 1, nativeMathLog2)
+	method(cx, m, "round", 1, nativeMathRound)
+	method(cx, m, "sign", 1, nativeMathSign)
+	method(cx, m, "sin", 1, nativeMathSin)
+	method(cx, m, "sinh", 1, nativeMathSinh)
+	method(cx, m, "sqrt", 1, nativeMathSqrt)
+	method(cx, m, "tan", 1, nativeMathTan)
+	method(cx, m, "tanh", 1, nativeMathTanh)
+	method(cx, m, "trunc", 1, nativeMathTrunc)
+	method(cx, m, "clz32", 1, nativeMathClz32)
+	method(cx, m, "atan2", 2, nativeMathAtan2)
+	method(cx, m, "pow", 2, nativeMathPow)
+	method(cx, m, "imul", 2, nativeMathImul)
+	method(cx, m, "random", 0, nativeMathRandom)
 	// Go's min and max of floats give NaN when an argument is NaN and order -0 below +0, as the
 	// specification does.
-	maxFn := method(cx, m, "max", 2, mathMax)
-	cx.SetNumberKernels(maxFn, shortContract, nil, mathMaxKernel)
+	maxFn := method(cx, m, "max", 2, nativeMathMax)
 	cx.SetExtremum(maxFn, engine.ExtremumMax)
-	minFn := method(cx, m, "min", 2, mathMin)
-	cx.SetNumberKernels(minFn, shortContract, nil, mathMinKernel)
+	minFn := method(cx, m, "min", 2, nativeMathMin)
 	cx.SetExtremum(minFn, engine.ExtremumMin)
-	method(cx, m, "sumPrecise", 1, mathSumPrecise)
-	method(cx, m, "hypot", 2, mathHypot)
+	method(cx, m, "sumPrecise", 1, nativeMathSumPrecise)
+	method(cx, m, "hypot", 2, nativeMathHypot)
 }
 
 var (
-	mathAbs      = mathUnaryNative(math.Abs)
-	mathAcos     = mathUnaryNative(math.Acos)
-	mathAcosh    = mathUnaryNative(math.Acosh)
-	mathAsin     = mathUnaryNative(math.Asin)
-	mathAsinh    = mathUnaryNative(math.Asinh)
-	mathAtan     = mathUnaryNative(math.Atan)
-	mathAtanh    = mathUnaryNative(math.Atanh)
-	mathCbrt     = mathUnaryNative(math.Cbrt)
-	mathCeil     = mathUnaryNative(math.Ceil)
-	mathCos      = mathUnaryNative(math.Cos)
-	mathCosh     = mathUnaryNative(cosh)
-	mathExp      = mathUnaryNative(exp)
-	mathExpm1    = mathUnaryNative(expm1)
-	mathFloor    = mathUnaryNative(math.Floor)
-	mathFround   = mathUnaryNative(mathFroundKernel)
-	mathF16round = mathUnaryNative(numconv.RoundFloat16)
-	mathLog      = mathUnaryNative(math.Log)
-	mathLog1p    = mathUnaryNative(math.Log1p)
-	mathLog10    = mathUnaryNative(log10)
-	mathLog2     = mathUnaryNative(log2)
-	mathRound    = mathUnaryNative(mathRoundKernel)
-	mathSign     = mathUnaryNative(mathSignKernel)
-	mathSin      = mathUnaryNative(math.Sin)
-	mathSinh     = mathUnaryNative(sinh)
-	mathSqrt     = mathUnaryNative(math.Sqrt)
-	mathTan      = mathUnaryNative(math.Tan)
-	mathTanh     = mathUnaryNative(math.Tanh)
-	mathTrunc    = mathUnaryNative(math.Trunc)
-	mathClz32    = mathUnaryNative(mathClz32Kernel)
-	mathAtan2    = mathBinaryNative(atan2)
-	mathPow      = mathBinaryNative(numconv.NumberPow)
-	mathImul     = mathBinaryNative(mathImulKernel)
+	nativeMathAbs      = registerMathUnary(math.Abs)
+	nativeMathAcos     = registerMathUnary(math.Acos)
+	nativeMathAcosh    = registerMathUnary(math.Acosh)
+	nativeMathAsin     = registerMathUnary(math.Asin)
+	nativeMathAsinh    = registerMathUnary(math.Asinh)
+	nativeMathAtan     = registerMathUnary(math.Atan)
+	nativeMathAtanh    = registerMathUnary(math.Atanh)
+	nativeMathCbrt     = registerMathUnary(math.Cbrt)
+	nativeMathCeil     = registerMathUnary(math.Ceil)
+	nativeMathCos      = registerMathUnary(math.Cos)
+	nativeMathCosh     = registerMathUnary(cosh)
+	nativeMathExp      = registerMathUnary(exp)
+	nativeMathExpm1    = registerMathUnary(expm1)
+	nativeMathFloor    = registerMathUnary(math.Floor)
+	nativeMathFround   = registerMathUnary(mathFroundKernel)
+	nativeMathF16round = registerMathUnary(numconv.RoundFloat16)
+	nativeMathLog      = registerMathUnary(math.Log)
+	nativeMathLog1p    = registerMathUnary(math.Log1p)
+	nativeMathLog10    = registerMathUnary(log10)
+	nativeMathLog2     = registerMathUnary(log2)
+	nativeMathRound    = registerMathUnary(mathRoundKernel)
+	nativeMathSign     = registerMathUnary(mathSignKernel)
+	nativeMathSin      = registerMathUnary(math.Sin)
+	nativeMathSinh     = registerMathUnary(sinh)
+	nativeMathSqrt     = registerMathUnary(math.Sqrt)
+	nativeMathTan      = registerMathUnary(math.Tan)
+	nativeMathTanh     = registerMathUnary(math.Tanh)
+	nativeMathTrunc    = registerMathUnary(math.Trunc)
+	nativeMathClz32    = registerMathUnary(mathClz32Kernel)
+	nativeMathAtan2    = registerMathBinary(atan2)
+	nativeMathPow      = registerMathBinary(numconv.NumberPow)
+	nativeMathImul     = registerMathBinary(mathImulKernel)
 )
+
+// registerMathUnary registers the function of Math that f is the kernel of.
+func registerMathUnary(f func(x float64) float64) engine.Native {
+	return engine.RegisterNativeWithKernels(mathUnaryNative(f), engine.Kernels{
+		Number1:  f,
+		Contract: shortContract,
+	})
+}
 
 // mathUnaryNative returns the function of Math that f is the kernel of.
 //
@@ -841,6 +881,14 @@ func mathUnaryNative(f func(x float64) float64) engine.NativeFunc {
 		}
 		return engine.Number(f(cx.ToNumber(arg(args, 0))))
 	}
+}
+
+// registerMathBinary registers the function of Math that f is the kernel of.
+func registerMathBinary(f func(x, y float64) float64) engine.Native {
+	return engine.RegisterNativeWithKernels(mathBinaryNative(f), engine.Kernels{
+		Number2:  f,
+		Contract: shortContract,
+	})
 }
 
 // mathBinaryNative returns the function of Math that f is the kernel of.
@@ -955,29 +1003,34 @@ func mathHypot(cx *engine.ExecutionContext, this engine.Value, args []engine.Val
 	return engine.Number(scale * math.Sqrt(sum))
 }
 
+// nativeStringIteratorNext is %StringIteratorPrototype%.next.
+var nativeStringIteratorNext = engine.RegisterPlainIteratorNext(engine.IteratorClosureRealm, "next method called on an object that is not a string iterator", stringIteratorStep, nil)
+
+var nativeGeneratorFunctionConstructor = engine.RegisterNative(generatorFunctionConstructor)
+
 func initIterators(cx *engine.ExecutionContext) {
-	symMethod(cx, cx.Intrinsic(engine.IntrinsicIteratorPrototype), cx.WellKnownSymbol(engine.SymbolIterator), "[Symbol.iterator]", 0, returnThis)
-	symMethod(cx, cx.Intrinsic(engine.IntrinsicAsyncIteratorPrototype), cx.WellKnownSymbol(engine.SymbolAsyncIterator), "[Symbol.asyncIterator]", 0, returnThis)
+	symMethod(cx, cx.Intrinsic(engine.IntrinsicIteratorPrototype), cx.WellKnownSymbol(engine.SymbolIterator), "[Symbol.iterator]", 0, nativeReturnThis)
+	symMethod(cx, cx.Intrinsic(engine.IntrinsicAsyncIteratorPrototype), cx.WellKnownSymbol(engine.SymbolAsyncIterator), "[Symbol.asyncIterator]", 0, nativeReturnThis)
 
 	arrayIterNext := cx.NewArrayIteratorNext()
 	cx.Define(cx.Intrinsic(engine.IntrinsicArrayIteratorPrototype), cx.Intern("next"), engine.ObjectValue(arrayIterNext), engine.FlagsHidden)
 	cx.SetIntrinsic(engine.IntrinsicArrayIteratorPrototypeNext, arrayIterNext)
 	cx.Define(cx.Intrinsic(engine.IntrinsicArrayIteratorPrototype), cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Array Iterator"), engine.FlagConfigurable)
 
-	plainIteratorNext(cx, cx.Intrinsic(engine.IntrinsicStringIteratorPrototype), engine.IteratorClosureRealm, "next method called on an object that is not a string iterator", stringIteratorStep)
+	method(cx, cx.Intrinsic(engine.IntrinsicStringIteratorPrototype), "next", 0, nativeStringIteratorNext)
 	cx.Define(cx.Intrinsic(engine.IntrinsicStringIteratorPrototype), cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("String Iterator"), engine.FlagConfigurable)
 
 	gp := cx.Intrinsic(engine.IntrinsicGeneratorPrototype)
-	cx.SetIntrinsic(engine.IntrinsicGeneratorPrototypeNext, method(cx, gp, "next", 1, generatorNext))
-	method(cx, gp, "return", 1, generatorReturn)
-	method(cx, gp, "throw", 1, generatorThrow)
+	cx.SetIntrinsic(engine.IntrinsicGeneratorPrototypeNext, method(cx, gp, "next", 1, nativeGeneratorNext))
+	method(cx, gp, "return", 1, nativeGeneratorReturn)
+	method(cx, gp, "throw", 1, nativeGeneratorThrow)
 	cx.Define(gp, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Generator"), engine.FlagConfigurable)
 
 	// The prototype chain of generator functions.
 	gf := cx.Intrinsic(engine.IntrinsicGeneratorFunctionPrototype)
 	cx.Define(gf, cx.Key(engine.KeyPrototype), engine.ObjectValue(gp), engine.FlagConfigurable)
 	cx.Define(gp, cx.Key(engine.KeyConstructor), engine.ObjectValue(gf), engine.FlagConfigurable)
-	functionKindConstructor(cx, "GeneratorFunction", generatorFunctionConstructor, gf)
+	functionKindConstructor(cx, "GeneratorFunction", nativeGeneratorFunctionConstructor, gf)
 }
 
 func stringIteratorStep(q engine.QuietContext, _ *engine.Object, it *stringIterator) (engine.Value, bool) {
@@ -991,9 +1044,9 @@ func stringIteratorStep(q engine.QuietContext, _ *engine.Object, it *stringItera
 }
 
 var (
-	generatorNext   = generatorNative("next", engine.ResumeNext)
-	generatorReturn = generatorNative("return", engine.ResumeReturn)
-	generatorThrow  = generatorNative("throw", engine.ResumeThrow)
+	nativeGeneratorNext   = engine.RegisterNative(generatorNative("next", engine.ResumeNext))
+	nativeGeneratorReturn = engine.RegisterNative(generatorNative("return", engine.ResumeReturn))
+	nativeGeneratorThrow  = engine.RegisterNative(generatorNative("throw", engine.ResumeThrow))
 )
 
 // generatorNative returns the method name of generators, which resumes a generator in mode.

@@ -114,12 +114,25 @@ func diagnosticFunctionName(fn *function) wtf8.String {
 
 // NewFunction returns a function implemented by f. name is UTF-8.
 func (cx *ExecutionContext) NewFunction(name string, f NativeFunc) Value {
-	return Value{o: cx.NewNative(wtf8.FromValidUTF8(name), 0, f)}
+	return Value{o: cx.newGoFunction(wtf8.FromValidUTF8(name), f)}
+}
+
+// newGoFunction returns a function with the code f, which need not be registered.
+func (cx *ExecutionContext) newGoFunction(name wtf8.String, f NativeFunc) *Object {
+	if f == nil {
+		panic("engine: nil function")
+	}
+	return cx.NewNativeWithState(name, 0, nativeGoFunction, f)
+}
+
+// goFunction is the code of the functions that newGoFunction makes. Their state is a [NativeFunc].
+func goFunction(cx *ExecutionContext, this Value, args []Value) Value {
+	return cx.ActiveNativeState().(NativeFunc)(cx, this, args)
 }
 
 // NewHTMLDDA returns a function implemented by f that has the [[IsHTMLDDA]] internal slot.
 func (cx *ExecutionContext) NewHTMLDDA(f NativeFunc) Value {
-	o := cx.NewNative("", 0, f)
+	o := cx.newGoFunction("", f)
 	o.kind = kindHTMLDDA
 	cx.madeHTMLDDA = true
 	return Value{o: o}

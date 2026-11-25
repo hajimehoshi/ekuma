@@ -178,9 +178,9 @@ func runLazyPropertyOperation(t *testing.T, script string, lazy bool) string {
 		data.SetConfigurable(true)
 		cx.DefinePropertyOrThrow(o, engine.IndexKey(0), data)
 		var accessor engine.PropDesc
-		accessor.SetGetter(cx.NewNative("get 1", 0, func(_ *engine.ExecutionContext, this engine.Value, _ []engine.Value) engine.Value {
+		accessor.SetGetter(cx.NewFunction("get 1", func(_ *engine.ExecutionContext, this engine.Value, _ []engine.Value) engine.Value {
 			return this
-		}))
+		}).Object())
 		cx.DefinePropertyOrThrow(o, engine.IndexKey(1), accessor)
 		cx.Define(proto, cx.Intern("installedByInit"), engine.True, engine.FlagsData)
 	}

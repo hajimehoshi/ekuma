@@ -135,23 +135,26 @@ func InstallGlobalProxy(r *Realm, foreignView Value, previous *Realm, shareAcces
 	r.in(func() {
 		cx := r.cx
 		proxy = cx.InstallGlobalProxy(foreignView.value.Object(), prev, shareAccess)
-		cx.SetPrototypeOf(cx.GlobalObject().Object(), newV8GlobalPrototype(cx, proxy))
+		cx.SetPrototypeOf(cx.GlobalObject().Object(), newV8GlobalPrototype(cx))
 	})
 	return fromEngine(proxy)
 }
 
-func newV8GlobalPrototype(cx *engine.ExecutionContext, globalThis engine.Value) *engine.Object {
+var nativeV8GlobalConstructor = engine.RegisterNative(v8GlobalConstructor)
+
+func v8GlobalConstructor(cx *engine.ExecutionContext, this engine.Value, _ []engine.Value) engine.Value {
+	if target := cx.GetNewTarget(); target != nil {
+		return engine.ObjectValue(cx.NewObject(cx.GetPrototypeFromConstructor(target, engine.IntrinsicObjectPrototype)))
+	}
+	if this.IsNullish() {
+		return cx.GetV(cx.GlobalObject(), cx.Intern("globalThis"))
+	}
+	return engine.ObjectValue(cx.ToObject(this))
+}
+
+func newV8GlobalPrototype(cx *engine.ExecutionContext) *engine.Object {
 	proto := cx.NewObject(cx.Intrinsic(engine.IntrinsicObjectPrototype))
-	ctor := cx.NewNativeConstructor("", 0, func(cx *engine.ExecutionContext, this engine.Value, _ []engine.Value) engine.Value {
-		if target := cx.GetNewTarget(); target != nil {
-			instanceProto := cx.GetPrototypeFromConstructor(target, engine.IntrinsicObjectPrototype)
-			return engine.ObjectValue(cx.NewObject(instanceProto))
-		}
-		if this.IsNullish() {
-			return globalThis
-		}
-		return engine.ObjectValue(cx.ToObject(this))
-	})
+	ctor := cx.NewNativeConstructor("", 0, nativeV8GlobalConstructor)
 	cx.Define(ctor, cx.Key(engine.KeyPrototype), engine.ObjectValue(proto), engine.FlagWritable)
 	cx.Define(proto, cx.Key(engine.KeyConstructor), engine.ObjectValue(ctor), engine.FlagsHidden)
 	return proto

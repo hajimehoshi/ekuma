@@ -108,11 +108,9 @@ func (cx *ExecutionContext) initRealmPrototypes() {
 		flags: objExotic,
 		shape: cx.functionShapeFor(objectProto),
 		fn: &function{
-			native: func(cx *ExecutionContext, this Value, args []Value) Value {
-				return Undefined
-			},
 			info: &nativeInfo{
-				realm: r,
+				native: nativeFunctionPrototype,
+				realm:  r,
 			},
 		},
 	}).init()

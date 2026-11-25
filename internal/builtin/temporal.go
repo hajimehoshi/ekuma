@@ -594,7 +594,7 @@ func newTarget(cx *engine.ExecutionContext, name string) *engine.Object {
 }
 
 // temporalConstructor defines a Temporal constructor and returns it and its intrinsic prototype.
-func temporalConstructor(cx *engine.ExecutionContext, ns *engine.Object, name wtf8.String, length int, protoID engine.Intrinsic, f engine.NativeFunc) (*engine.Object, *engine.Object) {
+func temporalConstructor(cx *engine.ExecutionContext, ns *engine.Object, name wtf8.String, length int, protoID engine.Intrinsic, f engine.Native) (*engine.Object, *engine.Object) {
 	proto := cx.NewOrdinaryObject()
 	cx.SetIntrinsic(protoID, proto)
 	c := cx.NewNativeConstructor(name, length, f)
@@ -668,7 +668,7 @@ func initTemporal(cx *engine.ExecutionContext) {
 	method(cx, cx.Intrinsic(engine.IntrinsicDatePrototype), "toTemporalInstant", 0, nativeDateToTemporalInstant)
 }
 
-var nativeDateToTemporalInstant = temporalNative(dateToTemporalInstant)
+var nativeDateToTemporalInstant = engine.RegisterNative(temporalNative(dateToTemporalInstant))
 
 func dateToTemporalInstant(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	tv := thisDate(cx, this, "toTemporalInstant")

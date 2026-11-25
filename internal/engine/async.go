@@ -319,83 +319,92 @@ func (cx *ExecutionContext) thisAsyncFromSyncIterator(this Value) *asyncFromSync
 func (cx *ExecutionContext) initAsyncFromSyncIteratorPrototype() {
 	proto := cx.NewObject(cx.Intrinsic(IntrinsicAsyncIteratorPrototype))
 	cx.realm.asyncFromSyncProto = proto
-	cx.Define(proto, cx.Key(KeyNext), Value{o: cx.NewNative("next", 0, func(cx *ExecutionContext, this Value, args []Value) Value {
-		s := cx.thisAsyncFromSyncIterator(this)
-		c := cx.newIntrinsicCapability()
-		var result Value
-		if !cx.IfAbruptRejectPromise(c, func() {
-			if len(args) > 0 {
-				result = cx.CallValue(s.next, s.iterator, args[0])
-			} else {
-				result = cx.CallValue(s.next, s.iterator)
-			}
-			if !result.IsObject() {
-				cx.ThrowTypeError("iterator result " + cx.DisplayString(result) + " is not an object")
-			}
-		}) {
-			return c.Promise()
-		}
-		return cx.asyncFromSyncIteratorContinuation(result, c, s.iterator, true)
-	})}, FlagsHidden)
-	cx.Define(proto, cx.Key(KeyReturn), Value{o: cx.NewNative("return", 0, func(cx *ExecutionContext, this Value, args []Value) Value {
-		s := cx.thisAsyncFromSyncIterator(this)
-		c := cx.newIntrinsicCapability()
-		var result Value
-		var hasReturn bool
-		if !cx.IfAbruptRejectPromise(c, func() {
-			m := cx.GetMethod(s.iterator, cx.Key(KeyReturn))
-			if m == nil {
-				return
-			}
-			hasReturn = true
-			if len(args) > 0 {
-				result = cx.Call(m, s.iterator, args[0])
-			} else {
-				result = cx.Call(m, s.iterator)
-			}
-		}) {
-			return c.Promise()
-		}
-		if !hasReturn {
-			cx.ResolveCapability(c, cx.CreateIterResultObject(argAt(args, 0), true))
-			return c.Promise()
+	cx.Define(proto, cx.Key(KeyNext), Value{o: cx.NewNative("next", 0, nativeAsyncFromSyncIteratorNext)}, FlagsHidden)
+	cx.Define(proto, cx.Key(KeyReturn), Value{o: cx.NewNative("return", 0, nativeAsyncFromSyncIteratorReturn)}, FlagsHidden)
+	cx.Define(proto, cx.Key(keyThrow), Value{o: cx.NewNative("throw", 0, nativeAsyncFromSyncIteratorThrow)}, FlagsHidden)
+}
+
+// asyncFromSyncIteratorNext is the code of %AsyncFromSyncIteratorPrototype%.next.
+func asyncFromSyncIteratorNext(cx *ExecutionContext, this Value, args []Value) Value {
+	s := cx.thisAsyncFromSyncIterator(this)
+	c := cx.newIntrinsicCapability()
+	var result Value
+	if !cx.IfAbruptRejectPromise(c, func() {
+		if len(args) > 0 {
+			result = cx.CallValue(s.next, s.iterator, args[0])
+		} else {
+			result = cx.CallValue(s.next, s.iterator)
 		}
 		if !result.IsObject() {
-			cx.RejectCapability(c, cx.NewError(ErrorKindType, "iterator result "+cx.DisplayString(result)+" is not an object"))
-			return c.Promise()
+			cx.ThrowTypeError("iterator result " + cx.DisplayString(result) + " is not an object")
 		}
-		return cx.asyncFromSyncIteratorContinuation(result, c, s.iterator, false)
-	})}, FlagsHidden)
-	cx.Define(proto, cx.Key(keyThrow), Value{o: cx.NewNative("throw", 0, func(cx *ExecutionContext, this Value, args []Value) Value {
-		s := cx.thisAsyncFromSyncIterator(this)
-		c := cx.newIntrinsicCapability()
-		var result Value
-		var hasThrow bool
-		if !cx.IfAbruptRejectPromise(c, func() {
-			m := cx.GetMethod(s.iterator, cx.Key(keyThrow))
-			if m == nil {
-				cx.iteratorClose(s.iterator, false)
-				return
-			}
-			hasThrow = true
-			if len(args) > 0 {
-				result = cx.Call(m, s.iterator, args[0])
-			} else {
-				result = cx.Call(m, s.iterator)
-			}
-		}) {
-			return c.Promise()
+	}) {
+		return c.Promise()
+	}
+	return cx.asyncFromSyncIteratorContinuation(result, c, s.iterator, true)
+}
+
+// asyncFromSyncIteratorReturn is the code of %AsyncFromSyncIteratorPrototype%.return.
+func asyncFromSyncIteratorReturn(cx *ExecutionContext, this Value, args []Value) Value {
+	s := cx.thisAsyncFromSyncIterator(this)
+	c := cx.newIntrinsicCapability()
+	var result Value
+	var hasReturn bool
+	if !cx.IfAbruptRejectPromise(c, func() {
+		m := cx.GetMethod(s.iterator, cx.Key(KeyReturn))
+		if m == nil {
+			return
 		}
-		if !hasThrow {
-			cx.RejectCapability(c, cx.NewError(ErrorKindType, "the iterator does not provide a 'throw' method"))
-			return c.Promise()
+		hasReturn = true
+		if len(args) > 0 {
+			result = cx.Call(m, s.iterator, args[0])
+		} else {
+			result = cx.Call(m, s.iterator)
 		}
-		if !result.IsObject() {
-			cx.RejectCapability(c, cx.NewError(ErrorKindType, "iterator result "+cx.DisplayString(result)+" is not an object"))
-			return c.Promise()
+	}) {
+		return c.Promise()
+	}
+	if !hasReturn {
+		cx.ResolveCapability(c, cx.CreateIterResultObject(argAt(args, 0), true))
+		return c.Promise()
+	}
+	if !result.IsObject() {
+		cx.RejectCapability(c, cx.NewError(ErrorKindType, "iterator result "+cx.DisplayString(result)+" is not an object"))
+		return c.Promise()
+	}
+	return cx.asyncFromSyncIteratorContinuation(result, c, s.iterator, false)
+}
+
+// asyncFromSyncIteratorThrow is the code of %AsyncFromSyncIteratorPrototype%.throw.
+func asyncFromSyncIteratorThrow(cx *ExecutionContext, this Value, args []Value) Value {
+	s := cx.thisAsyncFromSyncIterator(this)
+	c := cx.newIntrinsicCapability()
+	var result Value
+	var hasThrow bool
+	if !cx.IfAbruptRejectPromise(c, func() {
+		m := cx.GetMethod(s.iterator, cx.Key(keyThrow))
+		if m == nil {
+			cx.iteratorClose(s.iterator, false)
+			return
 		}
-		return cx.asyncFromSyncIteratorContinuation(result, c, s.iterator, true)
-	})}, FlagsHidden)
+		hasThrow = true
+		if len(args) > 0 {
+			result = cx.Call(m, s.iterator, args[0])
+		} else {
+			result = cx.Call(m, s.iterator)
+		}
+	}) {
+		return c.Promise()
+	}
+	if !hasThrow {
+		cx.RejectCapability(c, cx.NewError(ErrorKindType, "the iterator does not provide a 'throw' method"))
+		return c.Promise()
+	}
+	if !result.IsObject() {
+		cx.RejectCapability(c, cx.NewError(ErrorKindType, "iterator result "+cx.DisplayString(result)+" is not an object"))
+		return c.Promise()
+	}
+	return cx.asyncFromSyncIteratorContinuation(result, c, s.iterator, true)
 }
 
 // asyncFromSyncIteratorContinuation implements AsyncFromSyncIteratorContinuation.

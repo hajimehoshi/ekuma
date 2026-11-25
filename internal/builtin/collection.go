@@ -142,8 +142,11 @@ func adderOf(cx *engine.ExecutionContext, o *engine.Object, name *engine.Object)
 
 // speciesGetter defines the getter of Symbol.species that returns this on the constructor c.
 func speciesGetter(cx *engine.ExecutionContext, c *engine.Object) {
-	getter(cx, c, cx.WellKnownSymbol(engine.SymbolSpecies), "[Symbol.species]", returnThis)
+	getter(cx, c, cx.WellKnownSymbol(engine.SymbolSpecies), "[Symbol.species]", nativeReturnThis)
 }
+
+// nativeReturnThis is the getters and methods that return their this value.
+var nativeReturnThis = engine.RegisterNative(returnThis)
 
 func returnThis(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	return this
@@ -178,37 +181,68 @@ func initMapAndSet(cx *engine.ExecutionContext) {
 	initObjectGroupBy(cx)
 }
 
+// The kernels of the methods are the methods for a Map object.
+var (
+	nativeMapConstructor = engine.RegisterNative(mapConstructor)
+	nativeMapGroupBy     = engine.RegisterNative(mapGroupBy)
+	nativeMapClear       = engine.RegisterNative(mapClear)
+	nativeMapDelete      = engine.RegisterNativeWithKernels(mapDelete, engine.Kernels{
+		Method1:  mapDeleteKernel,
+		Contract: shortContract,
+	})
+	nativeMapGet = engine.RegisterNativeWithKernels(mapGet, engine.Kernels{
+		Method1:  mapGetKernel,
+		Contract: shortContract,
+	})
+	nativeMapHas = engine.RegisterNativeWithKernels(mapHas, engine.Kernels{
+		Method1:  mapHasKernel,
+		Contract: shortContract,
+	})
+	nativeMapSet = engine.RegisterNativeWithKernels(mapSet, engine.Kernels{
+		Method2:  mapSetKernel,
+		Contract: shortContract,
+	})
+	nativeMapGetOrInsert         = engine.RegisterNative(mapGetOrInsert)
+	nativeMapGetOrInsertComputed = engine.RegisterNative(mapGetOrInsertComputed)
+	nativeMapForEach             = engine.RegisterNative(mapForEach)
+	nativeMapSize                = engine.RegisterNativeWithKernels(mapSize, engine.Kernels{
+		Method0:  mapSizeKernel,
+		Contract: shortContract,
+	})
+	nativeMapKeys         = engine.RegisterNative(mapIterationNative("keys", engine.IterateKeys))
+	nativeMapValues       = engine.RegisterNative(mapIterationNative("values", engine.IterateValues))
+	nativeMapEntries      = engine.RegisterNative(mapIterationNative("entries", engine.IterateEntries))
+	nativeMapIteratorNext = engine.RegisterPlainIteratorNext(engine.IteratorClosureRealm, "next method called on an object that is not a Map Iterator", mapIteratorStep, mapIteratorPairStep)
+)
+
 func initMap(cx *engine.ExecutionContext) {
 	proto := cx.Intrinsic(engine.IntrinsicMapPrototype)
-	ctor := constructor(cx, "Map", 0, engine.IntrinsicMapPrototype, mapConstructor)
+	ctor := constructor(cx, "Map", 0, engine.IntrinsicMapPrototype, nativeMapConstructor)
 	speciesGetter(cx, ctor)
-	method(cx, ctor, "groupBy", 2, mapGroupBy)
+	method(cx, ctor, "groupBy", 2, nativeMapGroupBy)
 
-	method(cx, proto, "clear", 0, mapClear)
-	// The kernels of the methods are the methods for a Map object.
-	cx.SetMethodKernels(method(cx, proto, "delete", 1, mapDelete), shortContract, nil, mapDeleteKernel, nil)
-	cx.SetMethodKernels(method(cx, proto, "get", 1, mapGet), shortContract, nil, mapGetKernel, nil)
-	cx.SetMethodKernels(method(cx, proto, "has", 1, mapHas), shortContract, nil, mapHasKernel, nil)
-	set := method(cx, proto, "set", 2, mapSet)
+	method(cx, proto, "clear", 0, nativeMapClear)
+	method(cx, proto, "delete", 1, nativeMapDelete)
+	method(cx, proto, "get", 1, nativeMapGet)
+	method(cx, proto, "has", 1, nativeMapHas)
+	set := method(cx, proto, "set", 2, nativeMapSet)
 	cx.SetIntrinsic(engine.IntrinsicMapPrototypeSet, set)
-	cx.SetMethodKernels(set, shortContract, nil, nil, mapSetKernel)
-	method(cx, proto, "getOrInsert", 2, mapGetOrInsert)
-	method(cx, proto, "getOrInsertComputed", 2, mapGetOrInsertComputed)
-	method(cx, proto, "forEach", 1, mapForEach)
-	cx.SetMethodKernels(getter(cx, proto, cx.Key(engine.KeySize), "size", mapSize), shortContract, mapSizeKernel, nil, nil)
+	method(cx, proto, "getOrInsert", 2, nativeMapGetOrInsert)
+	method(cx, proto, "getOrInsertComputed", 2, nativeMapGetOrInsertComputed)
+	method(cx, proto, "forEach", 1, nativeMapForEach)
+	getter(cx, proto, cx.Key(engine.KeySize), "size", nativeMapSize)
 
 	iterProto := cx.NewObject(cx.Intrinsic(engine.IntrinsicIteratorPrototype))
 	cx.SetIntrinsic(engine.IntrinsicMapIteratorPrototype, iterProto)
-	method(cx, proto, "keys", 0, mapKeys)
-	method(cx, proto, "values", 0, mapValues)
-	entries := method(cx, proto, "entries", 0, mapEntries)
+	method(cx, proto, "keys", 0, nativeMapKeys)
+	method(cx, proto, "values", 0, nativeMapValues)
+	entries := method(cx, proto, "entries", 0, nativeMapEntries)
 	cx.SetIntrinsic(engine.IntrinsicMapPrototypeEntries, entries)
 	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolIterator), engine.ObjectValue(entries), engine.FlagsHidden)
 	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Map"), engine.FlagConfigurable)
 
-	next := plainIteratorNext(cx, iterProto, engine.IteratorClosureRealm, "next method called on an object that is not a Map Iterator", mapIteratorStep)
+	next := method(cx, iterProto, "next", 0, nativeMapIteratorNext)
 	cx.SetIntrinsic(engine.IntrinsicMapIteratorPrototypeNext, next)
-	cx.SetIteratorPairStep(next, mapIteratorPairStep)
 	cx.Define(iterProto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Map Iterator"), engine.FlagConfigurable)
 }
 
@@ -371,12 +405,6 @@ func mapSizeKernel(q engine.QuietContext, this engine.Value) (engine.Value, bool
 	return engine.Undefined, false
 }
 
-var (
-	mapKeys    = mapIterationNative("keys", engine.IterateKeys)
-	mapValues  = mapIterationNative("values", engine.IterateValues)
-	mapEntries = mapIterationNative("entries", engine.IterateEntries)
-)
-
 // mapIterationNative returns the method name of Map.prototype, which returns a Map Iterator of kind.
 //
 //go:noinline
@@ -510,43 +538,72 @@ func newSet(cx *engine.ExecutionContext, t *collection.Table) engine.Value {
 	return engine.ObjectValue(cx.NewSetObject(cx.Intrinsic(engine.IntrinsicSetPrototype), t))
 }
 
+// The kernels of the methods are the methods for a Set object.
+var (
+	nativeSetConstructor = engine.RegisterNative(setConstructor)
+	nativeSetAdd         = engine.RegisterNativeWithKernels(setAdd, engine.Kernels{
+		Method1:  setAddKernel,
+		Contract: shortContract,
+	})
+	nativeSetClear  = engine.RegisterNative(setClear)
+	nativeSetDelete = engine.RegisterNativeWithKernels(setDelete, engine.Kernels{
+		Method1:  setDeleteKernel,
+		Contract: shortContract,
+	})
+	nativeSetHas = engine.RegisterNativeWithKernels(setHas, engine.Kernels{
+		Method1:  setHasKernel,
+		Contract: shortContract,
+	})
+	nativeSetForEach = engine.RegisterNative(setForEach)
+	nativeSetSize    = engine.RegisterNativeWithKernels(setSize, engine.Kernels{
+		Method0:  setSizeKernel,
+		Contract: shortContract,
+	})
+	nativeSetUnion               = engine.RegisterNative(setUnion)
+	nativeSetIntersection        = engine.RegisterNative(setIntersection)
+	nativeSetDifference          = engine.RegisterNative(setDifference)
+	nativeSetSymmetricDifference = engine.RegisterNative(setSymmetricDifference)
+	nativeSetIsSubsetOf          = engine.RegisterNative(setIsSubsetOf)
+	nativeSetIsSupersetOf        = engine.RegisterNative(setIsSupersetOf)
+	nativeSetIsDisjointFrom      = engine.RegisterNative(setIsDisjointFrom)
+	nativeSetEntries             = engine.RegisterNative(setIterationNative("entries", engine.IterateEntries))
+	nativeSetValues              = engine.RegisterNative(setIterationNative("values", engine.IterateValues))
+	nativeSetIteratorNext        = engine.RegisterPlainIteratorNext(engine.IteratorClosureRealm, "next method called on an object that is not a Set Iterator", setIteratorStep, setIteratorPairStep)
+)
+
 func initSet(cx *engine.ExecutionContext) {
 	proto := cx.Intrinsic(engine.IntrinsicSetPrototype)
-	ctor := constructor(cx, "Set", 0, engine.IntrinsicSetPrototype, setConstructor)
+	ctor := constructor(cx, "Set", 0, engine.IntrinsicSetPrototype, nativeSetConstructor)
 	speciesGetter(cx, ctor)
 
-	// The kernels of the methods are the methods for a Set object.
-	add := method(cx, proto, "add", 1, setAdd)
+	add := method(cx, proto, "add", 1, nativeSetAdd)
 	cx.SetIntrinsic(engine.IntrinsicSetPrototypeAdd, add)
-	cx.SetMethodKernels(add, shortContract, nil, setAddKernel, nil)
-	method(cx, proto, "clear", 0, setClear)
-	cx.SetMethodKernels(method(cx, proto, "delete", 1, setDelete), shortContract, nil, setDeleteKernel, nil)
-	has := method(cx, proto, "has", 1, setHas)
+	method(cx, proto, "clear", 0, nativeSetClear)
+	method(cx, proto, "delete", 1, nativeSetDelete)
+	has := method(cx, proto, "has", 1, nativeSetHas)
 	cx.SetIntrinsic(engine.IntrinsicSetPrototypeHas, has)
-	cx.SetMethodKernels(has, shortContract, nil, setHasKernel, nil)
-	method(cx, proto, "forEach", 1, setForEach)
-	cx.SetMethodKernels(getter(cx, proto, cx.Key(engine.KeySize), "size", setSize), shortContract, setSizeKernel, nil, nil)
+	method(cx, proto, "forEach", 1, nativeSetForEach)
+	getter(cx, proto, cx.Key(engine.KeySize), "size", nativeSetSize)
 
-	method(cx, proto, "union", 1, setUnion)
-	method(cx, proto, "intersection", 1, setIntersection)
-	method(cx, proto, "difference", 1, setDifference)
-	method(cx, proto, "symmetricDifference", 1, setSymmetricDifference)
-	method(cx, proto, "isSubsetOf", 1, setIsSubsetOf)
-	method(cx, proto, "isSupersetOf", 1, setIsSupersetOf)
-	method(cx, proto, "isDisjointFrom", 1, setIsDisjointFrom)
+	method(cx, proto, "union", 1, nativeSetUnion)
+	method(cx, proto, "intersection", 1, nativeSetIntersection)
+	method(cx, proto, "difference", 1, nativeSetDifference)
+	method(cx, proto, "symmetricDifference", 1, nativeSetSymmetricDifference)
+	method(cx, proto, "isSubsetOf", 1, nativeSetIsSubsetOf)
+	method(cx, proto, "isSupersetOf", 1, nativeSetIsSupersetOf)
+	method(cx, proto, "isDisjointFrom", 1, nativeSetIsDisjointFrom)
 
 	iterProto := cx.NewObject(cx.Intrinsic(engine.IntrinsicIteratorPrototype))
 	cx.SetIntrinsic(engine.IntrinsicSetIteratorPrototype, iterProto)
-	method(cx, proto, "entries", 0, setEntries)
-	values := method(cx, proto, "values", 0, setValues)
+	method(cx, proto, "entries", 0, nativeSetEntries)
+	values := method(cx, proto, "values", 0, nativeSetValues)
 	cx.SetIntrinsic(engine.IntrinsicSetPrototypeValues, values)
 	cx.Define(proto, cx.Key(engine.KeyKeys), engine.ObjectValue(values), engine.FlagsHidden)
 	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolIterator), engine.ObjectValue(values), engine.FlagsHidden)
 	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Set"), engine.FlagConfigurable)
 
-	next := plainIteratorNext(cx, iterProto, engine.IteratorClosureRealm, "next method called on an object that is not a Set Iterator", setIteratorStep)
+	next := method(cx, iterProto, "next", 0, nativeSetIteratorNext)
 	cx.SetIntrinsic(engine.IntrinsicSetIteratorPrototypeNext, next)
-	cx.SetIteratorPairStep(next, setIteratorPairStep)
 	cx.Define(iterProto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Set Iterator"), engine.FlagConfigurable)
 }
 
@@ -807,11 +864,6 @@ func setIsDisjointFrom(cx *engine.ExecutionContext, this engine.Value, args []en
 	return engine.Bool(result)
 }
 
-var (
-	setEntries = setIterationNative("entries", engine.IterateEntries)
-	setValues  = setIterationNative("values", engine.IterateValues)
-)
-
 // setIterationNative returns the method name of Set.prototype, which returns a Set Iterator of kind.
 //
 //go:noinline
@@ -859,8 +911,11 @@ func setIteratorPairStep(state any) (engine.Value, engine.Value, engine.PairStep
 	return k, k, engine.PairYielded
 }
 
+// nativeObjectGroupBy is Object.groupBy.
+var nativeObjectGroupBy = engine.RegisterNative(objectGroupBy)
+
 func initObjectGroupBy(cx *engine.ExecutionContext) {
-	method(cx, cx.Intrinsic(engine.IntrinsicObject), "groupBy", 2, objectGroupBy)
+	method(cx, cx.Intrinsic(engine.IntrinsicObject), "groupBy", 2, nativeObjectGroupBy)
 }
 
 func objectGroupBy(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {

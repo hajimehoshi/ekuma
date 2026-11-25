@@ -81,14 +81,21 @@ func stringListFromIterable(cx *engine.ExecutionContext, v engine.Value) []strin
 	}
 }
 
+var (
+	nativeNewListFormat             = engine.RegisterNative(newListFormat)
+	nativeListFormatFormat          = engine.RegisterNative(listFormatFormat)
+	nativeListFormatFormatToParts   = engine.RegisterNative(listFormatFormatToParts)
+	nativeListFormatResolvedOptions = engine.RegisterNative(listFormatResolvedOptions)
+)
+
 // initListFormat defines Intl.ListFormat.
 func initListFormat(cx *engine.ExecutionContext, ns *engine.Object) {
-	ctor, proto := constructor(cx, ns, "ListFormat", 0, engine.IntrinsicIntlListFormatPrototype, newListFormat)
+	ctor, proto := constructor(cx, ns, "ListFormat", 0, engine.IntrinsicIntlListFormatPrototype, nativeNewListFormat)
 
-	method(cx, ctor, "supportedLocalesOf", 1, supportedLocalesOf)
-	method(cx, proto, "format", 1, listFormatFormat)
-	method(cx, proto, "formatToParts", 1, listFormatFormatToParts)
-	method(cx, proto, "resolvedOptions", 0, listFormatResolvedOptions)
+	method(cx, ctor, "supportedLocalesOf", 1, nativeSupportedLocalesOf)
+	method(cx, proto, "format", 1, nativeListFormatFormat)
+	method(cx, proto, "formatToParts", 1, nativeListFormatFormatToParts)
+	method(cx, proto, "resolvedOptions", 0, nativeListFormatResolvedOptions)
 	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Intl.ListFormat"), engine.FlagConfigurable)
 }
 

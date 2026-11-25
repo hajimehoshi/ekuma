@@ -27,11 +27,16 @@ func Install(cx *engine.ExecutionContext) {
 	initArrayToLocaleString(cx)
 }
 
+var (
+	nativeIntlGetCanonicalLocales = engine.RegisterNative(intlGetCanonicalLocales)
+	nativeIntlSupportedValuesOf   = engine.RegisterNative(intlSupportedValuesOf)
+)
+
 // initNamespace defines the properties of the Intl namespace ns.
 func initNamespace(cx *engine.ExecutionContext, ns *engine.Object) {
 	cx.Define(ns, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Intl"), engine.FlagConfigurable)
-	method(cx, ns, "getCanonicalLocales", 1, intlGetCanonicalLocales)
-	method(cx, ns, "supportedValuesOf", 1, intlSupportedValuesOf)
+	method(cx, ns, "getCanonicalLocales", 1, nativeIntlGetCanonicalLocales)
+	method(cx, ns, "supportedValuesOf", 1, nativeIntlSupportedValuesOf)
 	initLocale(cx, ns)
 	initNumberFormat(cx, ns)
 	initPluralRules(cx, ns)
@@ -140,7 +145,7 @@ func checkStringLength(cx *engine.ExecutionContext, n int) {
 
 // constructor creates the constructor function name with the intrinsic prototype protoID, and
 // defines it on the Intl namespace ns.
-func constructor(cx *engine.ExecutionContext, ns *engine.Object, name wtf8.String, length int, protoID engine.Intrinsic, f engine.NativeFunc) (ctor, proto *engine.Object) {
+func constructor(cx *engine.ExecutionContext, ns *engine.Object, name wtf8.String, length int, protoID engine.Intrinsic, f engine.Native) (ctor, proto *engine.Object) {
 	proto = cx.NewObject(cx.Intrinsic(engine.IntrinsicObjectPrototype))
 	cx.SetIntrinsic(protoID, proto)
 	ctor = cx.NewNativeConstructor(name, length, f)
@@ -151,12 +156,12 @@ func constructor(cx *engine.ExecutionContext, ns *engine.Object, name wtf8.Strin
 }
 
 // method defines the non-enumerable function name on o.
-func method(cx *engine.ExecutionContext, o *engine.Object, name string, length int, f engine.NativeFunc) {
+func method(cx *engine.ExecutionContext, o *engine.Object, name string, length int, f engine.Native) {
 	cx.Define(o, cx.Intern(wtf8.String(name)), engine.ObjectValue(cx.NewNative(wtf8.String(name), length, f)), engine.FlagsHidden)
 }
 
 // getter defines the accessor property name on o with the getter f.
-func getter(cx *engine.ExecutionContext, o *engine.Object, name string, f engine.NativeFunc) {
+func getter(cx *engine.ExecutionContext, o *engine.Object, name string, f engine.Native) {
 	cx.DefineAccessor(o, cx.Intern(wtf8.String(name)), cx.NewNative(wtf8.String("get "+name), 0, f), nil, engine.FlagConfigurable)
 }
 

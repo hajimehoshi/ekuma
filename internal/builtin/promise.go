@@ -279,6 +279,12 @@ func promiseKeyedCombinator(cx *engine.ExecutionContext, c, promises engine.Valu
 	return pc.Promise()
 }
 
+var (
+	nativePromiseAllSettledKeyedResolveElement = engine.RegisterNative(promiseAllSettledKeyedResolveElement)
+	nativePromiseAllSettledKeyedRejectElement  = engine.RegisterNative(promiseAllSettledKeyedRejectElement)
+	nativePromiseAllKeyedResolveElement        = engine.RegisterNative(promiseAllKeyedResolveElement)
+)
+
 // performPromiseAllKeyed implements PerformPromiseAllKeyed. settled selects the all-settled variant.
 func performPromiseAllKeyed(cx *engine.ExecutionContext, settled bool, promises *engine.Object, c engine.Value, pc *engine.PromiseCapability, resolve engine.Value) {
 	e := &keyedPromiseElements{
@@ -300,10 +306,10 @@ func performPromiseAllKeyed(cx *engine.ExecutionContext, settled bool, promises 
 		}
 		var onFulfilled, onRejected engine.Value
 		if settled {
-			onFulfilled = engine.ObjectValue(cx.NewNativeWithState("", 1, promiseAllSettledKeyedResolveElement, el))
-			onRejected = engine.ObjectValue(cx.NewNativeWithState("", 1, promiseAllSettledKeyedRejectElement, el))
+			onFulfilled = engine.ObjectValue(cx.NewNativeWithState("", 1, nativePromiseAllSettledKeyedResolveElement, el))
+			onRejected = engine.ObjectValue(cx.NewNativeWithState("", 1, nativePromiseAllSettledKeyedRejectElement, el))
 		} else {
-			onFulfilled = engine.ObjectValue(cx.NewNativeWithState("", 1, promiseAllKeyedResolveElement, el))
+			onFulfilled = engine.ObjectValue(cx.NewNativeWithState("", 1, nativePromiseAllKeyedResolveElement, el))
 			onRejected = cx.CapabilityReject(pc)
 		}
 		invoke(cx, next, cx.Key(engine.KeyThen), onFulfilled, onRejected)
@@ -317,15 +323,19 @@ type promiseFinally struct {
 	constructor *engine.Object
 }
 
+var nativePromiseValueThunk = engine.RegisterNative(promiseValueThunk)
+
 // promiseThenFinally is the code of the then finally functions. Their state is a *promiseFinally.
 func promiseThenFinally(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	f := cx.ActiveNativeState().(*promiseFinally)
 	value := arg(args, 0)
 	result := cx.Call(f.onFinally, engine.Undefined)
 	p := cx.PromiseResolve(f.constructor, result)
-	valueThunk := cx.NewNativeWithState("", 0, promiseValueThunk, value)
+	valueThunk := cx.NewNativeWithState("", 0, nativePromiseValueThunk, value)
 	return invoke(cx, p, cx.Key(engine.KeyThen), engine.ObjectValue(valueThunk))
 }
+
+var nativePromiseThrower = engine.RegisterNative(promiseThrower)
 
 // promiseCatchFinally is the code of the catch finally functions. Their state is a *promiseFinally.
 func promiseCatchFinally(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -333,7 +343,7 @@ func promiseCatchFinally(cx *engine.ExecutionContext, this engine.Value, args []
 	reason := arg(args, 0)
 	result := cx.Call(f.onFinally, engine.Undefined)
 	p := cx.PromiseResolve(f.constructor, result)
-	thrower := cx.NewNativeWithState("", 0, promiseThrower, reason)
+	thrower := cx.NewNativeWithState("", 0, nativePromiseThrower, reason)
 	return invoke(cx, p, cx.Key(engine.KeyThen), engine.ObjectValue(thrower))
 }
 
@@ -350,26 +360,43 @@ func promiseThrower(cx *engine.ExecutionContext, this engine.Value, args []engin
 	return engine.Undefined
 }
 
+var (
+	nativePromiseConstructor     = engine.RegisterNative(promiseConstructor)
+	nativePromiseAll             = engine.RegisterNative(promiseAll)
+	nativePromiseAllSettled      = engine.RegisterNative(promiseAllSettled)
+	nativePromiseAllKeyed        = engine.RegisterNative(promiseAllKeyed)
+	nativePromiseAllSettledKeyed = engine.RegisterNative(promiseAllSettledKeyed)
+	nativePromiseAny             = engine.RegisterNative(promiseAny)
+	nativePromiseRace            = engine.RegisterNative(promiseRace)
+	nativePromiseReject          = engine.RegisterNative(promiseReject)
+	nativePromiseResolve         = engine.RegisterNative(promiseResolve)
+	nativePromiseTry             = engine.RegisterNative(promiseTry)
+	nativePromiseWithResolvers   = engine.RegisterNative(promiseWithResolvers)
+	nativePromiseCatch           = engine.RegisterNative(promiseCatch)
+	nativePromiseFinallyMethod   = engine.RegisterNative(promiseFinallyMethod)
+	nativePromiseThen            = engine.RegisterNative(promiseThen)
+)
+
 func initPromise(cx *engine.ExecutionContext) {
 	proto := cx.Intrinsic(engine.IntrinsicPromisePrototype)
-	ctor := constructor(cx, "Promise", 1, engine.IntrinsicPromisePrototype, promiseConstructor)
+	ctor := constructor(cx, "Promise", 1, engine.IntrinsicPromisePrototype, nativePromiseConstructor)
 	cx.SetIntrinsic(engine.IntrinsicPromise, ctor)
 	speciesGetter(cx, ctor)
 
-	method(cx, ctor, "all", 1, promiseAll)
-	method(cx, ctor, "allSettled", 1, promiseAllSettled)
-	method(cx, ctor, "allKeyed", 1, promiseAllKeyed)
-	method(cx, ctor, "allSettledKeyed", 1, promiseAllSettledKeyed)
-	method(cx, ctor, "any", 1, promiseAny)
-	method(cx, ctor, "race", 1, promiseRace)
-	method(cx, ctor, "reject", 1, promiseReject)
-	method(cx, ctor, "resolve", 1, promiseResolve)
-	method(cx, ctor, "try", 1, promiseTry)
-	method(cx, ctor, "withResolvers", 0, promiseWithResolvers)
+	method(cx, ctor, "all", 1, nativePromiseAll)
+	method(cx, ctor, "allSettled", 1, nativePromiseAllSettled)
+	method(cx, ctor, "allKeyed", 1, nativePromiseAllKeyed)
+	method(cx, ctor, "allSettledKeyed", 1, nativePromiseAllSettledKeyed)
+	method(cx, ctor, "any", 1, nativePromiseAny)
+	method(cx, ctor, "race", 1, nativePromiseRace)
+	method(cx, ctor, "reject", 1, nativePromiseReject)
+	method(cx, ctor, "resolve", 1, nativePromiseResolve)
+	method(cx, ctor, "try", 1, nativePromiseTry)
+	method(cx, ctor, "withResolvers", 0, nativePromiseWithResolvers)
 
-	method(cx, proto, "catch", 1, promiseCatch)
-	method(cx, proto, "finally", 1, promiseFinallyMethod)
-	method(cx, proto, "then", 2, promiseThen)
+	method(cx, proto, "catch", 1, nativePromiseCatch)
+	method(cx, proto, "finally", 1, nativePromiseFinallyMethod)
+	method(cx, proto, "then", 2, nativePromiseThen)
 
 	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Promise"), engine.FlagConfigurable)
 }
@@ -391,6 +418,8 @@ func promiseConstructor(cx *engine.ExecutionContext, this engine.Value, args []e
 	return engine.ObjectValue(p)
 }
 
+var nativePromiseAllResolveElement = engine.RegisterNative(promiseAllResolveElement)
+
 func promiseAll(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	e := newPromiseElements()
 	return promiseCombinator(cx, this, arg(args, 0), func(pc *engine.PromiseCapability, next engine.Value) {
@@ -399,7 +428,7 @@ func promiseAll(cx *engine.ExecutionContext, this engine.Value, args []engine.Va
 			elements:   &e,
 			capability: pc,
 		}
-		onFulfilled := cx.NewNativeWithState("", 1, promiseAllResolveElement, el)
+		onFulfilled := cx.NewNativeWithState("", 1, nativePromiseAllResolveElement, el)
 		invoke(cx, next, cx.Key(engine.KeyThen), engine.ObjectValue(onFulfilled), cx.CapabilityReject(pc))
 	}, func(pc *engine.PromiseCapability) {
 		if e.complete() {
@@ -407,6 +436,11 @@ func promiseAll(cx *engine.ExecutionContext, this engine.Value, args []engine.Va
 		}
 	})
 }
+
+var (
+	nativePromiseAllSettledResolveElement = engine.RegisterNative(promiseAllSettledResolveElement)
+	nativePromiseAllSettledRejectElement  = engine.RegisterNative(promiseAllSettledRejectElement)
+)
 
 func promiseAllSettled(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	e := newPromiseElements()
@@ -416,8 +450,8 @@ func promiseAllSettled(cx *engine.ExecutionContext, this engine.Value, args []en
 			elements:   &e,
 			capability: pc,
 		}
-		onFulfilled := cx.NewNativeWithState("", 1, promiseAllSettledResolveElement, el)
-		onRejected := cx.NewNativeWithState("", 1, promiseAllSettledRejectElement, el)
+		onFulfilled := cx.NewNativeWithState("", 1, nativePromiseAllSettledResolveElement, el)
+		onRejected := cx.NewNativeWithState("", 1, nativePromiseAllSettledRejectElement, el)
 		invoke(cx, next, cx.Key(engine.KeyThen), engine.ObjectValue(onFulfilled), engine.ObjectValue(onRejected))
 	}, func(pc *engine.PromiseCapability) {
 		if e.complete() {
@@ -434,6 +468,8 @@ func promiseAllSettledKeyed(cx *engine.ExecutionContext, this engine.Value, args
 	return promiseKeyedCombinator(cx, this, arg(args, 0), true, "Promise.allSettledKeyed")
 }
 
+var nativePromiseAnyRejectElement = engine.RegisterNative(promiseAnyRejectElement)
+
 func promiseAny(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	e := newPromiseElements()
 	return promiseCombinator(cx, this, arg(args, 0), func(pc *engine.PromiseCapability, next engine.Value) {
@@ -442,7 +478,7 @@ func promiseAny(cx *engine.ExecutionContext, this engine.Value, args []engine.Va
 			elements:   &e,
 			capability: pc,
 		}
-		onRejected := cx.NewNativeWithState("", 1, promiseAnyRejectElement, el)
+		onRejected := cx.NewNativeWithState("", 1, nativePromiseAnyRejectElement, el)
 		invoke(cx, next, cx.Key(engine.KeyThen), cx.CapabilityResolve(pc), engine.ObjectValue(onRejected))
 	}, func(pc *engine.PromiseCapability) {
 		if e.complete() {
@@ -503,6 +539,11 @@ func promiseCatch(cx *engine.ExecutionContext, this engine.Value, args []engine.
 	return invoke(cx, this, cx.Key(engine.KeyThen), engine.Undefined, arg(args, 0))
 }
 
+var (
+	nativePromiseThenFinally  = engine.RegisterNative(promiseThenFinally)
+	nativePromiseCatchFinally = engine.RegisterNative(promiseCatchFinally)
+)
+
 func promiseFinallyMethod(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	if !this.IsObject() {
 		cx.ThrowTypeError("Promise.prototype.finally called on non-object")
@@ -515,8 +556,8 @@ func promiseFinallyMethod(cx *engine.ExecutionContext, this engine.Value, args [
 			onFinally:   onFinally.Object(),
 			constructor: c,
 		}
-		thenFinally = engine.ObjectValue(cx.NewNativeWithState("", 1, promiseThenFinally, f))
-		catchFinally = engine.ObjectValue(cx.NewNativeWithState("", 1, promiseCatchFinally, f))
+		thenFinally = engine.ObjectValue(cx.NewNativeWithState("", 1, nativePromiseThenFinally, f))
+		catchFinally = engine.ObjectValue(cx.NewNativeWithState("", 1, nativePromiseCatchFinally, f))
 	}
 	return invoke(cx, this, cx.Key(engine.KeyThen), thenFinally, catchFinally)
 }

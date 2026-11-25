@@ -189,8 +189,8 @@ func (cx *ExecutionContext) CreateResolvingFunctions(p *Object) *PromiseCapabili
 }
 
 func (cx *ExecutionContext) createResolvingFunctions(c *PromiseCapability) {
-	c.resolve = cx.NewNativeWithState("", 1, promiseResolveFunction, c)
-	c.reject = cx.NewNativeWithState("", 1, promiseRejectFunction, c)
+	c.resolve = cx.NewNativeWithState("", 1, nativePromiseResolveFunction, c)
+	c.reject = cx.NewNativeWithState("", 1, nativePromiseRejectFunction, c)
 }
 
 // promiseResolveFunction is the code of the promise resolve functions. Their state is a
@@ -235,7 +235,7 @@ func (cx *ExecutionContext) NewPromiseCapability(c Value) *PromiseCapability {
 		resolve: Undefined,
 		reject:  Undefined,
 	}
-	executor := cx.NewNativeWithState("", 2, capabilityExecutor, fs)
+	executor := cx.NewNativeWithState("", 2, nativeCapabilityExecutor, fs)
 	p := cx.Construct(c.o, []Value{{o: executor}}, c.o)
 	if !fs.resolve.IsCallable() {
 		cx.ThrowTypeError("promise capability resolve function is not callable")

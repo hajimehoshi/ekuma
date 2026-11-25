@@ -7,13 +7,18 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/engine"
 )
 
+var (
+	nativeAbstractModuleSourceConstructor = engine.RegisterNative(abstractModuleSourceConstructor)
+	nativeAbstractModuleSourceToStringTag = engine.RegisterNative(abstractModuleSourceToStringTag)
+)
+
 // initAbstractModuleSource creates %AbstractModuleSource%, which is not a global.
 func initAbstractModuleSource(cx *engine.ExecutionContext) {
 	proto := cx.NewObject(cx.Intrinsic(engine.IntrinsicObjectPrototype))
-	c := cx.NewNativeConstructor("AbstractModuleSource", 0, abstractModuleSourceConstructor)
+	c := cx.NewNativeConstructor("AbstractModuleSource", 0, nativeAbstractModuleSourceConstructor)
 	cx.Define(c, cx.Key(engine.KeyPrototype), engine.ObjectValue(proto), 0)
 	cx.Define(proto, cx.Key(engine.KeyConstructor), engine.ObjectValue(c), engine.FlagsHidden)
-	getter(cx, proto, cx.WellKnownSymbol(engine.SymbolToStringTag), "[Symbol.toStringTag]", abstractModuleSourceToStringTag)
+	getter(cx, proto, cx.WellKnownSymbol(engine.SymbolToStringTag), "[Symbol.toStringTag]", nativeAbstractModuleSourceToStringTag)
 	cx.SetIntrinsic(engine.IntrinsicAbstractModuleSource, c)
 	cx.SetIntrinsic(engine.IntrinsicAbstractModuleSourcePrototype, proto)
 }

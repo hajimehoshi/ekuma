@@ -158,8 +158,8 @@ func (cx *ExecutionContext) makeAutoAccessor(k Value) (storage, getter, setter *
 	if k.o.class == classPrivateName {
 		storage.str = k.o.str + " accessor storage"
 	}
-	getter = cx.NewNativeWithState("get "+name, 0, autoAccessorGetter, storage)
-	setter = cx.NewNativeWithState("set "+name, 1, autoAccessorSetter, storage)
+	getter = cx.NewNativeWithState("get "+name, 0, nativeAutoAccessorGetter, storage)
+	setter = cx.NewNativeWithState("set "+name, 1, nativeAutoAccessorSetter, storage)
 	return storage, getter, setter
 }
 
@@ -497,7 +497,7 @@ func (cx *ExecutionContext) createDecoratorContextObject(kind int, name Value, i
 	} else {
 		def("name", name)
 	}
-	def("addInitializer", Value{o: cx.NewNativeWithState("addInitializer", 1, addInitializerFunction, &addInitializerState{
+	def("addInitializer", Value{o: cx.NewNativeWithState("addInitializer", 1, nativeAddInitializerFunction, &addInitializerState{
 		initializers: initializers,
 		decoration:   state,
 	})})
@@ -533,14 +533,14 @@ func (cx *ExecutionContext) createDecoratorAccessObject(kind int, name Value) Va
 		name: name,
 	}
 	if kind != bytecode.ElemSetter {
-		getter := cx.NewNativeWithState("", 1, decoratorAccessGetter, st)
+		getter := cx.NewNativeWithState("", 1, nativeDecoratorAccessGetter, st)
 		cx.CreateDataPropertyOrThrow(access, PropKey{key: cx.Key(KeyGet)}, Value{o: getter})
 	}
 	if kind == bytecode.ElemField || kind == bytecode.ElemAccessor || kind == bytecode.ElemSetter {
-		setter := cx.NewNativeWithState("", 2, decoratorAccessSetter, st)
+		setter := cx.NewNativeWithState("", 2, nativeDecoratorAccessSetter, st)
 		cx.CreateDataPropertyOrThrow(access, PropKey{key: cx.Key(KeySet)}, Value{o: setter})
 	}
-	has := cx.NewNativeWithState("has", 1, decoratorAccessHas, st)
+	has := cx.NewNativeWithState("has", 1, nativeDecoratorAccessHas, st)
 	cx.CreateDataPropertyOrThrow(access, PropKey{key: cx.Intern("has")}, Value{o: has})
 	return Value{o: access}
 }

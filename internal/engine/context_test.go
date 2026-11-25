@@ -55,7 +55,7 @@ func TestExecutionContextHostReentry(t *testing.T) {
 
 			var ctor *engine.Object
 			b.Run(func() {
-				ctor = b.NewNativeConstructor("Bridge", 0, func(cx *engine.ExecutionContext, _ engine.Value, _ []engine.Value) engine.Value {
+				ctor = engine.NewGoConstructor(b, "Bridge", func(cx *engine.ExecutionContext, _ engine.Value, _ []engine.Value) engine.Value {
 					outer = cx
 					defer func() {
 						if host.ActiveContext() != b || !a.IsEnteredRealm() {
@@ -117,9 +117,9 @@ func TestSameRealmContextCallAllocations(t *testing.T) {
 		t.Skip("the checks of the interpreter allocate")
 	}
 	cx, _ := engine.NewExecutionContext(nil)
-	f := cx.NewNative("noop", 0, func(*engine.ExecutionContext, engine.Value, []engine.Value) engine.Value {
+	f := cx.NewFunction("noop", func(*engine.ExecutionContext, engine.Value, []engine.Value) engine.Value {
 		return engine.Undefined
-	})
+	}).Object()
 	if got := testing.AllocsPerRun(100, func() { cx.Call(f, engine.Undefined) }); got != 0 {
 		t.Errorf("same-realm native call allocated %v times, want 0", got)
 	}

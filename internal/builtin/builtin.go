@@ -33,44 +33,29 @@ var polledContract = engine.ShortcutContract{
 }
 
 // method defines the non-enumerable function name on o.
-func method(cx *engine.ExecutionContext, o *engine.Object, name wtf8.String, length int, f engine.NativeFunc) *engine.Object {
+func method(cx *engine.ExecutionContext, o *engine.Object, name wtf8.String, length int, f engine.Native) *engine.Object {
 	fn := cx.NewNative(name, length, f)
 	cx.Define(o, cx.Intern(name), engine.ObjectValue(fn), engine.FlagsHidden)
 	return fn
 }
 
 // methodWithState is [method] for a function whose internal slots are state.
-func methodWithState(cx *engine.ExecutionContext, o *engine.Object, name wtf8.String, length int, f engine.NativeFunc, state any) *engine.Object {
+func methodWithState(cx *engine.ExecutionContext, o *engine.Object, name wtf8.String, length int, f engine.Native, state any) *engine.Object {
 	fn := cx.NewNativeWithState(name, length, f, state)
 	cx.Define(o, cx.Intern(name), engine.ObjectValue(fn), engine.FlagsHidden)
 	return fn
 }
 
 // symMethod defines the non-enumerable function under the symbol key on o.
-func symMethod(cx *engine.ExecutionContext, o *engine.Object, key *engine.Object, name wtf8.String, length int, f engine.NativeFunc) *engine.Object {
+func symMethod(cx *engine.ExecutionContext, o *engine.Object, key *engine.Object, name wtf8.String, length int, f engine.Native) *engine.Object {
 	fn := cx.NewNative(name, length, f)
 	cx.Define(o, key, engine.ObjectValue(fn), engine.FlagsHidden)
 	return fn
 }
 
-// iteratorNext defines the next method of the built-in iterators with the prototype proto,
-// which steps the iterator with step and creates its results in the realm that yieldRealm selects.
-func iteratorNext(cx *engine.ExecutionContext, proto *engine.Object, yieldRealm engine.IteratorYieldRealm, step engine.IteratorStepFunc) *engine.Object {
-	fn := cx.NewIteratorNext(yieldRealm, step)
-	cx.Define(proto, cx.Intern("next"), engine.ObjectValue(fn), engine.FlagsHidden)
-	return fn
-}
-
-// plainIteratorNext defines a next method whose step runs no JavaScript and cannot throw.
-func plainIteratorNext[T any](cx *engine.ExecutionContext, proto *engine.Object, yieldRealm engine.IteratorYieldRealm, receiverError string, step func(engine.QuietContext, *engine.Object, T) (engine.Value, bool)) *engine.Object {
-	fn := engine.NewPlainIteratorNext(cx, yieldRealm, receiverError, step)
-	cx.Define(proto, cx.Intern("next"), engine.ObjectValue(fn), engine.FlagsHidden)
-	return fn
-}
-
 // getter defines the accessor property key on o with the getter f, named "get " + name, and
 // returns the getter.
-func getter(cx *engine.ExecutionContext, o *engine.Object, key *engine.Object, name wtf8.String, f engine.NativeFunc) *engine.Object {
+func getter(cx *engine.ExecutionContext, o *engine.Object, key *engine.Object, name wtf8.String, f engine.Native) *engine.Object {
 	g := cx.NewNative("get "+name, 0, f)
 	cx.DefineAccessor(o, key, g, nil, engine.FlagConfigurable)
 	return g
@@ -83,7 +68,7 @@ func constant(cx *engine.ExecutionContext, o *engine.Object, name wtf8.String, v
 
 // constructor creates the constructor function name with the intrinsic prototype protoID,
 // and defines it as a global.
-func constructor(cx *engine.ExecutionContext, name wtf8.String, length int, protoID engine.Intrinsic, f engine.NativeFunc) *engine.Object {
+func constructor(cx *engine.ExecutionContext, name wtf8.String, length int, protoID engine.Intrinsic, f engine.Native) *engine.Object {
 	c := cx.NewNativeConstructor(name, length, f)
 	cx.DefineConstructorPrototype(c, protoID)
 	cx.Define(cx.Intrinsic(protoID), cx.Key(engine.KeyConstructor), engine.ObjectValue(c), engine.FlagsHidden)
@@ -126,6 +111,8 @@ func RegisterExtension(install func(cx *engine.ExecutionContext)) {
 	extensions = append(extensions, install)
 }
 
+var nativeThrowRestrictedProperty = engine.RegisterNative(throwRestrictedProperty)
+
 // Install creates the standard built-in objects of the realm of cx, and those of the registered extensions.
 func Install(cx *engine.ExecutionContext) {
 	cx.StartBuiltins()
@@ -160,7 +147,7 @@ func Install(cx *engine.ExecutionContext) {
 	constant(cx, g, "NaN", engine.Number(math.NaN()))
 	constant(cx, g, "Infinity", engine.Number(math.Inf(1)))
 
-	throwTypeError := cx.NewNative("", 0, throwRestrictedProperty)
+	throwTypeError := cx.NewNative("", 0, nativeThrowRestrictedProperty)
 	setIntegrity(cx, throwTypeError, true)
 	cx.SetIntrinsic(engine.IntrinsicThrowTypeError, throwTypeError)
 
@@ -334,50 +321,91 @@ func objectDefineProperties(cx *engine.ExecutionContext, o *engine.Object, props
 	}
 }
 
+var (
+	nativeObjectConstructor    = engine.RegisterNative(objectConstructor)
+	nativeObjectHasOwnProperty = engine.RegisterNativeWithKernels(objectHasOwnProperty, engine.Kernels{
+		Method1:  objectHasOwnPropertyKernel,
+		Contract: shortContract,
+	})
+	nativeObjectIsPrototypeOf             = engine.RegisterNative(objectIsPrototypeOf)
+	nativeObjectPropertyIsEnumerable      = engine.RegisterNative(objectPropertyIsEnumerable)
+	nativeObjectToStringMethod            = engine.RegisterNative(objectToStringMethod)
+	nativeObjectToLocaleString            = engine.RegisterNative(objectToLocaleString)
+	nativeObjectValueOf                   = engine.RegisterNative(objectValueOf)
+	nativeObjectProtoGetter               = engine.RegisterNative(objectProtoGetter)
+	nativeObjectProtoSetter               = engine.RegisterNative(objectProtoSetter)
+	nativeObjectDefineGetter              = engine.RegisterNative(objectDefineGetter)
+	nativeObjectDefineSetter              = engine.RegisterNative(objectDefineSetter)
+	nativeObjectLookupGetter              = engine.RegisterNative(objectLookupGetter)
+	nativeObjectLookupSetter              = engine.RegisterNative(objectLookupSetter)
+	nativeObjectGetPrototypeOf            = engine.RegisterNative(objectGetPrototypeOf)
+	nativeObjectSetPrototypeOf            = engine.RegisterNative(objectSetPrototypeOf)
+	nativeObjectCreate                    = engine.RegisterNative(objectCreate)
+	nativeObjectDefineProperty            = engine.RegisterNative(objectDefineProperty)
+	nativeObjectDefinePropertiesMethod    = engine.RegisterNative(objectDefinePropertiesMethod)
+	nativeObjectGetOwnPropertyDescriptor  = engine.RegisterNative(objectGetOwnPropertyDescriptor)
+	nativeObjectGetOwnPropertyDescriptors = engine.RegisterNative(objectGetOwnPropertyDescriptors)
+	nativeObjectGetOwnPropertyNames       = engine.RegisterNative(objectGetOwnPropertyNames)
+	nativeObjectGetOwnPropertySymbols     = engine.RegisterNative(objectGetOwnPropertySymbols)
+	nativeObjectKeys                      = engine.RegisterNative(objectKeys)
+	nativeObjectValues                    = engine.RegisterNative(objectValues)
+	nativeObjectEntries                   = engine.RegisterNative(objectEntries)
+	nativeObjectAssign                    = engine.RegisterNative(objectAssign)
+	nativeObjectFreeze                    = engine.RegisterNative(objectFreeze)
+	nativeObjectSeal                      = engine.RegisterNative(objectSeal)
+	nativeObjectPreventExtensions         = engine.RegisterNative(objectPreventExtensions)
+	nativeObjectIsFrozen                  = engine.RegisterNative(objectIsFrozen)
+	nativeObjectIsSealed                  = engine.RegisterNative(objectIsSealed)
+	nativeObjectIsExtensible              = engine.RegisterNative(objectIsExtensible)
+	nativeObjectIs                        = engine.RegisterNative(objectIs)
+	nativeObjectFromEntries               = engine.RegisterNative(objectFromEntries)
+	nativeObjectHasOwn                    = engine.RegisterNative(objectHasOwn)
+)
+
 func initObject(cx *engine.ExecutionContext) {
 	proto := cx.Intrinsic(engine.IntrinsicObjectPrototype)
-	ctor := constructor(cx, "Object", 1, engine.IntrinsicObjectPrototype, objectConstructor)
+	ctor := constructor(cx, "Object", 1, engine.IntrinsicObjectPrototype, nativeObjectConstructor)
 	cx.SetIntrinsic(engine.IntrinsicObject, ctor)
 
-	cx.SetMethodKernels(method(cx, proto, "hasOwnProperty", 1, objectHasOwnProperty), shortContract, nil, objectHasOwnPropertyKernel, nil)
-	method(cx, proto, "isPrototypeOf", 1, objectIsPrototypeOf)
-	method(cx, proto, "propertyIsEnumerable", 1, objectPropertyIsEnumerable)
-	method(cx, proto, "toString", 0, objectToStringMethod)
-	method(cx, proto, "toLocaleString", 0, objectToLocaleString)
-	method(cx, proto, "valueOf", 0, objectValueOf)
+	method(cx, proto, "hasOwnProperty", 1, nativeObjectHasOwnProperty)
+	method(cx, proto, "isPrototypeOf", 1, nativeObjectIsPrototypeOf)
+	method(cx, proto, "propertyIsEnumerable", 1, nativeObjectPropertyIsEnumerable)
+	method(cx, proto, "toString", 0, nativeObjectToStringMethod)
+	method(cx, proto, "toLocaleString", 0, nativeObjectToLocaleString)
+	method(cx, proto, "valueOf", 0, nativeObjectValueOf)
 	protoKey := cx.Intern("__proto__")
 	cx.DefineAccessor(proto, protoKey,
-		cx.NewNative("get __proto__", 0, objectProtoGetter),
-		cx.NewNative("set __proto__", 1, objectProtoSetter),
+		cx.NewNative("get __proto__", 0, nativeObjectProtoGetter),
+		cx.NewNative("set __proto__", 1, nativeObjectProtoSetter),
 		engine.FlagConfigurable)
 
-	method(cx, proto, "__defineGetter__", 2, objectDefineGetter)
-	method(cx, proto, "__defineSetter__", 2, objectDefineSetter)
-	method(cx, proto, "__lookupGetter__", 1, objectLookupGetter)
-	method(cx, proto, "__lookupSetter__", 1, objectLookupSetter)
+	method(cx, proto, "__defineGetter__", 2, nativeObjectDefineGetter)
+	method(cx, proto, "__defineSetter__", 2, nativeObjectDefineSetter)
+	method(cx, proto, "__lookupGetter__", 1, nativeObjectLookupGetter)
+	method(cx, proto, "__lookupSetter__", 1, nativeObjectLookupSetter)
 
-	method(cx, ctor, "getPrototypeOf", 1, objectGetPrototypeOf)
-	method(cx, ctor, "setPrototypeOf", 2, objectSetPrototypeOf)
-	method(cx, ctor, "create", 2, objectCreate)
-	method(cx, ctor, "defineProperty", 3, objectDefineProperty)
-	method(cx, ctor, "defineProperties", 2, objectDefinePropertiesMethod)
-	method(cx, ctor, "getOwnPropertyDescriptor", 2, objectGetOwnPropertyDescriptor)
-	method(cx, ctor, "getOwnPropertyDescriptors", 1, objectGetOwnPropertyDescriptors)
-	method(cx, ctor, "getOwnPropertyNames", 1, objectGetOwnPropertyNames)
-	method(cx, ctor, "getOwnPropertySymbols", 1, objectGetOwnPropertySymbols)
-	method(cx, ctor, "keys", 1, objectKeys)
-	method(cx, ctor, "values", 1, objectValues)
-	method(cx, ctor, "entries", 1, objectEntries)
-	method(cx, ctor, "assign", 2, objectAssign)
-	method(cx, ctor, "freeze", 1, objectFreeze)
-	method(cx, ctor, "seal", 1, objectSeal)
-	method(cx, ctor, "preventExtensions", 1, objectPreventExtensions)
-	method(cx, ctor, "isFrozen", 1, objectIsFrozen)
-	method(cx, ctor, "isSealed", 1, objectIsSealed)
-	method(cx, ctor, "isExtensible", 1, objectIsExtensible)
-	method(cx, ctor, "is", 2, objectIs)
-	method(cx, ctor, "fromEntries", 1, objectFromEntries)
-	method(cx, ctor, "hasOwn", 2, objectHasOwn)
+	method(cx, ctor, "getPrototypeOf", 1, nativeObjectGetPrototypeOf)
+	method(cx, ctor, "setPrototypeOf", 2, nativeObjectSetPrototypeOf)
+	method(cx, ctor, "create", 2, nativeObjectCreate)
+	method(cx, ctor, "defineProperty", 3, nativeObjectDefineProperty)
+	method(cx, ctor, "defineProperties", 2, nativeObjectDefinePropertiesMethod)
+	method(cx, ctor, "getOwnPropertyDescriptor", 2, nativeObjectGetOwnPropertyDescriptor)
+	method(cx, ctor, "getOwnPropertyDescriptors", 1, nativeObjectGetOwnPropertyDescriptors)
+	method(cx, ctor, "getOwnPropertyNames", 1, nativeObjectGetOwnPropertyNames)
+	method(cx, ctor, "getOwnPropertySymbols", 1, nativeObjectGetOwnPropertySymbols)
+	method(cx, ctor, "keys", 1, nativeObjectKeys)
+	method(cx, ctor, "values", 1, nativeObjectValues)
+	method(cx, ctor, "entries", 1, nativeObjectEntries)
+	method(cx, ctor, "assign", 2, nativeObjectAssign)
+	method(cx, ctor, "freeze", 1, nativeObjectFreeze)
+	method(cx, ctor, "seal", 1, nativeObjectSeal)
+	method(cx, ctor, "preventExtensions", 1, nativeObjectPreventExtensions)
+	method(cx, ctor, "isFrozen", 1, nativeObjectIsFrozen)
+	method(cx, ctor, "isSealed", 1, nativeObjectIsSealed)
+	method(cx, ctor, "isExtensible", 1, nativeObjectIsExtensible)
+	method(cx, ctor, "is", 2, nativeObjectIs)
+	method(cx, ctor, "fromEntries", 1, nativeObjectFromEntries)
+	method(cx, ctor, "hasOwn", 2, nativeObjectHasOwn)
 }
 
 func objectConstructor(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -765,22 +793,33 @@ func indexValues(cx *engine.ExecutionContext, out []engine.Value, v engine.Value
 	}
 }
 
+var (
+	nativeFunctionConstructor     = engine.RegisterNative(functionConstructor)
+	nativeFunctionCall            = engine.RegisterNative(functionCall)
+	nativeFunctionApply           = engine.RegisterNative(functionApply)
+	nativeFunctionBind            = engine.RegisterNative(functionBind)
+	nativeFunctionToString        = engine.RegisterNative(functionToString)
+	nativeFunctionHasInstance     = engine.RegisterNative(functionHasInstance)
+	nativeFunctionCallerGetter    = engine.RegisterNative(functionCallerGetter)
+	nativeFunctionArgumentsGetter = engine.RegisterNative(functionArgumentsGetter)
+)
+
 func initFunction(cx *engine.ExecutionContext) {
 	proto := cx.Intrinsic(engine.IntrinsicFunctionPrototype)
-	ctor := constructor(cx, "Function", 1, engine.IntrinsicFunctionPrototype, functionConstructor)
+	ctor := constructor(cx, "Function", 1, engine.IntrinsicFunctionPrototype, nativeFunctionConstructor)
 	cx.SetIntrinsic(engine.IntrinsicFunction, ctor)
 
-	call := method(cx, proto, "call", 1, functionCall)
+	call := method(cx, proto, "call", 1, nativeFunctionCall)
 	cx.SetIntrinsic(engine.IntrinsicFunctionPrototypeCall, call)
 	// The interpreter calls the targets of call and apply directly where it can, so every call
 	// of them is invisible to stack traces and to the caller of the functions they call.
 	cx.SetFrameless(call)
-	apply := method(cx, proto, "apply", 2, functionApply)
+	apply := method(cx, proto, "apply", 2, nativeFunctionApply)
 	cx.SetIntrinsic(engine.IntrinsicFunctionPrototypeApply, apply)
 	cx.SetFrameless(apply)
-	method(cx, proto, "bind", 1, functionBind)
-	method(cx, proto, "toString", 0, functionToString)
-	hasInstance := cx.NewNative("[Symbol.hasInstance]", 1, functionHasInstance)
+	method(cx, proto, "bind", 1, nativeFunctionBind)
+	method(cx, proto, "toString", 0, nativeFunctionToString)
+	hasInstance := cx.NewNative("[Symbol.hasInstance]", 1, nativeFunctionHasInstance)
 	cx.SetIntrinsic(engine.IntrinsicFunctionPrototypeHasInstance, hasInstance)
 	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolHasInstance), engine.ObjectValue(hasInstance), 0)
 	// Function.prototype[Symbol.metadata] of the decorator metadata proposal.
@@ -792,8 +831,8 @@ func initFunction(cx *engine.ExecutionContext) {
 	cx.DefineAccessor(proto, cx.Intern("arguments"), throwTypeError, throwTypeError, engine.FlagConfigurable)
 
 	// The getters of the own caller and arguments properties of non-strict functions.
-	cx.SetIntrinsic(engine.IntrinsicFunctionCallerGetter, cx.NewNative("get caller", 0, functionCallerGetter))
-	cx.SetIntrinsic(engine.IntrinsicFunctionArgumentsGetter, cx.NewNative("get arguments", 0, functionArgumentsGetter))
+	cx.SetIntrinsic(engine.IntrinsicFunctionCallerGetter, cx.NewNative("get caller", 0, nativeFunctionCallerGetter))
+	cx.SetIntrinsic(engine.IntrinsicFunctionArgumentsGetter, cx.NewNative("get arguments", 0, nativeFunctionArgumentsGetter))
 }
 
 func functionConstructor(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -862,6 +901,13 @@ func copyNameAndLength(cx *engine.ExecutionContext, f, target *engine.Object, pr
 	cx.Define(f, cx.Key(engine.KeyName), name, engine.FlagConfigurable)
 }
 
+var (
+	nativeErrorIsError     = engine.RegisterNative(errorIsError)
+	nativeErrorStackGetter = engine.RegisterNative(errorStackGetter)
+	nativeErrorStackSetter = engine.RegisterNative(errorStackSetter)
+	nativeErrorToString    = engine.RegisterNative(errorToString)
+)
+
 func initError(cx *engine.ExecutionContext) {
 	names := [engine.ErrorKindCount]string{
 		engine.ErrorKindError:      "Error",
@@ -899,24 +945,24 @@ func initError(cx *engine.ExecutionContext) {
 			cx.SetPrototypeOf(ctor, base)
 		}
 	}
-	method(cx, base, "isError", 1, errorIsError)
+	method(cx, base, "isError", 1, nativeErrorIsError)
 	cx.DefineAccessor(cx.Intrinsic(engine.IntrinsicErrorPrototype), cx.Key(engine.KeyStack),
-		cx.NewNative("get stack", 0, errorStackGetter),
-		cx.NewNative("set stack", 1, errorStackSetter),
+		cx.NewNative("get stack", 0, nativeErrorStackGetter),
+		cx.NewNative("set stack", 1, nativeErrorStackSetter),
 		engine.FlagConfigurable)
-	method(cx, cx.Intrinsic(engine.IntrinsicErrorPrototype), "toString", 0, errorToString)
+	method(cx, cx.Intrinsic(engine.IntrinsicErrorPrototype), "toString", 0, nativeErrorToString)
 }
 
-var errorConstructors = [engine.ErrorKindCount]engine.NativeFunc{
-	engine.ErrorKindError:      errorConstructorNative(engine.ErrorKindError),
-	engine.ErrorKindType:       errorConstructorNative(engine.ErrorKindType),
-	engine.ErrorKindRange:      errorConstructorNative(engine.ErrorKindRange),
-	engine.ErrorKindReference:  errorConstructorNative(engine.ErrorKindReference),
-	engine.ErrorKindSyntax:     errorConstructorNative(engine.ErrorKindSyntax),
-	engine.ErrorKindEval:       errorConstructorNative(engine.ErrorKindEval),
-	engine.ErrorKindURI:        errorConstructorNative(engine.ErrorKindURI),
-	engine.ErrorKindAggregate:  errorConstructorNative(engine.ErrorKindAggregate),
-	engine.ErrorKindSuppressed: errorConstructorNative(engine.ErrorKindSuppressed),
+var errorConstructors = [engine.ErrorKindCount]engine.Native{
+	engine.ErrorKindError:      engine.RegisterNative(errorConstructorNative(engine.ErrorKindError)),
+	engine.ErrorKindType:       engine.RegisterNative(errorConstructorNative(engine.ErrorKindType)),
+	engine.ErrorKindRange:      engine.RegisterNative(errorConstructorNative(engine.ErrorKindRange)),
+	engine.ErrorKindReference:  engine.RegisterNative(errorConstructorNative(engine.ErrorKindReference)),
+	engine.ErrorKindSyntax:     engine.RegisterNative(errorConstructorNative(engine.ErrorKindSyntax)),
+	engine.ErrorKindEval:       engine.RegisterNative(errorConstructorNative(engine.ErrorKindEval)),
+	engine.ErrorKindURI:        engine.RegisterNative(errorConstructorNative(engine.ErrorKindURI)),
+	engine.ErrorKindAggregate:  engine.RegisterNative(errorConstructorNative(engine.ErrorKindAggregate)),
+	engine.ErrorKindSuppressed: engine.RegisterNative(errorConstructorNative(engine.ErrorKindSuppressed)),
 }
 
 // errorConstructorNative returns the constructor of the errors of kind.
@@ -1004,10 +1050,15 @@ func errorToString(cx *engine.ExecutionContext, this engine.Value, args []engine
 	return cx.NewString(name + ": " + msg)
 }
 
+var (
+	nativeGlobalParseFloat = engine.RegisterNative(globalParseFloat)
+	nativeGlobalParseInt   = engine.RegisterNative(globalParseInt)
+)
+
 // newParseFunctions creates the functions parseFloat and parseInt.
 func newParseFunctions(cx *engine.ExecutionContext) (parseFloat, parseInt *engine.Object) {
-	parseFloat = cx.NewNative("parseFloat", 1, globalParseFloat)
-	parseInt = cx.NewNative("parseInt", 2, globalParseInt)
+	parseFloat = cx.NewNative("parseFloat", 1, nativeGlobalParseFloat)
+	parseInt = cx.NewNative("parseInt", 2, nativeGlobalParseInt)
 	return parseFloat, parseInt
 }
 
@@ -1020,14 +1071,20 @@ func globalParseInt(cx *engine.ExecutionContext, this engine.Value, args []engin
 	return engine.Number(numconv.ParseInt(s, int(cx.ToInt32(arg(args, 1))), cx.Poll))
 }
 
+var (
+	nativeGlobalEval     = engine.RegisterNative(globalEval)
+	nativeGlobalIsNaN    = engine.RegisterNative(globalIsNaN)
+	nativeGlobalIsFinite = engine.RegisterNative(globalIsFinite)
+)
+
 // initGlobalFunctions defines the function properties of the global object.
 // parseFloat and parseInt are the functions to define under those names.
 func initGlobalFunctions(cx *engine.ExecutionContext, parseFloat, parseInt *engine.Object) {
 	g := cx.GlobalObject().Object()
-	eval := method(cx, g, "eval", 1, globalEval)
+	eval := method(cx, g, "eval", 1, nativeGlobalEval)
 	cx.SetIntrinsic(engine.IntrinsicEval, eval)
-	method(cx, g, "isNaN", 1, globalIsNaN)
-	method(cx, g, "isFinite", 1, globalIsFinite)
+	method(cx, g, "isNaN", 1, nativeGlobalIsNaN)
+	method(cx, g, "isFinite", 1, nativeGlobalIsFinite)
 	cx.Define(g, cx.Intern("parseFloat"), engine.ObjectValue(parseFloat), engine.FlagsHidden)
 	cx.Define(g, cx.Intern("parseInt"), engine.ObjectValue(parseInt), engine.FlagsHidden)
 	initURIFunctions(cx)

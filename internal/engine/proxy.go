@@ -56,7 +56,6 @@ func (cx *ExecutionContext) ProxyCreate(target, handler Value) *Object {
 		// The native function is the [[Call]] and [[Construct]] of the proxy, so that every way
 		// of calling a function reaches them.
 		p.fn = &function{
-			native:       proxyFunction,
 			info:         &proxyInfo,
 			materialized: true,
 			constructor:  cx.IsConstructor(target.o),

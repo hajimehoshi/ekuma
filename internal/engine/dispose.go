@@ -84,7 +84,7 @@ func (cx *ExecutionContext) getDisposeMethod(v Value, hint DisposeHint) *Object 
 	if m == nil {
 		return nil
 	}
-	return cx.NewNativeWithState("", 0, asyncDisposeFunction, m)
+	return cx.NewNativeWithState("", 0, nativeAsyncDisposeFunction, m)
 }
 
 // asyncDisposeFunction is the code of the functions that GetDisposeMethod makes for a synchronous

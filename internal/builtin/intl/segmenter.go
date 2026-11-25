@@ -169,24 +169,33 @@ func thisSegments(cx *engine.ExecutionContext, this engine.Value, name string) *
 	return d
 }
 
+var (
+	nativeNewSegmenter             = engine.RegisterNative(newSegmenter)
+	nativeSegmenterResolvedOptions = engine.RegisterNative(segmenterResolvedOptions)
+	nativeSegmenterSegment         = engine.RegisterNative(segmenterSegment)
+	nativeSegmentsContaining       = engine.RegisterNative(segmentsContaining)
+	nativeSegmentsIterator         = engine.RegisterNative(segmentsIterator)
+	nativeSegmentIteratorNext      = engine.RegisterNative(segmentIteratorNext)
+)
+
 // initSegmenter defines Intl.Segmenter.
 func initSegmenter(cx *engine.ExecutionContext, ns *engine.Object) {
-	ctor, proto := constructor(cx, ns, "Segmenter", 0, engine.IntrinsicIntlSegmenterPrototype, newSegmenter)
+	ctor, proto := constructor(cx, ns, "Segmenter", 0, engine.IntrinsicIntlSegmenterPrototype, nativeNewSegmenter)
 
 	segmentsProto := cx.NewObject(cx.Intrinsic(engine.IntrinsicObjectPrototype))
 	cx.SetIntrinsic(engine.IntrinsicIntlSegmentsPrototype, segmentsProto)
 	iterProto := cx.NewObject(cx.Intrinsic(engine.IntrinsicIteratorPrototype))
 	cx.SetIntrinsic(engine.IntrinsicIntlSegmentIteratorPrototype, iterProto)
 
-	method(cx, ctor, "supportedLocalesOf", 1, supportedLocalesOf)
-	method(cx, proto, "resolvedOptions", 0, segmenterResolvedOptions)
-	method(cx, proto, "segment", 1, segmenterSegment)
+	method(cx, ctor, "supportedLocalesOf", 1, nativeSupportedLocalesOf)
+	method(cx, proto, "resolvedOptions", 0, nativeSegmenterResolvedOptions)
+	method(cx, proto, "segment", 1, nativeSegmenterSegment)
 	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Intl.Segmenter"), engine.FlagConfigurable)
 
-	method(cx, segmentsProto, "containing", 1, segmentsContaining)
-	cx.Define(segmentsProto, cx.WellKnownSymbol(engine.SymbolIterator), engine.ObjectValue(cx.NewNative("[Symbol.iterator]", 0, segmentsIterator)), engine.FlagsHidden)
+	method(cx, segmentsProto, "containing", 1, nativeSegmentsContaining)
+	cx.Define(segmentsProto, cx.WellKnownSymbol(engine.SymbolIterator), engine.ObjectValue(cx.NewNative("[Symbol.iterator]", 0, nativeSegmentsIterator)), engine.FlagsHidden)
 
-	method(cx, iterProto, "next", 0, segmentIteratorNext)
+	method(cx, iterProto, "next", 0, nativeSegmentIteratorNext)
 	cx.Define(iterProto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Segmenter String Iterator"), engine.FlagConfigurable)
 }
 

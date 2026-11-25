@@ -136,14 +136,21 @@ func (rtf *relativeTimeFormatData) partitionArgs(cx *engine.ExecutionContext, ar
 	return rtf.partition(cx, value, unit)
 }
 
+var (
+	nativeNewRelativeTimeFormat             = engine.RegisterNative(newRelativeTimeFormat)
+	nativeRelativeTimeFormatFormat          = engine.RegisterNative(relativeTimeFormatFormat)
+	nativeRelativeTimeFormatFormatToParts   = engine.RegisterNative(relativeTimeFormatFormatToParts)
+	nativeRelativeTimeFormatResolvedOptions = engine.RegisterNative(relativeTimeFormatResolvedOptions)
+)
+
 // initRelativeTimeFormat defines Intl.RelativeTimeFormat.
 func initRelativeTimeFormat(cx *engine.ExecutionContext, ns *engine.Object) {
-	ctor, proto := constructor(cx, ns, "RelativeTimeFormat", 0, engine.IntrinsicIntlRelativeTimeFormatPrototype, newRelativeTimeFormat)
+	ctor, proto := constructor(cx, ns, "RelativeTimeFormat", 0, engine.IntrinsicIntlRelativeTimeFormatPrototype, nativeNewRelativeTimeFormat)
 
-	method(cx, ctor, "supportedLocalesOf", 1, supportedLocalesOf)
-	method(cx, proto, "format", 2, relativeTimeFormatFormat)
-	method(cx, proto, "formatToParts", 2, relativeTimeFormatFormatToParts)
-	method(cx, proto, "resolvedOptions", 0, relativeTimeFormatResolvedOptions)
+	method(cx, ctor, "supportedLocalesOf", 1, nativeSupportedLocalesOf)
+	method(cx, proto, "format", 2, nativeRelativeTimeFormatFormat)
+	method(cx, proto, "formatToParts", 2, nativeRelativeTimeFormatFormatToParts)
+	method(cx, proto, "resolvedOptions", 0, nativeRelativeTimeFormatResolvedOptions)
 	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Intl.RelativeTimeFormat"), engine.FlagConfigurable)
 }
 

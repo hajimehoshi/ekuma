@@ -71,14 +71,21 @@ func thisPluralRules(cx *engine.ExecutionContext, this engine.Value, name string
 	return pr
 }
 
+var (
+	nativeNewPluralRules             = engine.RegisterNative(newPluralRules)
+	nativePluralRulesResolvedOptions = engine.RegisterNative(pluralRulesResolvedOptions)
+	nativePluralRulesSelect          = engine.RegisterNative(pluralRulesSelect)
+	nativePluralRulesSelectRange     = engine.RegisterNative(pluralRulesSelectRange)
+)
+
 // initPluralRules defines Intl.PluralRules.
 func initPluralRules(cx *engine.ExecutionContext, ns *engine.Object) {
-	ctor, proto := constructor(cx, ns, "PluralRules", 0, engine.IntrinsicIntlPluralRulesPrototype, newPluralRules)
+	ctor, proto := constructor(cx, ns, "PluralRules", 0, engine.IntrinsicIntlPluralRulesPrototype, nativeNewPluralRules)
 
-	method(cx, ctor, "supportedLocalesOf", 1, supportedLocalesOf)
-	method(cx, proto, "resolvedOptions", 0, pluralRulesResolvedOptions)
-	method(cx, proto, "select", 1, pluralRulesSelect)
-	method(cx, proto, "selectRange", 2, pluralRulesSelectRange)
+	method(cx, ctor, "supportedLocalesOf", 1, nativeSupportedLocalesOf)
+	method(cx, proto, "resolvedOptions", 0, nativePluralRulesResolvedOptions)
+	method(cx, proto, "select", 1, nativePluralRulesSelect)
+	method(cx, proto, "selectRange", 2, nativePluralRulesSelectRange)
 	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Intl.PluralRules"), engine.FlagConfigurable)
 }
 

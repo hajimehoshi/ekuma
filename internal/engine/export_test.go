@@ -320,11 +320,9 @@ func holderName(cx *ExecutionContext, o *Object) string {
 func (s *Shortcut) wrap(t *testing.T, observe func(s *Shortcut, form, event string)) {
 	t.Helper()
 	fn := s.Func.o.fn
-	native := fn.native
-	fn.native = func(cx *ExecutionContext, this Value, args []Value) Value {
+	ObserveNative(s.Func, func() {
 		observe(s, "native", "start")
-		return native(cx, this, args)
-	}
+	})
 	if fn.info.extremum != ExtremumNone {
 		s.Forms = append(s.Forms, "extremum")
 	}
@@ -352,6 +350,13 @@ func (s *Shortcut) wrap(t *testing.T, observe func(s *Shortcut, form, event stri
 			wrapped.step = func(cx *ExecutionContext, this Value) (Value, bool) {
 				observe(s, form, "start")
 				v, ok := fast.step(cx, this)
+				ended(form, ok || v.o != stepDeclined)
+				return v, ok
+			}
+		case "framedStep":
+			wrapped.framedStep = func(cx *ExecutionContext, this Value) (Value, bool) {
+				observe(s, form, "start")
+				v, ok := fast.framedStep(cx, this)
 				ended(form, true)
 				return v, ok
 			}
@@ -409,14 +414,38 @@ func (s *Shortcut) wrap(t *testing.T, observe func(s *Shortcut, form, event stri
 	fn.info.fast = &wrapped
 }
 
+// observers maps the functions of [ObserveNative] to functions that observe the calls of the code
+// that they had, which keep nothing alive longer.
+var observers = newWeakTable()
+
+var nativeObserved = RegisterNative(func(cx *ExecutionContext, this Value, args []Value) Value {
+	return observer(cx.activeNative())(cx, this, args)
+})
+
+func observer(f *Object) NativeFunc {
+	v, _ := observers.Get(Value{o: f})
+	return v.o.extState().(NativeFunc)
+}
+
 // ObserveNative makes the native function f call observe whenever it starts.
 func ObserveNative(f Value, observe func()) {
-	fn := f.o.fn
-	native := fn.native
-	fn.native = func(cx *ExecutionContext, this Value, args []Value) Value {
-		observe()
-		return native(cx, this, args)
+	info := f.o.fn.changeableInfo()
+	code := info.native.code()
+	if info.native == nativeObserved {
+		code = observer(f.o)
 	}
+	observers.Set(f, info.realm.context.NewFunction("", func(cx *ExecutionContext, this Value, args []Value) Value {
+		observe()
+		return code(cx, this, args)
+	}))
+	info.native = nativeObserved
+}
+
+// NewGoConstructor returns a function with the code f that can be called with new.
+func NewGoConstructor(cx *ExecutionContext, name string, f NativeFunc) *Object {
+	o := cx.NewFunction(name, f).o
+	o.fn.constructor = true
+	return o
 }
 
 // ArraysPlain reports whether new arrays of cx meet what the shortcuts for arrays require of the

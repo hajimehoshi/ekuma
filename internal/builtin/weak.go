@@ -29,18 +29,28 @@ func thisWeakMap(cx *engine.ExecutionContext, this engine.Value, name string) *e
 	return t
 }
 
+var (
+	nativeWeakMapConstructor         = engine.RegisterNative(weakMapConstructor)
+	nativeWeakMapDelete              = engine.RegisterNative(weakMapDelete)
+	nativeWeakMapGet                 = engine.RegisterNative(weakMapGet)
+	nativeWeakMapHas                 = engine.RegisterNative(weakMapHas)
+	nativeWeakMapSet                 = engine.RegisterNative(weakMapSet)
+	nativeWeakMapGetOrInsert         = engine.RegisterNative(weakMapGetOrInsert)
+	nativeWeakMapGetOrInsertComputed = engine.RegisterNative(weakMapGetOrInsertComputed)
+)
+
 func initWeakMap(cx *engine.ExecutionContext) {
 	proto := cx.NewOrdinaryObject()
 	cx.SetIntrinsic(engine.IntrinsicWeakMapPrototype, proto)
-	constructor(cx, "WeakMap", 0, engine.IntrinsicWeakMapPrototype, weakMapConstructor)
+	constructor(cx, "WeakMap", 0, engine.IntrinsicWeakMapPrototype, nativeWeakMapConstructor)
 
-	method(cx, proto, "delete", 1, weakMapDelete)
-	method(cx, proto, "get", 1, weakMapGet)
-	method(cx, proto, "has", 1, weakMapHas)
-	set := method(cx, proto, "set", 2, weakMapSet)
+	method(cx, proto, "delete", 1, nativeWeakMapDelete)
+	method(cx, proto, "get", 1, nativeWeakMapGet)
+	method(cx, proto, "has", 1, nativeWeakMapHas)
+	set := method(cx, proto, "set", 2, nativeWeakMapSet)
 	cx.SetIntrinsic(engine.IntrinsicWeakMapPrototypeSet, set)
-	method(cx, proto, "getOrInsert", 2, weakMapGetOrInsert)
-	method(cx, proto, "getOrInsertComputed", 2, weakMapGetOrInsertComputed)
+	method(cx, proto, "getOrInsert", 2, nativeWeakMapGetOrInsert)
+	method(cx, proto, "getOrInsertComputed", 2, nativeWeakMapGetOrInsertComputed)
 	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("WeakMap"), engine.FlagConfigurable)
 }
 
@@ -135,15 +145,22 @@ func thisWeakSet(cx *engine.ExecutionContext, this engine.Value, name string) *e
 	return t
 }
 
+var (
+	nativeWeakSetConstructor = engine.RegisterNative(weakSetConstructor)
+	nativeWeakSetAdd         = engine.RegisterNative(weakSetAdd)
+	nativeWeakSetDelete      = engine.RegisterNative(weakSetDelete)
+	nativeWeakSetHas         = engine.RegisterNative(weakSetHas)
+)
+
 func initWeakSet(cx *engine.ExecutionContext) {
 	proto := cx.NewOrdinaryObject()
 	cx.SetIntrinsic(engine.IntrinsicWeakSetPrototype, proto)
-	constructor(cx, "WeakSet", 0, engine.IntrinsicWeakSetPrototype, weakSetConstructor)
+	constructor(cx, "WeakSet", 0, engine.IntrinsicWeakSetPrototype, nativeWeakSetConstructor)
 
-	add := method(cx, proto, "add", 1, weakSetAdd)
+	add := method(cx, proto, "add", 1, nativeWeakSetAdd)
 	cx.SetIntrinsic(engine.IntrinsicWeakSetPrototypeAdd, add)
-	method(cx, proto, "delete", 1, weakSetDelete)
-	method(cx, proto, "has", 1, weakSetHas)
+	method(cx, proto, "delete", 1, nativeWeakSetDelete)
+	method(cx, proto, "has", 1, nativeWeakSetHas)
 	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("WeakSet"), engine.FlagConfigurable)
 }
 
@@ -192,11 +209,16 @@ func weakSetHas(cx *engine.ExecutionContext, this engine.Value, args []engine.Va
 	return engine.Bool(cx.CanBeHeldWeakly(v) && t.Has(v))
 }
 
+var (
+	nativeWeakRefConstructor = engine.RegisterNative(weakRefConstructor)
+	nativeWeakRefDeref       = engine.RegisterNative(weakRefDeref)
+)
+
 func initWeakRef(cx *engine.ExecutionContext) {
 	proto := cx.NewOrdinaryObject()
 	cx.SetIntrinsic(engine.IntrinsicWeakRefPrototype, proto)
-	constructor(cx, "WeakRef", 1, engine.IntrinsicWeakRefPrototype, weakRefConstructor)
-	method(cx, proto, "deref", 0, weakRefDeref)
+	constructor(cx, "WeakRef", 1, engine.IntrinsicWeakRefPrototype, nativeWeakRefConstructor)
+	method(cx, proto, "deref", 0, nativeWeakRefDeref)
 	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("WeakRef"), engine.FlagConfigurable)
 }
 
@@ -228,13 +250,19 @@ func thisFinalizationRegistry(cx *engine.ExecutionContext, this engine.Value, na
 	return r
 }
 
+var (
+	nativeFinalizationRegistryConstructor = engine.RegisterNative(finalizationRegistryConstructor)
+	nativeFinalizationRegistryRegister    = engine.RegisterNative(finalizationRegistryRegister)
+	nativeFinalizationRegistryUnregister  = engine.RegisterNative(finalizationRegistryUnregister)
+)
+
 func initFinalizationRegistry(cx *engine.ExecutionContext) {
 	proto := cx.NewOrdinaryObject()
 	cx.SetIntrinsic(engine.IntrinsicFinalizationRegistryPrototype, proto)
-	constructor(cx, "FinalizationRegistry", 1, engine.IntrinsicFinalizationRegistryPrototype, finalizationRegistryConstructor)
+	constructor(cx, "FinalizationRegistry", 1, engine.IntrinsicFinalizationRegistryPrototype, nativeFinalizationRegistryConstructor)
 
-	method(cx, proto, "register", 2, finalizationRegistryRegister)
-	method(cx, proto, "unregister", 1, finalizationRegistryUnregister)
+	method(cx, proto, "register", 2, nativeFinalizationRegistryRegister)
+	method(cx, proto, "unregister", 1, nativeFinalizationRegistryUnregister)
 	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("FinalizationRegistry"), engine.FlagConfigurable)
 }
 

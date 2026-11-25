@@ -390,55 +390,55 @@ var flagProps = []struct {
 	name   string
 	key    engine.CommonKey
 	flag   regexp.Flags
-	getter engine.NativeFunc
+	getter engine.Native
 }{
 	{
 		name:   "hasIndices",
 		key:    engine.KeyHasIndices,
 		flag:   regexp.FlagHasIndices,
-		getter: regExpFlagNative("hasIndices", regexp.FlagHasIndices),
+		getter: engine.RegisterNative(regExpFlagNative("hasIndices", regexp.FlagHasIndices)),
 	},
 	{
 		name:   "global",
 		key:    engine.KeyGlobal,
 		flag:   regexp.FlagGlobal,
-		getter: regExpFlagNative("global", regexp.FlagGlobal),
+		getter: engine.RegisterNative(regExpFlagNative("global", regexp.FlagGlobal)),
 	},
 	{
 		name:   "ignoreCase",
 		key:    engine.KeyIgnoreCase,
 		flag:   regexp.FlagIgnoreCase,
-		getter: regExpFlagNative("ignoreCase", regexp.FlagIgnoreCase),
+		getter: engine.RegisterNative(regExpFlagNative("ignoreCase", regexp.FlagIgnoreCase)),
 	},
 	{
 		name:   "multiline",
 		key:    engine.KeyMultiline,
 		flag:   regexp.FlagMultiline,
-		getter: regExpFlagNative("multiline", regexp.FlagMultiline),
+		getter: engine.RegisterNative(regExpFlagNative("multiline", regexp.FlagMultiline)),
 	},
 	{
 		name:   "dotAll",
 		key:    engine.KeyDotAll,
 		flag:   regexp.FlagDotAll,
-		getter: regExpFlagNative("dotAll", regexp.FlagDotAll),
+		getter: engine.RegisterNative(regExpFlagNative("dotAll", regexp.FlagDotAll)),
 	},
 	{
 		name:   "unicode",
 		key:    engine.KeyUnicode,
 		flag:   regexp.FlagUnicode,
-		getter: regExpFlagNative("unicode", regexp.FlagUnicode),
+		getter: engine.RegisterNative(regExpFlagNative("unicode", regexp.FlagUnicode)),
 	},
 	{
 		name:   "unicodeSets",
 		key:    engine.KeyUnicodeSets,
 		flag:   regexp.FlagUnicodeSets,
-		getter: regExpFlagNative("unicodeSets", regexp.FlagUnicodeSets),
+		getter: engine.RegisterNative(regExpFlagNative("unicodeSets", regexp.FlagUnicodeSets)),
 	},
 	{
 		name:   "sticky",
 		key:    engine.KeySticky,
 		flag:   regexp.FlagSticky,
-		getter: regExpFlagNative("sticky", regexp.FlagSticky),
+		getter: engine.RegisterNative(regExpFlagNative("sticky", regexp.FlagSticky)),
 	},
 }
 
@@ -469,39 +469,55 @@ func thisRegExp(cx *engine.ExecutionContext, this engine.Value, what string) *en
 	return this.Object()
 }
 
+var (
+	nativeRegExpConstructor   = engine.RegisterNative(regExpConstructor)
+	nativeRegExpExecMethod    = engine.RegisterNative(regExpExecMethod)
+	nativeRegExpTest          = engine.RegisterNative(regExpTest)
+	nativeRegExpToString      = engine.RegisterNative(regExpToString)
+	nativeRegExpCompile       = engine.RegisterNative(regExpCompile)
+	nativeRegExpFlags         = engine.RegisterNative(regExpFlags)
+	nativeRegExpSource        = engine.RegisterNative(regExpSource)
+	nativeRegExpMatch         = engine.RegisterNative(regExpMatch)
+	nativeRegExpMatchAll      = engine.RegisterNative(regExpMatchAll)
+	nativeRegExpReplaceMethod = engine.RegisterNative(regExpReplaceMethod)
+	nativeRegExpSearch        = engine.RegisterNative(regExpSearch)
+	nativeRegExpSplitMethod   = engine.RegisterNative(regExpSplitMethod)
+	nativeRegExpEscapeMethod  = engine.RegisterNative(regExpEscapeMethod)
+)
+
 func initRegExp(cx *engine.ExecutionContext) {
 	proto := cx.Intrinsic(engine.IntrinsicRegExpPrototype)
-	ctor := constructor(cx, "RegExp", 2, engine.IntrinsicRegExpPrototype, regExpConstructor)
+	ctor := constructor(cx, "RegExp", 2, engine.IntrinsicRegExpPrototype, nativeRegExpConstructor)
 	cx.SetIntrinsic(engine.IntrinsicRegExp, ctor)
-	cx.DefineAccessor(ctor, cx.WellKnownSymbol(engine.SymbolSpecies), cx.NewNative("get [Symbol.species]", 0, returnThis), nil, engine.FlagConfigurable)
+	cx.DefineAccessor(ctor, cx.WellKnownSymbol(engine.SymbolSpecies), cx.NewNative("get [Symbol.species]", 0, nativeReturnThis), nil, engine.FlagConfigurable)
 
 	// exec and test borrow the RegExp object of a literal they are called on. They run no script
 	// code before the last use of it, except the conversion of an object argument.
-	exec := method(cx, proto, "exec", 1, regExpExecMethod)
+	exec := method(cx, proto, "exec", 1, nativeRegExpExecMethod)
 	cx.SetIntrinsic(engine.IntrinsicRegExpPrototypeExec, exec)
 	cx.LendRegExpLiteralReceivers(exec)
-	cx.LendRegExpLiteralReceivers(method(cx, proto, "test", 1, regExpTest))
-	method(cx, proto, "toString", 0, regExpToString)
-	method(cx, proto, "compile", 2, regExpCompile)
+	cx.LendRegExpLiteralReceivers(method(cx, proto, "test", 1, nativeRegExpTest))
+	method(cx, proto, "toString", 0, nativeRegExpToString)
+	method(cx, proto, "compile", 2, nativeRegExpCompile)
 	for _, fp := range flagProps {
 		getter(cx, proto, cx.Key(fp.key), wtf8.String(fp.name), fp.getter)
 	}
-	getter(cx, proto, cx.Key(engine.KeyFlags), "flags", regExpFlags)
-	getter(cx, proto, cx.Key(engine.KeySource), "source", regExpSource)
+	getter(cx, proto, cx.Key(engine.KeyFlags), "flags", nativeRegExpFlags)
+	getter(cx, proto, cx.Key(engine.KeySource), "source", nativeRegExpSource)
 
-	symMethod(cx, proto, cx.WellKnownSymbol(engine.SymbolMatch), "[Symbol.match]", 1, regExpMatch)
+	symMethod(cx, proto, cx.WellKnownSymbol(engine.SymbolMatch), "[Symbol.match]", 1, nativeRegExpMatch)
 
 	iterProto := cx.NewObject(cx.Intrinsic(engine.IntrinsicIteratorPrototype))
 	cx.SetIntrinsic(engine.IntrinsicRegExpStringIteratorPrototype, iterProto)
-	iteratorNext(cx, iterProto, engine.IteratorMethodRealm, regExpStringIteratorStep)
+	method(cx, iterProto, "next", 0, nativeRegExpStringIteratorNext)
 	cx.Define(iterProto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("RegExp String Iterator"), engine.FlagConfigurable)
 
-	symMethod(cx, proto, cx.WellKnownSymbol(engine.SymbolMatchAll), "[Symbol.matchAll]", 1, regExpMatchAll)
-	symMethod(cx, proto, cx.WellKnownSymbol(engine.SymbolReplace), "[Symbol.replace]", 2, regExpReplaceMethod)
-	symMethod(cx, proto, cx.WellKnownSymbol(engine.SymbolSearch), "[Symbol.search]", 1, regExpSearch)
-	symMethod(cx, proto, cx.WellKnownSymbol(engine.SymbolSplit), "[Symbol.split]", 2, regExpSplitMethod)
+	symMethod(cx, proto, cx.WellKnownSymbol(engine.SymbolMatchAll), "[Symbol.matchAll]", 1, nativeRegExpMatchAll)
+	symMethod(cx, proto, cx.WellKnownSymbol(engine.SymbolReplace), "[Symbol.replace]", 2, nativeRegExpReplaceMethod)
+	symMethod(cx, proto, cx.WellKnownSymbol(engine.SymbolSearch), "[Symbol.search]", 1, nativeRegExpSearch)
+	symMethod(cx, proto, cx.WellKnownSymbol(engine.SymbolSplit), "[Symbol.split]", 2, nativeRegExpSplitMethod)
 
-	method(cx, ctor, "escape", 1, regExpEscapeMethod)
+	method(cx, ctor, "escape", 1, nativeRegExpEscapeMethod)
 
 	initLegacyStatics(cx, ctor)
 
@@ -669,6 +685,9 @@ func regExpMatch(cx *engine.ExecutionContext, this engine.Value, args []engine.V
 	}
 	return engine.ObjectValue(cx.NewArray(out))
 }
+
+// nativeRegExpStringIteratorNext is %RegExpStringIteratorPrototype%.next.
+var nativeRegExpStringIteratorNext = engine.RegisterIteratorNext(engine.IteratorMethodRealm, regExpStringIteratorStep)
 
 func regExpStringIteratorStep(cx *engine.ExecutionContext, this engine.Value) (engine.Value, bool) {
 	st, ok := engine.IteratorState(this).(*regexpStringIterator)
@@ -1364,16 +1383,22 @@ func legacyMatchGetter(cx *engine.ExecutionContext, this engine.Value, args []en
 	return cx.Substring(s, start, end)
 }
 
+var (
+	nativeLegacyInputSetter = engine.RegisterNative(legacyInputSetter)
+	nativeLegacyInputGetter = engine.RegisterNative(legacyInputGetter)
+	nativeLegacyMatchGetter = engine.RegisterNative(legacyMatchGetter)
+)
+
 // initLegacyStatics defines the legacy static properties of RegExp.
 func initLegacyStatics(cx *engine.ExecutionContext, ctor *engine.Object) {
 	cx.Quiet().UpdateLegacyRegExpStaticProperties(cx.NewString(""), nil)
 	define := func(p legacyStatic) {
 		name := wtf8.String(p.name)
-		getter := legacyMatchGetter
+		getter := nativeLegacyMatchGetter
 		var set *engine.Object
 		if p.span == nil {
-			getter = legacyInputGetter
-			set = cx.NewNativeWithState("set "+name, 1, legacyInputSetter, &p)
+			getter = nativeLegacyInputGetter
+			set = cx.NewNativeWithState("set "+name, 1, nativeLegacyInputSetter, &p)
 		}
 		get := cx.NewNativeWithState("get "+name, 0, getter, &p)
 		cx.DefineAccessor(ctor, cx.Intern(name), get, set, engine.FlagConfigurable)

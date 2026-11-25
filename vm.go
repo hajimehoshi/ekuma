@@ -293,7 +293,14 @@ func funcOf(cx *engine.ExecutionContext, name string, f Func) engine.Value {
 	if f == nil {
 		panic("ekuma: FuncOf: nil Func")
 	}
-	return engine.ObjectValue(cx.NewNativeWithState(wtf8.FromValidUTF8(name), 0, hostFunction, f))
+	return engine.ObjectValue(cx.NewNativeWithState(wtf8.FromValidUTF8(name), 0, nativeHostFunction, f))
+}
+
+// nativeHostFunction leads to the code that makes its function objects.
+var nativeHostFunction engine.Native
+
+func init() {
+	nativeHostFunction = engine.RegisterNative(hostFunction)
 }
 
 // hostFunction is the code of the functions that [Realm.FuncOf] makes. Their state is a [Func].

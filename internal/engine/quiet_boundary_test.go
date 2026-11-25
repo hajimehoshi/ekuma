@@ -195,6 +195,9 @@ func TestQuietContextBoundary(t *testing.T) {
 								if !engineType(sig.Params().At(i).Type(), "IteratorPairStepFunc") {
 									continue
 								}
+								if info.Types[n.Args[i]].IsNil() {
+									continue
+								}
 								switch arg := ast.Unparen(n.Args[i]).(type) {
 								case *ast.FuncLit:
 									pairStep[arg] = true

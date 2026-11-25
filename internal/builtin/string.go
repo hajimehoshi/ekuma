@@ -54,75 +54,129 @@ func rejectRegExpObject(cx *engine.ExecutionContext, v engine.Value, what string
 	}
 }
 
-func initString(cx *engine.ExecutionContext) {
-	proto := cx.Intrinsic(engine.IntrinsicStringPrototype)
-	ctor := constructor(cx, "String", 1, engine.IntrinsicStringPrototype, stringConstructor)
+var (
 	// The kernel converts a number or a string, which needs no code to run and cannot throw.
-	cx.SetMethodKernels(ctor, shortContract, nil, stringConstructorKernel, nil)
-	cx.SetMethodKernels(method(cx, ctor, "fromCharCode", 1, stringFromCharCode), shortContract, nil, stringFromCharCodeKernel, nil)
-	method(cx, ctor, "fromCodePoint", 1, stringFromCodePoint)
-	method(cx, ctor, "raw", 1, stringRaw)
-
-	method(cx, proto, "toString", 0, stringToString)
-	method(cx, proto, "valueOf", 0, stringValueOf)
+	nativeStringConstructor = engine.RegisterNativeWithKernels(stringConstructor, engine.Kernels{
+		Method1:  stringConstructorKernel,
+		Contract: shortContract,
+	})
+	nativeStringFromCharCode = engine.RegisterNativeWithKernels(stringFromCharCode, engine.Kernels{
+		Method1:  stringFromCharCodeKernel,
+		Contract: shortContract,
+	})
+	nativeStringFromCodePoint = engine.RegisterNative(stringFromCodePoint)
+	nativeStringRaw           = engine.RegisterNative(stringRaw)
+	nativeStringToString      = engine.RegisterNative(stringToString)
+	nativeStringValueOf       = engine.RegisterNative(stringValueOf)
 	// The kernels of the methods below are the methods for a string and arguments whose
 	// conversions run no code.
-	cx.SetMethodKernels(method(cx, proto, "charAt", 1, stringCharAt), shortContract, nil, stringCharAtKernel, nil)
-	method(cx, proto, "at", 1, stringAt)
-	cx.SetMethodKernels(method(cx, proto, "charCodeAt", 1, stringCharCodeAt), shortContract, nil, stringCharCodeAtKernel, nil)
-	method(cx, proto, "codePointAt", 1, stringCodePointAt)
-	cx.SetMethodKernels(method(cx, proto, "indexOf", 1, stringIndexOf), polledContract, nil, stringIndexOfKernel, nil)
-	method(cx, proto, "lastIndexOf", 1, stringLastIndexOf)
-	cx.SetMethodKernels(method(cx, proto, "includes", 1, stringIncludes), polledContract, nil, stringIncludesKernel, nil)
-	method(cx, proto, "startsWith", 1, stringStartsWith)
-	method(cx, proto, "endsWith", 1, stringEndsWith)
-	cx.SetMethodKernels(method(cx, proto, "slice", 2, stringSlice), shortContract, nil, stringSliceKernel1, stringSliceKernel2)
-	cx.SetMethodKernels(method(cx, proto, "substring", 2, stringSubstring), shortContract, nil, stringSubstringKernel1, stringSubstringKernel2)
-	method(cx, proto, "substr", 2, stringSubstr)
-	method(cx, proto, "concat", 1, stringConcat)
-	method(cx, proto, "repeat", 1, stringRepeat)
-	method(cx, proto, "padStart", 1, stringPadStart)
-	method(cx, proto, "padEnd", 1, stringPadEnd)
-	method(cx, proto, "trim", 0, stringTrim)
-	trimStart := method(cx, proto, "trimStart", 0, stringTrimStart)
-	trimEnd := method(cx, proto, "trimEnd", 0, stringTrimEnd)
+	nativeStringCharAt = engine.RegisterNativeWithKernels(stringCharAt, engine.Kernels{
+		Method1:  stringCharAtKernel,
+		Contract: shortContract,
+	})
+	nativeStringAt         = engine.RegisterNative(stringAt)
+	nativeStringCharCodeAt = engine.RegisterNativeWithKernels(stringCharCodeAt, engine.Kernels{
+		Method1:  stringCharCodeAtKernel,
+		Contract: shortContract,
+	})
+	nativeStringCodePointAt = engine.RegisterNative(stringCodePointAt)
+	nativeStringIndexOf     = engine.RegisterNativeWithKernels(stringIndexOf, engine.Kernels{
+		Method1:  stringIndexOfKernel,
+		Contract: polledContract,
+	})
+	nativeStringLastIndexOf = engine.RegisterNative(stringLastIndexOf)
+	nativeStringIncludes    = engine.RegisterNativeWithKernels(stringIncludes, engine.Kernels{
+		Method1:  stringIncludesKernel,
+		Contract: polledContract,
+	})
+	nativeStringStartsWith = engine.RegisterNative(stringStartsWith)
+	nativeStringEndsWith   = engine.RegisterNative(stringEndsWith)
+	nativeStringSlice      = engine.RegisterNativeWithKernels(stringSlice, engine.Kernels{
+		Method1:  stringSliceKernel1,
+		Method2:  stringSliceKernel2,
+		Contract: shortContract,
+	})
+	nativeStringSubstring = engine.RegisterNativeWithKernels(stringSubstring, engine.Kernels{
+		Method1:  stringSubstringKernel1,
+		Method2:  stringSubstringKernel2,
+		Contract: shortContract,
+	})
+	nativeStringSubstr         = engine.RegisterNative(stringSubstr)
+	nativeStringConcat         = engine.RegisterNative(stringConcat)
+	nativeStringRepeat         = engine.RegisterNative(stringRepeat)
+	nativeStringLocaleCompare  = engine.RegisterNative(stringLocaleCompare)
+	nativeStringNormalize      = engine.RegisterNative(stringNormalize)
+	nativeStringIsWellFormed   = engine.RegisterNative(stringIsWellFormed)
+	nativeStringToWellFormed   = engine.RegisterNative(stringToWellFormed)
+	nativeStringSplit          = engine.RegisterNative(stringSplit)
+	nativeStringIteratorMethod = engine.RegisterNative(stringIteratorMethod)
+)
+
+func initString(cx *engine.ExecutionContext) {
+	proto := cx.Intrinsic(engine.IntrinsicStringPrototype)
+	ctor := constructor(cx, "String", 1, engine.IntrinsicStringPrototype, nativeStringConstructor)
+	method(cx, ctor, "fromCharCode", 1, nativeStringFromCharCode)
+	method(cx, ctor, "fromCodePoint", 1, nativeStringFromCodePoint)
+	method(cx, ctor, "raw", 1, nativeStringRaw)
+
+	method(cx, proto, "toString", 0, nativeStringToString)
+	method(cx, proto, "valueOf", 0, nativeStringValueOf)
+	method(cx, proto, "charAt", 1, nativeStringCharAt)
+	method(cx, proto, "at", 1, nativeStringAt)
+	method(cx, proto, "charCodeAt", 1, nativeStringCharCodeAt)
+	method(cx, proto, "codePointAt", 1, nativeStringCodePointAt)
+	method(cx, proto, "indexOf", 1, nativeStringIndexOf)
+	method(cx, proto, "lastIndexOf", 1, nativeStringLastIndexOf)
+	method(cx, proto, "includes", 1, nativeStringIncludes)
+	method(cx, proto, "startsWith", 1, nativeStringStartsWith)
+	method(cx, proto, "endsWith", 1, nativeStringEndsWith)
+	method(cx, proto, "slice", 2, nativeStringSlice)
+	method(cx, proto, "substring", 2, nativeStringSubstring)
+	method(cx, proto, "substr", 2, nativeStringSubstr)
+	method(cx, proto, "concat", 1, nativeStringConcat)
+	method(cx, proto, "repeat", 1, nativeStringRepeat)
+	method(cx, proto, "padStart", 1, nativeStringPadStart)
+	method(cx, proto, "padEnd", 1, nativeStringPadEnd)
+	method(cx, proto, "trim", 0, nativeStringTrim)
+	trimStart := method(cx, proto, "trimStart", 0, nativeStringTrimStart)
+	trimEnd := method(cx, proto, "trimEnd", 0, nativeStringTrimEnd)
 	cx.Define(proto, cx.Intern("trimLeft"), engine.ObjectValue(trimStart), engine.FlagsHidden)
 	cx.Define(proto, cx.Intern("trimRight"), engine.ObjectValue(trimEnd), engine.FlagsHidden)
 	// The HTML methods of Annex B.
-	method(cx, proto, "anchor", 1, stringAnchor)
-	method(cx, proto, "big", 0, stringBig)
-	method(cx, proto, "blink", 0, stringBlink)
-	method(cx, proto, "bold", 0, stringBold)
-	method(cx, proto, "fixed", 0, stringFixed)
-	method(cx, proto, "fontcolor", 1, stringFontcolor)
-	method(cx, proto, "fontsize", 1, stringFontsize)
-	method(cx, proto, "italics", 0, stringItalics)
-	method(cx, proto, "link", 1, stringLink)
-	method(cx, proto, "small", 0, stringSmall)
-	method(cx, proto, "strike", 0, stringStrike)
-	method(cx, proto, "sub", 0, stringSub)
-	method(cx, proto, "sup", 0, stringSup)
+	method(cx, proto, "anchor", 1, nativeStringAnchor)
+	method(cx, proto, "big", 0, nativeStringBig)
+	method(cx, proto, "blink", 0, nativeStringBlink)
+	method(cx, proto, "bold", 0, nativeStringBold)
+	method(cx, proto, "fixed", 0, nativeStringFixed)
+	method(cx, proto, "fontcolor", 1, nativeStringFontcolor)
+	method(cx, proto, "fontsize", 1, nativeStringFontsize)
+	method(cx, proto, "italics", 0, nativeStringItalics)
+	method(cx, proto, "link", 1, nativeStringLink)
+	method(cx, proto, "small", 0, nativeStringSmall)
+	method(cx, proto, "strike", 0, nativeStringStrike)
+	method(cx, proto, "sub", 0, nativeStringSub)
+	method(cx, proto, "sup", 0, nativeStringSup)
 
-	method(cx, proto, "toUpperCase", 0, stringToUpperCase)
-	method(cx, proto, "toLowerCase", 0, stringToLowerCase)
-	method(cx, proto, "toLocaleUpperCase", 0, stringToLocaleUpperCase)
-	method(cx, proto, "toLocaleLowerCase", 0, stringToLocaleLowerCase)
-	method(cx, proto, "localeCompare", 1, stringLocaleCompare)
-	method(cx, proto, "normalize", 0, stringNormalize)
-	method(cx, proto, "isWellFormed", 0, stringIsWellFormed)
-	method(cx, proto, "toWellFormed", 0, stringToWellFormed)
+	method(cx, proto, "toUpperCase", 0, nativeStringToUpperCase)
+	method(cx, proto, "toLowerCase", 0, nativeStringToLowerCase)
+	method(cx, proto, "toLocaleUpperCase", 0, nativeStringToLocaleUpperCase)
+	method(cx, proto, "toLocaleLowerCase", 0, nativeStringToLocaleLowerCase)
+	method(cx, proto, "localeCompare", 1, nativeStringLocaleCompare)
+	method(cx, proto, "normalize", 0, nativeStringNormalize)
+	method(cx, proto, "isWellFormed", 0, nativeStringIsWellFormed)
+	method(cx, proto, "toWellFormed", 0, nativeStringToWellFormed)
 	// split, replace, replaceAll, match and search borrow the RegExp object of a literal separator
 	// or pattern. RegExp.prototype[@@split] and the others reach it only through UnmodifiedRegExpMatcher,
 	// and run no script code before the last use of it, except the conversions of the other
 	// arguments, which the conditions below rule out, and the replacer function, which runs last
 	// and is not passed the object.
-	cx.LendRegExpLiterals(method(cx, proto, "split", 2, stringSplit))
-	cx.LendRegExpLiterals(method(cx, proto, "replace", 2, stringReplace))
-	cx.LendRegExpLiterals(method(cx, proto, "replaceAll", 2, stringReplaceAll))
-	cx.LendRegExpLiterals(method(cx, proto, "match", 1, stringMatch))
-	method(cx, proto, "matchAll", 1, stringMatchAll)
-	cx.LendRegExpLiterals(method(cx, proto, "search", 1, stringSearch))
-	symMethod(cx, proto, cx.WellKnownSymbol(engine.SymbolIterator), "[Symbol.iterator]", 0, stringIteratorMethod)
+	cx.LendRegExpLiterals(method(cx, proto, "split", 2, nativeStringSplit))
+	cx.LendRegExpLiterals(method(cx, proto, "replace", 2, nativeStringReplace))
+	cx.LendRegExpLiterals(method(cx, proto, "replaceAll", 2, nativeStringReplaceAll))
+	cx.LendRegExpLiterals(method(cx, proto, "match", 1, nativeStringMatch))
+	method(cx, proto, "matchAll", 1, nativeStringMatchAll)
+	cx.LendRegExpLiterals(method(cx, proto, "search", 1, nativeStringSearch))
+	symMethod(cx, proto, cx.WellKnownSymbol(engine.SymbolIterator), "[Symbol.iterator]", 0, nativeStringIteratorMethod)
 }
 
 func stringConstructor(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -452,8 +506,8 @@ func stringRepeat(cx *engine.ExecutionContext, this engine.Value, args []engine.
 }
 
 var (
-	stringPadStart = stringPadNative("padStart", true)
-	stringPadEnd   = stringPadNative("padEnd", false)
+	nativeStringPadStart = engine.RegisterNative(stringPadNative("padStart", true))
+	nativeStringPadEnd   = engine.RegisterNative(stringPadNative("padEnd", false))
 )
 
 // stringPadNative returns the method name of String.prototype, which pads a string at its start with
@@ -497,9 +551,9 @@ func stringPadNative(name string, atStart bool) engine.NativeFunc {
 }
 
 var (
-	stringTrim      = stringTrimNative("trim", true, true)
-	stringTrimStart = stringTrimNative("trimStart", true, false)
-	stringTrimEnd   = stringTrimNative("trimEnd", false, true)
+	nativeStringTrim      = engine.RegisterNative(stringTrimNative("trim", true, true))
+	nativeStringTrimStart = engine.RegisterNative(stringTrimNative("trimStart", true, false))
+	nativeStringTrimEnd   = engine.RegisterNative(stringTrimNative("trimEnd", false, true))
 )
 
 // stringTrimNative returns the method name of String.prototype, which trims a string at its start
@@ -514,19 +568,19 @@ func stringTrimNative(name string, start, end bool) engine.NativeFunc {
 }
 
 var (
-	stringAnchor    = stringHTMLNative("anchor", "a", "name")
-	stringBig       = stringHTMLNative("big", "big", "")
-	stringBlink     = stringHTMLNative("blink", "blink", "")
-	stringBold      = stringHTMLNative("bold", "b", "")
-	stringFixed     = stringHTMLNative("fixed", "tt", "")
-	stringFontcolor = stringHTMLNative("fontcolor", "font", "color")
-	stringFontsize  = stringHTMLNative("fontsize", "font", "size")
-	stringItalics   = stringHTMLNative("italics", "i", "")
-	stringLink      = stringHTMLNative("link", "a", "href")
-	stringSmall     = stringHTMLNative("small", "small", "")
-	stringStrike    = stringHTMLNative("strike", "strike", "")
-	stringSub       = stringHTMLNative("sub", "sub", "")
-	stringSup       = stringHTMLNative("sup", "sup", "")
+	nativeStringAnchor    = engine.RegisterNative(stringHTMLNative("anchor", "a", "name"))
+	nativeStringBig       = engine.RegisterNative(stringHTMLNative("big", "big", ""))
+	nativeStringBlink     = engine.RegisterNative(stringHTMLNative("blink", "blink", ""))
+	nativeStringBold      = engine.RegisterNative(stringHTMLNative("bold", "b", ""))
+	nativeStringFixed     = engine.RegisterNative(stringHTMLNative("fixed", "tt", ""))
+	nativeStringFontcolor = engine.RegisterNative(stringHTMLNative("fontcolor", "font", "color"))
+	nativeStringFontsize  = engine.RegisterNative(stringHTMLNative("fontsize", "font", "size"))
+	nativeStringItalics   = engine.RegisterNative(stringHTMLNative("italics", "i", ""))
+	nativeStringLink      = engine.RegisterNative(stringHTMLNative("link", "a", "href"))
+	nativeStringSmall     = engine.RegisterNative(stringHTMLNative("small", "small", ""))
+	nativeStringStrike    = engine.RegisterNative(stringHTMLNative("strike", "strike", ""))
+	nativeStringSub       = engine.RegisterNative(stringHTMLNative("sub", "sub", ""))
+	nativeStringSup       = engine.RegisterNative(stringHTMLNative("sup", "sup", ""))
 )
 
 // stringHTMLNative returns the method name of String.prototype, which makes an element tag of a
@@ -652,8 +706,8 @@ func stringSplit(cx *engine.ExecutionContext, this engine.Value, args []engine.V
 }
 
 var (
-	stringReplace    = stringReplaceNative("replace", false)
-	stringReplaceAll = stringReplaceNative("replaceAll", true)
+	nativeStringReplace    = engine.RegisterNative(stringReplaceNative("replace", false))
+	nativeStringReplaceAll = engine.RegisterNative(stringReplaceNative("replaceAll", true))
 )
 
 // stringReplaceNative returns the method name of String.prototype, which replaces all matches with
@@ -728,9 +782,9 @@ func stringReplaceNative(name string, all bool) engine.NativeFunc {
 }
 
 var (
-	stringMatch    = stringMatchNative("match", engine.SymbolMatch)
-	stringMatchAll = stringMatchNative("matchAll", engine.SymbolMatchAll)
-	stringSearch   = stringMatchNative("search", engine.SymbolSearch)
+	nativeStringMatch    = engine.RegisterNative(stringMatchNative("match", engine.SymbolMatch))
+	nativeStringMatchAll = engine.RegisterNative(stringMatchNative("matchAll", engine.SymbolMatchAll))
+	nativeStringSearch   = engine.RegisterNative(stringMatchNative("search", engine.SymbolSearch))
 )
 
 // stringMatchNative returns the method name of String.prototype, which calls the method key of a
@@ -868,10 +922,10 @@ func lowerASCII(s string, start, end int, poll func()) string {
 }
 
 var (
-	stringToUpperCase       = stringCaseNative("toUpperCase", true, upperASCII, upperMapping)
-	stringToLowerCase       = stringCaseNative("toLowerCase", false, lowerASCII, lowerMapping)
-	stringToLocaleUpperCase = stringCaseNative("toLocaleUpperCase", true, upperASCII, upperMapping)
-	stringToLocaleLowerCase = stringCaseNative("toLocaleLowerCase", false, lowerASCII, lowerMapping)
+	nativeStringToUpperCase       = engine.RegisterNative(stringCaseNative("toUpperCase", true, upperASCII, upperMapping))
+	nativeStringToLowerCase       = engine.RegisterNative(stringCaseNative("toLowerCase", false, lowerASCII, lowerMapping))
+	nativeStringToLocaleUpperCase = engine.RegisterNative(stringCaseNative("toLocaleUpperCase", true, upperASCII, upperMapping))
+	nativeStringToLocaleLowerCase = engine.RegisterNative(stringCaseNative("toLocaleLowerCase", false, lowerASCII, lowerMapping))
 )
 
 // stringCaseNative returns the method name of String.prototype, which maps a string with ascii when

@@ -352,16 +352,25 @@ func newUint8Array(cx *engine.ExecutionContext, b []byte) engine.Value {
 	return engine.ObjectValue(o)
 }
 
+var (
+	nativeUint8ArrayFromBase64    = engine.RegisterNative(uint8ArrayFromBase64)
+	nativeUint8ArrayFromHex       = engine.RegisterNative(uint8ArrayFromHex)
+	nativeUint8ArraySetFromBase64 = engine.RegisterNative(uint8ArraySetFromBase64)
+	nativeUint8ArraySetFromHex    = engine.RegisterNative(uint8ArraySetFromHex)
+	nativeUint8ArrayToBase64      = engine.RegisterNative(uint8ArrayToBase64)
+	nativeUint8ArrayToHex         = engine.RegisterNative(uint8ArrayToHex)
+)
+
 func initUint8ArrayBase64(cx *engine.ExecutionContext) {
 	ctor := cx.Intrinsic(engine.IntrinsicUint8Array)
 	proto := cx.Intrinsic(engine.IntrinsicUint8ArrayPrototype)
 
-	method(cx, ctor, "fromBase64", 1, uint8ArrayFromBase64)
-	method(cx, ctor, "fromHex", 1, uint8ArrayFromHex)
-	method(cx, proto, "setFromBase64", 1, uint8ArraySetFromBase64)
-	method(cx, proto, "setFromHex", 1, uint8ArraySetFromHex)
-	method(cx, proto, "toBase64", 0, uint8ArrayToBase64)
-	method(cx, proto, "toHex", 0, uint8ArrayToHex)
+	method(cx, ctor, "fromBase64", 1, nativeUint8ArrayFromBase64)
+	method(cx, ctor, "fromHex", 1, nativeUint8ArrayFromHex)
+	method(cx, proto, "setFromBase64", 1, nativeUint8ArraySetFromBase64)
+	method(cx, proto, "setFromHex", 1, nativeUint8ArraySetFromHex)
+	method(cx, proto, "toBase64", 0, nativeUint8ArrayToBase64)
+	method(cx, proto, "toHex", 0, nativeUint8ArrayToHex)
 }
 
 func uint8ArrayFromBase64(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {

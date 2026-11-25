@@ -456,7 +456,7 @@ func (k *kernelTest) testSteps(t *testing.T, s *engine.Shortcut, form string) {
 			t.Error("indexed array getter did not honor the interruption")
 		}
 		return
-	case "step":
+	case "step", "framedStep":
 		site = k.eval(t, "stepSite")
 	case "pairStep":
 		site = k.eval(t, "pairSite")

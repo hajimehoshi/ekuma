@@ -203,33 +203,49 @@ func localeFromTag(cx *engine.ExecutionContext, t locale.Tag) engine.Value {
 	return engine.ObjectValue(cx.NewIntlObject(cx.Intrinsic(engine.IntrinsicIntlLocalePrototype), newLocaleData(t)))
 }
 
+var (
+	nativeNewLocale          = engine.RegisterNative(newLocale)
+	nativeLocaleMaximize     = engine.RegisterNative(localeMaximize)
+	nativeLocaleMinimize     = engine.RegisterNative(localeMinimize)
+	nativeLocaleToString     = engine.RegisterNative(localeToString)
+	nativeLocaleBaseName     = engine.RegisterNative(localeBaseName)
+	nativeLocaleNumeric      = engine.RegisterNative(localeNumeric)
+	nativeLocaleLanguage     = engine.RegisterNative(localeLanguage)
+	nativeLocaleScript       = engine.RegisterNative(localeScript)
+	nativeLocaleRegion       = engine.RegisterNative(localeRegion)
+	nativeLocaleVariants     = engine.RegisterNative(localeVariants)
+	nativeLocaleGetTimeZones = engine.RegisterNative(localeGetTimeZones)
+	nativeLocaleGetTextInfo  = engine.RegisterNative(localeGetTextInfo)
+	nativeLocaleGetWeekInfo  = engine.RegisterNative(localeGetWeekInfo)
+)
+
 // initLocale defines Intl.Locale.
 func initLocale(cx *engine.ExecutionContext, ns *engine.Object) {
-	_, proto := constructor(cx, ns, "Locale", 1, engine.IntrinsicIntlLocalePrototype, newLocale)
+	_, proto := constructor(cx, ns, "Locale", 1, engine.IntrinsicIntlLocalePrototype, nativeNewLocale)
 	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Intl.Locale"), engine.FlagConfigurable)
 
-	method(cx, proto, "maximize", 0, localeMaximize)
-	method(cx, proto, "minimize", 0, localeMinimize)
-	method(cx, proto, "toString", 0, localeToString)
-	getter(cx, proto, "baseName", localeBaseName)
-	getter(cx, proto, "calendar", localeCalendar)
-	getter(cx, proto, "caseFirst", localeCaseFirst)
-	getter(cx, proto, "collation", localeCollation)
-	getter(cx, proto, "firstDayOfWeek", localeFirstDayOfWeek)
-	getter(cx, proto, "hourCycle", localeHourCycle)
-	getter(cx, proto, "numberingSystem", localeNumberingSystem)
-	getter(cx, proto, "numeric", localeNumeric)
-	getter(cx, proto, "language", localeLanguage)
-	getter(cx, proto, "script", localeScript)
-	getter(cx, proto, "region", localeRegion)
-	getter(cx, proto, "variants", localeVariants)
-	method(cx, proto, "getCalendars", 0, localeGetCalendars)
-	method(cx, proto, "getCollations", 0, localeGetCollations)
-	method(cx, proto, "getHourCycles", 0, localeGetHourCycles)
-	method(cx, proto, "getNumberingSystems", 0, localeGetNumberingSystems)
-	method(cx, proto, "getTimeZones", 0, localeGetTimeZones)
-	method(cx, proto, "getTextInfo", 0, localeGetTextInfo)
-	method(cx, proto, "getWeekInfo", 0, localeGetWeekInfo)
+	method(cx, proto, "maximize", 0, nativeLocaleMaximize)
+	method(cx, proto, "minimize", 0, nativeLocaleMinimize)
+	method(cx, proto, "toString", 0, nativeLocaleToString)
+	getter(cx, proto, "baseName", nativeLocaleBaseName)
+	getter(cx, proto, "calendar", nativeLocaleCalendar)
+	getter(cx, proto, "caseFirst", nativeLocaleCaseFirst)
+	getter(cx, proto, "collation", nativeLocaleCollation)
+	getter(cx, proto, "firstDayOfWeek", nativeLocaleFirstDayOfWeek)
+	getter(cx, proto, "hourCycle", nativeLocaleHourCycle)
+	getter(cx, proto, "numberingSystem", nativeLocaleNumberingSystem)
+	getter(cx, proto, "numeric", nativeLocaleNumeric)
+	getter(cx, proto, "language", nativeLocaleLanguage)
+	getter(cx, proto, "script", nativeLocaleScript)
+	getter(cx, proto, "region", nativeLocaleRegion)
+	getter(cx, proto, "variants", nativeLocaleVariants)
+	method(cx, proto, "getCalendars", 0, nativeLocaleGetCalendars)
+	method(cx, proto, "getCollations", 0, nativeLocaleGetCollations)
+	method(cx, proto, "getHourCycles", 0, nativeLocaleGetHourCycles)
+	method(cx, proto, "getNumberingSystems", 0, nativeLocaleGetNumberingSystems)
+	method(cx, proto, "getTimeZones", 0, nativeLocaleGetTimeZones)
+	method(cx, proto, "getTextInfo", 0, nativeLocaleGetTextInfo)
+	method(cx, proto, "getWeekInfo", 0, nativeLocaleGetWeekInfo)
 }
 
 func localeMaximize(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -257,12 +273,12 @@ func localeBaseName(cx *engine.ExecutionContext, this engine.Value, args []engin
 }
 
 var (
-	localeCalendar        = localeKeywordNative("calendar", "ca")
-	localeCaseFirst       = localeKeywordNative("caseFirst", "kf")
-	localeCollation       = localeKeywordNative("collation", "co")
-	localeFirstDayOfWeek  = localeKeywordNative("firstDayOfWeek", "fw")
-	localeHourCycle       = localeKeywordNative("hourCycle", "hc")
-	localeNumberingSystem = localeKeywordNative("numberingSystem", "nu")
+	nativeLocaleCalendar        = engine.RegisterNative(localeKeywordNative("calendar", "ca"))
+	nativeLocaleCaseFirst       = engine.RegisterNative(localeKeywordNative("caseFirst", "kf"))
+	nativeLocaleCollation       = engine.RegisterNative(localeKeywordNative("collation", "co"))
+	nativeLocaleFirstDayOfWeek  = engine.RegisterNative(localeKeywordNative("firstDayOfWeek", "fw"))
+	nativeLocaleHourCycle       = engine.RegisterNative(localeKeywordNative("hourCycle", "hc"))
+	nativeLocaleNumberingSystem = engine.RegisterNative(localeKeywordNative("numberingSystem", "nu"))
 )
 
 // localeKeywordNative returns the getter of the property name of Intl.Locale.prototype, which
@@ -301,10 +317,10 @@ func localeVariants(cx *engine.ExecutionContext, this engine.Value, args []engin
 }
 
 var (
-	localeGetCalendars        = localeListNative("getCalendars", locale.CalendarsOf)
-	localeGetCollations       = localeListNative("getCollations", locale.CollationsOf)
-	localeGetHourCycles       = localeListNative("getHourCycles", locale.HourCyclesOf)
-	localeGetNumberingSystems = localeListNative("getNumberingSystems", locale.NumberingSystemsOf)
+	nativeLocaleGetCalendars        = engine.RegisterNative(localeListNative("getCalendars", locale.CalendarsOf))
+	nativeLocaleGetCollations       = engine.RegisterNative(localeListNative("getCollations", locale.CollationsOf))
+	nativeLocaleGetHourCycles       = engine.RegisterNative(localeListNative("getHourCycles", locale.HourCyclesOf))
+	nativeLocaleGetNumberingSystems = engine.RegisterNative(localeListNative("getNumberingSystems", locale.NumberingSystemsOf))
 )
 
 // localeListNative returns the method name of Intl.Locale.prototype, which returns the array of the

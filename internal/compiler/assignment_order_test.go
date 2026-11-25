@@ -33,7 +33,7 @@ func runAssignment(file, src string, conservative bool) (string, error) {
 		}
 		return cx.NewScript(code), nil
 	}
-	eval := cx.NewNative("evalScript", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	eval := cx.NewFunction("evalScript", func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		var input wtf8.String
 		if len(args) > 0 {
 			input = cx.ToString(args[0])
@@ -44,7 +44,7 @@ func runAssignment(file, src string, conservative bool) (string, error) {
 		}
 		return s.CallScript()
 	})
-	lazy := cx.NewNative("setLazyPrototype", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	lazy := cx.NewFunction("setLazyPrototype", func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		init := args[0].Object()
 		global := cx.GlobalObject().Object()
 		proto := cx.NewLazyObject(cx.ProtoOf(global), func(cx *engine.ExecutionContext, o *engine.Object) {
@@ -53,10 +53,10 @@ func runAssignment(file, src string, conservative bool) (string, error) {
 		return engine.Bool(cx.SetPrototypeOf(global, proto))
 	})
 	host := engine.ObjectValue(cx.NewOrdinaryObject())
-	if err := cx.HostSet(host, cx.NewString("evalScript"), engine.ObjectValue(eval)); err != nil {
+	if err := cx.HostSet(host, cx.NewString("evalScript"), eval); err != nil {
 		return "", err
 	}
-	if err := cx.HostSet(host, cx.NewString("setLazyPrototype"), engine.ObjectValue(lazy)); err != nil {
+	if err := cx.HostSet(host, cx.NewString("setLazyPrototype"), lazy); err != nil {
 		return "", err
 	}
 	if err := cx.HostSet(cx.GlobalObject(), cx.NewString("$262"), host); err != nil {

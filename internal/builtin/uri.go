@@ -35,16 +35,25 @@ var (
 	escapeSet       = byteSet(escapeUnescaped)
 )
 
+var (
+	nativeGlobalDecodeURI          = engine.RegisterNative(globalDecodeURI)
+	nativeGlobalDecodeURIComponent = engine.RegisterNative(globalDecodeURIComponent)
+	nativeGlobalEncodeURI          = engine.RegisterNative(globalEncodeURI)
+	nativeGlobalEncodeURIComponent = engine.RegisterNative(globalEncodeURIComponent)
+	nativeGlobalEscape             = engine.RegisterNative(globalEscape)
+	nativeGlobalUnescape           = engine.RegisterNative(globalUnescape)
+)
+
 // initURIFunctions defines the URI handling functions and the Annex B functions escape and
 // unescape on the global object.
 func initURIFunctions(cx *engine.ExecutionContext) {
 	g := cx.GlobalObject().Object()
-	method(cx, g, "decodeURI", 1, globalDecodeURI)
-	method(cx, g, "decodeURIComponent", 1, globalDecodeURIComponent)
-	method(cx, g, "encodeURI", 1, globalEncodeURI)
-	method(cx, g, "encodeURIComponent", 1, globalEncodeURIComponent)
-	method(cx, g, "escape", 1, globalEscape)
-	method(cx, g, "unescape", 1, globalUnescape)
+	method(cx, g, "decodeURI", 1, nativeGlobalDecodeURI)
+	method(cx, g, "decodeURIComponent", 1, nativeGlobalDecodeURIComponent)
+	method(cx, g, "encodeURI", 1, nativeGlobalEncodeURI)
+	method(cx, g, "encodeURIComponent", 1, nativeGlobalEncodeURIComponent)
+	method(cx, g, "escape", 1, nativeGlobalEscape)
+	method(cx, g, "unescape", 1, nativeGlobalUnescape)
 }
 
 func globalDecodeURI(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {

@@ -68,25 +68,38 @@ func relativeRange(cx *engine.ExecutionContext, start, end engine.Value, length 
 	return first, final
 }
 
+var (
+	nativeArrayBufferConstructor      = engine.RegisterNative(arrayBufferConstructor)
+	nativeArrayBufferIsView           = engine.RegisterNative(arrayBufferIsView)
+	nativeArrayBufferByteLength       = engine.RegisterNative(arrayBufferByteLength)
+	nativeArrayBufferMaxByteLength    = engine.RegisterNative(arrayBufferMaxByteLength)
+	nativeArrayBufferResizable        = engine.RegisterNative(arrayBufferResizable)
+	nativeArrayBufferDetached         = engine.RegisterNative(arrayBufferDetached)
+	nativeArrayBufferImmutable        = engine.RegisterNative(arrayBufferImmutable)
+	nativeArrayBufferSlice            = engine.RegisterNative(arrayBufferSlice)
+	nativeArrayBufferSliceToImmutable = engine.RegisterNative(arrayBufferSliceToImmutable)
+	nativeArrayBufferResize           = engine.RegisterNative(arrayBufferResize)
+)
+
 func initArrayBuffer(cx *engine.ExecutionContext) {
 	proto := cx.NewOrdinaryObject()
 	cx.SetIntrinsic(engine.IntrinsicArrayBufferPrototype, proto)
-	ctor := constructor(cx, "ArrayBuffer", 1, engine.IntrinsicArrayBufferPrototype, arrayBufferConstructor)
+	ctor := constructor(cx, "ArrayBuffer", 1, engine.IntrinsicArrayBufferPrototype, nativeArrayBufferConstructor)
 	cx.SetIntrinsic(engine.IntrinsicArrayBuffer, ctor)
 	speciesGetter(cx, ctor)
-	method(cx, ctor, "isView", 1, arrayBufferIsView)
+	method(cx, ctor, "isView", 1, nativeArrayBufferIsView)
 
-	getter(cx, proto, cx.Intern("byteLength"), "byteLength", arrayBufferByteLength)
-	getter(cx, proto, cx.Intern("maxByteLength"), "maxByteLength", arrayBufferMaxByteLength)
-	getter(cx, proto, cx.Intern("resizable"), "resizable", arrayBufferResizable)
-	getter(cx, proto, cx.Intern("detached"), "detached", arrayBufferDetached)
-	getter(cx, proto, cx.Intern("immutable"), "immutable", arrayBufferImmutable)
-	method(cx, proto, "slice", 2, arrayBufferSlice)
-	method(cx, proto, "sliceToImmutable", 2, arrayBufferSliceToImmutable)
-	method(cx, proto, "resize", 1, arrayBufferResize)
-	method(cx, proto, "transfer", 0, arrayBufferTransfer)
-	method(cx, proto, "transferToFixedLength", 0, arrayBufferTransferToFixedLength)
-	method(cx, proto, "transferToImmutable", 0, arrayBufferTransferToImmutable)
+	getter(cx, proto, cx.Intern("byteLength"), "byteLength", nativeArrayBufferByteLength)
+	getter(cx, proto, cx.Intern("maxByteLength"), "maxByteLength", nativeArrayBufferMaxByteLength)
+	getter(cx, proto, cx.Intern("resizable"), "resizable", nativeArrayBufferResizable)
+	getter(cx, proto, cx.Intern("detached"), "detached", nativeArrayBufferDetached)
+	getter(cx, proto, cx.Intern("immutable"), "immutable", nativeArrayBufferImmutable)
+	method(cx, proto, "slice", 2, nativeArrayBufferSlice)
+	method(cx, proto, "sliceToImmutable", 2, nativeArrayBufferSliceToImmutable)
+	method(cx, proto, "resize", 1, nativeArrayBufferResize)
+	method(cx, proto, "transfer", 0, nativeArrayBufferTransfer)
+	method(cx, proto, "transferToFixedLength", 0, nativeArrayBufferTransferToFixedLength)
+	method(cx, proto, "transferToImmutable", 0, nativeArrayBufferTransferToImmutable)
 	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("ArrayBuffer"), engine.FlagConfigurable)
 }
 
@@ -207,9 +220,9 @@ func arrayBufferResize(cx *engine.ExecutionContext, this engine.Value, args []en
 }
 
 var (
-	arrayBufferTransfer              = arrayBufferTransferNative("transfer", true, false)
-	arrayBufferTransferToFixedLength = arrayBufferTransferNative("transferToFixedLength", false, false)
-	arrayBufferTransferToImmutable   = arrayBufferTransferNative("transferToImmutable", false, true)
+	nativeArrayBufferTransfer              = engine.RegisterNative(arrayBufferTransferNative("transfer", true, false))
+	nativeArrayBufferTransferToFixedLength = engine.RegisterNative(arrayBufferTransferNative("transferToFixedLength", false, false))
+	nativeArrayBufferTransferToImmutable   = engine.RegisterNative(arrayBufferTransferNative("transferToImmutable", false, true))
 )
 
 // arrayBufferTransferNative returns the method name of ArrayBuffer.prototype, which implements
@@ -246,18 +259,27 @@ func arrayBufferTransferNative(name string, preserve, immutable bool) engine.Nat
 	}
 }
 
+var (
+	nativeSharedArrayBufferConstructor   = engine.RegisterNative(sharedArrayBufferConstructor)
+	nativeSharedArrayBufferByteLength    = engine.RegisterNative(sharedArrayBufferByteLength)
+	nativeSharedArrayBufferMaxByteLength = engine.RegisterNative(sharedArrayBufferMaxByteLength)
+	nativeSharedArrayBufferGrowable      = engine.RegisterNative(sharedArrayBufferGrowable)
+	nativeSharedArrayBufferGrow          = engine.RegisterNative(sharedArrayBufferGrow)
+	nativeSharedArrayBufferSlice         = engine.RegisterNative(sharedArrayBufferSlice)
+)
+
 func initSharedArrayBuffer(cx *engine.ExecutionContext) {
 	proto := cx.NewOrdinaryObject()
 	cx.SetIntrinsic(engine.IntrinsicSharedArrayBufferPrototype, proto)
-	ctor := constructor(cx, "SharedArrayBuffer", 1, engine.IntrinsicSharedArrayBufferPrototype, sharedArrayBufferConstructor)
+	ctor := constructor(cx, "SharedArrayBuffer", 1, engine.IntrinsicSharedArrayBufferPrototype, nativeSharedArrayBufferConstructor)
 	cx.SetIntrinsic(engine.IntrinsicSharedArrayBuffer, ctor)
 	speciesGetter(cx, ctor)
 
-	getter(cx, proto, cx.Intern("byteLength"), "byteLength", sharedArrayBufferByteLength)
-	getter(cx, proto, cx.Intern("maxByteLength"), "maxByteLength", sharedArrayBufferMaxByteLength)
-	getter(cx, proto, cx.Intern("growable"), "growable", sharedArrayBufferGrowable)
-	method(cx, proto, "grow", 1, sharedArrayBufferGrow)
-	method(cx, proto, "slice", 2, sharedArrayBufferSlice)
+	getter(cx, proto, cx.Intern("byteLength"), "byteLength", nativeSharedArrayBufferByteLength)
+	getter(cx, proto, cx.Intern("maxByteLength"), "maxByteLength", nativeSharedArrayBufferMaxByteLength)
+	getter(cx, proto, cx.Intern("growable"), "growable", nativeSharedArrayBufferGrowable)
+	method(cx, proto, "grow", 1, nativeSharedArrayBufferGrow)
+	method(cx, proto, "slice", 2, nativeSharedArrayBufferSlice)
 	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("SharedArrayBuffer"), engine.FlagConfigurable)
 }
 

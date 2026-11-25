@@ -133,13 +133,19 @@ func isASCII(s string) bool {
 	return true
 }
 
+var (
+	nativeNewDisplayNames             = engine.RegisterNative(newDisplayNames)
+	nativeDisplayNamesOf              = engine.RegisterNative(displayNamesOf)
+	nativeDisplayNamesResolvedOptions = engine.RegisterNative(displayNamesResolvedOptions)
+)
+
 // initDisplayNames defines Intl.DisplayNames.
 func initDisplayNames(cx *engine.ExecutionContext, ns *engine.Object) {
-	ctor, proto := constructor(cx, ns, "DisplayNames", 2, engine.IntrinsicIntlDisplayNamesPrototype, newDisplayNames)
+	ctor, proto := constructor(cx, ns, "DisplayNames", 2, engine.IntrinsicIntlDisplayNamesPrototype, nativeNewDisplayNames)
 
-	method(cx, ctor, "supportedLocalesOf", 1, supportedLocalesOf)
-	method(cx, proto, "of", 1, displayNamesOf)
-	method(cx, proto, "resolvedOptions", 0, displayNamesResolvedOptions)
+	method(cx, ctor, "supportedLocalesOf", 1, nativeSupportedLocalesOf)
+	method(cx, proto, "of", 1, nativeDisplayNamesOf)
+	method(cx, proto, "resolvedOptions", 0, nativeDisplayNamesResolvedOptions)
 	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Intl.DisplayNames"), engine.FlagConfigurable)
 }
 

@@ -8,12 +8,24 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
+var (
+	// nativeShadowRealmConstructor leads to the code that makes its function object.
+	nativeShadowRealmConstructor engine.Native
+
+	nativeShadowRealmEvaluate          = engine.RegisterNative(shadowRealmEvaluate)
+	nativeShadowRealmImportValueMethod = engine.RegisterNative(shadowRealmImportValueMethod)
+)
+
+func init() {
+	nativeShadowRealmConstructor = engine.RegisterNative(shadowRealmConstructor)
+}
+
 func initShadowRealm(cx *engine.ExecutionContext) {
 	proto := cx.NewObject(cx.Intrinsic(engine.IntrinsicObjectPrototype))
 	cx.SetIntrinsic(engine.IntrinsicShadowRealmPrototype, proto)
-	constructor(cx, "ShadowRealm", 0, engine.IntrinsicShadowRealmPrototype, shadowRealmConstructor)
-	method(cx, proto, "evaluate", 1, shadowRealmEvaluate)
-	method(cx, proto, "importValue", 2, shadowRealmImportValueMethod)
+	constructor(cx, "ShadowRealm", 0, engine.IntrinsicShadowRealmPrototype, nativeShadowRealmConstructor)
+	method(cx, proto, "evaluate", 1, nativeShadowRealmEvaluate)
+	method(cx, proto, "importValue", 2, nativeShadowRealmImportValueMethod)
 	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("ShadowRealm"), engine.FlagConfigurable)
 }
 
@@ -58,6 +70,11 @@ func performShadowRealmEval(cx *engine.ExecutionContext, src wtf8.String, target
 	return getWrappedValue(cx, v)
 }
 
+var (
+	nativeShadowRealmExportGetter   = engine.RegisterNative(shadowRealmExportGetter)
+	nativeShadowRealmImportRejected = engine.RegisterNative(shadowRealmImportRejected)
+)
+
 // shadowRealmImportValue implements ShadowRealmImportValue with the current realm as the
 // caller realm.
 func shadowRealmImportValue(cx *engine.ExecutionContext, specifier wtf8.String, exportName engine.Value, target *engine.ExecutionContext) engine.Value {
@@ -66,8 +83,8 @@ func shadowRealmImportValue(cx *engine.ExecutionContext, specifier wtf8.String, 
 		specifier:  specifier,
 		exportName: exportName,
 	}
-	onFulfilled := cx.NewNativeWithState("", 1, shadowRealmExportGetter, st)
-	onRejected := cx.NewNativeWithState("", 1, shadowRealmImportRejected, st)
+	onFulfilled := cx.NewNativeWithState("", 1, nativeShadowRealmExportGetter, st)
+	onRejected := cx.NewNativeWithState("", 1, nativeShadowRealmImportRejected, st)
 	c := cx.NewPromiseCapability(engine.ObjectValue(cx.Intrinsic(engine.IntrinsicPromise)))
 	return cx.PerformPromiseThen(engine.ObjectValue(inner), engine.ObjectValue(onFulfilled), engine.ObjectValue(onRejected), c)
 }
@@ -110,10 +127,17 @@ func getWrappedValue(cx *engine.ExecutionContext, v engine.Value) engine.Value {
 	return engine.ObjectValue(wrappedFunctionCreate(cx, v.Object()))
 }
 
+// nativeWrappedFunction leads to the code that makes its function objects.
+var nativeWrappedFunction engine.Native
+
+func init() {
+	nativeWrappedFunction = engine.RegisterNative(wrappedFunction)
+}
+
 // wrappedFunctionCreate implements WrappedFunctionCreate with the current realm as the caller
 // realm. A wrapped function is a native function of that realm.
 func wrappedFunctionCreate(cx *engine.ExecutionContext, target *engine.Object) *engine.Object {
-	f := cx.NewNativeWithState("", 0, wrappedFunction, target)
+	f := cx.NewNativeWithState("", 0, nativeWrappedFunction, target)
 	if _, ok := cx.Completion(func() {
 		copyNameAndLength(cx, f, target, "", 0)
 	}); !ok {

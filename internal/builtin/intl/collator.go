@@ -163,20 +163,29 @@ func collatorCompare(cx *engine.ExecutionContext, this engine.Value, args []engi
 	return engine.Number(float64(cd.compare(cx, x, y)))
 }
 
+var (
+	nativeNewCollator             = engine.RegisterNative(newCollator)
+	nativeSupportedLocalesOf      = engine.RegisterNative(supportedLocalesOf)
+	nativeCollatorCompareGetter   = engine.RegisterNative(collatorCompareGetter)
+	nativeCollatorResolvedOptions = engine.RegisterNative(collatorResolvedOptions)
+)
+
 // initCollator defines Intl.Collator.
 func initCollator(cx *engine.ExecutionContext, ns *engine.Object) {
-	ctor, proto := constructor(cx, ns, "Collator", 0, engine.IntrinsicIntlCollatorPrototype, newCollator)
+	ctor, proto := constructor(cx, ns, "Collator", 0, engine.IntrinsicIntlCollatorPrototype, nativeNewCollator)
 
-	method(cx, ctor, "supportedLocalesOf", 1, supportedLocalesOf)
-	getter(cx, proto, "compare", collatorCompareGetter)
-	method(cx, proto, "resolvedOptions", 0, collatorResolvedOptions)
+	method(cx, ctor, "supportedLocalesOf", 1, nativeSupportedLocalesOf)
+	getter(cx, proto, "compare", nativeCollatorCompareGetter)
+	method(cx, proto, "resolvedOptions", 0, nativeCollatorResolvedOptions)
 	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Intl.Collator"), engine.FlagConfigurable)
 }
+
+var nativeCollatorCompare = engine.RegisterNative(collatorCompare)
 
 func collatorCompareGetter(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	cd := thisCollator(cx, this, "compare")
 	if cd.boundCompare == nil {
-		cd.boundCompare = cx.NewNativeWithState("", 2, collatorCompare, cd)
+		cd.boundCompare = cx.NewNativeWithState("", 2, nativeCollatorCompare, cd)
 	}
 	return engine.ObjectValue(cd.boundCompare)
 }
@@ -213,9 +222,11 @@ func (st *localeCompareState) defaultCollator(cx *engine.ExecutionContext) *coll
 	return st.collator
 }
 
+var nativeStringLocaleCompare = engine.RegisterNative(stringLocaleCompare)
+
 // initLocaleCompare replaces String.prototype.localeCompare with the version of ECMA-402.
 func initLocaleCompare(cx *engine.ExecutionContext) {
-	f := cx.NewNativeWithState("localeCompare", 1, stringLocaleCompare, &localeCompareState{})
+	f := cx.NewNativeWithState("localeCompare", 1, nativeStringLocaleCompare, &localeCompareState{})
 	cx.Define(cx.Intrinsic(engine.IntrinsicStringPrototype), cx.Intern("localeCompare"), engine.ObjectValue(f), engine.FlagsHidden)
 }
 
@@ -242,19 +253,19 @@ var caseLocales = []string{"az", "el", "hy", "lt", "tr"}
 // versions of ECMA-402.
 func initLocaleCase(cx *engine.ExecutionContext) {
 	proto := cx.Intrinsic(engine.IntrinsicStringPrototype)
-	define := func(name string, f engine.NativeFunc) {
+	define := func(name string, f engine.Native) {
 		key := cx.Intern(wtf8.String(name))
 		// The state of the method is that of the base, which maps the case without a language.
 		fn := cx.NewNativeWithState(wtf8.String(name), 0, f, cx.Get(proto, engine.NamedKey(key)).Object())
 		cx.Define(proto, key, engine.ObjectValue(fn), engine.FlagsHidden)
 	}
-	define("toLocaleUpperCase", stringToLocaleUpperCase)
-	define("toLocaleLowerCase", stringToLocaleLowerCase)
+	define("toLocaleUpperCase", nativeStringToLocaleUpperCase)
+	define("toLocaleLowerCase", nativeStringToLocaleLowerCase)
 }
 
 var (
-	stringToLocaleUpperCase = stringLocaleCaseNative("toLocaleUpperCase", true)
-	stringToLocaleLowerCase = stringLocaleCaseNative("toLocaleLowerCase", false)
+	nativeStringToLocaleUpperCase = engine.RegisterNative(stringLocaleCaseNative("toLocaleUpperCase", true))
+	nativeStringToLocaleLowerCase = engine.RegisterNative(stringLocaleCaseNative("toLocaleLowerCase", false))
 )
 
 // stringLocaleCaseNative returns the method name of String.prototype, which maps a string to
@@ -527,13 +538,18 @@ func joinLocaleStrings(cx *engine.ExecutionContext, o *engine.Object, n int64, a
 	return cx.NewString(b.String())
 }
 
+var (
+	nativeArrayToLocaleString      = engine.RegisterNative(arrayToLocaleString)
+	nativeTypedArrayToLocaleString = engine.RegisterNative(typedArrayToLocaleString)
+)
+
 // initArrayToLocaleString replaces Array.prototype.toLocaleString and
 // %TypedArray%.prototype.toLocaleString with the versions of ECMA-402, which pass the locales
 // and the options to the elements.
 func initArrayToLocaleString(cx *engine.ExecutionContext) {
-	method(cx, cx.Intrinsic(engine.IntrinsicArrayPrototype), "toLocaleString", 0, arrayToLocaleString)
+	method(cx, cx.Intrinsic(engine.IntrinsicArrayPrototype), "toLocaleString", 0, nativeArrayToLocaleString)
 	typedArrayProto := cx.ProtoOf(cx.Intrinsic(engine.IntrinsicInt8ArrayPrototype))
-	method(cx, typedArrayProto, "toLocaleString", 0, typedArrayToLocaleString)
+	method(cx, typedArrayProto, "toLocaleString", 0, nativeTypedArrayToLocaleString)
 }
 
 func arrayToLocaleString(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {

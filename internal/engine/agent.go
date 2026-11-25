@@ -35,8 +35,6 @@ type function struct {
 	// upvals are the variables of enclosing functions that code refers to.
 	upvals []*upvalue
 
-	native NativeFunc
-
 	// info describes a native function. It is nil for any other function.
 	info *nativeInfo
 
@@ -71,6 +69,9 @@ type function struct {
 
 // nativeInfo is the description of a native function.
 type nativeInfo struct {
+	// native is the native function.
+	native Native
+
 	// name and length are the initial values of the properties name and length.
 	name   wtf8.String
 	length int32
@@ -100,9 +101,12 @@ var proxyInfo nativeInfo
 
 // nativeFast holds the forms of a native function that its callers use instead of calling it.
 type nativeFast struct {
-	// step is set for the next method of a built-in iterator. It is what the function does
-	// without creating the iterator result.
-	step IteratorStepFunc
+	// step or framedStep is set for the next method of a built-in iterator. It is what the
+	// function does without creating the iterator result. step records the frame of the function
+	// where it has to, or declines, returning stepDeclined and false without doing anything. The
+	// caller of framedStep records it.
+	step       IteratorStepFunc
+	framedStep IteratorStepFunc
 
 	// pairStep is set for the next method of a built-in iterator that can yield pairs. It is
 	// what the function does without creating the iterator result or the pair.
@@ -163,15 +167,15 @@ func (f *function) frameless() bool {
 	return f != nil && f.info != nil && f.info.frameless
 }
 
-// iteratorStep returns the step function of the next method f of a built-in iterator in realm r, or nil.
-func (f *function) iteratorStep(r *realm) IteratorStepFunc {
-	if f.info == nil || f.info.realm != r || f.info.fast == nil {
+// iteratorFast returns the forms of the native function f of realm r, or nil.
+func (f *function) iteratorFast(r *realm) *nativeFast {
+	if f.info == nil || f.info.realm != r {
 		return nil
 	}
-	return f.info.fast.step
+	return f.info.fast
 }
 
-// iteratorPairStep is iteratorStep for the pair step.
+// iteratorPairStep returns the pair step of the next method f of a built-in iterator in realm r, or nil.
 func (f *function) iteratorPairStep(r *realm) IteratorPairStepFunc {
 	if f.info == nil || f.info.realm != r || f.info.fast == nil {
 		return nil
@@ -502,14 +506,16 @@ func (cx *ExecutionContext) invokeNative(f *Object, this Value, args []Value, ne
 	}
 	// This is pushNative written out, since pushNative does not inline. A change there belongs
 	// here too.
-	n := len(cx.natives)
-	if n == cap(cx.natives) {
+	ag := cx.agent
+	n := len(ag.natives)
+	if n >= cap(ag.natives) {
 		cx.growNatives()
+		return cx.invokeNative(f, this, args, newTarget)
 	}
-	cx.natives = cx.natives[:n+1]
-	c := &cx.natives[n]
-	c.f, c.receiver, c.frames, c.newTarget = f, this, len(cx.frames), newTarget
-	r := f.fn.native(cx, this, args)
+	ag.natives = ag.natives[:n+1]
+	c := &ag.natives[n]
+	c.f, c.receiver, c.frames, c.newTarget = f, this, len(ag.frames), newTarget
+	r := f.fn.info.native.code()(cx, this, args)
 	cx.popNative()
 	return r
 }
@@ -523,8 +529,9 @@ func (c *nativeCall) showsFrame() bool {
 // popNative records the end of the innermost call of a native function.
 func (ag *agent) popNative() {
 	n := len(ag.natives) - 1
-	ag.natives[n] = nativeCall{}
+	c := &ag.natives[n]
 	ag.natives = ag.natives[:n]
+	*c = nativeCall{}
 }
 
 // truncateNatives drops the calls of native functions after the first n.

@@ -31,27 +31,43 @@ func throwReflectArgumentList(cx *engine.ExecutionContext, name string) {
 	cx.ThrowTypeError("Reflect." + name + " requires an array-like object as the argument list")
 }
 
+var (
+	nativeReflectApply                    = engine.RegisterNative(reflectApply)
+	nativeReflectConstruct                = engine.RegisterNative(reflectConstruct)
+	nativeReflectDefineProperty           = engine.RegisterNative(reflectDefineProperty)
+	nativeReflectDeleteProperty           = engine.RegisterNative(reflectDeleteProperty)
+	nativeReflectGet                      = engine.RegisterNative(reflectGet)
+	nativeReflectGetOwnPropertyDescriptor = engine.RegisterNative(reflectGetOwnPropertyDescriptor)
+	nativeReflectGetPrototypeOf           = engine.RegisterNative(reflectGetPrototypeOf)
+	nativeReflectHas                      = engine.RegisterNative(reflectHas)
+	nativeReflectIsExtensible             = engine.RegisterNative(reflectIsExtensible)
+	nativeReflectOwnKeys                  = engine.RegisterNative(reflectOwnKeys)
+	nativeReflectPreventExtensions        = engine.RegisterNative(reflectPreventExtensions)
+	nativeReflectSet                      = engine.RegisterNative(reflectSet)
+	nativeReflectSetPrototypeOf           = engine.RegisterNative(reflectSetPrototypeOf)
+)
+
 func initReflect(cx *engine.ExecutionContext) {
 	r := cx.NewOrdinaryObject()
 	cx.Define(cx.GlobalObject().Object(), cx.Intern("Reflect"), engine.ObjectValue(r), engine.FlagsHidden)
 	cx.Define(r, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Reflect"), engine.FlagConfigurable)
 
 	// Reflect.apply and Reflect.construct show no frame, as Function.prototype.call and apply.
-	apply := method(cx, r, "apply", 3, reflectApply)
+	apply := method(cx, r, "apply", 3, nativeReflectApply)
 	cx.SetFrameless(apply)
-	construct := method(cx, r, "construct", 2, reflectConstruct)
+	construct := method(cx, r, "construct", 2, nativeReflectConstruct)
 	cx.SetFrameless(construct)
-	method(cx, r, "defineProperty", 3, reflectDefineProperty)
-	method(cx, r, "deleteProperty", 2, reflectDeleteProperty)
-	method(cx, r, "get", 2, reflectGet)
-	method(cx, r, "getOwnPropertyDescriptor", 2, reflectGetOwnPropertyDescriptor)
-	method(cx, r, "getPrototypeOf", 1, reflectGetPrototypeOf)
-	method(cx, r, "has", 2, reflectHas)
-	method(cx, r, "isExtensible", 1, reflectIsExtensible)
-	method(cx, r, "ownKeys", 1, reflectOwnKeys)
-	method(cx, r, "preventExtensions", 1, reflectPreventExtensions)
-	method(cx, r, "set", 3, reflectSet)
-	method(cx, r, "setPrototypeOf", 2, reflectSetPrototypeOf)
+	method(cx, r, "defineProperty", 3, nativeReflectDefineProperty)
+	method(cx, r, "deleteProperty", 2, nativeReflectDeleteProperty)
+	method(cx, r, "get", 2, nativeReflectGet)
+	method(cx, r, "getOwnPropertyDescriptor", 2, nativeReflectGetOwnPropertyDescriptor)
+	method(cx, r, "getPrototypeOf", 1, nativeReflectGetPrototypeOf)
+	method(cx, r, "has", 2, nativeReflectHas)
+	method(cx, r, "isExtensible", 1, nativeReflectIsExtensible)
+	method(cx, r, "ownKeys", 1, nativeReflectOwnKeys)
+	method(cx, r, "preventExtensions", 1, nativeReflectPreventExtensions)
+	method(cx, r, "set", 3, nativeReflectSet)
+	method(cx, r, "setPrototypeOf", 2, nativeReflectSetPrototypeOf)
 }
 
 func reflectApply(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {

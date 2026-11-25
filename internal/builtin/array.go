@@ -269,56 +269,96 @@ func flattenIntoArray(cx *engine.ExecutionContext, a *engine.Object, src *engine
 	}
 }
 
+var (
+	nativeArrayConstructor = engine.RegisterNative(arrayConstructor)
+	nativeArrayIsArray     = engine.RegisterNativeWithKernels(arrayIsArray, engine.Kernels{
+		Method1:  arrayIsArrayKernel,
+		Contract: shortContract,
+	})
+	nativeArrayOf   = engine.RegisterNative(arrayOf)
+	nativeArrayFrom = engine.RegisterNative(arrayFrom)
+	nativeArrayPush = engine.RegisterNativeWithKernels(arrayPush, engine.Kernels{
+		Method1:  arrayPushKernel,
+		Contract: shortContract,
+	})
+	nativeArrayPop = engine.RegisterNativeWithKernels(arrayPop, engine.Kernels{
+		Method0:  arrayPopKernel,
+		Contract: shortContract,
+	})
+	nativeArrayShift     = engine.RegisterNative(arrayShift)
+	nativeArrayUnshift   = engine.RegisterNative(arrayUnshift)
+	nativeArraySlice     = engine.RegisterNative(arraySlice)
+	nativeArraySplice    = engine.RegisterNative(arraySplice)
+	nativeArrayConcat    = engine.RegisterNative(arrayConcat)
+	nativeArrayJoin      = engine.RegisterNative(arrayJoin)
+	nativeArrayToString  = engine.RegisterNative(arrayToString)
+	nativeArrayReverse   = engine.RegisterNative(arrayReverse)
+	nativeArrayForEach   = engine.RegisterNative(arrayForEach)
+	nativeArrayMap       = engine.RegisterNative(arrayMap)
+	nativeArrayFilter    = engine.RegisterNative(arrayFilter)
+	nativeArraySome      = engine.RegisterNative(arraySome)
+	nativeArrayEvery     = engine.RegisterNative(arrayEvery)
+	nativeArrayFind      = engine.RegisterNative(arrayFind)
+	nativeArrayFindIndex = engine.RegisterNative(arrayFindIndex)
+	nativeArrayFill      = engine.RegisterNative(arrayFill)
+	nativeArrayAt        = engine.RegisterNative(arrayAt)
+	nativeArraySort      = engine.RegisterNative(arraySort)
+	nativeArrayFlat      = engine.RegisterNative(arrayFlat)
+	nativeArrayFlatMap   = engine.RegisterNative(arrayFlatMap)
+	nativeArrayKeys      = engine.RegisterNative(arrayKeys)
+	nativeArrayEntries   = engine.RegisterNative(arrayEntries)
+	nativeArrayValues    = engine.RegisterNative(arrayValues)
+)
+
 func initArray(cx *engine.ExecutionContext) {
 	proto := cx.Intrinsic(engine.IntrinsicArrayPrototype)
-	ctor := constructor(cx, "Array", 1, engine.IntrinsicArrayPrototype, arrayConstructor)
+	ctor := constructor(cx, "Array", 1, engine.IntrinsicArrayPrototype, nativeArrayConstructor)
 	cx.SetIntrinsic(engine.IntrinsicArray, ctor)
-	speciesGetter := cx.NewNative("get [Symbol.species]", 0, returnThis)
+	speciesGetter := cx.NewNative("get [Symbol.species]", 0, nativeReturnThis)
 	cx.SetIntrinsic(engine.IntrinsicArraySpeciesGetter, speciesGetter)
 	cx.DefineAccessor(ctor, cx.WellKnownSymbol(engine.SymbolSpecies), speciesGetter, nil, engine.FlagConfigurable)
 
-	cx.SetMethodKernels(method(cx, ctor, "isArray", 1, arrayIsArray), shortContract, nil, arrayIsArrayKernel, nil)
-	method(cx, ctor, "of", 0, arrayOf)
-	method(cx, ctor, "from", 1, arrayFrom)
+	method(cx, ctor, "isArray", 1, nativeArrayIsArray)
+	method(cx, ctor, "of", 0, nativeArrayOf)
+	method(cx, ctor, "from", 1, nativeArrayFrom)
 
-	cx.SetMethodKernels(method(cx, proto, "push", 1, arrayPush), shortContract, nil, arrayPushKernel, nil)
-	cx.SetMethodKernels(method(cx, proto, "pop", 0, arrayPop), shortContract, arrayPopKernel, nil, nil)
-	method(cx, proto, "shift", 0, arrayShift)
-	method(cx, proto, "unshift", 1, arrayUnshift)
-	method(cx, proto, "slice", 2, arraySlice)
-	method(cx, proto, "splice", 2, arraySplice)
-	method(cx, proto, "concat", 1, arrayConcat)
-	method(cx, proto, "join", 1, arrayJoin)
-	method(cx, proto, "toString", 0, arrayToString)
-	method(cx, proto, "reverse", 0, arrayReverse)
+	method(cx, proto, "push", 1, nativeArrayPush)
+	method(cx, proto, "pop", 0, nativeArrayPop)
+	method(cx, proto, "shift", 0, nativeArrayShift)
+	method(cx, proto, "unshift", 1, nativeArrayUnshift)
+	method(cx, proto, "slice", 2, nativeArraySlice)
+	method(cx, proto, "splice", 2, nativeArraySplice)
+	method(cx, proto, "concat", 1, nativeArrayConcat)
+	method(cx, proto, "join", 1, nativeArrayJoin)
+	method(cx, proto, "toString", 0, nativeArrayToString)
+	method(cx, proto, "reverse", 0, nativeArrayReverse)
 
-	// The kernels are the searches of an Array from its start.
-	cx.SetMethodKernels(method(cx, proto, "indexOf", 1, arrayIndexOf), polledContract, nil, arrayIndexOfKernel, nil)
-	method(cx, proto, "lastIndexOf", 1, arrayLastIndexOf)
-	cx.SetMethodKernels(method(cx, proto, "includes", 1, arrayIncludes), polledContract, nil, arrayIncludesKernel, nil)
+	method(cx, proto, "indexOf", 1, nativeArrayIndexOf)
+	method(cx, proto, "lastIndexOf", 1, nativeArrayLastIndexOf)
+	method(cx, proto, "includes", 1, nativeArrayIncludes)
 
-	method(cx, proto, "forEach", 1, arrayForEach)
-	method(cx, proto, "map", 1, arrayMap)
-	method(cx, proto, "filter", 1, arrayFilter)
-	method(cx, proto, "some", 1, arraySome)
-	method(cx, proto, "every", 1, arrayEvery)
-	method(cx, proto, "find", 1, arrayFind)
-	method(cx, proto, "findIndex", 1, arrayFindIndex)
-	method(cx, proto, "findLast", 1, arrayFindLast)
-	method(cx, proto, "findLastIndex", 1, arrayFindLastIndex)
+	method(cx, proto, "forEach", 1, nativeArrayForEach)
+	method(cx, proto, "map", 1, nativeArrayMap)
+	method(cx, proto, "filter", 1, nativeArrayFilter)
+	method(cx, proto, "some", 1, nativeArraySome)
+	method(cx, proto, "every", 1, nativeArrayEvery)
+	method(cx, proto, "find", 1, nativeArrayFind)
+	method(cx, proto, "findIndex", 1, nativeArrayFindIndex)
+	method(cx, proto, "findLast", 1, nativeArrayFindLast)
+	method(cx, proto, "findLastIndex", 1, nativeArrayFindLastIndex)
 
-	method(cx, proto, "reduce", 1, arrayReduce)
-	method(cx, proto, "reduceRight", 1, arrayReduceRight)
+	method(cx, proto, "reduce", 1, nativeArrayReduce)
+	method(cx, proto, "reduceRight", 1, nativeArrayReduceRight)
 
-	method(cx, proto, "fill", 1, arrayFill)
-	method(cx, proto, "at", 1, arrayAt)
-	method(cx, proto, "sort", 1, arraySort)
-	method(cx, proto, "flat", 0, arrayFlat)
-	method(cx, proto, "flatMap", 1, arrayFlatMap)
+	method(cx, proto, "fill", 1, nativeArrayFill)
+	method(cx, proto, "at", 1, nativeArrayAt)
+	method(cx, proto, "sort", 1, nativeArraySort)
+	method(cx, proto, "flat", 0, nativeArrayFlat)
+	method(cx, proto, "flatMap", 1, nativeArrayFlatMap)
 
-	method(cx, proto, "keys", 0, arrayKeys)
-	method(cx, proto, "entries", 0, arrayEntries)
-	cx.SetIntrinsic(engine.IntrinsicArrayPrototypeValues, method(cx, proto, "values", 0, arrayValues))
+	method(cx, proto, "keys", 0, nativeArrayKeys)
+	method(cx, proto, "entries", 0, nativeArrayEntries)
+	cx.SetIntrinsic(engine.IntrinsicArrayPrototypeValues, method(cx, proto, "values", 0, nativeArrayValues))
 	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolIterator), engine.ObjectValue(cx.Intrinsic(engine.IntrinsicArrayPrototypeValues)), engine.FlagsHidden)
 	initArrayAdditions(cx, proto)
 }
@@ -731,9 +771,16 @@ func arrayReverse(cx *engine.ExecutionContext, this engine.Value, args []engine.
 }
 
 var (
-	arrayIndexOf     = arraySearchNative(false, false)
-	arrayLastIndexOf = arraySearchNative(true, false)
-	arrayIncludes    = arraySearchNative(false, true)
+	// The kernels of indexOf and includes are the searches of an Array from its start.
+	nativeArrayIndexOf = engine.RegisterNativeWithKernels(arraySearchNative(false, false), engine.Kernels{
+		Method1:  arrayIndexOfKernel,
+		Contract: polledContract,
+	})
+	nativeArrayLastIndexOf = engine.RegisterNative(arraySearchNative(true, false))
+	nativeArrayIncludes    = engine.RegisterNativeWithKernels(arraySearchNative(false, true), engine.Kernels{
+		Method1:  arrayIncludesKernel,
+		Contract: polledContract,
+	})
 )
 
 // arraySearchNative returns a method that searches an array for a value. With fromEnd, the method
@@ -941,8 +988,8 @@ func arrayFindIndex(cx *engine.ExecutionContext, this engine.Value, args []engin
 }
 
 var (
-	arrayFindLast      = arrayFindLastNative("findLast", false)
-	arrayFindLastIndex = arrayFindLastNative("findLastIndex", true)
+	nativeArrayFindLast      = engine.RegisterNative(arrayFindLastNative("findLast", false))
+	nativeArrayFindLastIndex = engine.RegisterNative(arrayFindLastNative("findLastIndex", true))
 )
 
 // arrayFindLastNative returns the method name, which finds the last element that its callback
@@ -971,8 +1018,8 @@ func arrayFindLastNative(name string, index bool) engine.NativeFunc {
 }
 
 var (
-	arrayReduce      = arrayReduceNative("reduce", false)
-	arrayReduceRight = arrayReduceNative("reduceRight", true)
+	nativeArrayReduce      = engine.RegisterNative(arrayReduceNative("reduce", false))
+	nativeArrayReduceRight = engine.RegisterNative(arrayReduceNative("reduceRight", true))
 )
 
 // arrayReduceNative returns the method name, which reduces an array. With right, the method goes
@@ -1154,15 +1201,24 @@ func newArrayOfLength(cx *engine.ExecutionContext, n int64) []engine.Value {
 	return make([]engine.Value, 0, min(n, 1024))
 }
 
+var (
+	nativeArrayCopyWithin     = engine.RegisterNative(arrayCopyWithin)
+	nativeArrayToLocaleString = engine.RegisterNative(arrayToLocaleString)
+	nativeArrayToReversed     = engine.RegisterNative(arrayToReversed)
+	nativeArrayToSorted       = engine.RegisterNative(arrayToSorted)
+	nativeArrayToSpliced      = engine.RegisterNative(arrayToSpliced)
+	nativeArrayWith           = engine.RegisterNative(arrayWith)
+)
+
 // initArrayAdditions defines copyWithin, toLocaleString, the methods that change an array by copy,
 // and Symbol.unscopables on Array.prototype.
 func initArrayAdditions(cx *engine.ExecutionContext, proto *engine.Object) {
-	method(cx, proto, "copyWithin", 2, arrayCopyWithin)
-	method(cx, proto, "toLocaleString", 0, arrayToLocaleString)
-	method(cx, proto, "toReversed", 0, arrayToReversed)
-	method(cx, proto, "toSorted", 1, arrayToSorted)
-	method(cx, proto, "toSpliced", 2, arrayToSpliced)
-	method(cx, proto, "with", 2, arrayWith)
+	method(cx, proto, "copyWithin", 2, nativeArrayCopyWithin)
+	method(cx, proto, "toLocaleString", 0, nativeArrayToLocaleString)
+	method(cx, proto, "toReversed", 0, nativeArrayToReversed)
+	method(cx, proto, "toSorted", 1, nativeArrayToSorted)
+	method(cx, proto, "toSpliced", 2, nativeArrayToSpliced)
+	method(cx, proto, "with", 2, nativeArrayWith)
 
 	unscopables := cx.NewObject(nil)
 	for _, name := range []wtf8.String{

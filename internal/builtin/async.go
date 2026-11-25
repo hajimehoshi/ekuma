@@ -11,7 +11,7 @@ import (
 
 // functionKindConstructor creates the constructor name, which calls f, of the functions whose
 // prototype object is proto, such as GeneratorFunction. It is not a global.
-func functionKindConstructor(cx *engine.ExecutionContext, name wtf8.String, f engine.NativeFunc, proto *engine.Object) {
+func functionKindConstructor(cx *engine.ExecutionContext, name wtf8.String, f engine.Native, proto *engine.Object) {
 	c := cx.NewNativeConstructor(name, 1, f)
 	cx.SetPrototypeOf(c, cx.Intrinsic(engine.IntrinsicFunction))
 	cx.Define(c, cx.Key(engine.KeyPrototype), engine.ObjectValue(proto), 0)
@@ -19,20 +19,29 @@ func functionKindConstructor(cx *engine.ExecutionContext, name wtf8.String, f en
 	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString(name), engine.FlagConfigurable)
 }
 
+var (
+	nativeAsyncFunctionConstructor          = engine.RegisterNative(asyncFunctionConstructor)
+	nativeAsyncGeneratorFunctionConstructor = engine.RegisterNative(asyncGeneratorFunctionConstructor)
+	nativeAsyncGeneratorNext                = engine.RegisterNative(asyncGeneratorNext)
+	nativeAsyncGeneratorReturn              = engine.RegisterNative(asyncGeneratorReturn)
+	nativeAsyncGeneratorThrow               = engine.RegisterNative(asyncGeneratorThrow)
+	nativeArrayFromAsync                    = engine.RegisterNative(arrayFromAsync)
+)
+
 func initAsync(cx *engine.ExecutionContext) {
-	functionKindConstructor(cx, "AsyncFunction", asyncFunctionConstructor, cx.Intrinsic(engine.IntrinsicAsyncFunctionPrototype))
-	functionKindConstructor(cx, "AsyncGeneratorFunction", asyncGeneratorFunctionConstructor, cx.Intrinsic(engine.IntrinsicAsyncGeneratorFunctionPrototype))
+	functionKindConstructor(cx, "AsyncFunction", nativeAsyncFunctionConstructor, cx.Intrinsic(engine.IntrinsicAsyncFunctionPrototype))
+	functionKindConstructor(cx, "AsyncGeneratorFunction", nativeAsyncGeneratorFunctionConstructor, cx.Intrinsic(engine.IntrinsicAsyncGeneratorFunctionPrototype))
 
 	gp := cx.Intrinsic(engine.IntrinsicAsyncGeneratorPrototype)
-	method(cx, gp, "next", 1, asyncGeneratorNext)
-	method(cx, gp, "return", 1, asyncGeneratorReturn)
-	method(cx, gp, "throw", 1, asyncGeneratorThrow)
+	method(cx, gp, "next", 1, nativeAsyncGeneratorNext)
+	method(cx, gp, "return", 1, nativeAsyncGeneratorReturn)
+	method(cx, gp, "throw", 1, nativeAsyncGeneratorThrow)
 	cx.Define(gp, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("AsyncGenerator"), engine.FlagConfigurable)
 	gf := cx.Intrinsic(engine.IntrinsicAsyncGeneratorFunctionPrototype)
 	cx.Define(gf, cx.Key(engine.KeyPrototype), engine.ObjectValue(gp), engine.FlagConfigurable)
 	cx.Define(gp, cx.Key(engine.KeyConstructor), engine.ObjectValue(gf), engine.FlagConfigurable)
 
-	method(cx, cx.Intrinsic(engine.IntrinsicArray), "fromAsync", 1, arrayFromAsync)
+	method(cx, cx.Intrinsic(engine.IntrinsicArray), "fromAsync", 1, nativeArrayFromAsync)
 }
 
 func asyncFunctionConstructor(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {

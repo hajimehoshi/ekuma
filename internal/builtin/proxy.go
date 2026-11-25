@@ -7,11 +7,16 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/engine"
 )
 
+var (
+	nativeProxyConstructor = engine.RegisterNative(proxyConstructor)
+	nativeProxyRevocable   = engine.RegisterNative(proxyRevocable)
+)
+
 func initProxy(cx *engine.ExecutionContext) {
-	ctor := cx.NewNativeConstructor("Proxy", 2, proxyConstructor)
+	ctor := cx.NewNativeConstructor("Proxy", 2, nativeProxyConstructor)
 	cx.Define(cx.GlobalObject().Object(), cx.Intern("Proxy"), engine.ObjectValue(ctor), engine.FlagsHidden)
 
-	method(cx, ctor, "revocable", 2, proxyRevocable)
+	method(cx, ctor, "revocable", 2, nativeProxyRevocable)
 }
 
 func proxyConstructor(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -21,9 +26,11 @@ func proxyConstructor(cx *engine.ExecutionContext, this engine.Value, args []eng
 	return engine.ObjectValue(cx.ProxyCreate(arg(args, 0), arg(args, 1)))
 }
 
+var nativeProxyRevoke = engine.RegisterNative(proxyRevoke)
+
 func proxyRevocable(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	p := cx.ProxyCreate(arg(args, 0), arg(args, 1))
-	revoke := cx.NewNativeWithState("", 0, proxyRevoke, &proxyRevocation{
+	revoke := cx.NewNativeWithState("", 0, nativeProxyRevoke, &proxyRevocation{
 		revocableProxy: p,
 	})
 	r := cx.NewObjectFromProperties(

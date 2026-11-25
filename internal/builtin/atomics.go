@@ -98,35 +98,46 @@ func waitResult(cx *engine.ExecutionContext, async bool, value engine.Value) eng
 	return engine.ObjectValue(o)
 }
 
+var (
+	nativeAtomicsCompareExchange = engine.RegisterNative(atomicsCompareExchange)
+	nativeAtomicsIsLockFree      = engine.RegisterNative(atomicsIsLockFree)
+	nativeAtomicsLoad            = engine.RegisterNative(atomicsLoad)
+	nativeAtomicsStore           = engine.RegisterNative(atomicsStore)
+	nativeAtomicsWait            = engine.RegisterNative(atomicsWait)
+	nativeAtomicsWaitAsync       = engine.RegisterNative(atomicsWaitAsync)
+	nativeAtomicsNotify          = engine.RegisterNative(atomicsNotify)
+	nativeAtomicsPause           = engine.RegisterNative(atomicsPause)
+)
+
 func initAtomics(cx *engine.ExecutionContext) {
 	atomics := cx.NewOrdinaryObject()
 	cx.Define(cx.GlobalObject().Object(), cx.Intern("Atomics"), engine.ObjectValue(atomics), engine.FlagsHidden)
 	cx.Define(atomics, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Atomics"), engine.FlagConfigurable)
 
-	method(cx, atomics, "add", 3, atomicsAdd)
-	method(cx, atomics, "and", 3, atomicsAnd)
-	method(cx, atomics, "exchange", 3, atomicsExchange)
-	method(cx, atomics, "or", 3, atomicsOr)
-	method(cx, atomics, "sub", 3, atomicsSub)
-	method(cx, atomics, "xor", 3, atomicsXor)
+	method(cx, atomics, "add", 3, nativeAtomicsAdd)
+	method(cx, atomics, "and", 3, nativeAtomicsAnd)
+	method(cx, atomics, "exchange", 3, nativeAtomicsExchange)
+	method(cx, atomics, "or", 3, nativeAtomicsOr)
+	method(cx, atomics, "sub", 3, nativeAtomicsSub)
+	method(cx, atomics, "xor", 3, nativeAtomicsXor)
 
-	method(cx, atomics, "compareExchange", 4, atomicsCompareExchange)
-	method(cx, atomics, "isLockFree", 1, atomicsIsLockFree)
-	method(cx, atomics, "load", 2, atomicsLoad)
-	method(cx, atomics, "store", 3, atomicsStore)
-	method(cx, atomics, "wait", 4, atomicsWait)
-	method(cx, atomics, "waitAsync", 4, atomicsWaitAsync)
-	method(cx, atomics, "notify", 3, atomicsNotify)
-	method(cx, atomics, "pause", 0, atomicsPause)
+	method(cx, atomics, "compareExchange", 4, nativeAtomicsCompareExchange)
+	method(cx, atomics, "isLockFree", 1, nativeAtomicsIsLockFree)
+	method(cx, atomics, "load", 2, nativeAtomicsLoad)
+	method(cx, atomics, "store", 3, nativeAtomicsStore)
+	method(cx, atomics, "wait", 4, nativeAtomicsWait)
+	method(cx, atomics, "waitAsync", 4, nativeAtomicsWaitAsync)
+	method(cx, atomics, "notify", 3, nativeAtomicsNotify)
+	method(cx, atomics, "pause", 0, nativeAtomicsPause)
 }
 
 var (
-	atomicsAdd      = atomicsReadModifyWriteNative("add", engine.AtomicAdd)
-	atomicsAnd      = atomicsReadModifyWriteNative("and", engine.AtomicAnd)
-	atomicsExchange = atomicsReadModifyWriteNative("exchange", engine.AtomicExchange)
-	atomicsOr       = atomicsReadModifyWriteNative("or", engine.AtomicOr)
-	atomicsSub      = atomicsReadModifyWriteNative("sub", engine.AtomicSub)
-	atomicsXor      = atomicsReadModifyWriteNative("xor", engine.AtomicXor)
+	nativeAtomicsAdd      = engine.RegisterNative(atomicsReadModifyWriteNative("add", engine.AtomicAdd))
+	nativeAtomicsAnd      = engine.RegisterNative(atomicsReadModifyWriteNative("and", engine.AtomicAnd))
+	nativeAtomicsExchange = engine.RegisterNative(atomicsReadModifyWriteNative("exchange", engine.AtomicExchange))
+	nativeAtomicsOr       = engine.RegisterNative(atomicsReadModifyWriteNative("or", engine.AtomicOr))
+	nativeAtomicsSub      = engine.RegisterNative(atomicsReadModifyWriteNative("sub", engine.AtomicSub))
+	nativeAtomicsXor      = engine.RegisterNative(atomicsReadModifyWriteNative("xor", engine.AtomicXor))
 )
 
 // atomicsReadModifyWriteNative returns the function name of Atomics, which implements

@@ -45,18 +45,29 @@ func thisBigIntObject(cx *engine.ExecutionContext, this engine.Value, what strin
 	return v
 }
 
+var (
+	// The kernel converts an integer that fits in an int64, which cannot throw.
+	nativeBigIntConstructor = engine.RegisterNativeWithKernels(bigIntConstructor, engine.Kernels{
+		Method1:  bigIntConstructorKernel,
+		Contract: shortContract,
+	})
+	nativeBigIntAsIntN         = engine.RegisterNative(bigIntAsIntN)
+	nativeBigIntAsUintN        = engine.RegisterNative(bigIntAsUintN)
+	nativeBigIntToString       = engine.RegisterNative(bigIntToString)
+	nativeBigIntToLocaleString = engine.RegisterNative(bigIntToLocaleString)
+	nativeBigIntValueOf        = engine.RegisterNative(bigIntValueOf)
+)
+
 // initBigInt defines BigInt.
 func initBigInt(cx *engine.ExecutionContext) {
 	proto := cx.Intrinsic(engine.IntrinsicBigIntPrototype)
-	ctor := constructor(cx, "BigInt", 1, engine.IntrinsicBigIntPrototype, bigIntConstructor)
-	// The kernel converts an integer that fits in an int64, which cannot throw.
-	cx.SetMethodKernels(ctor, shortContract, nil, bigIntConstructorKernel, nil)
-	method(cx, ctor, "asIntN", 2, bigIntAsIntN)
-	method(cx, ctor, "asUintN", 2, bigIntAsUintN)
+	ctor := constructor(cx, "BigInt", 1, engine.IntrinsicBigIntPrototype, nativeBigIntConstructor)
+	method(cx, ctor, "asIntN", 2, nativeBigIntAsIntN)
+	method(cx, ctor, "asUintN", 2, nativeBigIntAsUintN)
 
-	method(cx, proto, "toString", 0, bigIntToString)
-	method(cx, proto, "toLocaleString", 0, bigIntToLocaleString)
-	method(cx, proto, "valueOf", 0, bigIntValueOf)
+	method(cx, proto, "toString", 0, nativeBigIntToString)
+	method(cx, proto, "toLocaleString", 0, nativeBigIntToLocaleString)
+	method(cx, proto, "valueOf", 0, nativeBigIntValueOf)
 	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("BigInt"), engine.FlagConfigurable)
 }
 

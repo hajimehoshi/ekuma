@@ -564,17 +564,26 @@ func dateTimeFormatFunction(cx *engine.ExecutionContext, this engine.Value, args
 	return dtf.formatDateTime(cx, dateArg(cx, arg(args, 0)))
 }
 
+var (
+	nativeNewDateTimeFormat                = engine.RegisterNative(newDateTimeFormat)
+	nativeDateTimeFormatResolvedOptions    = engine.RegisterNative(dateTimeFormatResolvedOptions)
+	nativeDateTimeFormatFormat             = engine.RegisterNative(dateTimeFormatFormat)
+	nativeDateTimeFormatFormatToParts      = engine.RegisterNative(dateTimeFormatFormatToParts)
+	nativeDateTimeFormatFormatRange        = engine.RegisterNative(dateTimeFormatFormatRange)
+	nativeDateTimeFormatFormatRangeToParts = engine.RegisterNative(dateTimeFormatFormatRangeToParts)
+)
+
 // initDateTimeFormat defines Intl.DateTimeFormat.
 func initDateTimeFormat(cx *engine.ExecutionContext, ns *engine.Object) {
-	ctor, proto := constructor(cx, ns, "DateTimeFormat", 0, engine.IntrinsicIntlDateTimeFormatPrototype, newDateTimeFormat)
+	ctor, proto := constructor(cx, ns, "DateTimeFormat", 0, engine.IntrinsicIntlDateTimeFormatPrototype, nativeNewDateTimeFormat)
 	cx.SetIntrinsic(engine.IntrinsicIntlDateTimeFormat, ctor)
 
-	method(cx, ctor, "supportedLocalesOf", 1, supportedLocalesOf)
-	method(cx, proto, "resolvedOptions", 0, dateTimeFormatResolvedOptions)
-	getter(cx, proto, "format", dateTimeFormatFormat)
-	method(cx, proto, "formatToParts", 1, dateTimeFormatFormatToParts)
-	method(cx, proto, "formatRange", 2, dateTimeFormatFormatRange)
-	method(cx, proto, "formatRangeToParts", 2, dateTimeFormatFormatRangeToParts)
+	method(cx, ctor, "supportedLocalesOf", 1, nativeSupportedLocalesOf)
+	method(cx, proto, "resolvedOptions", 0, nativeDateTimeFormatResolvedOptions)
+	getter(cx, proto, "format", nativeDateTimeFormatFormat)
+	method(cx, proto, "formatToParts", 1, nativeDateTimeFormatFormatToParts)
+	method(cx, proto, "formatRange", 2, nativeDateTimeFormatFormatRange)
+	method(cx, proto, "formatRangeToParts", 2, nativeDateTimeFormatFormatRangeToParts)
 	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Intl.DateTimeFormat"), engine.FlagConfigurable)
 }
 
@@ -582,10 +591,12 @@ func dateTimeFormatResolvedOptions(cx *engine.ExecutionContext, this engine.Valu
 	return unwrapDateTimeFormat(cx, this, "resolvedOptions").resolvedOptions(cx)
 }
 
+var nativeDateTimeFormatFunction = engine.RegisterNative(dateTimeFormatFunction)
+
 func dateTimeFormatFormat(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	dtf := unwrapDateTimeFormat(cx, this, "format")
 	if dtf.boundFormat == nil {
-		dtf.boundFormat = cx.NewNativeWithState("", 1, dateTimeFormatFunction, dtf)
+		dtf.boundFormat = cx.NewNativeWithState("", 1, nativeDateTimeFormatFunction, dtf)
 	}
 	return engine.ObjectValue(dtf.boundFormat)
 }
@@ -658,6 +669,8 @@ func (dtf *dateTimeFormatData) resolvedOptions(cx *engine.ExecutionContext) engi
 	return engine.ObjectValue(out)
 }
 
+var nativeDurationToLocaleString = engine.RegisterNative(durationToLocaleString)
+
 // initTemporalToLocaleString installs the ECMA-402 toLocaleString methods on the Temporal prototypes.
 func initTemporalToLocaleString(cx *engine.ExecutionContext) {
 	global := cx.GlobalObject().Object()
@@ -670,32 +683,32 @@ func initTemporalToLocaleString(cx *engine.ExecutionContext) {
 			d, _ := cx.GetOwnProperty(orig, k)
 			cx.DefineOwnProperty(ns, k, d)
 		}
-		define := func(name string, f engine.NativeFunc) {
+		define := func(name string, f engine.Native) {
 			ctor := cx.Get(ns, engine.NamedKey(cx.Intern(wtf8.String(name))))
 			proto := cx.Get(ctor.Object(), engine.NamedKey(cx.Key(engine.KeyPrototype))).Object()
 			method(cx, proto, "toLocaleString", 0, f)
 		}
-		define("Instant", instantToLocaleString)
-		define("PlainDate", plainDateToLocaleString)
-		define("PlainDateTime", plainDateTimeToLocaleString)
-		define("PlainMonthDay", plainMonthDayToLocaleString)
-		define("PlainTime", plainTimeToLocaleString)
-		define("PlainYearMonth", plainYearMonthToLocaleString)
-		define("ZonedDateTime", zonedDateTimeToLocaleString)
-		define("Duration", durationToLocaleString)
+		define("Instant", nativeInstantToLocaleString)
+		define("PlainDate", nativePlainDateToLocaleString)
+		define("PlainDateTime", nativePlainDateTimeToLocaleString)
+		define("PlainMonthDay", nativePlainMonthDayToLocaleString)
+		define("PlainTime", nativePlainTimeToLocaleString)
+		define("PlainYearMonth", nativePlainYearMonthToLocaleString)
+		define("ZonedDateTime", nativeZonedDateTimeToLocaleString)
+		define("Duration", nativeDurationToLocaleString)
 	})
 	cx.SetIntrinsic(engine.IntrinsicTemporal, ns)
 	cx.Define(global, cx.Intern("Temporal"), engine.ObjectValue(ns), engine.FlagsHidden)
 }
 
 var (
-	instantToLocaleString        = temporalToLocaleStringNative("Instant", temporalInstant)
-	plainDateToLocaleString      = temporalToLocaleStringNative("PlainDate", temporalPlainDate)
-	plainDateTimeToLocaleString  = temporalToLocaleStringNative("PlainDateTime", temporalPlainDateTime)
-	plainMonthDayToLocaleString  = temporalToLocaleStringNative("PlainMonthDay", temporalPlainMonthDay)
-	plainTimeToLocaleString      = temporalToLocaleStringNative("PlainTime", temporalPlainTime)
-	plainYearMonthToLocaleString = temporalToLocaleStringNative("PlainYearMonth", temporalPlainYearMonth)
-	zonedDateTimeToLocaleString  = temporalToLocaleStringNative("ZonedDateTime", temporalZonedDateTime)
+	nativeInstantToLocaleString        = engine.RegisterNative(temporalToLocaleStringNative("Instant", temporalInstant))
+	nativePlainDateToLocaleString      = engine.RegisterNative(temporalToLocaleStringNative("PlainDate", temporalPlainDate))
+	nativePlainDateTimeToLocaleString  = engine.RegisterNative(temporalToLocaleStringNative("PlainDateTime", temporalPlainDateTime))
+	nativePlainMonthDayToLocaleString  = engine.RegisterNative(temporalToLocaleStringNative("PlainMonthDay", temporalPlainMonthDay))
+	nativePlainTimeToLocaleString      = engine.RegisterNative(temporalToLocaleStringNative("PlainTime", temporalPlainTime))
+	nativePlainYearMonthToLocaleString = engine.RegisterNative(temporalToLocaleStringNative("PlainYearMonth", temporalPlainYearMonth))
+	nativeZonedDateTimeToLocaleString  = engine.RegisterNative(temporalToLocaleStringNative("ZonedDateTime", temporalZonedDateTime))
 )
 
 // temporalToLocaleStringNative returns the toLocaleString method of the prototype of the Temporal
@@ -743,15 +756,15 @@ func formatTemporalLocaleString(cx *engine.ExecutionContext, tv temporalValue, l
 // toLocaleTimeString of Date.prototype with the versions of ECMA-402.
 func initDateToLocaleString(cx *engine.ExecutionContext) {
 	proto := cx.Intrinsic(engine.IntrinsicDatePrototype)
-	method(cx, proto, "toLocaleString", 0, dateToLocaleString)
-	method(cx, proto, "toLocaleDateString", 0, dateToLocaleDateString)
-	method(cx, proto, "toLocaleTimeString", 0, dateToLocaleTimeString)
+	method(cx, proto, "toLocaleString", 0, nativeDateToLocaleString)
+	method(cx, proto, "toLocaleDateString", 0, nativeDateToLocaleDateString)
+	method(cx, proto, "toLocaleTimeString", 0, nativeDateToLocaleTimeString)
 }
 
 var (
-	dateToLocaleString     = dateToLocaleStringNative("toLocaleString", date.Any, date.All)
-	dateToLocaleDateString = dateToLocaleStringNative("toLocaleDateString", date.Date, date.Date)
-	dateToLocaleTimeString = dateToLocaleStringNative("toLocaleTimeString", date.Time, date.Time)
+	nativeDateToLocaleString     = engine.RegisterNative(dateToLocaleStringNative("toLocaleString", date.Any, date.All))
+	nativeDateToLocaleDateString = engine.RegisterNative(dateToLocaleStringNative("toLocaleDateString", date.Date, date.Date))
+	nativeDateToLocaleTimeString = engine.RegisterNative(dateToLocaleStringNative("toLocaleTimeString", date.Time, date.Time))
 )
 
 // dateToLocaleStringNative returns the method name of Date.prototype, which formats a date with the

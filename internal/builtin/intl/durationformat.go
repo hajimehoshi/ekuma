@@ -184,14 +184,21 @@ func (df *durationFormatData) format(d duration.Duration) string {
 	return b.String()
 }
 
+var (
+	nativeNewDurationFormat             = engine.RegisterNative(newDurationFormat)
+	nativeDurationFormatResolvedOptions = engine.RegisterNative(durationFormatResolvedOptions)
+	nativeDurationFormatFormat          = engine.RegisterNative(durationFormatFormat)
+	nativeDurationFormatFormatToParts   = engine.RegisterNative(durationFormatFormatToParts)
+)
+
 // initDurationFormat defines Intl.DurationFormat.
 func initDurationFormat(cx *engine.ExecutionContext, ns *engine.Object) {
-	ctor, proto := constructor(cx, ns, "DurationFormat", 0, engine.IntrinsicIntlDurationFormatPrototype, newDurationFormat)
+	ctor, proto := constructor(cx, ns, "DurationFormat", 0, engine.IntrinsicIntlDurationFormatPrototype, nativeNewDurationFormat)
 
-	method(cx, ctor, "supportedLocalesOf", 1, supportedLocalesOf)
-	method(cx, proto, "resolvedOptions", 0, durationFormatResolvedOptions)
-	method(cx, proto, "format", 1, durationFormatFormat)
-	method(cx, proto, "formatToParts", 1, durationFormatFormatToParts)
+	method(cx, ctor, "supportedLocalesOf", 1, nativeSupportedLocalesOf)
+	method(cx, proto, "resolvedOptions", 0, nativeDurationFormatResolvedOptions)
+	method(cx, proto, "format", 1, nativeDurationFormatFormat)
+	method(cx, proto, "formatToParts", 1, nativeDurationFormatFormatToParts)
 	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Intl.DurationFormat"), engine.FlagConfigurable)
 }
 

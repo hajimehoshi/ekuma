@@ -13,11 +13,13 @@ type disposableStack struct {
 	dc       *engine.DisposeCapability
 }
 
+var nativeAsyncIteratorAsyncDispose = engine.RegisterNative(asyncIteratorAsyncDispose)
+
 func initDisposableStacks(cx *engine.ExecutionContext) {
 	initDisposableStack(cx)
 	initAsyncDisposableStack(cx)
 
-	symMethod(cx, cx.Intrinsic(engine.IntrinsicAsyncIteratorPrototype), cx.WellKnownSymbol(engine.SymbolAsyncDispose), "[Symbol.asyncDispose]", 0, asyncIteratorAsyncDispose)
+	symMethod(cx, cx.Intrinsic(engine.IntrinsicAsyncIteratorPrototype), cx.WellKnownSymbol(engine.SymbolAsyncDispose), "[Symbol.asyncDispose]", 0, nativeAsyncIteratorAsyncDispose)
 }
 
 func asyncIteratorAsyncDispose(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -97,28 +99,30 @@ func disposeAdopted(cx *engine.ExecutionContext, this engine.Value, args []engin
 	return cx.Call(r.onDispose, engine.Undefined, r.value)
 }
 
+var nativeDisposableStackDispose = engine.RegisterNative(disposableStackDispose)
+
 func initDisposableStack(cx *engine.ExecutionContext) {
 	proto := cx.NewOrdinaryObject()
 	cx.SetIntrinsic(engine.IntrinsicDisposableStackPrototype, proto)
-	constructor(cx, "DisposableStack", 0, engine.IntrinsicDisposableStackPrototype, disposableStackConstructor)
+	constructor(cx, "DisposableStack", 0, engine.IntrinsicDisposableStackPrototype, nativeDisposableStackConstructor)
 
-	method(cx, proto, "adopt", 2, disposableStackAdopt)
-	method(cx, proto, "defer", 1, disposableStackDefer)
-	dispose := method(cx, proto, "dispose", 0, disposableStackDispose)
+	method(cx, proto, "adopt", 2, nativeDisposableStackAdopt)
+	method(cx, proto, "defer", 1, nativeDisposableStackDefer)
+	dispose := method(cx, proto, "dispose", 0, nativeDisposableStackDispose)
 	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolDispose), engine.ObjectValue(dispose), engine.FlagsHidden)
-	getter(cx, proto, cx.Intern("disposed"), "disposed", disposableStackDisposed)
-	method(cx, proto, "move", 0, disposableStackMove)
-	method(cx, proto, "use", 1, disposableStackUse)
+	getter(cx, proto, cx.Intern("disposed"), "disposed", nativeDisposableStackDisposed)
+	method(cx, proto, "move", 0, nativeDisposableStackMove)
+	method(cx, proto, "use", 1, nativeDisposableStackUse)
 	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("DisposableStack"), engine.FlagConfigurable)
 }
 
 var (
-	disposableStackConstructor = disposableStackConstructorNative(engine.SyncDispose)
-	disposableStackAdopt       = disposableStackAdoptNative(engine.SyncDispose)
-	disposableStackDefer       = disposableStackDeferNative(engine.SyncDispose)
-	disposableStackDisposed    = disposableStackDisposedNative(engine.SyncDispose)
-	disposableStackMove        = disposableStackMoveNative(engine.SyncDispose)
-	disposableStackUse         = disposableStackUseNative(engine.SyncDispose)
+	nativeDisposableStackConstructor = engine.RegisterNative(disposableStackConstructorNative(engine.SyncDispose))
+	nativeDisposableStackAdopt       = engine.RegisterNative(disposableStackAdoptNative(engine.SyncDispose))
+	nativeDisposableStackDefer       = engine.RegisterNative(disposableStackDeferNative(engine.SyncDispose))
+	nativeDisposableStackDisposed    = engine.RegisterNative(disposableStackDisposedNative(engine.SyncDispose))
+	nativeDisposableStackMove        = engine.RegisterNative(disposableStackMoveNative(engine.SyncDispose))
+	nativeDisposableStackUse         = engine.RegisterNative(disposableStackUseNative(engine.SyncDispose))
 )
 
 func disposableStackDispose(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -138,28 +142,30 @@ func disposableStackDispose(cx *engine.ExecutionContext, this engine.Value, args
 	return result
 }
 
+var nativeAsyncDisposableStackDisposeAsync = engine.RegisterNative(asyncDisposableStackDisposeAsync)
+
 func initAsyncDisposableStack(cx *engine.ExecutionContext) {
 	proto := cx.NewOrdinaryObject()
 	cx.SetIntrinsic(engine.IntrinsicAsyncDisposableStackPrototype, proto)
-	constructor(cx, "AsyncDisposableStack", 0, engine.IntrinsicAsyncDisposableStackPrototype, asyncDisposableStackConstructor)
+	constructor(cx, "AsyncDisposableStack", 0, engine.IntrinsicAsyncDisposableStackPrototype, nativeAsyncDisposableStackConstructor)
 
-	method(cx, proto, "adopt", 2, asyncDisposableStackAdopt)
-	method(cx, proto, "defer", 1, asyncDisposableStackDefer)
-	dispose := method(cx, proto, "disposeAsync", 0, asyncDisposableStackDisposeAsync)
+	method(cx, proto, "adopt", 2, nativeAsyncDisposableStackAdopt)
+	method(cx, proto, "defer", 1, nativeAsyncDisposableStackDefer)
+	dispose := method(cx, proto, "disposeAsync", 0, nativeAsyncDisposableStackDisposeAsync)
 	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolAsyncDispose), engine.ObjectValue(dispose), engine.FlagsHidden)
-	getter(cx, proto, cx.Intern("disposed"), "disposed", asyncDisposableStackDisposed)
-	method(cx, proto, "move", 0, asyncDisposableStackMove)
-	method(cx, proto, "use", 1, asyncDisposableStackUse)
+	getter(cx, proto, cx.Intern("disposed"), "disposed", nativeAsyncDisposableStackDisposed)
+	method(cx, proto, "move", 0, nativeAsyncDisposableStackMove)
+	method(cx, proto, "use", 1, nativeAsyncDisposableStackUse)
 	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("AsyncDisposableStack"), engine.FlagConfigurable)
 }
 
 var (
-	asyncDisposableStackConstructor = disposableStackConstructorNative(engine.AsyncDispose)
-	asyncDisposableStackAdopt       = disposableStackAdoptNative(engine.AsyncDispose)
-	asyncDisposableStackDefer       = disposableStackDeferNative(engine.AsyncDispose)
-	asyncDisposableStackDisposed    = disposableStackDisposedNative(engine.AsyncDispose)
-	asyncDisposableStackMove        = disposableStackMoveNative(engine.AsyncDispose)
-	asyncDisposableStackUse         = disposableStackUseNative(engine.AsyncDispose)
+	nativeAsyncDisposableStackConstructor = engine.RegisterNative(disposableStackConstructorNative(engine.AsyncDispose))
+	nativeAsyncDisposableStackAdopt       = engine.RegisterNative(disposableStackAdoptNative(engine.AsyncDispose))
+	nativeAsyncDisposableStackDefer       = engine.RegisterNative(disposableStackDeferNative(engine.AsyncDispose))
+	nativeAsyncDisposableStackDisposed    = engine.RegisterNative(disposableStackDisposedNative(engine.AsyncDispose))
+	nativeAsyncDisposableStackMove        = engine.RegisterNative(disposableStackMoveNative(engine.AsyncDispose))
+	nativeAsyncDisposableStackUse         = engine.RegisterNative(disposableStackUseNative(engine.AsyncDispose))
 )
 
 func asyncDisposableStackDisposeAsync(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -196,6 +202,8 @@ func disposableStackConstructorNative(hint engine.DisposeHint) engine.NativeFunc
 	}
 }
 
+var nativeDisposeAdopted = engine.RegisterNative(disposeAdopted)
+
 // disposableStackAdoptNative returns the method adopt of the stacks with hint.
 //
 //go:noinline
@@ -206,7 +214,7 @@ func disposableStackAdoptNative(hint engine.DisposeHint) engine.NativeFunc {
 		if !onDispose.IsCallable() {
 			cx.ThrowTypeError(cx.DisplayString(onDispose) + " is not a function")
 		}
-		f := cx.NewNativeWithState("", 0, disposeAdopted, &adoptedResource{
+		f := cx.NewNativeWithState("", 0, nativeDisposeAdopted, &adoptedResource{
 			value:     v,
 			onDispose: onDispose.Object(),
 		})
