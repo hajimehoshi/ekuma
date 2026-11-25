@@ -69,7 +69,7 @@ func (o *Object) Element(i int64) (Value, bool) {
 	if o.class == classTypedArray && i >= 0 && i <= MaxArrayIndex {
 		t := o.extState().(*TypedArray)
 		if b, ok := t.element(uint32(i)); ok {
-			return o.shape.agent.loadElement(t.typ, b), true
+			return loadElement(t.typ, b), true
 		}
 	}
 	return Value{}, false
@@ -139,7 +139,7 @@ func (ag *agent) elemsMovable(o *Object) bool {
 	if o.kind != kindArray || int(o.length) != len(o.elems) || o.flags&(objSparse|objNotExtensible|objFrozenLength) != 0 {
 		return false
 	}
-	return ag.holesAreAbsent(o) || o.isDense()
+	return holesAreAbsent(o) || o.isDense()
 }
 
 // arrayCtorPlain reports whether creating the result of a method for the array o
@@ -317,7 +317,7 @@ func (o *Object) RemoveFirstElement() (Value, bool) {
 	}
 	// A hole after the first element moves with the elements when no prototype can have
 	// an element.
-	if !o.shape.agent.holesAreAbsent(o) && slices.ContainsFunc(o.elems, Value.isHole) {
+	if !holesAreAbsent(o) && slices.ContainsFunc(o.elems, Value.isHole) {
 		return Value{}, false
 	}
 	n := len(o.elems) - 1
@@ -349,7 +349,7 @@ func (q QuietContext) FillElements(o *Object, n, start, end int64, v Value) bool
 		return false
 	}
 	// Storing past the stored elements must not skip an index.
-	if start < 0 || start > int64(len(o.elems)) || end > n || !cx.holesAreAbsent(o) {
+	if start < 0 || start > int64(len(o.elems)) || end > n || !holesAreAbsent(o) {
 		return false
 	}
 	cx.touchProto(o)
@@ -604,7 +604,7 @@ func (q QuietContext) AppendElementsOf(dst *Object, n int64, src *Object) bool {
 // without running JavaScript.
 func (q QuietContext) SkipHoles(o *Object, i, end int64) int64 {
 	ag := q.cx.agent
-	if i < 0 || i >= end || i < int64(len(o.elems)) && !o.elems[i].isHole() || !ag.holesAreAbsent(o) {
+	if i < 0 || i >= end || i < int64(len(o.elems)) && !o.elems[i].isHole() || !holesAreAbsent(o) {
 		return i
 	}
 	j := end
@@ -628,7 +628,7 @@ func (q QuietContext) SkipHoles(o *Object, i, end int64) int64 {
 // known without running JavaScript.
 func (q QuietContext) SkipHolesBackward(o *Object, i, end int64) int64 {
 	ag := q.cx.agent
-	if i <= end || i < 0 || i > MaxArrayIndex || i < int64(len(o.elems)) && !o.elems[i].isHole() || !ag.holesAreAbsent(o) {
+	if i <= end || i < 0 || i > MaxArrayIndex || i < int64(len(o.elems)) && !o.elems[i].isHole() || !holesAreAbsent(o) {
 		return i
 	}
 	j := max(end, -1)
@@ -653,7 +653,7 @@ func (q QuietContext) SkipHolesBackward(o *Object, i, end int64) int64 {
 
 // holesAreAbsent reports whether an integer index that o does not store is absent from o
 // and its prototypes, and whether finding that out runs no JavaScript.
-func (ag *agent) holesAreAbsent(o *Object) bool {
+func holesAreAbsent(o *Object) bool {
 	if o.kind != kindArray || o.flags&objExotic != 0 {
 		return false
 	}

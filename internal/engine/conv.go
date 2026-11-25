@@ -281,7 +281,7 @@ func (cx *ExecutionContext) ToBigInt(v Value) Value {
 		case errors.Is(err, numconv.ErrBigIntTooLarge):
 			cx.ThrowRangeError("maximum BigInt size exceeded")
 		}
-		return cx.NewBigInt(i)
+		return NewBigInt(i)
 	case kindSymbol:
 		cx.ThrowTypeError("cannot convert a Symbol value to a BigInt")
 	}

@@ -68,7 +68,7 @@ func TestQuietContextBoundary(t *testing.T) {
 	storageLookups := map[string][]string{
 		"diagnosticDataProperty": {
 			"ExecutionContext.ExceptionDescription",
-			"agent.errorOf",
+			"space.errorOf",
 			"agent.newErrorData",
 			"agent.typeName",
 		},

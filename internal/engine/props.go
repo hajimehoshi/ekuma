@@ -48,12 +48,12 @@ func (cx *ExecutionContext) indexName(i uint32) *Object {
 
 // indexKey returns the interned key for the index i, or nil when the key is not interned,
 // in which case no object has a property with that key.
-func (ag *agent) indexKey(i uint32) *Object {
+func (sp *space) indexKey(i uint32) *Object {
 	if i < 10 {
-		return ag.strings.character(byte('0' + i)).o
+		return sp.strings.character(byte('0' + i)).o
 	}
 	var buf [10]byte
-	return ag.strings.lookup(wtf8.String(strconv.AppendUint(buf[:0], uint64(i), 10)))
+	return sp.strings.lookup(wtf8.String(strconv.AppendUint(buf[:0], uint64(i), 10)))
 }
 
 // KeyValue returns the key k as a string or symbol value.
@@ -135,12 +135,12 @@ func (cx *ExecutionContext) QueryKey(v Value) QueryKey {
 }
 
 // shortQueryKey returns the query key for the short string v, which is not interned.
-func (ag *agent) shortQueryKey(v Value) QueryKey {
+func (sp *space) shortQueryKey(v Value) QueryKey {
 	s := v.shortText()
 	if i, ok := stringIndex(s); ok {
 		return QueryKey{idx: i}
 	}
-	if o := ag.strings.lookup(s); o != nil {
+	if o := sp.strings.lookup(s); o != nil {
 		return QueryKey{key: o}
 	}
 	return QueryKey{
@@ -150,7 +150,7 @@ func (ag *agent) shortQueryKey(v Value) QueryKey {
 }
 
 // queryStringKey returns the query key for the string o.
-func (ag *agent) queryStringKey(o *Object) QueryKey {
+func (sp *space) queryStringKey(o *Object) QueryKey {
 	c := o.Str()
 	if len(c) > 0 && c[0] >= '0' && c[0] <= '9' {
 		if i, ok := o.arrayIndex(); ok {
@@ -163,7 +163,7 @@ func (ag *agent) queryStringKey(o *Object) QueryKey {
 	if k, ok := o.extObject(); ok {
 		return QueryKey{key: k}
 	}
-	if k := ag.strings.lookup(c); k != nil {
+	if k := sp.strings.lookup(c); k != nil {
 		o.setExtState(k)
 		return QueryKey{key: k}
 	}
@@ -384,8 +384,8 @@ func (cx *ExecutionContext) materialize(o *Object) {
 }
 
 // isLazyKey reports whether key names a property that materialize creates.
-func (ag *agent) isLazyKey(key *Object) bool {
-	return key == ag.Key(KeyPrototype) || key == ag.Key(KeyName) || key == ag.Key(KeyLength) || key == ag.Key(keyCaller) || key == ag.Key(keyArguments)
+func (sp *space) isLazyKey(key *Object) bool {
+	return key == sp.Key(KeyPrototype) || key == sp.Key(KeyName) || key == sp.Key(KeyLength) || key == sp.Key(keyCaller) || key == sp.Key(keyArguments)
 }
 
 // resolve prepares the exotic object o for an operation on its named properties.
@@ -540,8 +540,8 @@ func (cx *ExecutionContext) protoStart(v Value, key PropKey) *Object {
 
 // getNamedAtSite reads a named property through the additional shapes recorded at the site.
 func (cx *ExecutionContext) getNamedAtSite(v Value, key *Object, c *propCache) (Value, *Object) {
-	if r := c.reads; r != nil && r.agent == cx.agent && r.epoch == cx.protoEpoch {
-		if o := v.o; o != nil && o.kind == kindObject && o.class == classObject && o.flags&objExotic == 0 && o.shape.agent == cx.agent {
+	if r := c.reads; r != nil && r.space == cx.space && r.epoch == cx.protoEpoch {
+		if o := v.o; o != nil && o.kind == kindObject && o.class == classObject && o.flags&objExotic == 0 && o.shape.space == cx.space {
 			if e, ok := r.shapes[o.shape.readID]; ok && e.count == o.shape.count {
 				h := o
 				for range e.depth {
@@ -575,9 +575,9 @@ func (c *propCache) rememberRead(cx *ExecutionContext, start, holder *Object, p 
 		}
 		c.reads = r
 	}
-	if r.agent != cx.agent || r.epoch != cx.protoEpoch || len(r.shapes) >= 64 {
+	if r.space != cx.space || r.epoch != cx.protoEpoch || len(r.shapes) >= 64 {
 		clear(r.shapes)
-		r.agent = cx.agent
+		r.space = cx.space
 		r.epoch = cx.protoEpoch
 	}
 	var depth int32
@@ -629,7 +629,7 @@ func (cx *ExecutionContext) getNamed(v Value, key *Object, c *propCache) (val Va
 		return Undefined, nil
 	case lookupSlot:
 		if c != nil && c.keep(start.shape) && start == v.o && start.kind == kindObject && start.class == classObject && start.flags&objExotic == 0 &&
-			s == start.shape && s.agent == cx.agent && epoch == cx.protoEpoch {
+			s == start.shape && s.space == cx.space && epoch == cx.protoEpoch {
 			c.rememberRead(cx, start, r.holder, r.prop)
 		}
 		return cx.readNamedSlot(start, r.holder, r.prop, c)
@@ -638,7 +638,7 @@ func (cx *ExecutionContext) getNamed(v Value, key *Object, c *propCache) (val Va
 }
 
 // readNamedSlot reads p and returns its getter separately for the caller to invoke.
-func (ag *agent) readNamedSlot(start, holder *Object, p prop, c *propCache) (val Value, getter *Object) {
+func (sp *space) readNamedSlot(start, holder *Object, p prop, c *propCache) (val Value, getter *Object) {
 	val = holder.slots[p.slot]
 	if p.flags&FlagAccessor != 0 {
 		// Objects of one shape can hold different own accessors, and replacing an own accessor
@@ -653,7 +653,7 @@ func (ag *agent) readNamedSlot(start, holder *Object, p prop, c *propCache) (val
 			return Undefined, nil
 		}
 		if c != nil && holder != start {
-			c.setInherited(start.shape, cacheGetter, ag.protoEpoch)
+			c.setInherited(start.shape, cacheGetter, sp.protoEpoch)
 			c.holder = g
 		}
 		return Undefined, g
@@ -664,7 +664,7 @@ func (ag *agent) readNamedSlot(start, holder *Object, p prop, c *propCache) (val
 			c.slot = p.slot
 			c.kind = cacheOwn
 		} else {
-			c.setInherited(start.shape, cacheProto, ag.protoEpoch)
+			c.setInherited(start.shape, cacheProto, sp.protoEpoch)
 			c.ref = &holder.slots[p.slot]
 		}
 	}

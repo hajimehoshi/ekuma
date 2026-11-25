@@ -21,7 +21,7 @@ type bigIntObject struct {
 }
 
 // NewBigInt returns the BigInt i, which must not be modified afterward.
-func (ag *agent) NewBigInt(i *big.Int) Value {
+func NewBigInt(i *big.Int) Value {
 	if i.IsInt64() {
 		return BigIntFromInt64(i.Int64())
 	}
@@ -59,7 +59,7 @@ func (cx *ExecutionContext) multiplyBigInts(x, y *big.Int) Value {
 		cx.checkBigIntBits(int64(x.BitLen()) + int64(y.BitLen()) - 1)
 		z := numconv.MulBigInt(x, y, cx.Poll)
 		cx.checkBigIntBits(int64(z.BitLen()))
-		return cx.NewBigInt(z)
+		return NewBigInt(z)
 	}
 	o := &struct {
 		bigIntObject
@@ -86,7 +86,7 @@ func (cx *ExecutionContext) addBigInts(a, b Value) Value {
 		x.Sign() != y.Sign() || len(x.Bits()) > bigIntSumWords || len(y.Bits()) > bigIntSumWords {
 		z := new(big.Int).Add(x, y)
 		cx.checkBigIntBits(int64(z.BitLen()))
-		return cx.NewBigInt(z)
+		return NewBigInt(z)
 	}
 	o := &struct {
 		bigIntObject

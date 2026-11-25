@@ -11,8 +11,8 @@ import (
 // they report a JavaScript exception as an error.
 
 // HostDefined returns the value that [NewExecutionContext] was given.
-func (ag *agent) HostDefined() any {
-	return ag.hostDefined
+func (sp *space) HostDefined() any {
+	return sp.hostDefined
 }
 
 // GlobalObject returns the global object.
@@ -242,15 +242,11 @@ func (cx *ExecutionContext) HostInstanceOf(v, t Value) (bool, error) {
 
 // ThrownMessage describes the thrown value v for a Go error, without running any JavaScript.
 func ThrownMessage(v Value) string {
-	var ag *agent
-	if v.o != nil && v.o.shape != nil {
-		ag = v.o.shape.agent
+	if v.o == nil || v.o.shape == nil {
+		// A primitive other than a string: its description needs no space.
+		return "uncaught " + displayString(v)
 	}
-	if ag == nil {
-		// A primitive other than a string: its description needs no agent.
-		return "uncaught " + ag.DisplayString(v)
-	}
-	return ag.errorOf(v).Error()
+	return v.o.shape.space.errorOf(v).Error()
 }
 
 // ContinuationData returns the continuation data, the value of the host that promise

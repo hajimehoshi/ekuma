@@ -103,7 +103,7 @@ func (s *keySource) newKey(kind, id int) engine.Value {
 		if id&1 != 0 {
 			b.Neg(b).Sub(b, big.NewInt(1))
 		}
-		return s.cx.NewBigInt(b)
+		return engine.NewBigInt(b)
 	default:
 		switch id {
 		case 0:

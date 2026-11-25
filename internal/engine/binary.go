@@ -378,7 +378,7 @@ func ElementBits(t element.Type, v Value) uint64 {
 }
 
 // ElementFromBits returns the value that the encoding x of an element of the type t stands for.
-func (ag *agent) ElementFromBits(t element.Type, x uint64) Value {
+func ElementFromBits(t element.Type, x uint64) Value {
 	switch t {
 	case element.BigInt64:
 		return BigIntFromInt64(int64(x))
@@ -386,14 +386,14 @@ func (ag *agent) ElementFromBits(t element.Type, x uint64) Value {
 		if x <= math.MaxInt64 {
 			return BigIntFromInt64(int64(x))
 		}
-		return ag.NewBigInt(new(big.Int).SetUint64(x))
+		return NewBigInt(new(big.Int).SetUint64(x))
 	}
 	return Number(element.DecodeNumber(t, x))
 }
 
 // GetValueFromBuffer implements GetValueFromBuffer for the bytes b, which hold at least one element of the type t.
 func (ag *agent) GetValueFromBuffer(b []byte, t element.Type, littleEndian bool) Value {
-	return ag.ElementFromBits(t, element.LoadEndian(b, t, littleEndian))
+	return ElementFromBits(t, element.LoadEndian(b, t, littleEndian))
 }
 
 // SetValueInBuffer implements SetValueInBuffer for the bytes b, which hold at least one element of the type t.
@@ -588,7 +588,7 @@ func (t *TypedArray) element(i uint32) ([]byte, bool) {
 }
 
 // loadElement returns the element of the type t at the start of b.
-func (ag *agent) loadElement(t element.Type, b []byte) Value {
+func loadElement(t element.Type, b []byte) Value {
 	switch t {
 	case element.Int8:
 		return Number(float64(int8(b[0])))
@@ -609,7 +609,7 @@ func (ag *agent) loadElement(t element.Type, b []byte) Value {
 	case element.Float64:
 		return Number(math.Float64frombits(binary.LittleEndian.Uint64(b)))
 	}
-	return ag.ElementFromBits(t, binary.LittleEndian.Uint64(b))
+	return ElementFromBits(t, binary.LittleEndian.Uint64(b))
 }
 
 // typedArrayGet implements TypedArrayGetElement. It returns undefined when i is not a valid integer index.
@@ -635,7 +635,7 @@ func (ag *agent) typedArrayGet(o *Object, i uint32) Value {
 	if !ok {
 		return ag.typedArrayGetSlow(o, i)
 	}
-	return ag.loadElement(t.typ, b)
+	return loadElement(t.typ, b)
 }
 
 // typedArrayGetSlow implements TypedArrayGetElement for the typed array o when the bytes of the
@@ -650,7 +650,7 @@ func (ag *agent) typedArrayGetSlow(o *Object, i uint32) Value {
 	if !ok {
 		return Undefined
 	}
-	return ag.ElementFromBits(t.typ, x)
+	return ElementFromBits(t.typ, x)
 }
 
 // typedArraySet implements [[Set]] of the typed array o for an array index and the receiver o.

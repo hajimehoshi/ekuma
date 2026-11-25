@@ -274,7 +274,7 @@ func (ag *agent) holdStack() {
 func (ag *agent) holdArgs(args []Value) int {
 	c := &ag.checks
 	for _, v := range args {
-		ag.checkValue(v)
+		checkValue(v)
 	}
 	n := len(c.args)
 	if start := ag.sp - len(args); len(args) > 0 && start >= 0 && ag.sp <= len(ag.stack) && &ag.stack[start] == &args[0] {
@@ -337,7 +337,7 @@ func isStale(v Value) bool {
 }
 
 // checkValue checks that v was not read from stale registers.
-func (ag *agent) checkValue(v Value) {
+func checkValue(v Value) {
 	if isStale(v) {
 		panic("ekumavalidate: a value was read from stale registers")
 	}

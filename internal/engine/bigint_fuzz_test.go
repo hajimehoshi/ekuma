@@ -197,7 +197,7 @@ func FuzzBigIntOperators(f *testing.F) {
 		for i, op := range bigIntOperators {
 			var got engine.Value
 			cx.Run(func() {
-				got = cx.Call(fns[i].Object(), engine.Undefined, cx.NewBigInt(new(big.Int).Set(x)), cx.NewBigInt(new(big.Int).Set(y)))
+				got = cx.Call(fns[i].Object(), engine.Undefined, engine.NewBigInt(new(big.Int).Set(x)), engine.NewBigInt(new(big.Int).Set(y)))
 			})
 			want := op.want(x, y)
 			if want != nil && want.BitLen() > maxFuzzBigIntBits {
@@ -247,7 +247,7 @@ func FuzzBigIntConversions(f *testing.F) {
 		x, n := bigIntFromBytes(xb), math.Float64frombits(nBits)
 		var result *engine.Object
 		cx.Run(func() {
-			result = cx.Call(fn.Object(), engine.Undefined, cx.NewBigInt(new(big.Int).Set(x)), engine.Number(n), engine.Number(float64(bits))).Object()
+			result = cx.Call(fn.Object(), engine.Undefined, engine.NewBigInt(new(big.Int).Set(x)), engine.Number(n), engine.Number(float64(bits))).Object()
 		})
 		element := func(i int) engine.Value {
 			var v engine.Value

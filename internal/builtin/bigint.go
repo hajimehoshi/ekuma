@@ -120,7 +120,7 @@ func bigIntAsIntN(cx *engine.ExecutionContext, this engine.Value, args []engine.
 	if r.Bit(int(bits-1)) != 0 {
 		r.Sub(r, m)
 	}
-	return cx.NewBigInt(r)
+	return engine.NewBigInt(r)
 }
 
 func bigIntAsUintN(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -134,7 +134,7 @@ func bigIntAsUintN(cx *engine.ExecutionContext, this engine.Value, args []engine
 		if u <= math.MaxInt64 {
 			return engine.BigIntFromInt64(int64(u))
 		}
-		return cx.NewBigInt(new(big.Int).SetUint64(u))
+		return engine.NewBigInt(new(big.Int).SetUint64(u))
 	}
 	i := x.BigInt()
 	if i.Sign() >= 0 && int64(i.BitLen()) <= bits {
@@ -148,14 +148,14 @@ func bigIntAsUintN(cx *engine.ExecutionContext, this engine.Value, args []engine
 		if u <= math.MaxInt64 {
 			return engine.BigIntFromInt64(int64(u))
 		}
-		return cx.NewBigInt(new(big.Int).SetUint64(u))
+		return engine.NewBigInt(new(big.Int).SetUint64(u))
 	}
 	if bits > engine.MaxBigIntBits {
 		cx.ThrowRangeError("maximum BigInt size exceeded")
 	}
 	// The low bits of the two's complement of i.
 	m := new(big.Int).Lsh(big.NewInt(1), uint(bits))
-	return cx.NewBigInt(new(big.Int).And(i, m.Sub(m, big.NewInt(1))))
+	return engine.NewBigInt(new(big.Int).And(i, m.Sub(m, big.NewInt(1))))
 }
 
 func bigIntToString(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -188,7 +188,7 @@ func numberToBigInt(cx *engine.ExecutionContext, n float64) engine.Value {
 		return engine.BigIntFromInt64(int64(n))
 	}
 	i, _ := big.NewFloat(n).Int(nil)
-	return cx.NewBigInt(i)
+	return engine.NewBigInt(i)
 }
 
 // toIndex implements ToIndex.

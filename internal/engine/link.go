@@ -177,7 +177,7 @@ func (cx *ExecutionContext) linkFunc(f *bytecode.Func, script *scriptOrModule, c
 				poll = cx.Poll
 			}
 			n, _ := numconv.ParseBigInt(string(c.Str), 10, poll)
-			p.consts[i] = cx.NewBigInt(n)
+			p.consts[i] = NewBigInt(n)
 		}
 	}
 	for i, k := range f.Keys {

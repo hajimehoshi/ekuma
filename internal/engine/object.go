@@ -341,8 +341,8 @@ func (o *Object) indicesInElements() bool {
 // A shared shape never changes, so an inline cache that remembers one stays valid for as long
 // as the prototypes it looked through keep their properties.
 type shape struct {
-	// agent and realm identify where the objects with this shape were created.
-	agent *agent
+	// space and realm identify where the objects with this shape were created.
+	space *space
 	realm *realm
 
 	proto  *Object
@@ -379,7 +379,7 @@ type shape struct {
 	renewOnAdd bool
 
 	// flatBased is set for a shared shape without parent that has properties of its own
-	// (see [agent.FinishBuiltins]) and for the shapes that add properties to it. Such a shape with
+	// (see [space.FinishBuiltins]) and for the shapes that add properties to it. Such a shape with
 	// more than smallShapeSize properties keeps a table from the start.
 	flatBased bool
 
@@ -509,7 +509,7 @@ func (s *shape) keys() []*Object {
 	for ; t.parent != nil; t = t.parent {
 		keys[t.count-1] = t.key
 	}
-	// A shared shape without parent may have properties of its own: see [agent.FinishBuiltins].
+	// A shared shape without parent may have properties of its own: see [space.FinishBuiltins].
 	for _, e := range t.small {
 		keys[e.slot] = e.key
 	}
@@ -583,7 +583,7 @@ func (s *shape) sharedHasEnumerableString() bool {
 			return true
 		}
 	}
-	// A shared shape without parent may have properties of its own: see [agent.FinishBuiltins].
+	// A shared shape without parent may have properties of its own: see [space.FinishBuiltins].
 	for _, e := range t.small {
 		if isEnumerableString(e.key, e.flags) {
 			return true
@@ -607,7 +607,7 @@ func (s *shape) with(key *Object, flags uint8) *shape {
 		return t
 	}
 	t := &shape{
-		agent:  s.agent,
+		space:  s.space,
 		realm:  s.realm,
 		proto:  s.proto,
 		family: s.family,
@@ -707,7 +707,7 @@ func (s *shape) privateCopy() *shape {
 		order = s.keys()
 	}
 	t := &shape{
-		agent:   s.agent,
+		space:   s.space,
 		realm:   s.realm,
 		proto:   s.proto,
 		family:  s.family,
@@ -729,7 +729,7 @@ func (s *shape) privateCopy() *shape {
 // it takes from s. Only the object that has s may call it.
 func (s *shape) handOver() *shape {
 	t := &shape{
-		agent:   s.agent,
+		space:   s.space,
 		realm:   s.realm,
 		proto:   s.proto,
 		family:  s.family,
@@ -794,7 +794,7 @@ func (cx *ExecutionContext) newShape(proto *Object, r *realm, family shapeFamily
 		proto.flags |= objIsProto
 	}
 	return &shape{
-		agent:  cx.agent,
+		space:  cx.space,
 		realm:  r,
 		proto:  proto,
 		family: family,
@@ -1573,26 +1573,26 @@ func (o *Object) getOwn(key *Object) (prop, bool) {
 
 // touchProto records that the properties of o changed, if o is a prototype. Whatever moves the
 // slots of a prototype calls it too, because cacheProto entries point into them.
-func (ag *agent) touchProto(o *Object) {
+func (sp *space) touchProto(o *Object) {
 	if o.flags&objIsProto != 0 {
-		ag.protoEpoch++
+		sp.protoEpoch++
 	}
 }
 
 // add gives o the new own property key. The caller has checked that o has no such property.
-func (ag *agent) add(o *Object, key *Object, val Value, flags uint8) {
+func (sp *space) add(o *Object, key *Object, val Value, flags uint8) {
 	s := o.shape
-	if !s.private && (s.count >= privateShapeThreshold || ag.builtins.building) {
+	if !s.private && (s.count >= privateShapeThreshold || sp.builtins.building) {
 		s = s.privateCopy()
 		o.shape = s
-		if ag.builtins.building {
-			ag.builtins.objects = append(ag.builtins.objects, o)
+		if sp.builtins.building {
+			sp.builtins.objects = append(sp.builtins.objects, o)
 		}
 	}
 	if s.private {
 		// Growing the slots moves the addresses held by global variable caches, which
 		// rely on the shape. No code runs while the built-ins are created.
-		if s.renewOnAdd || len(o.slots) == cap(o.slots) && !ag.builtins.building {
+		if s.renewOnAdd || len(o.slots) == cap(o.slots) && !sp.builtins.building {
 			s = s.handOver()
 			o.shape = s
 		}
@@ -1606,32 +1606,32 @@ func (ag *agent) add(o *Object, key *Object, val Value, flags uint8) {
 		o.shape = s.with(key, flags)
 	}
 	o.appendSlot(val)
-	ag.touchProto(o)
+	sp.touchProto(o)
 }
 
 // builtinLayout is the state of the creation of the built-in objects.
 type builtinLayout struct {
-	// building is set between [agent.StartBuiltins] and [agent.FinishBuiltins].
+	// building is set between [space.StartBuiltins] and [space.FinishBuiltins].
 	building bool
 
 	// objects are the objects that got a private shape while building.
 	objects []*Object
 }
 
-// StartBuiltins starts the creation of the built-in objects, which [agent.FinishBuiltins] ends.
+// StartBuiltins starts the creation of the built-in objects, which [space.FinishBuiltins] ends.
 // In between, objects should only get their initial properties.
-func (ag *agent) StartBuiltins() {
-	ag.builtins.building = true
-	ag.strings.startKeeping()
+func (sp *space) StartBuiltins() {
+	sp.builtins.building = true
+	sp.strings.startKeeping()
 }
 
 // FinishBuiltins ends the creation of the built-in objects.
-func (ag *agent) FinishBuiltins() {
-	for _, o := range ag.builtins.objects {
+func (sp *space) FinishBuiltins() {
+	for _, o := range sp.builtins.objects {
 		o.shareShape()
 	}
-	ag.builtins = builtinLayout{}
-	ag.strings.endKeeping()
+	sp.builtins = builtinLayout{}
+	sp.strings.endKeeping()
 }
 
 // shareShape turns the private shape of o into a shared shape without parent that holds all
@@ -1683,14 +1683,14 @@ func (cx *ExecutionContext) Define(o *Object, key *Object, val Value, flags uint
 }
 
 // setFlags changes the attributes of the existing own property key of o.
-func (ag *agent) setFlags(o *Object, key *Object, p prop, flags uint8) {
+func (sp *space) setFlags(o *Object, key *Object, p prop, flags uint8) {
 	// An inline cache may remember the shape, so the changed layout needs another one.
 	o.renewShape()
 	o.shape.table[key] = prop{
 		slot:  p.slot,
 		flags: flags,
 	}
-	ag.touchProto(o)
+	sp.touchProto(o)
 }
 
 // renewShape gives o a private shape with the properties of its shape, which no inline cache
@@ -1722,7 +1722,7 @@ func (cx *ExecutionContext) remove(o *Object, key *Object) {
 	// Otherwise removing a property moves the later ones, so the object gets a shape that no
 	// inline cache has seen.
 	s := &shape{
-		agent:   old.agent,
+		space:   old.space,
 		realm:   old.realm,
 		proto:   old.proto,
 		family:  old.family,
@@ -1750,7 +1750,7 @@ func (cx *ExecutionContext) remove(o *Object, key *Object) {
 
 // removeFromPrivate deletes the own named property key of o, which must exist, from the private
 // shape of o. The new shape takes over the storage of the old one, which only o has.
-func (ag *agent) removeFromPrivate(o *Object, key *Object) {
+func (sp *space) removeFromPrivate(o *Object, key *Object) {
 	old := o.shape
 	s := old.handOver()
 	o.shape = s
@@ -1770,8 +1770,8 @@ func (ag *agent) removeFromPrivate(o *Object, key *Object) {
 	if n-int(s.count) > int(s.count) {
 		o.compact()
 	}
-	ag.sparseIndices.remove(old, s, key)
-	ag.touchProto(o)
+	sp.sparseIndices.remove(old, s, key)
+	sp.touchProto(o)
 }
 
 // compact removes the deleted slots of the private shape of o.
@@ -1905,7 +1905,7 @@ func (c *propCache) entry(s *shape) *cacheEntry {
 // namedReads holds the locations of properties read at a site with several receiver shapes.
 // Its entries do not keep the shapes, their prototypes or their property values alive.
 type namedReads struct {
-	agent  *agent
+	space  *space
 	epoch  uint32
 	shapes map[uint32]namedRead
 }
@@ -1942,9 +1942,9 @@ func (c *propCache) keep(shape *shape) bool {
 	return previous != nil && previous != shape && previous != c.shape
 }
 
-// Owns reports whether o belongs to ag or is shared by all agents.
-func (ag *agent) Owns(o *Object) bool {
-	return o.shape == nil || o.shape.agent == ag
+// Owns reports whether o belongs to the agent of sp or is shared by all agents.
+func (sp *space) Owns(o *Object) bool {
+	return o.shape == nil || o.shape.space == sp
 }
 
 // HostDefined returns the host-defined value of the agent that owns o, or nil for shared values.
@@ -1952,7 +1952,7 @@ func (o *Object) HostDefined() any {
 	if o.shape == nil {
 		return nil
 	}
-	return o.shape.agent.hostDefined
+	return o.shape.space.hostDefined
 }
 
 // Str returns the content of the string o in WTF-8.

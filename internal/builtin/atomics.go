@@ -151,7 +151,7 @@ func atomicsReadModifyWriteNative(name string, op engine.AtomicOp) engine.Native
 		typ := t.ElementType()
 		v := toAtomicValue(cx, typ, arg(args, 2))
 		revalidateAtomicAccess(cx, t, i)
-		return cx.ElementFromBits(typ, t.AtomicReadModifyWrite(i, op, engine.ElementBits(typ, v), 0))
+		return engine.ElementFromBits(typ, t.AtomicReadModifyWrite(i, op, engine.ElementBits(typ, v), 0))
 	}
 }
 
@@ -163,7 +163,7 @@ func atomicsCompareExchange(cx *engine.ExecutionContext, this engine.Value, args
 	replacement := toAtomicValue(cx, typ, arg(args, 3))
 	revalidateAtomicAccess(cx, t, i)
 	old := t.AtomicReadModifyWrite(i, engine.AtomicCompareExchange, engine.ElementBits(typ, expected), engine.ElementBits(typ, replacement))
-	return cx.ElementFromBits(typ, old)
+	return engine.ElementFromBits(typ, old)
 }
 
 func atomicsIsLockFree(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -178,7 +178,7 @@ func atomicsLoad(cx *engine.ExecutionContext, this engine.Value, args []engine.V
 	t, n := validateIntegerTypedArray(cx, arg(args, 0), false, false, "load")
 	i := validateAtomicAccess(cx, n, arg(args, 1))
 	revalidateAtomicAccess(cx, t, i)
-	return cx.ElementFromBits(t.ElementType(), t.AtomicLoad(i))
+	return engine.ElementFromBits(t.ElementType(), t.AtomicLoad(i))
 }
 
 func atomicsStore(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {

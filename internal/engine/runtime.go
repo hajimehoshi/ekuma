@@ -803,7 +803,7 @@ func (cx *ExecutionContext) arith(op bytecode.Opcode, x, y Value) Value {
 	default:
 		panic("ekuma: not an arithmetic bytecode.Opcode")
 	}
-	return cx.NewBigInt(r)
+	return NewBigInt(r)
 }
 
 func (cx *ExecutionContext) negate(x Value) Value {
@@ -814,7 +814,7 @@ func (cx *ExecutionContext) negate(x Value) Value {
 	if x.o == numberObject {
 		return Number(-x.n)
 	}
-	return cx.NewBigInt(new(big.Int).Neg(x.BigInt()))
+	return NewBigInt(new(big.Int).Neg(x.BigInt()))
 }
 
 func (cx *ExecutionContext) bitNot(x Value) Value {
@@ -827,7 +827,7 @@ func (cx *ExecutionContext) bitNot(x Value) Value {
 	}
 	r := new(big.Int).Not(x.BigInt())
 	cx.checkBigIntBits(int64(r.BitLen()))
-	return cx.NewBigInt(r)
+	return NewBigInt(r)
 }
 
 // step implements ++ and -- for an operand that is not a number: it adds d to x.
@@ -956,8 +956,8 @@ func (cx *ExecutionContext) defineClassElement(this Value, e *classElement) {
 	}
 }
 
-func (ag *agent) typeofValue(v Value) Value {
-	return ag.typeofs[typeOf(v)]
+func (sp *space) typeofValue(v Value) Value {
+	return sp.typeofs[typeOf(v)]
 }
 
 // defineField implements CreateDataPropertyOrThrow for a computed key, as object literals

@@ -24,13 +24,11 @@ var nonStorageTypes = []string{
 // storageClosureExceptions are the fields that may lead from storage to the rest of the engine,
 // with the reasons.
 var storageClosureExceptions = map[string]string{
-	"shape.agent":       "identity of the agent and the state that shapes share",
 	"shape.realm":       "comparison, and the realm of the shape's objects",
 	"nativeInfo.realm":  "comparison, and calls across realms",
 	"nativeInfo.fast":   "copy of the fast forms in the native table",
 	"funcProto.context": "context that runs the code",
 	"funcProto.script":  "referrer of imports",
-	"namedReads.agent":  "comparison",
 	"regExpState.realm": "comparison",
 }
 

@@ -192,7 +192,7 @@ func (vm *VM) valueOf(cx *engine.ExecutionContext, x any) engine.Value {
 		if x.BitLen() > engine.MaxBigIntBits {
 			panic(fmt.Sprintf("ekuma: ValueOf: BigInt of %d bits, more than %d", x.BitLen(), engine.MaxBigIntBits))
 		}
-		return cx.NewBigInt(new(big.Int).Set(x))
+		return engine.NewBigInt(new(big.Int).Set(x))
 	case string:
 		return cx.StringFromGo(x)
 	case func(Value, []Value) (any, error):

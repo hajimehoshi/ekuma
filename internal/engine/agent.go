@@ -302,13 +302,13 @@ type keys struct {
 }
 
 // Key returns the string property key k.
-func (ag *agent) Key(k CommonKey) *Object {
-	return ag.keys.common[k]
+func (sp *space) Key(k CommonKey) *Object {
+	return sp.keys.common[k]
 }
 
 // WellKnownSymbol returns the well-known symbol s.
-func (ag *agent) WellKnownSymbol(s WellKnownSymbol) *Object {
-	return ag.keys.wellKnown[s]
+func (sp *space) WellKnownSymbol(s WellKnownSymbol) *Object {
+	return sp.keys.wellKnown[s]
 }
 
 func (cx *ExecutionContext) initKeys() {
@@ -550,14 +550,65 @@ func (ag *agent) dropNatives(frames int) {
 	ag.natives = ag.natives[:n]
 }
 
+// space is the state of an agent that its objects and values need: the property keys and the
+// strings, the symbols, the shapes that belong to no realm, the epochs and IDs that the inline
+// caches rely on, and the objects that WeakRefs keep alive. The objects of an agent lead to its
+// space through their shapes.
+//
+// It must not refer to the agent, a realm, a frame or an execution context, except that a shape
+// records its realm. hostDefined belongs to the host and is opaque to the engine.
+type space struct {
+	keys keys
+
+	strings stringTable
+
+	// missHolder holds undefined in its one slot, where the cache entries of properties that
+	// were not found point.
+	missHolder *Object
+
+	// protoEpoch changes whenever the properties or the prototype of a prototype object change,
+	// or its slots move.
+	protoEpoch uint32
+
+	lastReadShapeID uint32
+
+	sparseIndices sparseIndexCache
+
+	// indexStrings holds the strings of the array indices below indexStringCount that were
+	// made, by index, and nil for the others.
+	indexStrings []*Object
+
+	// symbolShape is the shape of the symbols of the agent. It records the space that they belong
+	// to, and no lookup starts from it.
+	symbolShape *shape
+
+	// typeofs are the interned results of the typeof operator, indexed by the typeof constants.
+	typeofs [typeofCount]Value
+
+	// matchResultShapes are the shapes of RegExp match results of the realm that made them last.
+	matchResultShapes matchResultShapes
+
+	builtins builtinLayout
+
+	// maxBigIntResultBits is the bit limit for checked BigInt arithmetic results.
+	// Tests lower it to exercise overflow with small operands.
+	maxBigIntResultBits int64
+
+	// symbolRegistry is the GlobalSymbolRegistry List, by key.
+	symbolRegistry map[wtf8.String]*Object
+
+	// keptObjects is the [[KeptAlive]] list.
+	keptObjects keptObjects
+
+	// hostDefined is the value that [space.HostDefined] returns.
+	hostDefined any
+}
+
 // agent is an ECMAScript agent. It must not be used from more than one goroutine at a time.
 type agent struct {
 	// checks is the state of the checks of the interpreter in builds with the build tag
 	// ekumavalidate. Being first, it changes no offset in other builds, where it is empty.
 	checks execChecks
-
-	// hostDefined is the value that [agent.HostDefined] returns.
-	hostDefined any
 
 	// trackJobRealms selects handler realms for jobs in agents with multiple realms or global proxies.
 	trackJobRealms bool
@@ -605,21 +656,9 @@ type agent struct {
 	// captureThrowSites follows the reporter of the outermost host call across realms.
 	captureThrowSites bool
 
-	keys keys
-
-	strings stringTable
-
-	// missHolder holds undefined in its one slot, where the cache entries of properties that
-	// were not found point.
-	missHolder *Object
-
-	// protoEpoch changes whenever the properties or the prototype of a prototype object change,
-	// or its slots move.
-	protoEpoch uint32
-
-	lastReadShapeID uint32
-
-	sparseIndices sparseIndexCache
+	// space comes after the stack and the frames, which the interpreter loop reads most and
+	// which need the offsets that fit in load instructions.
+	space
 
 	jobs jobQueue
 
@@ -635,15 +674,9 @@ type agent struct {
 	// canSuspend is AgentCanSuspend.
 	canSuspend bool
 
-	// keptObjects is the [[KeptAlive]] list.
-	keptObjects keptObjects
-
 	// finalization receives the cells of FinalizationRegistry objects whose target was collected,
 	// or is nil until the first registry is created.
 	finalization *finalizationQueue
-
-	// symbolRegistry is the GlobalSymbolRegistry List, by key.
-	symbolRegistry map[wtf8.String]*Object
 
 	// regExps caches compiled patterns by their flags and source.
 	regExps map[bytecode.RegExp]*regexp.Regexp
@@ -669,31 +702,11 @@ type agent struct {
 
 	moduleEvaluations moduleEvaluations
 
-	builtins builtinLayout
-
-	// indexStrings holds the strings of the array indices below indexStringCount that were
-	// made, by index, and nil for the others.
-	indexStrings []*Object
-
-	// symbolShape is the shape of the symbols of the agent. It records the agent that they belong
-	// to, and no lookup starts from it.
-	symbolShape *shape
-
 	// hostContext is the host context of the running script, job or cleanup.
 	hostContext
 
-	// matchResultShapes are the shapes of RegExp match results of the realm that made them last.
-	matchResultShapes matchResultShapes
-
 	// clock gives the current time, or is nil for time.Now.
 	clock func() time.Time
-
-	// maxBigIntResultBits is the bit limit for checked BigInt arithmetic results.
-	// Tests lower it to exercise overflow with small operands.
-	maxBigIntResultBits int64
-
-	// typeofs are the interned results of the typeof operator, indexed by the typeof constants.
-	typeofs [typeofCount]Value
 
 	// madeHTMLDDA reports whether the agent made an object with the [[IsHTMLDDA]] internal slot.
 	madeHTMLDDA bool
@@ -722,7 +735,7 @@ func NewExecutionContext(hostDefined any) (*ExecutionContext, *Host) {
 	cx := &r.context
 	cx.activate()
 	cx.symbolShape = &shape{
-		agent: cx.agent,
+		space: cx.space,
 		small: []shapeEntry{},
 	}
 	cx.initRealmPrototypes()
@@ -1284,20 +1297,20 @@ func (ag *agent) takeException() error {
 }
 
 // errorOf returns the Go error for the thrown value v.
-func (ag *agent) errorOf(v Value) *Error {
+func (sp *space) errorOf(v Value) *Error {
 	var msg string
 	if v.IsObject() {
-		if s, ok := diagnosticDataProperty(v.o, ag.Key(KeyStack)); ok && s.IsString() {
+		if s, ok := diagnosticDataProperty(v.o, sp.Key(KeyStack)); ok && s.IsString() {
 			msg = wtf8.ToValidUTF8(s.Str())
 		} else if s, ok := ErrorStack(v); ok {
 			msg = wtf8.ToValidUTF8(s)
-		} else if s, ok := diagnosticDataProperty(v.o, ag.Key(KeyMessage)); ok && s.IsString() {
+		} else if s, ok := diagnosticDataProperty(v.o, sp.Key(KeyMessage)); ok && s.IsString() {
 			msg = wtf8.ToValidUTF8(s.Str())
 		} else {
 			msg = "uncaught exception"
 		}
 	} else {
-		msg = "uncaught " + ag.DisplayString(v)
+		msg = "uncaught " + displayString(v)
 	}
 	return &Error{
 		Value: v,
@@ -1316,8 +1329,13 @@ const maxDisplayString = 1 << 10
 // DisplayString describes v for messages, without running any JavaScript. A long string is
 // shortened.
 func (ag *agent) DisplayString(v Value) string {
+	return displayString(v)
+}
+
+// displayString is [agent.DisplayString].
+func displayString(v Value) string {
 	if validateExec {
-		ag.checkValue(v)
+		checkValue(v)
 	}
 	o := v.o
 	if o == nil {

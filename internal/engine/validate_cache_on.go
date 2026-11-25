@@ -163,7 +163,7 @@ func (ag *agent) cacheFailure(fp *funcProto, pc int, cache string, key *Object, 
 	if key != nil {
 		cache += " of " + ag.DisplayString(Value{o: key})
 	}
-	msg := cache + " answered " + got + ", but the lookup finds " + want
+	msg := cacheMismatch(cache, got, want)
 	if fp == nil {
 		if len(ag.frames) == 0 {
 			return "ekumavalidate: " + msg
@@ -173,6 +173,11 @@ func (ag *agent) cacheFailure(fp *funcProto, pc int, cache string, key *Object, 
 		fp, pc = fr.fp, max(fr.pc-1, 0)
 	}
 	return validationFailure(fp, pc, msg)
+}
+
+// cacheMismatch describes a cache that answered with got where the lookup finds want.
+func cacheMismatch(cache, got, want string) string {
+	return cache + " answered " + got + ", but the lookup finds " + want
 }
 
 // checkReadHit checks that the property key of v is the data property at ref, or missing when ref
@@ -370,7 +375,7 @@ func (cx *ExecutionContext) checkInstanceofHit(fp *funcProto, pc int, v Value, c
 // checkInstanceShape checks that s is the shape of a new instance in the realm r whose prototype
 // is proto.
 func (cx *ExecutionContext) checkInstanceShape(fp *funcProto, pc int, proto *Object, r *realm, s *shape) {
-	if s.proto != proto || s.realm != r || s.agent != cx.agent || s.family != ordinaryRoot || s.parent != nil || s.count != 0 || s.private {
+	if s.proto != proto || s.realm != r || s.space != cx.space || s.family != ordinaryRoot || s.parent != nil || s.count != 0 || s.private {
 		panic(cx.cacheFailure(fp, pc, "the cache of the instance shape", nil, fmt.Sprintf("a shape for the prototype %p", s.proto), fmt.Sprintf("the prototype %p", proto)))
 	}
 }
@@ -457,7 +462,7 @@ func (cx *ExecutionContext) checkRegExpShape(o *Object) {
 // checkEnumerable checks what the shared shape s remembers about its enumerable properties.
 func (s *shape) checkEnumerable() {
 	if want := s.sharedHasEnumerableString(); (s.enumerable == enumerableSome) != want {
-		panic(s.agent.cacheFailure(nil, 0, "the cache of enumerable properties", nil, fmt.Sprint(!want), fmt.Sprint(want)))
+		panic("ekumavalidate: " + cacheMismatch("the cache of enumerable properties", fmt.Sprint(!want), fmt.Sprint(want)))
 	}
 }
 
@@ -480,7 +485,7 @@ func (c *sparseIndexCache) checkSparseIndices(s *shape) {
 	}
 	slices.Sort(want)
 	if !slices.Equal(c.indices, want) {
-		panic(s.agent.cacheFailure(nil, 0, "the cache of array indices", nil, fmt.Sprint(c.indices), fmt.Sprint(want)))
+		panic("ekumavalidate: " + cacheMismatch("the cache of array indices", fmt.Sprint(c.indices), fmt.Sprint(want)))
 	}
 }
 

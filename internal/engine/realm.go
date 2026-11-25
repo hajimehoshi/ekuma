@@ -83,6 +83,7 @@ func (ag *agent) newRealm() *realm {
 	r.context = ExecutionContext{
 		agent: ag,
 		realm: r,
+		space: &ag.space,
 	}
 	r.referrer = &scriptOrModule{
 		realm: r,

@@ -220,7 +220,7 @@ func (it *arrayIterator) stepPlain(q QuietContext) (key, value Value, st PairSte
 		t := o.extState().(*TypedArray)
 		if it.kind != IterateKeys && i <= MaxArrayIndex {
 			if b, ok := t.element(uint32(i)); ok {
-				value = cx.loadElement(t.typ, b)
+				value = loadElement(t.typ, b)
 				it.nextIndex = i + 1
 				cx.PollAt(i)
 				return Number(float64(i)), value, PairYielded
@@ -559,7 +559,7 @@ func (cx *ExecutionContext) iteratePlainArray(o *Object, f func(Value) bool) {
 // plainArrayIteratorIndex reads an element outside dense storage with the native next frame
 // that a getter or proxy can observe.
 func (cx *ExecutionContext) plainArrayIteratorIndex(o *Object, i uint32) Value {
-	if o.flags&objSparse == 0 && cx.holesAreAbsent(o) {
+	if o.flags&objSparse == 0 && holesAreAbsent(o) {
 		return Undefined
 	}
 	// arrayIterationPlain proved this method was selected when iteration started.

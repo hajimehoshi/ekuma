@@ -25,7 +25,7 @@ func (ag *agent) checkIdleStack() {}
 
 func (ag *agent) holdStack() {}
 
-func (ag *agent) checkValue(v Value) {}
+func checkValue(v Value) {}
 
 func (ag *agent) holdArgs(args []Value) int {
 	return 0

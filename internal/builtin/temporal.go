@@ -633,7 +633,7 @@ func bigIntToEpochNs(cx *engine.ExecutionContext, v engine.Value) temporal.Int12
 
 // epochNsValue returns ns as a BigInt.
 func epochNsValue(cx *engine.ExecutionContext, ns temporal.Int128) engine.Value {
-	return cx.NewBigInt(ns.Big())
+	return engine.NewBigInt(ns.Big())
 }
 
 // epochMilliseconds returns floor(ns / 10⁶) as a Number.

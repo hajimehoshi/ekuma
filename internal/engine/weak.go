@@ -129,14 +129,14 @@ func WeakSetData(v Value) *WeakTable {
 }
 
 // CanBeHeldWeakly implements CanBeHeldWeakly.
-func (ag *agent) CanBeHeldWeakly(v Value) bool {
+func (sp *space) CanBeHeldWeakly(v Value) bool {
 	if v.IsObject() {
 		return true
 	}
 	if !v.IsSymbol() {
 		return false
 	}
-	_, registered := ag.KeyForSymbol(v.o)
+	_, registered := sp.KeyForSymbol(v.o)
 	return !registered
 }
 
@@ -235,7 +235,7 @@ func (cx *ExecutionContext) NewWeakRefObject(proto *Object, v Value) *Object {
 
 // WeakRefDeref implements WeakRefDeref for the WeakRef object v.
 // It reports false when v is not a WeakRef object.
-func (ag *agent) WeakRefDeref(v Value) (Value, bool) {
+func (sp *space) WeakRefDeref(v Value) (Value, bool) {
 	if !v.IsObject() || v.o.class != classWeakRef {
 		return Undefined, false
 	}
@@ -243,7 +243,7 @@ func (ag *agent) WeakRefDeref(v Value) (Value, bool) {
 	if t == nil {
 		return Undefined, true
 	}
-	ag.AddToKeptObjects(t)
+	sp.AddToKeptObjects(t)
 	return Value{o: t}, true
 }
 
@@ -265,15 +265,15 @@ func (k *keptObjects) clear() {
 }
 
 // AddToKeptObjects implements AddToKeptObjects: o stays alive until the current job ends.
-func (ag *agent) AddToKeptObjects(o *Object) {
-	ag.keptObjects.add(o)
+func (sp *space) AddToKeptObjects(o *Object) {
+	sp.keptObjects.add(o)
 }
 
 // clearKeptObjects implements ClearKeptObjects.
 // It must be called when a job ends: after each promise job, and when the outermost call into
 // the engine returns.
-func (ag *agent) clearKeptObjects() {
-	ag.keptObjects.clear()
+func (sp *space) clearKeptObjects() {
+	sp.keptObjects.clear()
 }
 
 // FinalizationRegistry is the state of a FinalizationRegistry object.

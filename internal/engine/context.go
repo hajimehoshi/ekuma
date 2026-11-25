@@ -7,6 +7,9 @@ package engine
 type ExecutionContext struct {
 	*agent
 	realm *realm
+
+	// space is the space of agent.
+	*space
 }
 
 // Host provides agent-wide operations and the active context for host calls.
