@@ -78,7 +78,8 @@ const (
 	// rawRef is a reference that makes a store possible: an address, a slice, the call of a method
 	// with a pointer receiver, and a copy of a slice, a map or a pointer to a value.
 	rawRef rawUse = "ref"
-	// rawLit is a value for a field in a composite literal.
+	// rawLit is a value for a field in a composite literal. The object that a value is made from is
+	// no use.
 	rawLit rawUse = "lit"
 	// rawRead is any other use.
 	rawRead rawUse = "read"
@@ -107,14 +108,13 @@ type rawAccesses struct {
 // rawUsers is the list of the declarations outside the storage package that use raw storage.
 const rawUsers = "rawusers.txt"
 
-// The sections of the list. A declaration is in the first one that fits.
+// The sections of the list.
 const (
-	// rawStores is for declarations that store to raw storage, refer to it, or create objects.
+	// rawStores is for declarations that store to raw storage, refer to it, or create objects, short
+	// strings or property keys from their parts.
 	rawStores = "[stores]"
-	// rawReadsOnly is for declarations that read properties.
+	// rawReadsOnly is for declarations that only read properties.
 	rawReadsOnly = "[reads]"
-	// rawValues is for declarations that only create values from their parts.
-	rawValues = "[values]"
 )
 
 // TestRawStorage tests that the declarations outside the storage package that store to raw storage, refer
@@ -172,19 +172,20 @@ type rawStorage struct {
 	reads map[types.Object]bool
 	// whole are the raw structs that are no rawValueTypes.
 	whole map[*types.Named]bool
-	// values are the fields of rawValueTypes.
-	values map[types.Object]bool
-	value  *types.Named
+	// value is the type of values, and valueObject its field with the object.
+	value       *types.Named
+	valueObject types.Object
 }
 
 func newRawStorage(t *testing.T, prog *program) *rawStorage {
 	s := &rawStorage{
-		prog:   prog,
-		names:  map[types.Object]string{},
-		reads:  map[types.Object]bool{},
-		whole:  map[*types.Named]bool{},
-		values: map[types.Object]bool{},
-		value:  prog.typ(t, "Value"),
+		prog:  prog,
+		names: map[types.Object]string{},
+		reads: map[types.Object]bool{},
+		whole: map[*types.Named]bool{},
+		value: prog.typ(t, "Value"),
+
+		valueObject: prog.field(t, "Value", "o"),
 	}
 	found := map[string]int{}
 	var structs []*types.Named
@@ -233,11 +234,7 @@ func newRawStorage(t *testing.T, prog *program) *rawStorage {
 		}
 	}
 	for _, name := range rawValueTypes {
-		named := prog.typ(t, name)
-		delete(s.whole, named)
-		for f := range named.Underlying().(*types.Struct).Fields() {
-			s.values[f] = true
-		}
+		delete(s.whole, prog.typ(t, name))
 	}
 	for name := range rawFields {
 		typ, field, _ := strings.Cut(name, ".")
@@ -402,16 +399,12 @@ func (s *rawStorage) readList(t *testing.T) map[types.Object]*rawAccesses {
 
 // section returns the section of the list for a declaration with counts.
 func (s *rawStorage) section(counts map[rawAccess]int) string {
-	section := rawValues
 	for a := range counts {
-		switch {
-		case a.use == rawRead:
-			section = rawReadsOnly
-		case a.use != rawLit || !s.values[a.member]:
+		if a.use != rawRead {
 			return rawStores
 		}
 	}
-	return section
+	return rawReadsOnly
 }
 
 // declaration returns the function or variable of the engine called name, or nil.
@@ -599,7 +592,7 @@ func (s *rawStorage) inspect(p *checkedPackage, decl ast.Node, report func(n ast
 				} else {
 					f = st.Field(i).Origin()
 				}
-				if _, ok := s.names[f]; ok {
+				if _, ok := s.names[f]; ok && f != s.valueObject {
 					report(e, rawAccess{
 						member: f,
 						use:    rawLit,

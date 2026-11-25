@@ -10,8 +10,11 @@ import (
 	"testing"
 )
 
-// codeTypes are the types whose values running code takes or leads to, besides nonStorageTypes.
+// codeTypes are the types whose values running code takes or leads to.
 var codeTypes = []string{
+	"agent", "realm", "ExecutionContext", "Host",
+	"frame", "nativeCall", "generator", "asyncState",
+	"job", "Module", "waiterData",
 	"quietJobs", "Script", "scriptOrModule", "asyncWaiters", "waiterHeap", "mailbox", "moduleEvaluations", "jobQueue", "rejectionTracker",
 }
 
@@ -42,10 +45,8 @@ func TestQuietSignatures(t *testing.T) {
 	prog := checkProgram(t, "../../...")
 	quietContext := prog.typ(t, "Context")
 	var forbidden []*types.Named
-	for _, name := range slices.Concat(nonStorageTypes, codeTypes) {
-		if typ := prog.typ(t, name); typ != quietContext {
-			forbidden = append(forbidden, typ)
-		}
+	for _, name := range codeTypes {
+		forbidden = append(forbidden, prog.typ(t, name))
 	}
 	// leads returns the name of a type in forbidden that typ names, or an empty string, and find
 	// does so without known, the results of leads.

@@ -7,6 +7,7 @@ import (
 	"go/ast"
 	"go/token"
 	"go/types"
+	"maps"
 	"slices"
 	"strings"
 	"testing"
@@ -42,6 +43,11 @@ func TestQuietContextBoundary(t *testing.T) {
 	}
 	// quiet holds the functions with a quiet.Context, the methods of quietReceivers and the pair steps.
 	var quiet []string
+	// below holds the functions of the storage and quiet packages. They cannot name what is
+	// forbidden, but function values and interfaces can lead to it.
+	var below []string
+	// diagnostic holds the functions of storageLookups.
+	diagnostic := map[string]bool{}
 	pairSteps := map[string]bool{}
 
 	// Only these diagnostics may inspect stored data without applying property operations.
@@ -161,6 +167,9 @@ func TestQuietContextBoundary(t *testing.T) {
 					}) {
 						quiet = append(quiet, name)
 					}
+					if p.path == storagePath || p.path == quietPath {
+						below = append(below, name)
+					}
 					if inQuiet {
 						quiet = append(quiet, name)
 						checkSignature(decl, sig)
@@ -226,13 +235,6 @@ func TestQuietContextBoundary(t *testing.T) {
 									written[sel.Sel] = true
 								}
 							}
-						case *ast.BinaryExpr:
-							// Comparing a function with nil does not call it.
-							if sel, ok := n.X.(*ast.SelectorExpr); ok {
-								if id, ok := n.Y.(*ast.Ident); ok && id.Name == "nil" {
-									written[sel.Sel] = true
-								}
-							}
 						case *ast.KeyValueExpr:
 							if id, ok := n.Key.(*ast.Ident); ok {
 								written[id] = true
@@ -266,11 +268,13 @@ func TestQuietContextBoundary(t *testing.T) {
 		var lookups []string
 		for _, f := range prog.function(t, lookup) {
 			lookups = append(lookups, f.(*types.Func).FullName())
+			diagnostic[f.(*types.Func).FullName()] = true
 		}
 		allowed := map[string]bool{}
 		for _, caller := range callers {
 			allowed[prog.implementation(t, caller).FullName()] = true
 		}
+		maps.Copy(diagnostic, allowed)
 		called := map[string]bool{}
 		for name, us := range uses {
 			if slices.Contains(lookups, name) || !slices.ContainsFunc(us, func(u string) bool {
@@ -303,6 +307,11 @@ func TestQuietContextBoundary(t *testing.T) {
 	for name, ms := range interfaceUses {
 		for _, m := range ms {
 			uses[name] = append(uses[name], methods[m]...)
+		}
+	}
+	for _, name := range below {
+		if !diagnostic[name] && !slices.Contains(quiet, name) {
+			quiet = append(quiet, name)
 		}
 	}
 	seen := map[string]bool{}
