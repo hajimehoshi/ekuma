@@ -63,6 +63,12 @@ type realm struct {
 	// strictCallee is the callee property of unmapped arguments objects, or the zero value
 	// until it is needed.
 	strictCallee Value
+
+	legacyRegExp legacyRegExpStatics
+
+	// regExpFlagStrings holds the value of the flags getter for each set of the 8 flags, once
+	// computed. It is nil until it is needed.
+	regExpFlagStrings *[1 << 8]Value
 }
 
 func (ag *agent) newRealm() *realm {

@@ -448,9 +448,9 @@ func (cx *ExecutionContext) checkRegExpShape(o *Object) {
 	if s == nil || o.shape != s {
 		return
 	}
-	p, _ := cx.peekOwn(o, cx.Key(keyLastIndex))
+	p, _ := cx.peekOwn(o, cx.Key(KeyLastIndex))
 	if p.kind != peekData || p.prop.slot != 0 || p.prop.flags != FlagWritable || s.proto != cx.Intrinsic(IntrinsicRegExpPrototype) {
-		panic(cx.cacheFailure(nil, 0, "the RegExp shape", cx.Key(keyLastIndex), "the slot 0", p.String()))
+		panic(cx.cacheFailure(nil, 0, "the RegExp shape", cx.Key(KeyLastIndex), "the slot 0", p.String()))
 	}
 }
 

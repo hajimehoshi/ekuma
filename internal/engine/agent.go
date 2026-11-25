@@ -217,13 +217,13 @@ const (
 	keyCallee
 	keyCaller
 	keyArguments
-	keyIndex
+	KeyIndex
 	keyInput
-	keyGroups
-	keyLastIndex
+	KeyGroups
+	KeyLastIndex
 	KeyRaw
-	keySource
-	keyFlags
+	KeySource
+	KeyFlags
 	keyDefault
 	keyGetPrototypeOf
 	keySetPrototypeOf
@@ -252,6 +252,7 @@ const (
 	KeyUnicode
 	KeyUnicodeSets
 	KeySticky
+	KeyExec
 	commonKeyCount
 )
 
@@ -305,8 +306,8 @@ func (cx *ExecutionContext) initKeys() {
 		KeyEnumerable: "enumerable", KeyConfigurable: "configurable",
 		KeyNext: "next", keyDone: "done", KeyReturn: "return", keyThrow: "throw", KeyThen: "then",
 		keyCallee: "callee", keyCaller: "caller", keyArguments: "arguments",
-		keyIndex: "index", keyInput: "input", keyGroups: "groups", keyLastIndex: "lastIndex",
-		KeyRaw: "raw", keySource: "source", keyFlags: "flags", keyDefault: "default",
+		KeyIndex: "index", keyInput: "input", KeyGroups: "groups", KeyLastIndex: "lastIndex",
+		KeyRaw: "raw", KeySource: "source", KeyFlags: "flags", keyDefault: "default",
 		keyGetPrototypeOf: "getPrototypeOf", keySetPrototypeOf: "setPrototypeOf",
 		keyIsExtensible: "isExtensible", keyPreventExtensions: "preventExtensions",
 		keyGetOwnPropertyDescriptor: "getOwnPropertyDescriptor", keyDefineProperty: "defineProperty",
@@ -317,6 +318,7 @@ func (cx *ExecutionContext) initKeys() {
 		KeyHasIndices: "hasIndices", KeyGlobal: "global", KeyIgnoreCase: "ignoreCase",
 		KeyMultiline: "multiline", KeyDotAll: "dotAll", KeyUnicode: "unicode",
 		KeyUnicodeSets: "unicodeSets", KeySticky: "sticky",
+		KeyExec: "exec",
 	} {
 		cx.keys.common[k] = cx.Intern(name)
 	}
@@ -673,6 +675,9 @@ type agent struct {
 
 	// madeHTMLDDA reports whether the agent made an object with the [[IsHTMLDDA]] internal slot.
 	madeHTMLDDA bool
+
+	// regExpMatcher matches regular expressions. Nothing that a match runs starts another one.
+	regExpMatcher regexp.Matcher
 }
 
 // initialStackSize is the number of values that the stack of an agent has room for from the start.
@@ -837,6 +842,7 @@ const (
 	IntrinsicGeneratorPrototypeNext
 
 	// The initial values of these functions are what the built-ins treat specially.
+	IntrinsicRegExpPrototypeExec
 	IntrinsicMapPrototypeSet
 	IntrinsicMapPrototypeEntries
 	IntrinsicMapIteratorPrototypeNext

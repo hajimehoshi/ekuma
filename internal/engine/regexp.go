@@ -50,7 +50,7 @@ func (cx *ExecutionContext) RegExpAlloc(newTarget *Object) *Object {
 		s = cx.regExpShape()
 	} else {
 		proto := cx.GetPrototypeFromConstructor(newTarget, IntrinsicRegExpPrototype)
-		s = cx.shapeFor(proto).with(cx.Key(keyLastIndex), FlagWritable)
+		s = cx.shapeFor(proto).with(cx.Key(KeyLastIndex), FlagWritable)
 	}
 	return cx.newRegExpObject(s, &regExpState{
 		legacy: legacy,
@@ -64,7 +64,7 @@ func (cx *ExecutionContext) regExpShape() *shape {
 	if s := cx.realm.shapes.regExp; s != nil && s.proto == proto {
 		return s
 	}
-	s := cx.shapeFor(proto).with(cx.Key(keyLastIndex), FlagWritable)
+	s := cx.shapeFor(proto).with(cx.Key(KeyLastIndex), FlagWritable)
 	cx.realm.shapes.regExp = s
 	return s
 }
@@ -100,7 +100,7 @@ func (cx *ExecutionContext) RegExpInitialize(o *Object, pattern, flags Value) *O
 		legacy:  o.extState().(*regExpState).legacy,
 		realm:   o.extState().(*regExpState).realm,
 	})
-	cx.Set(o, NamedKey(cx.Key(keyLastIndex)), Number(0))
+	cx.Set(o, NamedKey(cx.Key(KeyLastIndex)), Number(0))
 	return o
 }
 
@@ -267,6 +267,100 @@ func (o *Object) RegExpLegacyFeaturesEnabled() bool {
 // IsRegExpOfCurrentRealm reports whether the [[Realm]] of the RegExp object o is the current realm.
 func (cx *ExecutionContext) IsRegExpOfCurrentRealm(o *Object) bool {
 	return o.extState().(*regExpState).realm == cx.realm
+}
+
+// MatchRegExp matches re against the string s at the code unit index start, or after it unless re
+// is sticky. It returns the code unit indices of the captures, or nil when there is no match. They
+// are valid until the next match.
+func (q QuietContext) MatchRegExp(re *regexp.Regexp, s Value, start int) []int {
+	m := &q.cx.regExpMatcher
+	str := s.Str()
+	m.SetASCII(str, s.IsASCII())
+	return re.Match(m, str, start, q.cx)
+}
+
+// FindRegExp is like [QuietContext.MatchRegExp], but it finds the first match at start or after it
+// even when re is sticky.
+func (q QuietContext) FindRegExp(re *regexp.Regexp, s Value, start int) []int {
+	m := &q.cx.regExpMatcher
+	str := s.Str()
+	m.SetASCII(str, s.IsASCII())
+	return re.Find(m, str, start, q.cx)
+}
+
+// RegExpMatchSpan returns the positions in the subject of the capture i of the last match, which
+// must have succeeded.
+func (q QuietContext) RegExpMatchSpan(i int) (start, end wtf8.Pos) {
+	return q.cx.regExpMatcher.Span(i)
+}
+
+// RegExpFlagsString returns the string of the flags f in the order of the flags getter.
+func (cx *ExecutionContext) RegExpFlagsString(f regexp.Flags) Value {
+	t := cx.realm.regExpFlagStrings
+	if t == nil {
+		t = new([1 << 8]Value)
+		cx.realm.regExpFlagStrings = t
+	}
+	v := &t[f]
+	if !v.IsString() {
+		*v = cx.NewString(wtf8.String(f.String()))
+	}
+	return *v
+}
+
+// legacyRegExpStatics holds the internal slots of %RegExp% for its legacy static properties.
+type legacyRegExpStatics struct {
+	// input and str are undefined when their respective properties are unavailable.
+	input Value
+	// str and caps are the subject and the capture indices of the last match, if any.
+	str  Value
+	caps []int
+}
+
+// RecordRegExpMatch updates the legacy static properties of %RegExp% after a match of the RegExp
+// object r against s with the capture indices caps. It does nothing when the [[Realm]] of r is not
+// the current realm.
+func (q QuietContext) RecordRegExpMatch(r *Object, s Value, caps []int) {
+	st := r.extState().(*regExpState)
+	if st.realm != q.cx.realm {
+		return
+	}
+	if st.legacy {
+		q.UpdateLegacyRegExpStaticProperties(s, caps)
+		return
+	}
+	// This is InvalidateLegacyRegExpStaticProperties.
+	l := &q.cx.realm.legacyRegExp
+	l.input = Undefined
+	l.str = Undefined
+	l.caps = l.caps[:0]
+}
+
+// UpdateLegacyRegExpStaticProperties implements UpdateLegacyRegExpStaticProperties for %RegExp%
+// after a match against s with the capture indices caps.
+func (q QuietContext) UpdateLegacyRegExpStaticProperties(s Value, caps []int) {
+	l := &q.cx.realm.legacyRegExp
+	l.input = s
+	l.str = s
+	l.caps = append(l.caps[:0], caps...)
+}
+
+// LegacyRegExpInput returns the [[RegExpInput]] slot of %RegExp%, or undefined for empty.
+func (cx *ExecutionContext) LegacyRegExpInput() Value {
+	return cx.realm.legacyRegExp.input
+}
+
+// SetLegacyRegExpInput sets the [[RegExpInput]] slot of %RegExp% to the string s.
+func (cx *ExecutionContext) SetLegacyRegExpInput(s Value) {
+	cx.realm.legacyRegExp.input = s
+}
+
+// LegacyRegExpMatch returns the subject and the capture indices of the last match that the legacy
+// static properties of %RegExp% show. s is undefined when they are unavailable. Before the first
+// match, s is the empty string and caps is empty. caps is valid until the next match.
+func (cx *ExecutionContext) LegacyRegExpMatch() (s Value, caps []int) {
+	l := &cx.realm.legacyRegExp
+	return l.str, l.caps
 }
 
 // regExpOriginals is what [QuietContext.UnmodifiedRegExpMatcher] compares against.
@@ -453,7 +547,7 @@ type matchResultShapes struct {
 func (cx *ExecutionContext) matchResultShapesFor(array *shape) *matchResultShapes {
 	m := &cx.matchResultShapes
 	if m.array != array {
-		plain := array.with(cx.Key(keyIndex), FlagsData).with(cx.Key(keyInput), FlagsData).with(cx.Key(keyGroups), FlagsData)
+		plain := array.with(cx.Key(KeyIndex), FlagsData).with(cx.Key(keyInput), FlagsData).with(cx.Key(KeyGroups), FlagsData)
 		*m = matchResultShapes{
 			array:       array,
 			plain:       plain,
