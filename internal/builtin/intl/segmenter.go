@@ -154,20 +154,16 @@ func newSegmenter(cx *engine.ExecutionContext, this engine.Value, args []engine.
 	return storage.ObjectValue(cx.NewIntlObject(proto, sd))
 }
 
-func thisSegmenter(cx *engine.ExecutionContext, this engine.Value, name string) *segmenterData {
-	sd, ok := storage.IntlData(this).(*segmenterData)
-	if !ok {
+func requireSegmenter(cx *engine.ExecutionContext, sd *segmenterData, name string) {
+	if sd == nil {
 		cx.ThrowTypeError("Intl.Segmenter.prototype." + name + " called on an object that is not an Intl.Segmenter")
 	}
-	return sd
 }
 
-func thisSegments(cx *engine.ExecutionContext, this engine.Value, name string) *segmentsData {
-	d, ok := storage.IntlData(this).(*segmentsData)
-	if !ok {
+func requireSegments(cx *engine.ExecutionContext, d *segmentsData, name string) {
+	if d == nil {
 		cx.ThrowTypeError("%Segments.prototype%." + name + " called on an object that is not a Segments object")
 	}
-	return d
 }
 
 var (
@@ -201,7 +197,8 @@ func initSegmenter(cx *engine.ExecutionContext, ns *engine.Object) {
 }
 
 func segmenterResolvedOptions(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-	sd := thisSegmenter(cx, this, "resolvedOptions")
+	sd, _ := storage.IntlData(this).(*segmenterData)
+	requireSegmenter(cx, sd, "resolvedOptions")
 	out := cx.NewObjectFromProperties(
 		[]engine.PropKey{storage.NamedKey(cx.Intern("locale")), storage.NamedKey(cx.Intern("granularity"))},
 		[]engine.Value{cx.NewString(wtf8.String(sd.locale)), cx.NewString(wtf8.String(sd.granularity))},
@@ -210,14 +207,16 @@ func segmenterResolvedOptions(cx *engine.ExecutionContext, this engine.Value, ar
 }
 
 func segmenterSegment(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-	sd := thisSegmenter(cx, this, "segment")
+	sd, _ := storage.IntlData(this).(*segmenterData)
+	requireSegmenter(cx, sd, "segment")
 	s := cx.ToString(arg(args, 0))
 	str := cx.NewString(s)
 	return storage.ObjectValue(cx.NewIntlObject(cx.Intrinsic(engine.IntrinsicIntlSegmentsPrototype), newSegmentsData(cx, sd, str, s)))
 }
 
 func segmentsContaining(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-	d := thisSegments(cx, this, "containing")
+	d, _ := storage.IntlData(this).(*segmentsData)
+	requireSegments(cx, d, "containing")
 	n := cx.ToIntegerOrInfinity(arg(args, 0))
 	if n < 0 || n >= float64(d.length()) {
 		return storage.Undefined
@@ -226,7 +225,8 @@ func segmentsContaining(cx *engine.ExecutionContext, this engine.Value, args []e
 }
 
 func segmentsIterator(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-	d := thisSegments(cx, this, "[Symbol.iterator]")
+	d, _ := storage.IntlData(this).(*segmentsData)
+	requireSegments(cx, d, "[Symbol.iterator]")
 	return storage.ObjectValue(cx.NewIntlObject(cx.Intrinsic(engine.IntrinsicIntlSegmentIteratorPrototype), &segmentIteratorData{
 		segments: d,
 	}))

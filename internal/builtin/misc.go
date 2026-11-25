@@ -37,12 +37,10 @@ func thisNumberObject(cx *engine.ExecutionContext, this engine.Value, what strin
 	return n
 }
 
-func thisBoolean(cx *engine.ExecutionContext, this engine.Value, what string) bool {
-	b, ok := storage.ThisBooleanValue(this)
+func requireThisBoolean(cx *engine.ExecutionContext, ok bool, what string) {
 	if !ok {
 		cx.ThrowTypeError("Boolean.prototype." + what + " requires that 'this' be a Boolean")
 	}
-	return b
 }
 
 var (
@@ -236,11 +234,15 @@ func booleanConstructor(cx *engine.ExecutionContext, this engine.Value, args []e
 }
 
 func booleanValueOf(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-	return storage.Bool(thisBoolean(cx, this, "valueOf"))
+	b, ok := storage.ThisBooleanValue(this)
+	requireThisBoolean(cx, ok, "valueOf")
+	return storage.Bool(b)
 }
 
 func booleanToString(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-	if thisBoolean(cx, this, "toString") {
+	b, ok := storage.ThisBooleanValue(this)
+	requireThisBoolean(cx, ok, "toString")
+	if b {
 		return cx.NewString("true")
 	}
 	return cx.NewString("false")
@@ -663,12 +665,10 @@ func fixExponent(s []byte) []byte {
 	return append(s[:i+2], digits[j:]...)
 }
 
-func thisSymbol(cx *engine.ExecutionContext, this engine.Value, what string) *engine.Object {
-	s, ok := storage.ThisSymbolValue(this)
+func requireThisSymbol(cx *engine.ExecutionContext, ok bool, what string) {
 	if !ok {
 		cx.ThrowTypeError("Symbol.prototype." + what + " requires that 'this' be a Symbol")
 	}
-	return s
 }
 
 var (
@@ -733,17 +733,23 @@ func symbolKeyFor(cx *engine.ExecutionContext, this engine.Value, args []engine.
 }
 
 func symbolToString(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-	desc, _ := storage.SymbolDescription(thisSymbol(cx, this, "toString"))
+	s, ok := storage.ThisSymbolValue(this)
+	requireThisSymbol(cx, ok, "toString")
+	desc, _ := storage.SymbolDescription(s)
 	checkStringLength(cx, len(desc)+8)
 	return cx.NewString("Symbol(" + desc + ")")
 }
 
 func symbolValueOf(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-	return storage.ObjectValue(thisSymbol(cx, this, "valueOf"))
+	s, ok := storage.ThisSymbolValue(this)
+	requireThisSymbol(cx, ok, "valueOf")
+	return storage.ObjectValue(s)
 }
 
 func symbolDescription(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-	desc, ok := storage.SymbolDescription(thisSymbol(cx, this, "description"))
+	s, ok := storage.ThisSymbolValue(this)
+	requireThisSymbol(cx, ok, "description")
+	desc, ok := storage.SymbolDescription(s)
 	if !ok {
 		return storage.Undefined
 	}
@@ -751,7 +757,9 @@ func symbolDescription(cx *engine.ExecutionContext, this engine.Value, args []en
 }
 
 func symbolToPrimitive(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-	return storage.ObjectValue(thisSymbol(cx, this, "[Symbol.toPrimitive]"))
+	s, ok := storage.ThisSymbolValue(this)
+	requireThisSymbol(cx, ok, "[Symbol.toPrimitive]")
+	return storage.ObjectValue(s)
 }
 
 var (

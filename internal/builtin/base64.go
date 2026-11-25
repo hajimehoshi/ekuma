@@ -304,17 +304,16 @@ func thisUint8Array(cx *engine.ExecutionContext, this engine.Value, write bool, 
 	return t
 }
 
-func uint8ArrayLength(cx *engine.ExecutionContext, t *engine.TypedArray, what string) int {
-	n, ok := t.Length()
-	if !ok {
+func requireUint8ArrayInBounds(cx *engine.ExecutionContext, inBounds bool, what string) {
+	if !inBounds {
 		cx.ThrowTypeError("Uint8Array.prototype." + what + ": the typed array is detached or out of bounds")
 	}
-	return n
 }
 
 // uint8ArrayBytes implements GetUint8ArrayBytes.
 func uint8ArrayBytes(cx *engine.ExecutionContext, t *engine.TypedArray, what string) []byte {
-	uint8ArrayLength(cx, t, what)
+	_, ok := t.Length()
+	requireUint8ArrayInBounds(cx, ok, what)
 	return elementsOf(t)
 }
 
@@ -396,14 +395,16 @@ func uint8ArraySetFromBase64(cx *engine.ExecutionContext, this engine.Value, arg
 	t := thisUint8Array(cx, this, true, "setFromBase64")
 	s := encodedStringArg(cx, args)
 	url, last := base64DecodeOptions(cx, arg(args, 1))
-	n := uint8ArrayLength(cx, t, "setFromBase64")
+	n, ok := t.Length()
+	requireUint8ArrayInBounds(cx, ok, "setFromBase64")
 	return storeDecodeResult(cx, t, fromBase64(cx, s, url, last, n))
 }
 
 func uint8ArraySetFromHex(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 	t := thisUint8Array(cx, this, true, "setFromHex")
 	s := encodedStringArg(cx, args)
-	n := uint8ArrayLength(cx, t, "setFromHex")
+	n, ok := t.Length()
+	requireUint8ArrayInBounds(cx, ok, "setFromHex")
 	return storeDecodeResult(cx, t, fromHex(cx, s, n))
 }
 
