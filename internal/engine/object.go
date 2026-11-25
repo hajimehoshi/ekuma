@@ -1567,8 +1567,14 @@ func (o *Object) getOwn(key *Object) (prop, bool) {
 	return o.shape.lookup(key)
 }
 
-// touchProto records that the properties of o changed, if o is a prototype. Whatever moves the
-// slots of a prototype calls it too, because cacheProto entries point into them.
+// touchProto records that the named properties of o changed, if o is a prototype: one was added,
+// removed or defined, or its attributes changed. Whatever moves the slots of a prototype calls it
+// too, because cacheProto entries point into them.
+//
+// A change of elements, of the length of an array or of the value of a data property does not need
+// it. The caches of property lookups and the records of original built-in properties hold named
+// properties in slots only. The operations in storage.go that depend on the elements of prototypes
+// read them each time.
 func (sp *space) touchProto(o *Object) {
 	if o.flags&objIsProto != 0 {
 		sp.protoEpoch++

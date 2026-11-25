@@ -47,7 +47,7 @@ ExecutionContext.SetIntrinsic realmPart.intrinsics:write
 ExecutionContext.ToObject Object.class:write*4
 ExecutionContext.addBigInts Object.kind:write Value.o:lit
 ExecutionContext.addDisposableOp Object.ext:lit Object.kind:lit Value.o:lit
-ExecutionContext.addIndex Object.flags:write Object.length:write objectProperties.elems:read objectProperties.elems:ref objectProperties.elems:write space.protoEpoch:write
+ExecutionContext.addIndex Object.flags:write Object.length:write objectProperties.elems:read objectProperties.elems:ref objectProperties.elems:write
 ExecutionContext.appendIterable Object.length:write objectProperties.elems:read
 ExecutionContext.asyncFromSyncIterator Object.class:write Object.ext:write Value.o:lit*2
 ExecutionContext.builtString Value.n:lit Value.o:lit shapeTable.shortStrings:ref space.strings:ref

@@ -139,7 +139,6 @@ func (q QuietContext) AppendElements(o *Object, vals []Value) (uint32, bool) {
 	o.reserveElems(len(vals))
 	o.elems = append(o.elems, vals...)
 	o.length = uint32(len(o.elems))
-	r.touchProto(o)
 	return o.length, true
 }
 
@@ -312,7 +311,6 @@ func (q QuietContext) FillElements(o *Object, n, start, end int64, v Value) bool
 	if start < 0 || start > int64(len(o.elems)) || end > n || !o.holesAreAbsent() {
 		return false
 	}
-	r.touchProto(o)
 	for i := start; i < end; i++ {
 		if r.interrupt.Load() {
 			r.poll()

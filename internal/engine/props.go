@@ -1069,7 +1069,6 @@ func (cx *ExecutionContext) addIndex(o *Object, i uint32, val Value, flags uint8
 	if flags == FlagsData {
 		if uint(i) < uint(n) {
 			o.elems[i] = val
-			cx.touchProto(o)
 			return true
 		}
 		if growElems(o.elems, i) {
@@ -1078,7 +1077,6 @@ func (cx *ExecutionContext) addIndex(o *Object, i uint32, val Value, flags uint8
 				o.pushElem(hole)
 			}
 			o.pushElem(val)
-			cx.touchProto(o)
 			// The elements may have reached the indices in the shape. Checking only when their
 			// number passes a power of two bounds the cost of the checks by that of the growth.
 			if o.flags&objSparse != 0 && bits.Len(uint(n)) != bits.Len(uint(len(o.elems))) {
@@ -1089,9 +1087,6 @@ func (cx *ExecutionContext) addIndex(o *Object, i uint32, val Value, flags uint8
 	}
 	o.flags |= objSparse
 	cx.add(o, cx.indexName(i), val, flags)
-	if o.flags&objIsProto != 0 {
-		cx.protoEpoch++
-	}
 	// Checking only when the number of properties in the shape reaches a power of two bounds
 	// the cost of the checks by that of the additions. The elements would need more than i
 	// slots.
@@ -1547,7 +1542,6 @@ func (r *realmPart) replaceOwn(o *Object, k PropKey, val Value, flags uint8) {
 		if int64(k.idx) < int64(len(o.elems)) && !o.elems[k.idx].isHole() {
 			if flags == FlagsData {
 				o.elems[k.idx] = val
-				r.touchProto(o)
 				return
 			}
 			// The property no longer fits in elems.
@@ -1589,7 +1583,6 @@ func (cx *ExecutionContext) defineArrayLength(o *Object, d PropDesc) bool {
 	}
 	if d.has&HasWritable != 0 && d.flags&FlagWritable == 0 {
 		o.flags |= objFrozenLength
-		cx.touchProto(o)
 	}
 	return ok
 }
@@ -1615,7 +1608,6 @@ func (cx *ExecutionContext) DeleteProp(o *Object, k PropKey) bool {
 	if k.key == nil {
 		if int64(k.idx) < int64(len(o.elems)) && !o.elems[k.idx].isHole() {
 			o.elems[k.idx] = hole
-			cx.touchProto(o)
 			return true
 		}
 		switch o.class {
