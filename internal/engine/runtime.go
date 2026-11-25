@@ -1126,7 +1126,7 @@ keys:
 // Otherwise it does nothing and reports false.
 func (dst *Object) takeDataProperties(from *Object) bool {
 	s := takenShape(dst, from)
-	if s == nil || slices.ContainsFunc(from.elems, Value.isHole) {
+	if s == nil || containsHole(from.elems) {
 		return false
 	}
 	dst.shape = s
@@ -1254,14 +1254,6 @@ func (p *funcProto) closurePrototype() *Object {
 		return p.realm.intrinsics[IntrinsicAsyncFunctionPrototype]
 	}
 	return p.realm.intrinsics[IntrinsicFunctionPrototype]
-}
-
-// arrayProtoPlain reports whether no array index property exists on the prototypes of plain arrays,
-// so that storing a new element in such an array cannot run a setter.
-func (r *realmPart) arrayProtoPlain() bool {
-	a := r.Intrinsic(IntrinsicArrayPrototype)
-	o := r.Intrinsic(IntrinsicObjectPrototype)
-	return len(a.elems) == 0 && len(o.elems) == 0 && (a.flags|o.flags)&objSparse == 0 && a.shape.proto == o
 }
 
 // arrayIterationPlain reports whether o uses the original array values and next methods.

@@ -82,3 +82,7 @@ func (s *shape) checkEnumerable() {}
 func (c *sparseIndexCache) checkSparseIndices(*shape) {}
 
 func (cx *ExecutionContext) checkReturnedProperty(*funcProto, Value, *cacheEntry) {}
+
+func (cx *ExecutionContext) checkAppend(*Object) {}
+
+func (r *realmPart) checkArrayProtoPlain() {}

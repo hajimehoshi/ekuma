@@ -99,7 +99,6 @@ NewExecutionContext Object.kind:lit Object.shape:lit objectProperties.slots:lit 
 Object.RemoveFirstElement Object.length:write objectMeta.shiftedCap:write objectMeta.shiftedElems:write objectProperties.elems:read objectProperties.elems:ref*3 objectProperties.elems:write*5
 Object.RemoveLastElement Object.length:write objectProperties.elems:read
 Object.SetElement objectProperties.elems:read objectProperties.elems:write
-Object.plainElems objectProperties.elems:read objectProperties.elems:ref
 Object.takeDataProperties Object.shape:write objectProperties.elems:read objectProperties.elems:ref*2 objectProperties.slots:ref
 PropDesc.SetGetter PropDesc.getter:write PropDesc.has:write
 PropDesc.SetSetter PropDesc.has:write PropDesc.setter:write
@@ -107,7 +106,7 @@ PropDesc.SetValue PropDesc.has:write PropDesc.value:write
 PropDesc.complete PropDesc.flags:write*4 PropDesc.has:write*3 PropDesc.value:write
 PropDesc.setFlag PropDesc.flags:write*2 PropDesc.has:write
 QuietContext.AppendElements Object.length:write objectProperties.elems:read objectProperties.elems:write*2
-QuietContext.AppendElementsOf Object.length:write objectProperties.elems:read objectProperties.elems:ref*2 objectProperties.elems:write
+QuietContext.AppendElementsOf Object.length:write objectProperties.elems:read objectProperties.elems:ref objectProperties.elems:write
 QuietContext.AssignDataProperties Object.shape:write objectProperties.elems:read objectProperties.slots:ref
 QuietContext.CopyElementRange objectProperties.elems:read objectProperties.elems:ref
 QuietContext.FillElements objectProperties.elems:read objectProperties.elems:write
@@ -169,8 +168,6 @@ ExecutionContext.iteratePlainArray objectProperties.elems:read
 ExecutionContext.readInstancePrototype Value.accessor:read Value.o:lit*2
 ExecutionContext.setFuncName PropKey.key:lit*2 shape.lookup:read
 Object.Element objectProperties.elems:read
-Object.elemsMovable objectProperties.elems:read
-Object.isDense objectProperties.elems:read
 QuietContext.HasOwnMethod objectProperties.slots:read shape.lookup:read
 QuietContext.InheritsMethod shape.lookup:read
 QuietContext.PushElements objectProperties.elems:read
@@ -182,10 +179,8 @@ arrayIterator.stepPlain objectProperties.elems:read
 dataSlot.value objectProperties.slots:read
 decoratorAccessHas shape.lookup:read
 diagnosticDataProperty objectProperties.slots:read shape.lookup:read
-holesAreAbsent objectProperties.elems:read
 originalProp.find Value.accessor:read objectProperties.slots:read shape.lookup:read
 realmPart.arrayCtorPlain Object.getOwn:read Value.accessor:read objectProperties.slots:read
-realmPart.arrayProtoPlain objectProperties.elems:read
 realmPart.lookup shape.lookup:read
 takenShape objectProperties.elems:read
 

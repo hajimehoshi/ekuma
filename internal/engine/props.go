@@ -1358,17 +1358,8 @@ func (cx *ExecutionContext) setIndex(v Value, i uint32, val Value) (setter *Obje
 		return nil, cx.typedArraySet(o, i, val)
 	}
 	// Anything but a plain store into a plain object or array takes the general path.
-	if o.indicesInElements() {
-		plain := true
-		for h := o.shape.proto; h != nil; h = h.shape.proto {
-			if len(h.elems) != 0 || h.flags&(objSparse|objExotic) != 0 || h.class != classObject && h.class != classArray && h.class != classFunction {
-				plain = false
-				break
-			}
-		}
-		if plain {
-			return nil, cx.addIndex(o, i, val, FlagsData)
-		}
+	if o.indicesInElements() && o.inheritsNoIndex() {
+		return nil, cx.addIndex(o, i, val, FlagsData)
 	}
 	return nil, cx.setProp(o, PropKey{idx: i}, val, v)
 }

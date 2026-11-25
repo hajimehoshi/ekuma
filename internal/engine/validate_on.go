@@ -450,6 +450,23 @@ func (ag *agent) checkActive(fp *funcProto) {
 	}
 }
 
+// checkAppend checks that the conditions of the interpreter loop for an append to the array o agree
+// with those of the storage operations.
+func (cx *ExecutionContext) checkAppend(o *Object) {
+	if !o.elemsResizable() || !cx.newElementsPlain(o) {
+		panic("ekumavalidate: the interpreter loop appends to an array that is not plain")
+	}
+}
+
+// checkArrayProtoPlain checks that the prototypes of plain arrays have no index property and run no
+// code.
+func (r *realmPart) checkArrayProtoPlain() {
+	a := r.Intrinsic(IntrinsicArrayPrototype)
+	if a.kind != kindArray || a.flags&objExotic != 0 || len(a.elems) != 0 || !a.inheritsNoIndex() {
+		panic("ekumavalidate: the prototypes of plain arrays are not plain")
+	}
+}
+
 // sameBits reports whether a and b are the same bits.
 func sameBits(a, b Value) bool {
 	return a.o == b.o && math.Float64bits(a.n) == math.Float64bits(b.n)

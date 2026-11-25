@@ -960,11 +960,14 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 					break
 				}
 				// An append to a plain array that has room for it, as in the switch below, with the
-				// conditions of arrayProtoPlain written out.
+				// conditions of elemsResizable and newElementsPlain written out.
 				if j := int(k.n); j == len(o.elems) && j < cap(o.elems) &&
 					o.kind == kindArray && uint32(j) == o.length && o.flags == 0 && float64(j) == k.n && o.shape == ag.active.realm.shapes.array {
 					if a := ag.active.realm.intrinsics[IntrinsicArrayPrototype]; len(a.elems) == 0 && a.flags&objSparse == 0 {
 						if p := a.shape.proto; p == ag.active.realm.intrinsics[IntrinsicObjectPrototype] && len(p.elems) == 0 && p.flags&objSparse == 0 {
+							if validateExec {
+								ag.active.checkAppend(o)
+							}
 							// Reading x first keeps i.C from being read again after the
 							// store to the length.
 							x := regs[i.C]
@@ -1649,6 +1652,9 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				if j == len(o.elems) && j < cap(o.elems) && o.kind == kindArray && uint32(j) == o.length && o.flags == 0 && o.shape == ag.active.realm.shapes.array {
 					if a := ag.active.realm.intrinsics[IntrinsicArrayPrototype]; len(a.elems) == 0 && a.flags&objSparse == 0 {
 						if p := a.shape.proto; p == ag.active.realm.intrinsics[IntrinsicObjectPrototype] && len(p.elems) == 0 && p.flags&objSparse == 0 {
+							if validateExec {
+								ag.active.checkAppend(o)
+							}
 							x := regs[i.C]
 							o.elems = o.elems[:j+1]
 							o.elems[j] = x
@@ -2044,7 +2050,10 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			}
 			if o := v.o; o != nil && o.objectProperties != nil && k.o == numberObject {
 				if j := int(k.n); j == len(o.elems) && o.kind == kindArray && uint32(j) == o.length && o.flags == 0 && float64(j) == k.n && o.shape == ag.active.realm.shapes.array && ag.active.arrayProtoPlain() {
-					// Appending to a plain array.
+					// Appending to a plain array, as in the first switch.
+					if validateExec {
+						ag.active.checkAppend(o)
+					}
 					o.appendElem(regs[i.C])
 					o.length++
 					continue

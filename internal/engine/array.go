@@ -104,44 +104,6 @@ func (o *Object) ElementList() ([]Value, bool) {
 	return append([]Value(nil), elems...), true
 }
 
-// plainElems returns the elements of o, which the caller must not modify, when o is an array
-// whose elements can be read without running any JavaScript. o may be nil.
-func (o *Object) plainElems() ([]Value, bool) {
-	if o == nil || o.kind != kindArray || int(o.length) != len(o.elems) || o.flags&(objSparse|objExotic) != 0 {
-		return nil, false
-	}
-	for _, e := range o.elems {
-		if e.isHole() {
-			return nil, false
-		}
-	}
-	return o.elems, true
-}
-
-// isDense reports whether o is an array whose elements are all present in elems
-// and that accepts changes to its elements and its length.
-func (o *Object) isDense() bool {
-	if o.kind != kindArray || int(o.length) != len(o.elems) || o.flags&(objSparse|objNotExtensible|objFrozenLength) != 0 {
-		return false
-	}
-	for _, e := range o.elems {
-		if e.isHole() {
-			return false
-		}
-	}
-	return true
-}
-
-// elemsMovable reports whether moving the elements of the array o by index, holes included,
-// does what moving them one by one with HasProperty, Set and DeletePropertyOrThrow does, and
-// whether o accepts changes to its elements and its length.
-func (o *Object) elemsMovable() bool {
-	if o.kind != kindArray || int(o.length) != len(o.elems) || o.flags&(objSparse|objNotExtensible|objFrozenLength) != 0 {
-		return false
-	}
-	return holesAreAbsent(o) || o.isDense()
-}
-
 // arrayCtorPlain reports whether creating the result of a method for the array o
 // makes a plain array, because o has the original constructor.
 func (r *realmPart) arrayCtorPlain(o *Object) bool {
@@ -168,16 +130,10 @@ func (q QuietContext) ArraySpeciesCreatePlain(o *Object, n int64) (*Object, bool
 	return r.ArrayCreate(uint32(n), r.Intrinsic(IntrinsicArrayPrototype)), true
 }
 
-// newElementsPlain reports whether storing a new element in the array o defines it as an own
-// data property without consulting a prototype.
-func (r *realmPart) newElementsPlain(o *Object) bool {
-	return o.shape.proto == r.Intrinsic(IntrinsicArrayPrototype) && r.arrayProtoPlain()
-}
-
 // AppendElements adds vals at the end of the array o and returns the new length.
 func (q QuietContext) AppendElements(o *Object, vals []Value) (uint32, bool) {
 	r := q.realm
-	if o.kind != kindArray || int(o.length) != len(o.elems) || o.flags&(objSparse|objNotExtensible|objFrozenLength) != 0 || !r.newElementsPlain(o) {
+	if !o.elemsResizable() || !r.newElementsPlain(o) {
 		return 0, false
 	}
 	o.reserveElems(len(vals))
@@ -292,7 +248,7 @@ func (q QuietContext) PrependElements(o *Object, vals []Value) (uint32, bool) {
 // RemoveLastElement removes the last element of the array o and returns it.
 // It reports false and does nothing when o is empty or needs the generic algorithm.
 func (o *Object) RemoveLastElement() (Value, bool) {
-	if o.kind != kindArray || int(o.length) != len(o.elems) || o.flags&(objSparse|objNotExtensible|objFrozenLength) != 0 || len(o.elems) == 0 {
+	if !o.elemsResizable() || len(o.elems) == 0 {
 		return Value{}, false
 	}
 	// Holes before the last element stay holes after it is removed.
@@ -312,7 +268,7 @@ func (o *Object) RemoveLastElement() (Value, bool) {
 // RemoveFirstElement removes the first element of the array o and returns it.
 // It reports false and does nothing when o is empty or needs the generic algorithm.
 func (o *Object) RemoveFirstElement() (Value, bool) {
-	if o.kind != kindArray || int(o.length) != len(o.elems) || o.flags&(objSparse|objNotExtensible|objFrozenLength) != 0 || len(o.elems) == 0 {
+	if !o.elemsResizable() || len(o.elems) == 0 {
 		return Value{}, false
 	}
 	v := o.elems[0]
@@ -321,7 +277,7 @@ func (o *Object) RemoveFirstElement() (Value, bool) {
 	}
 	// A hole after the first element moves with the elements when no prototype can have
 	// an element.
-	if !holesAreAbsent(o) && slices.ContainsFunc(o.elems, Value.isHole) {
+	if !o.holesAreAbsent() && containsHole(o.elems) {
 		return Value{}, false
 	}
 	n := len(o.elems) - 1
@@ -349,11 +305,11 @@ func (o *Object) RemoveFirstElement() (Value, bool) {
 // Array.prototype.fill does when the length of o is n. It reports false when it did nothing.
 func (q QuietContext) FillElements(o *Object, n, start, end int64, v Value) bool {
 	r := q.realm
-	if o.kind != kindArray || int64(o.length) != n || o.flags&(objSparse|objNotExtensible|objFrozenLength) != 0 {
+	if !o.elemsChangeable() || int64(o.length) != n {
 		return false
 	}
 	// Storing past the stored elements must not skip an index.
-	if start < 0 || start > int64(len(o.elems)) || end > n || !holesAreAbsent(o) {
+	if start < 0 || start > int64(len(o.elems)) || end > n || !o.holesAreAbsent() {
 		return false
 	}
 	r.touchProto(o)
@@ -531,7 +487,7 @@ func (q QuietContext) ReverseElements(o *Object) bool {
 // as Array.prototype.slice creates it. A range that ends before it starts is empty.
 func (q QuietContext) CopyElementRange(o *Object, start, end int64) (*Object, bool) {
 	r := q.realm
-	if o.kind != kindArray || int(o.length) != len(o.elems) || o.flags&(objSparse|objNotExtensible|objFrozenLength) != 0 {
+	if !o.elemsComplete() {
 		return nil, false
 	}
 	if start < 0 || end > int64(len(o.elems)) {
@@ -541,7 +497,7 @@ func (q QuietContext) CopyElementRange(o *Object, start, end int64) (*Object, bo
 	if start < end {
 		elems = o.elems[start:end]
 	}
-	if slices.ContainsFunc(elems, Value.isHole) || !r.arrayCtorPlain(o) {
+	if containsHole(elems) || !r.arrayCtorPlain(o) {
 		return nil, false
 	}
 	return r.NewArray(appendPolled(&r.poller, nil, elems)), true
@@ -588,14 +544,15 @@ func (q QuietContext) SpliceElements(o *Object, length, start, del int64, items 
 // which must have the length n, exactly n elements and no other property.
 func (q QuietContext) AppendElementsOf(dst *Object, n int64, src *Object) bool {
 	r := q.realm
-	if dst.kind != kindArray || int64(dst.length) != n || int64(len(dst.elems)) != n || dst.shape != r.shapes.array {
+	if !dst.elemsResizable() || int64(dst.length) != n || dst.shape != r.shapes.array {
 		return false
 	}
-	if dst.flags&(objSparse|objNotExtensible|objFrozenLength) != 0 || !src.isDense() {
+	elems, ok := src.plainElems()
+	if !ok {
 		return false
 	}
 	old := dst.elems
-	dst.elems = appendPolled(&r.poller, old, src.elems)
+	dst.elems = appendPolled(&r.poller, old, elems)
 	if cap(dst.elems) != cap(old) {
 		dst.leaveElems(old)
 	}
@@ -608,7 +565,7 @@ func (q QuietContext) AppendElementsOf(dst *Object, n int64, src *Object) bool {
 // without running JavaScript.
 func (q QuietContext) SkipHoles(o *Object, i, end int64) int64 {
 	r := q.realm
-	if i < 0 || i >= end || i < int64(len(o.elems)) && !o.elems[i].isHole() || !holesAreAbsent(o) {
+	if i < 0 || i >= end || i < int64(len(o.elems)) && !o.elems[i].isHole() || !o.holesAreAbsent() {
 		return i
 	}
 	j := end
@@ -632,7 +589,7 @@ func (q QuietContext) SkipHoles(o *Object, i, end int64) int64 {
 // known without running JavaScript.
 func (q QuietContext) SkipHolesBackward(o *Object, i, end int64) int64 {
 	r := q.realm
-	if i <= end || i < 0 || i > MaxArrayIndex || i < int64(len(o.elems)) && !o.elems[i].isHole() || !holesAreAbsent(o) {
+	if i <= end || i < 0 || i > MaxArrayIndex || i < int64(len(o.elems)) && !o.elems[i].isHole() || !o.holesAreAbsent() {
 		return i
 	}
 	j := max(end, -1)
@@ -653,20 +610,6 @@ func (q QuietContext) SkipHolesBackward(o *Object, i, end int64) int64 {
 		}
 	}
 	return max(j, end)
-}
-
-// holesAreAbsent reports whether an integer index that o does not store is absent from o
-// and its prototypes, and whether finding that out runs no JavaScript.
-func holesAreAbsent(o *Object) bool {
-	if o.kind != kindArray || o.flags&objExotic != 0 {
-		return false
-	}
-	for h := o.shape.proto; h != nil; h = h.shape.proto {
-		if len(h.elems) != 0 || h.flags&(objSparse|objExotic) != 0 || h.class != classObject && h.class != classArray && h.class != classFunction {
-			return false
-		}
-	}
-	return true
 }
 
 // sparseIndexCache holds the array indices that the keys of one shape contain.

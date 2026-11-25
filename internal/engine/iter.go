@@ -555,7 +555,7 @@ func (cx *ExecutionContext) iteratePlainArray(o *Object, f func(Value) bool) {
 // plainArrayIteratorIndex reads an element outside dense storage with the native next frame
 // that a getter or proxy can observe.
 func (cx *ExecutionContext) plainArrayIteratorIndex(o *Object, i uint32) Value {
-	if o.flags&objSparse == 0 && holesAreAbsent(o) {
+	if o.flags&objSparse == 0 && o.holesAreAbsent() {
 		return Undefined
 	}
 	// arrayIterationPlain proved this method was selected when iteration started.
@@ -694,7 +694,7 @@ func (cx *ExecutionContext) forInOwnKeys(o *Object) (indices uint32, length bool
 	}
 	// The own keys of any other object are its elements, the length of an array, and the
 	// keys of its shape.
-	if o.flags&(objExotic|objSparse) != 0 || o.class == classString || slices.ContainsFunc(o.elems, Value.isHole) {
+	if o.flags&(objExotic|objSparse) != 0 || o.class == classString || containsHole(o.elems) {
 		return 0, false, cx.OwnKeys(o)
 	}
 	return uint32(len(o.elems)), o.kind == kindArray, o.shape.stringKeys()
@@ -877,7 +877,7 @@ func (cx *ExecutionContext) iterResultValue(r Value) (Value, bool) {
 // IteratorToList implements IteratorToList(GetIteratorFromMethod(v, method)).
 func (cx *ExecutionContext) IteratorToList(v Value, method *Object) []Value {
 	if method == cx.Intrinsic(IntrinsicArrayPrototypeValues) && v.o != nil && v.o.kind == kindArray && cx.arrayIterationPlain(v.o) {
-		if n := v.o.length; uint64(n) <= uint64(len(v.o.elems)) && !slices.ContainsFunc(v.o.elems[:n], Value.isHole) {
+		if n := v.o.length; uint64(n) <= uint64(len(v.o.elems)) && !containsHole(v.o.elems[:n]) {
 			return appendPolled(&cx.poller, nil, v.o.elems[:n])
 		}
 		// The length of a sparse array says nothing about the memory it holds.

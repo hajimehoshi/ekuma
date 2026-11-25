@@ -186,3 +186,98 @@ func (p *objectProperties) removeLastElem() {
 	p.elems[n] = Value{}
 	p.elems = p.elems[:n]
 }
+
+// The operations below tell which properties with array indices exist from the elements and the
+// prototypes alone, and run no code. The interpreter loop writes out elemsResizable and
+// newElementsPlain for its appends. An answer about an object holds until something changes the
+// elements, the flags or the length of that object, and one about prototypes until something changes
+// an index property or the prototype of one of them. So an answer is stale as soon as JavaScript may
+// have run. Neither the shape nor the prototype epoch tells that it is.
+
+// inheritsNoIndex reports whether no prototype of o has a property with an array index, and
+// looking for one runs no JavaScript. It says nothing about o itself.
+func (o *Object) inheritsNoIndex() bool {
+	for h := o.shape.proto; h != nil; h = h.shape.proto {
+		if len(h.elems) != 0 || h.flags&(objSparse|objExotic) != 0 || h.class != classObject && h.class != classArray && h.class != classFunction {
+			return false
+		}
+	}
+	return true
+}
+
+// holesAreAbsent reports whether o is an array, and an array index that it does not store is
+// absent from it and its prototypes, and finding that out runs no JavaScript. An array marked
+// objSparse stores some indices in its shape.
+func (o *Object) holesAreAbsent() bool {
+	return o.kind == kindArray && o.inheritsNoIndex()
+}
+
+// arrayProtoPlain is [Object.inheritsNoIndex] for the objects whose prototype is %Array.prototype%,
+// except that it also reports false when %Object.prototype% does not follow in the prototype chain.
+//
+// %Array.prototype% is an array and %Object.prototype% an ordinary object from the start, neither of
+// which can become exotic later.
+func (r *realmPart) arrayProtoPlain() bool {
+	a := r.Intrinsic(IntrinsicArrayPrototype)
+	o := r.Intrinsic(IntrinsicObjectPrototype)
+	plain := len(a.elems) == 0 && len(o.elems) == 0 && (a.flags|o.flags)&objSparse == 0 && a.shape.proto == o
+	if validateExec && plain {
+		r.checkArrayProtoPlain()
+	}
+	return plain
+}
+
+// newElementsPlain reports whether storing a new element in the array o defines it as an own
+// data property without consulting a prototype, when o accepts it.
+func (r *realmPart) newElementsPlain(o *Object) bool {
+	return o.shape.proto == r.Intrinsic(IntrinsicArrayPrototype) && r.arrayProtoPlain()
+}
+
+// elemsComplete reports whether o is an array whose index properties are exactly those in elems
+// and whose length is that of elems. There can be holes. It permits reading only.
+func (o *Object) elemsComplete() bool {
+	return o.kind == kindArray && int(o.length) == len(o.elems) && o.flags&objSparse == 0
+}
+
+// elemsChangeable reports whether o is an array whose index properties are exactly those in elems
+// and that accepts changes to its elements and its length, which can be greater than that of elems.
+func (o *Object) elemsChangeable() bool {
+	return o.kind == kindArray && o.flags&(objSparse|objNotExtensible|objFrozenLength) == 0
+}
+
+// elemsResizable is elemsComplete and elemsChangeable.
+func (o *Object) elemsResizable() bool {
+	return o.kind == kindArray && int(o.length) == len(o.elems) && o.flags&(objSparse|objNotExtensible|objFrozenLength) == 0
+}
+
+// plainElems returns the elements of o, which the caller must not modify, when o is an array
+// whose elements can be read without running any JavaScript. o may be nil.
+func (o *Object) plainElems() ([]Value, bool) {
+	if o == nil || !o.elemsComplete() || containsHole(o.elems) {
+		return nil, false
+	}
+	return o.elems, true
+}
+
+// isDense reports whether o is an array whose elements are all present in elems
+// and that accepts changes to its elements and its length.
+func (o *Object) isDense() bool {
+	return o.elemsResizable() && !containsHole(o.elems)
+}
+
+// elemsMovable reports whether moving the elements of the array o by index, holes included,
+// does what moving them one by one with HasProperty, Set and DeletePropertyOrThrow does, and
+// whether o accepts changes to its elements and its length.
+func (o *Object) elemsMovable() bool {
+	return o.elemsResizable() && (o.inheritsNoIndex() || !containsHole(o.elems))
+}
+
+// containsHole reports whether elems has a hole.
+func containsHole(elems []Value) bool {
+	for _, e := range elems {
+		if e.isHole() {
+			return true
+		}
+	}
+	return false
+}
