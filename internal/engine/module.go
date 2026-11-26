@@ -1066,8 +1066,9 @@ func (cx *ExecutionContext) asyncModuleExecutionRejected(m *Module, e storage.Va
 }
 
 // abortModuleEvaluations rejects every module whose evaluation is in progress with an Error
-// that [GoError] maps to cause, as an exception of the module does. An interruption cuts these
-// evaluations off: it unwinds the modules that run and drops the jobs that the others wait for.
+// that [storage.GoError] maps to cause, as an exception of the module does. An interruption cuts
+// these evaluations off: it unwinds the modules that run and drops the jobs that the others wait
+// for.
 func (cx *ExecutionContext) abortModuleEvaluations(cause error) {
 	cx.rejectModuleEvaluations(cx.moduleEvaluations.takeAll(), cause)
 }

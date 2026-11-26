@@ -696,7 +696,7 @@ func (cx *ExecutionContext) forInAhead(o *storage.Object) *storage.Object {
 }
 
 // forInVisitReceiver records the keys that the for-in iterator it visited on the receiver,
-// which it is done with, in it.visited.
+// which it is done with, for [forIn.hasVisited].
 func (ag *agent) forInVisitReceiver(it *forIn) {
 	it.receiverIndices = it.indices
 	it.visited = make(map[storage.PropKey]struct{}, len(it.keys)+1)

@@ -113,11 +113,11 @@ var bufferExceptions = map[string]storageException{
 	},
 	"generator.closeUpvals": {
 		count:  1,
-		reason: "clears the tail itself; truncated costs every completion spills",
+		reason: "clears the tail itself; storage.Truncated costs every completion spills",
 	},
 	"jobQueue.dequeue": {
 		count:  2,
-		reason: "clears each job as it leaves; truncated costs every job spills",
+		reason: "clears each job as it leaves; storage.Truncated costs every job spills",
 	},
 	"ExecutionContext.growNatives": {
 		count:  1,
@@ -127,7 +127,7 @@ var bufferExceptions = map[string]storageException{
 
 // TestValueStorageOwnership tests that only valuestorage.go changes which storage holds the slots and
 // the elements of objects, and that other long-lived buffers of values are shortened only with
-// truncated and withoutLast, which clear what they give up.
+// [storage.Truncated] and [storage.WithoutLast], which clear what they give up.
 //
 // For slots and elems it covers assignments of the fields and of the structs that contain them,
 // pointers to the fields, and appends to them. For the other buffers it covers assignments of a

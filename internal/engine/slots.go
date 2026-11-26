@@ -26,7 +26,7 @@ func (cx *ExecutionContext) NewErrorObject(proto *storage.Object) *storage.Objec
 }
 
 // NewGoError returns a new Error object whose message is the text of err and that
-// [GoError] maps back to err.
+// [storage.GoError] maps back to err.
 func (cx *ExecutionContext) NewGoError(err error) storage.Value {
 	return cx.newGoError(err.Error(), err)
 }
@@ -39,7 +39,7 @@ func (cx *ExecutionContext) newGoError(msg string, err error) storage.Value {
 }
 
 // NewIteratorObject returns a built-in iterator object with the prototype proto.
-// state is what [IteratorState] returns for it.
+// state is what [storage.IteratorState] returns for it.
 func (cx *ExecutionContext) NewIteratorObject(proto *storage.Object, state any) *storage.Object {
 	return storage.NewObjectWithState(cx.ShapeFor(proto), storage.ClassIterator, state)
 }
@@ -136,7 +136,8 @@ func (cx *ExecutionContext) NewRawJSONObject() *storage.Object {
 }
 
 // NewDisposableStackObject returns a DisposableStack object, or an AsyncDisposableStack object
-// when async is set, with the prototype proto. state is what [DisposableStackState] returns for it.
+// when async is set, with the prototype proto. state is what [storage.DisposableStackState]
+// returns for it.
 func (cx *ExecutionContext) NewDisposableStackObject(proto *storage.Object, async bool, state any) *storage.Object {
 	c := storage.ClassDisposableStack
 	if async {

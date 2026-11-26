@@ -167,7 +167,8 @@ func isHostPanic(value any) bool {
 // Interrupt stops execution with an [InterruptedError] carrying cause at the next loop
 // or call. It may be called from any goroutine and remains pending until observed or
 // cleared. Interrupted module evaluations are rejected with an Error whose message is
-// "ekuma: interrupted" and whose [GoError] is cause, or the [InterruptedError] when cause is nil.
+// "ekuma: interrupted" and whose [storage.GoError] is cause, or the [InterruptedError] when
+// cause is nil.
 func (ag *agent) Interrupt(cause error) {
 	ag.InterruptCause.Store(&cause)
 	ag.InterruptFlag.Store(true)
@@ -579,8 +580,9 @@ func (cx *ExecutionContext) ThrowSyntaxError(msg string) {
 }
 
 // RecordStack records the stack trace of the new error object e, whose message is msg in UTF-8,
-// as what [ErrorStack] returns. The running native function constructs e for newTarget: the trace
-// leaves out that function, and the frames up to the call of newTarget when newTarget is running.
+// as what [storage.ErrorStack] returns. The running native function constructs e for newTarget:
+// the trace leaves out that function, and the frames up to the call of newTarget when newTarget
+// is running.
 func (ag *agent) RecordStack(e *storage.Object, msg string, newTarget *storage.Object) {
 	frames, natives := len(ag.frames), max(len(ag.natives)-1, 0)
 	for i := frames - 1; i >= 0; i-- {
