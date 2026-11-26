@@ -57,19 +57,19 @@ type Value struct {
 	O *Object
 }
 
-var NumberObject = &Object{Kind: KindNumber}
+var NumberObject = &Object{Kind: KindNumber, objectTail: &zeroTail}
 
-var NullObject = &Object{Kind: KindNull}
+var NullObject = &Object{Kind: KindNull, objectTail: &zeroTail}
 
-var FalseObject = &Object{Kind: KindFalse}
+var FalseObject = &Object{Kind: KindFalse, objectTail: &zeroTail}
 
-var TrueObject = &Object{Kind: KindTrue}
+var TrueObject = &Object{Kind: KindTrue, objectTail: &zeroTail}
 
-var HoleObject = &Object{Kind: KindHole}
+var HoleObject = &Object{Kind: KindHole, objectTail: &zeroTail}
 
 // BigInt64Object is the O of every BigInt that fits in an int64. Every other BigInt is an
 // object of its own holding a *big.Int, so each BigInt has exactly one representation.
-var BigInt64Object = &Object{Kind: KindBigInt}
+var BigInt64Object = &Object{Kind: KindBigInt, objectTail: &zeroTail}
 
 // Undefined is the value undefined.
 var Undefined Value
@@ -87,17 +87,10 @@ var Hole = Value{O: HoleObject}
 
 // NewMarker returns a new value with the internal state state that never reaches JavaScript.
 func NewMarker(state any) *Object {
-	return &Object{
+	return (&PropertyObject{
 		Kind: KindHole,
 		Ext:  state,
-	}
-}
-
-// InitBigInt makes o, which must be zero, the BigInt i, which must not fit in an int64.
-func (o *Object) InitBigInt(i *big.Int) Value {
-	o.Kind = KindBigInt
-	o.Ext = i
-	return Value{O: o}
+	}).Init()
 }
 
 // Number returns the number n as a value.
@@ -239,7 +232,7 @@ func ToBoolean(v Value) bool {
 	case KindNull, KindFalse, KindHTMLDDA:
 		return false
 	case KindString:
-		return len(o.Text) != 0
+		return len(o.Text()) != 0
 	case KindBigInt:
 		// Zero fits in an int64.
 		return o != BigInt64Object || math.Float64bits(v.N) != 0

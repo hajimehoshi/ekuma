@@ -21,7 +21,8 @@ const ValidateExec = true
 var StalePoison = Value{
 	N: math.Inf(-1),
 	O: &Object{
-		Kind: KindObject,
+		Kind:       KindObject,
+		objectTail: &zeroTail,
 	},
 }
 

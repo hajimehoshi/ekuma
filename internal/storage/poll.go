@@ -84,7 +84,7 @@ func comparedBytes(v Value) int {
 	switch v.O.Kind {
 	case KindString:
 		// Only strings of the same length are compared.
-		return len(v.O.Text)
+		return len(v.O.Text())
 	case KindBigInt:
 		if v.O != BigInt64Object {
 			return v.O.ExtState().(*big.Int).BitLen() / 8

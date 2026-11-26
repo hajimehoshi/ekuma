@@ -43,7 +43,7 @@ func (o *Object) Str() wtf8.String {
 	if o.flags&ObjReversed != 0 {
 		o.Unreverse()
 	}
-	return o.Text
+	return o.Text()
 }
 
 // IsASCII reports whether the string o consists of ASCII characters only.
@@ -60,7 +60,7 @@ func (o *Object) IsASCII() bool {
 //go:noinline
 func (o *Object) classifyASCII() {
 	o.flags |= ObjASCIIKnown
-	if wtf8.IsASCII(o.Text) {
+	if wtf8.IsASCII(o.Text()) {
 		o.flags |= ObjASCII
 	}
 }
@@ -68,26 +68,26 @@ func (o *Object) classifyASCII() {
 // StringLength returns the length of the string o in UTF-16 code units.
 func (o *Object) StringLength() int {
 	if o.IsASCII() {
-		return len(o.Text)
+		return len(o.Text())
 	}
 	if !o.cachesUTF16() {
-		return wtf8.Len(o.Text)
+		return wtf8.Len(o.Text())
 	}
 	m := o.ensureMeta()
 	// A string that is not ASCII is never empty, so 0 means that the length is not known yet.
 	if m.Length == 0 {
-		m.Length = int32(wtf8.Len(o.Text))
+		m.Length = int32(wtf8.Len(o.Text()))
 	}
 	return int(m.Length)
 }
 
 // cachesUTF16 reports whether the non-ASCII string o keeps its UTF-16 view in its side data.
 func (o *Object) cachesUTF16() bool {
-	if len(o.Text) > MaxStringLength {
+	if len(o.Text()) > MaxStringLength {
 		// Only a host can make such a string.
 		return false
 	}
-	return o.Meta() != nil || len(o.Text) > maxUncachedLength
+	return o.Meta() != nil || len(o.Text()) > maxUncachedLength
 }
 
 // maxUncachedLength is the length in bytes up to which a non-ASCII string without side data
@@ -192,9 +192,9 @@ func (o *Object) UnitAt(i int) uint16 {
 func (o *Object) asciiUnitAt(i int) uint16 {
 	if o.flags&ObjReversed != 0 {
 		// Reading one unit leaves a string that is being prepended to reversed.
-		return uint16(o.Text[len(o.Text)-1-i])
+		return uint16(o.Text()[len(o.Text())-1-i])
 	}
-	return uint16(o.Text[i])
+	return uint16(o.Text()[i])
 }
 
 // CodePointAt returns the code point starting at UTF-16 index i. i must be in range.

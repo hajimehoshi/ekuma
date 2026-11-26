@@ -29,7 +29,7 @@ func (cx *ExecutionContext) SubstringBetween(s storage.Value, start, end wtf8.Po
 // ToWellFormed returns s with lone surrogates replaced by U+FFFD.
 func (cx *ExecutionContext) ToWellFormed(s storage.Value) storage.Value {
 	if s.IsShortString() {
-		return cx.toWellFormedShort(s, math.Float64bits(s.N), len(s.O.Text))
+		return cx.toWellFormedShort(s, math.Float64bits(s.N), len(s.O.Text()))
 	}
 	text := s.O.Str()
 	repaired := wtf8.String(wtf8.ToValidUTF8(text))
@@ -53,7 +53,7 @@ func (cx *ExecutionContext) toWellFormedShort(s storage.Value, data uint64, n in
 // MapASCII converts s to uppercase if upper is true, or lowercase otherwise.
 // s must be a string; false means it is non-ASCII or too long to pack.
 func (cx *ExecutionContext) MapASCII(s storage.Value, upper bool) (mapped storage.Value, ok bool) {
-	if len(s.O.Text) > shortstrings.MaxBytes {
+	if len(s.O.Text()) > shortstrings.MaxBytes {
 		return
 	}
 	mapped, ok = cx.mapASCII(s, upper)
@@ -65,7 +65,7 @@ func (cx *ExecutionContext) mapASCII(s storage.Value, upper bool) (storage.Value
 	if !shortstrings.IsASCII(data) {
 		return storage.Value{}, false
 	}
-	n := len(s.O.Text)
+	n := len(s.O.Text())
 	var mapped uint64
 	if upper {
 		mapped = shortstrings.ToUpperASCII(data)
@@ -99,7 +99,7 @@ func (cx *ExecutionContext) TrimString(s storage.Value, start, end bool) storage
 
 func (cx *ExecutionContext) trimShortString(s storage.Value, start, end bool) storage.Value {
 	data := math.Float64bits(s.N)
-	n := len(s.O.Text)
+	n := len(s.O.Text())
 	var trimmed uint64
 	var trimmedN int
 	if shortstrings.IsASCII(data) {
@@ -131,7 +131,7 @@ func (cx *ExecutionContext) trimShortString(s storage.Value, start, end bool) st
 // RepeatShort returns count copies of s and reports whether the result fits a packed string.
 // s must be a string, and count must be nonnegative.
 func (cx *ExecutionContext) RepeatShort(s storage.Value, count int) (repeated storage.Value, ok bool) {
-	if len(s.O.Text) > shortstrings.MaxBytes && count != 0 {
+	if len(s.O.Text()) > shortstrings.MaxBytes && count != 0 {
 		return
 	}
 	repeated, ok = cx.repeatShort(s, count)

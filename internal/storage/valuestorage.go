@@ -22,19 +22,19 @@ func WithoutLast[T any](s []T) []T {
 }
 
 // InitSlots makes storage the slots of an object that has none.
-func (p *objectProperties) InitSlots(storage []Value) {
-	if ValidateExec && len(p.slots) != 0 {
+func (o *Object) InitSlots(storage []Value) {
+	if ValidateExec && len(o.slots) != 0 {
 		panic("storage: InitSlots on an object with slots")
 	}
-	p.slots = storage
+	o.slots = storage
 }
 
 // fillSlots copies vals to the slots of an object that has none.
-func (p *objectProperties) fillSlots(vals []Value) {
-	if ValidateExec && len(p.slots) != 0 {
+func (o *Object) fillSlots(vals []Value) {
+	if ValidateExec && len(o.slots) != 0 {
 		panic("storage: fillSlots on an object with slots")
 	}
-	p.slots = append(p.slots[:0], vals...)
+	o.slots = append(o.slots[:0], vals...)
 }
 
 // AppendSlot appends v to the slots of o.
@@ -118,12 +118,17 @@ func (o *Object) removeSlot(i int) {
 	o.slots = o.slots[:n]
 }
 
+// setElems makes elems the elements of o, which may not have a tail of its own yet.
+func (o *Object) setElems(elems []Value) {
+	o.ownTail().elems = elems
+}
+
 // InitElems makes storage the elements of an object that has none.
-func (p *objectProperties) InitElems(storage []Value) {
-	if ValidateExec && len(p.elems) != 0 {
+func (o *Object) InitElems(storage []Value) {
+	if ValidateExec && len(o.elems) != 0 {
 		panic("storage: InitElems on an object with elements")
 	}
-	p.elems = storage
+	o.setElems(storage)
 }
 
 // ReserveElems gives the elements of o room for n more elements.
@@ -140,7 +145,7 @@ func (o *Object) ReserveElems(n int) {
 func (o *Object) moveElems(n int) {
 	elems := o.elems
 	if cap(elems) == 0 {
-		o.elems = make([]Value, 0, max(n, MinElems))
+		o.setElems(make([]Value, 0, max(n, MinElems)))
 		return
 	}
 	o.elems = slices.Grow(elems, n)
@@ -151,7 +156,9 @@ func (o *Object) moveElems(n int) {
 func (o *Object) AppendElem(v Value) {
 	elems := o.elems
 	if cap(elems) == 0 {
-		elems = make([]Value, 0, MinElems)
+		// An object without elements may not have a tail of its own.
+		o.setElems(make([]Value, 0, MinElems))
+		elems = o.elems
 	}
 	o.elems = append(elems, v)
 	if cap(o.elems) != cap(elems) {
@@ -193,7 +200,7 @@ func (o *Object) MoveElemsTo(room int) {
 // replaceElems makes elems, which holds the values that remain, the elements of o.
 func (o *Object) replaceElems(elems []Value) {
 	o.leaveElems(o.elems)
-	o.elems = elems
+	o.setElems(elems)
 	if m := o.Meta(); m != nil {
 		m.shiftedElems, m.shiftedCap = 0, 0
 	}
@@ -215,7 +222,10 @@ func (o *Object) shiftElem() {
 // clipElems keeps the storage after the elements out of reach of later growth.
 func (o *Object) clipElems() {
 	old := cap(o.elems)
-	o.elems = slices.Clip(o.elems)
+	if old != 0 {
+		// An object without elements may share zeroTail.
+		o.elems = slices.Clip(o.elems)
+	}
 	m := o.Meta()
 	switch {
 	case m == nil:
@@ -227,15 +237,15 @@ func (o *Object) clipElems() {
 }
 
 // pushElem appends v to the elements, which must have room for it.
-func (p *objectProperties) pushElem(v Value) {
-	n := len(p.elems)
-	p.elems = p.elems[:n+1]
-	p.elems[n] = v
+func (o *Object) pushElem(v Value) {
+	n := len(o.elems)
+	o.elems = o.elems[:n+1]
+	o.elems[n] = v
 }
 
 // removeLastElem removes the last element. The storage keeps its size: see elemsOversized.
-func (p *objectProperties) removeLastElem() {
-	n := len(p.elems) - 1
-	p.elems[n] = Value{}
-	p.elems = p.elems[:n]
+func (o *Object) removeLastElem() {
+	n := len(o.elems) - 1
+	o.elems[n] = Value{}
+	o.elems = o.elems[:n]
 }

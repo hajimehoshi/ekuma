@@ -17,10 +17,10 @@ import (
 )
 
 func (cx *ExecutionContext) throwTDZ(name *storage.Object) {
-	if name.Text == "this" {
+	if name.Text() == "this" {
 		cx.ThrowReferenceError("must call super constructor in derived class before accessing 'this' or returning from derived constructor")
 	}
-	cx.ThrowReferenceError("cannot access '" + wtf8.ToValidUTF8(name.Text) + "' before initialization")
+	cx.ThrowReferenceError("cannot access '" + wtf8.ToValidUTF8(name.Text()) + "' before initialization")
 }
 
 func (cx *ExecutionContext) throwReadOnly(v storage.Value, k storage.PropKey) {
@@ -46,9 +46,9 @@ func (ag *agent) calleeName(fp *storage.FuncProto, pc int) wtf8.String {
 		}
 		switch in.Op {
 		case bytecode.OpGetProp, bytecode.OpGetPropChain, bytecode.OpGetMethod:
-			return fp.Keys[in.C].Text
+			return fp.Keys[in.C].Text()
 		case bytecode.OpGetGlobal, bytecode.OpGetGlobalStrict:
-			return fp.Keys[in.B].Text
+			return fp.Keys[in.B].Text()
 		}
 		break
 	}
@@ -94,7 +94,7 @@ func (cx *ExecutionContext) getGlobal(key *storage.Object, c *storage.GlobalCach
 		if orUndef {
 			return storage.Undefined
 		}
-		cx.ThrowReferenceError(wtf8.ToValidUTF8(key.Text) + " is not defined")
+		cx.ThrowReferenceError(wtf8.ToValidUTF8(key.Text()) + " is not defined")
 	case storage.LookupSlot:
 		v, getter := cx.ReadNamedSlot(g, l.Holder, l.Prop, nil)
 		if getter != nil {
@@ -107,7 +107,7 @@ func (cx *ExecutionContext) getGlobal(key *storage.Object, c *storage.GlobalCach
 		if orUndef {
 			return storage.Undefined
 		}
-		cx.ThrowReferenceError(wtf8.ToValidUTF8(key.Text) + " is not defined")
+		cx.ThrowReferenceError(wtf8.ToValidUTF8(key.Text()) + " is not defined")
 	}
 	// HasBinding can create a lexical binding or remove the property or its prototype.
 	// GetBindingValue selects the binding again in the same global environment.
@@ -116,7 +116,7 @@ func (cx *ExecutionContext) getGlobal(key *storage.Object, c *storage.GlobalCach
 	}
 	if !cx.HasProperty(g, k) {
 		if strict {
-			cx.ThrowReferenceError(wtf8.ToValidUTF8(key.Text) + " is not defined")
+			cx.ThrowReferenceError(wtf8.ToValidUTF8(key.Text()) + " is not defined")
 		}
 		return storage.Undefined
 	}
@@ -164,7 +164,7 @@ func (cx *ExecutionContext) setGlobal(key *storage.Object, val storage.Value, c 
 			cx.throwTDZ(key)
 		}
 		if !r.GlobalLex.StoreData(p, val) {
-			cx.ThrowTypeError("assignment to constant variable '" + wtf8.ToValidUTF8(key.Text) + "'")
+			cx.ThrowTypeError("assignment to constant variable '" + wtf8.ToValidUTF8(key.Text()) + "'")
 		}
 		// As in getGlobal, c refers only to initialized bindings.
 		c.Remember(g, r.GlobalLex, p)
@@ -178,7 +178,7 @@ func (cx *ExecutionContext) setGlobal(key *storage.Object, val storage.Value, c 
 	// SetMutableBinding checks whether the binding still exists. A proxy can observe
 	// the check even in sloppy code.
 	if !cx.HasProperty(g, k) && strict {
-		cx.ThrowReferenceError(wtf8.ToValidUTF8(key.Text) + " is not defined")
+		cx.ThrowReferenceError(wtf8.ToValidUTF8(key.Text()) + " is not defined")
 	}
 	if !cx.setProp(g, k, val, storage.Value{O: r.GlobalThis}) && strict {
 		cx.throwReadOnly(storage.Value{O: g}, k)
@@ -193,32 +193,32 @@ func (cx *ExecutionContext) checkGlobalDecl(key *storage.Object, what int) {
 	switch what {
 	case bytecode.DeclVar:
 		if lex {
-			cx.ThrowSyntaxError("identifier '" + wtf8.ToValidUTF8(key.Text) + "' has already been declared")
+			cx.ThrowSyntaxError("identifier '" + wtf8.ToValidUTF8(key.Text()) + "' has already been declared")
 		}
 		if !cx.HasOwnProperty(r.Global, storage.NamedKey(key)) && !cx.IsExtensible(r.Global) {
-			cx.ThrowTypeError("cannot declare global variable '" + wtf8.ToValidUTF8(key.Text) + "'")
+			cx.ThrowTypeError("cannot declare global variable '" + wtf8.ToValidUTF8(key.Text()) + "'")
 		}
 	case bytecode.DeclLexical:
 		if lex {
-			cx.ThrowSyntaxError("identifier '" + wtf8.ToValidUTF8(key.Text) + "' has already been declared")
+			cx.ThrowSyntaxError("identifier '" + wtf8.ToValidUTF8(key.Text()) + "' has already been declared")
 		}
 		// A lexical declaration may not hide a global property that cannot be reconfigured.
 		if d, ok := cx.GetOwnProperty(r.Global, storage.NamedKey(key)); ok && !d.Configurable() {
-			cx.ThrowSyntaxError("identifier '" + wtf8.ToValidUTF8(key.Text) + "' has already been declared")
+			cx.ThrowSyntaxError("identifier '" + wtf8.ToValidUTF8(key.Text()) + "' has already been declared")
 		}
 	case bytecode.DeclFunction:
 		if lex {
-			cx.ThrowSyntaxError("identifier '" + wtf8.ToValidUTF8(key.Text) + "' has already been declared")
+			cx.ThrowSyntaxError("identifier '" + wtf8.ToValidUTF8(key.Text()) + "' has already been declared")
 		}
 		d, ok := cx.GetOwnProperty(r.Global, storage.NamedKey(key))
 		switch {
 		case !ok:
 			if !cx.IsExtensible(r.Global) {
-				cx.ThrowTypeError("cannot declare global function '" + wtf8.ToValidUTF8(key.Text) + "'")
+				cx.ThrowTypeError("cannot declare global function '" + wtf8.ToValidUTF8(key.Text()) + "'")
 			}
 		case d.Configurable():
 		case d.IsAccessor() || !d.Writable() || !d.Enumerable():
-			cx.ThrowTypeError("cannot declare global function '" + wtf8.ToValidUTF8(key.Text) + "'")
+			cx.ThrowTypeError("cannot declare global function '" + wtf8.ToValidUTF8(key.Text()) + "'")
 		}
 	}
 }
@@ -561,14 +561,14 @@ func (cx *ExecutionContext) getPrivate(v storage.Value, name *storage.Object) (s
 			if p.Flags&storage.FlagAccessor != 0 {
 				g := val.Accessor().Getter
 				if g == nil {
-					cx.ThrowTypeError("'#" + wtf8.ToValidUTF8(name.Text) + "' was defined without a getter")
+					cx.ThrowTypeError("'#" + wtf8.ToValidUTF8(name.Text()) + "' was defined without a getter")
 				}
 				return storage.Undefined, g
 			}
 			return val, nil
 		}
 	}
-	cx.ThrowTypeError("cannot read private member #" + wtf8.ToValidUTF8(name.Text) + " from an object whose class did not declare it")
+	cx.ThrowTypeError("cannot read private member #" + wtf8.ToValidUTF8(name.Text()) + " from an object whose class did not declare it")
 	return storage.Undefined, nil
 }
 
@@ -580,17 +580,17 @@ func (cx *ExecutionContext) setPrivate(v storage.Value, name *storage.Object, va
 			if p.Flags&storage.FlagAccessor != 0 {
 				s := o.SlotValue(p).Accessor().Setter
 				if s == nil {
-					cx.ThrowTypeError("'#" + wtf8.ToValidUTF8(name.Text) + "' was defined without a setter")
+					cx.ThrowTypeError("'#" + wtf8.ToValidUTF8(name.Text()) + "' was defined without a setter")
 				}
 				return s
 			}
 			if !o.StoreData(p, val) {
-				cx.ThrowTypeError("private method '#" + wtf8.ToValidUTF8(name.Text) + "' is not writable")
+				cx.ThrowTypeError("private method '#" + wtf8.ToValidUTF8(name.Text()) + "' is not writable")
 			}
 			return nil
 		}
 	}
-	cx.ThrowTypeError("cannot write private member #" + wtf8.ToValidUTF8(name.Text) + " to an object whose class did not declare it")
+	cx.ThrowTypeError("cannot write private member #" + wtf8.ToValidUTF8(name.Text()) + " to an object whose class did not declare it")
 	return nil
 }
 
@@ -601,7 +601,7 @@ func (cx *ExecutionContext) definePrivate(v storage.Value, name *storage.Object,
 	}
 	o := cx.privateStorage(v.O)
 	if _, ok := o.Shape().Lookup(name); ok {
-		cx.ThrowTypeError("cannot initialize #" + wtf8.ToValidUTF8(name.Text) + " twice on the same object")
+		cx.ThrowTypeError("cannot initialize #" + wtf8.ToValidUTF8(name.Text()) + " twice on the same object")
 	}
 	flags := storage.FlagWritable
 	switch {
@@ -618,7 +618,7 @@ func (cx *ExecutionContext) definePrivate(v storage.Value, name *storage.Object,
 // because v is not extensible.
 func (cx *ExecutionContext) ensureCanAddPrivate(v storage.Value, name *storage.Object) {
 	if v.IsObject() && !cx.IsExtensible(cx.privateStorage(v.O)) {
-		cx.ThrowTypeError("cannot define private member #" + wtf8.ToValidUTF8(name.Text) + " on an object that is not extensible")
+		cx.ThrowTypeError("cannot define private member #" + wtf8.ToValidUTF8(name.Text()) + " on an object that is not extensible")
 	}
 }
 
@@ -947,13 +947,13 @@ func (cx *ExecutionContext) funcNameOfKey(k storage.Value) wtf8.String {
 	switch {
 	case k.IsSymbol():
 		if k.O.Class == storage.ClassPrivateName {
-			return "#" + k.O.Text
+			return "#" + k.O.Text()
 		}
 		if k.O.ExtState() != nil {
-			if len(k.O.Text)+2 > storage.MaxStringLength {
+			if len(k.O.Text())+2 > storage.MaxStringLength {
 				cx.ThrowRangeError("invalid string length")
 			}
-			return "[" + k.O.Text + "]"
+			return "[" + k.O.Text() + "]"
 		}
 		return ""
 	case k.IsString():
@@ -1435,7 +1435,7 @@ func (cx *ExecutionContext) getScoped(o *storage.Object, key *storage.Object, st
 	k := storage.NamedKey(key)
 	if !cx.HasProperty(o, k) {
 		if strict {
-			cx.ThrowReferenceError(wtf8.ToValidUTF8(key.Text) + " is not defined")
+			cx.ThrowReferenceError(wtf8.ToValidUTF8(key.Text()) + " is not defined")
 		}
 		return storage.Undefined
 	}
@@ -1447,14 +1447,14 @@ func (cx *ExecutionContext) setScoped(o *storage.Object, key *storage.Object, va
 	k := storage.NamedKey(key)
 	if o == storage.NullObject {
 		if strict {
-			cx.ThrowReferenceError(wtf8.ToValidUTF8(key.Text) + " is not defined")
+			cx.ThrowReferenceError(wtf8.ToValidUTF8(key.Text()) + " is not defined")
 		}
 		r := cx.realm
 		cx.setProp(r.Global, k, val, storage.Value{O: r.GlobalThis})
 		return
 	}
 	if !cx.HasProperty(o, k) && strict {
-		cx.ThrowReferenceError(wtf8.ToValidUTF8(key.Text) + " is not defined")
+		cx.ThrowReferenceError(wtf8.ToValidUTF8(key.Text()) + " is not defined")
 	}
 	if !cx.setProp(o, k, val, storage.Value{O: o}) && strict {
 		cx.throwReadOnly(storage.Value{O: o}, k)

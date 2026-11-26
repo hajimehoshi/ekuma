@@ -99,10 +99,10 @@ var unguardedUses = map[string]map[string]int{
 		"ExecutionContext.deleteOwnSlot":        1,
 		"ExecutionContext.setArrayLength":       1,
 	},
-	"objectProperties.InitElems": {
+	"Object.InitElems": {
 		"agent.exec": 1,
 	},
-	"objectProperties.InitSlots": {
+	"Object.InitSlots": {
 		"agent.exec": 1,
 	},
 }

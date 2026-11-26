@@ -14,7 +14,7 @@ import (
 )
 
 func (v Value) IsShortString() bool {
-	return v.IsString() && len(v.O.Text) <= shortstrings.MaxBytes
+	return v.IsString() && len(v.O.Text()) <= shortstrings.MaxBytes
 }
 
 func (r *RealmPart) ShortString(s wtf8.String) Value {
@@ -39,11 +39,12 @@ func (r *RealmPart) NewString(s wtf8.String) Value {
 		return r.ShortString(s)
 	}
 	return Value{
-		O: &Object{
-			Kind:  KindString,
-			shape: r.Shapes.String,
-			Text:  s,
-		},
+		O: newText(&textObject{
+			Kind:       KindString,
+			shape:      r.Shapes.String,
+			text:       s,
+			objectTail: &zeroTail,
+		}),
 	}
 }
 
@@ -127,14 +128,14 @@ func (r *RealmPart) NumberToString(n float64) Value {
 }
 
 func (v Value) ShortText() wtf8.String {
-	return shortstrings.String(math.Float64bits(v.N), len(v.O.Text))
+	return shortstrings.String(math.Float64bits(v.N), len(v.O.Text()))
 }
 
 // Str returns the content of the string value.
 func (v Value) Str() wtf8.String {
 	// Keep the cached-text path small enough to inline.
 	if v.O.flags&ObjInterned != 0 {
-		return v.O.Text
+		return v.O.Text()
 	}
 	return v.stringSlow()
 }
@@ -150,13 +151,13 @@ func (v Value) RawString() wtf8.String {
 	if v.IsShortString() && v.O.flags&ObjInterned == 0 {
 		return v.ShortText()
 	}
-	return v.O.Text
+	return v.O.Text()
 }
 
 // StringLength returns the number of UTF-16 code units in the string value.
 func (v Value) StringLength() int {
 	if v.O.flags&(ObjASCIIKnown|ObjASCII) == ObjASCIIKnown|ObjASCII {
-		return len(v.O.Text)
+		return len(v.O.Text())
 	}
 	return v.stringLengthSlow()
 }
@@ -167,7 +168,7 @@ func (v Value) stringLengthSlow() int {
 		if v.O.flags&(ObjInterned|ObjASCIIKnown) == ObjInterned {
 			v.O.classifyASCII()
 		}
-		return shortstrings.Len(math.Float64bits(v.N), len(v.O.Text))
+		return shortstrings.Len(math.Float64bits(v.N), len(v.O.Text()))
 	}
 	return v.O.StringLength()
 }
@@ -176,18 +177,19 @@ func (v Value) StringObject() *Object {
 	if !v.IsShortString() || v.O.flags&ObjInterned != 0 {
 		return v.O
 	}
-	return &Object{
-		Kind:  KindString,
-		shape: v.O.shape,
-		Text:  v.ShortText(),
-	}
+	return newText(&textObject{
+		Kind:       KindString,
+		shape:      v.O.shape,
+		text:       v.ShortText(),
+		objectTail: &zeroTail,
+	})
 }
 
 // WriteStringTo appends the string value to b.
 func (v Value) WriteStringTo(b *wtf8.Buffer) {
 	if v.IsShortString() {
 		data := shortstrings.Bytes(math.Float64bits(v.N))
-		b.WriteStringBytes(data[:len(v.O.Text)])
+		b.WriteStringBytes(data[:len(v.O.Text())])
 		return
 	}
 	b.WriteString(v.O.Str())
@@ -212,7 +214,7 @@ func (v Value) CodePointAt(i int) rune {
 // Substring returns the string's code units from start up to end, which must be in range and in order.
 func (v Value) Substring(start, end int) wtf8.String {
 	if v.O.flags&(ObjASCIIKnown|ObjASCII|ObjReversed) == ObjASCIIKnown|ObjASCII {
-		return v.O.Text[start:end]
+		return v.O.Text()[start:end]
 	}
 	return v.substringSlow(start, end)
 }
@@ -231,20 +233,20 @@ func (v Value) SubstringEquals(start, end int, other Value) bool {
 	if !v.IsShortString() {
 		part := v.O.Substring(start, end)
 		if other.IsShortString() {
-			return len(part) == len(other.O.Text) && shortstrings.Pack(part) == math.Float64bits(other.N)
+			return len(part) == len(other.O.Text()) && shortstrings.Pack(part) == math.Float64bits(other.N)
 		}
 		return part == other.O.Str()
 	}
 	data, n := shortstrings.Slice(math.Float64bits(v.N), start, end)
 	if other.IsShortString() {
-		return n == len(other.O.Text) && data == math.Float64bits(other.N)
+		return n == len(other.O.Text()) && data == math.Float64bits(other.N)
 	}
 	return false
 }
 
 func (v Value) WriteShortString(b *strings.Builder) {
 	data := shortstrings.Bytes(math.Float64bits(v.N))
-	b.Write(data[:len(v.O.Text)])
+	b.Write(data[:len(v.O.Text())])
 }
 
 // Substring returns the code units of s from start up to end, which must be in range and in order.
@@ -267,14 +269,14 @@ func (r *RealmPart) Substring(s Value, start, end int) Value {
 
 // StringByteLength returns the byte length of the string's canonical WTF-8 encoding.
 func (v Value) StringByteLength() int {
-	return len(v.O.Text)
+	return len(v.O.Text())
 }
 
 // UnitIndexOf returns the first UTF-16 index of sub at or after from, or -1.
 // Both values must be strings, and from must be nonnegative. poll, which may be nil, is called
 // now and then during a long search.
 func (v Value) UnitIndexOf(sub Value, from int, poll func()) int {
-	if len(v.O.Text) > shortstrings.MaxBytes && (len(sub.O.Text) > shortstrings.MaxBytes || sub.O.flags&ObjInterned != 0) {
+	if len(v.O.Text()) > shortstrings.MaxBytes && (len(sub.O.Text()) > shortstrings.MaxBytes || sub.O.flags&ObjInterned != 0) {
 		return v.O.UnitIndexOf(sub.O.Str(), from, poll)
 	}
 	return v.shortStringIndex(sub, from, false, poll)
@@ -283,7 +285,7 @@ func (v Value) UnitIndexOf(sub Value, from int, poll func()) int {
 // UnitLastIndexOf returns the last UTF-16 index of sub at or before from, or -1.
 // Both values must be strings, and from must be nonnegative. poll is as for [Value.UnitIndexOf].
 func (v Value) UnitLastIndexOf(sub Value, from int, poll func()) int {
-	if len(v.O.Text) > shortstrings.MaxBytes && (len(sub.O.Text) > shortstrings.MaxBytes || sub.O.flags&ObjInterned != 0) {
+	if len(v.O.Text()) > shortstrings.MaxBytes && (len(sub.O.Text()) > shortstrings.MaxBytes || sub.O.flags&ObjInterned != 0) {
 		return v.O.UnitLastIndexOf(sub.O.Str(), from, poll)
 	}
 	return v.shortStringIndex(sub, from, true, poll)
@@ -320,7 +322,7 @@ func (s Value) IsASCII() bool {
 
 func (s Value) isASCIISlow() bool {
 	// Interned objects own their text; length sentinels share flags across payloads.
-	if len(s.O.Text) <= shortstrings.MaxBytes && s.O.flags&ObjInterned == 0 {
+	if len(s.O.Text()) <= shortstrings.MaxBytes && s.O.flags&ObjInterned == 0 {
 		return shortstrings.IsASCII(math.Float64bits(s.N))
 	}
 	return s.O.IsASCII()
@@ -338,7 +340,7 @@ func (v Value) IsWellFormed() bool {
 func (v Value) AppendStringBytes(dst []byte) []byte {
 	if v.IsShortString() {
 		data := shortstrings.Bytes(math.Float64bits(v.N))
-		return append(dst, data[:len(v.O.Text)]...)
+		return append(dst, data[:len(v.O.Text())]...)
 	}
 	return append(dst, v.O.Str()...)
 }
@@ -357,9 +359,10 @@ func (r *RealmPart) InitShortStrings() {
 	r.Shapes.ShortStrings = new([shortstrings.MaxBytes + 1]Object)
 	for i := range r.Shapes.ShortStrings {
 		r.Shapes.ShortStrings[i] = Object{
-			Kind:  KindString,
-			shape: r.Shapes.String,
-			Text:  wtf8.String("\x00\x00\x00\x00\x00\x00\x00\x00")[:i],
+			Kind:       KindString,
+			shape:      r.Shapes.String,
+			objectTail: &zeroTail,
 		}
+		r.Shapes.ShortStrings[i].SetText(wtf8.String("\x00\x00\x00\x00\x00\x00\x00\x00")[:i])
 	}
 }

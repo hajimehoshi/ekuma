@@ -63,8 +63,8 @@ var rawValueTypes = []string{"Value", "PropKey", "QueryKey", "PropDesc"}
 // rawReads are the fields and the methods that read properties without the guards of the property
 // operations: exotic objects, lazy objects, holes and accessors.
 var rawReads = []string{
-	"objectProperties.slots",
-	"objectProperties.elems",
+	"Object.slots",
+	"objectTail.elems",
 	"shape.lookup",
 	"Object.getOwn",
 	"Value.accessor",

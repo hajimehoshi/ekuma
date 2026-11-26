@@ -727,9 +727,9 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 				// The length of a string known to be ASCII, as in Value.StringLength.
 				if o.Kind == storage.KindString && o.Flags()&(storage.ObjASCIIKnown|storage.ObjASCII) == storage.ObjASCIIKnown|storage.ObjASCII {
 					if validateExec {
-						ag.active.checkLengthHit(fp, pc-1, regs[i.B], float64(len(o.Text)))
+						ag.active.checkLengthHit(fp, pc-1, regs[i.B], float64(len(o.Text())))
 					}
-					storage.SetNumber(&regs[a], float64(len(o.Text)))
+					storage.SetNumber(&regs[a], float64(len(o.Text())))
 					continue
 				}
 				// The length of a fixed-length typed array in the bounds of its buffer, when the
@@ -769,10 +769,21 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 			}
 		case bytecode.OpGetIndex:
 			v, k := regs[i.B], regs[i.C]
-			if o := v.O; o != nil && o.HasProperties() && k.O == storage.NumberObject {
+			if o := v.O; o != nil && k.O == storage.NumberObject {
 				if j := int(k.N); float64(j) == k.N && uint(j) < uint(o.Raw().ElemCount()) {
 					if e := o.Raw().Elem(j); e.O != storage.HoleObject {
 						regs[i.A] = e
+						continue
+					}
+				}
+				// A unit of a string known to be ASCII, as in asciiUnitAt. An index in its range is an
+				// own property that nothing shadows.
+				if o.Kind == storage.KindString && o.Flags()&(storage.ObjASCIIKnown|storage.ObjASCII) == storage.ObjASCIIKnown|storage.ObjASCII {
+					if j := int(k.N); float64(j) == k.N && uint(j) < uint(len(o.Text())) {
+						if o.Flags()&storage.ObjReversed != 0 {
+							j = len(o.Text()) - 1 - j
+						}
+						regs[i.A] = ag.Strings.Ascii[o.Text()[j]]
 						continue
 					}
 				}
@@ -817,19 +828,9 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 						}
 					}
 				}
-			} else if o != nil && o.Kind == storage.KindString && o.Flags()&(storage.ObjASCIIKnown|storage.ObjASCII) == storage.ObjASCIIKnown|storage.ObjASCII && k.O == storage.NumberObject {
-				// A unit of a string known to be ASCII, as in asciiUnitAt. An index in its range is an
-				// own property that nothing shadows.
-				if j := int(k.N); float64(j) == k.N && uint(j) < uint(len(o.Text)) {
-					if o.Flags()&storage.ObjReversed != 0 {
-						j = len(o.Text) - 1 - j
-					}
-					regs[i.A] = ag.Strings.Ascii[o.Text[j]]
-					continue
-				}
 			}
 		case bytecode.OpGetIndexInt:
-			if o := regs[i.B].O; o != nil && o.HasProperties() && uint(i.C) < uint(o.Raw().ElemCount()) {
+			if o := regs[i.B].O; o != nil && uint(i.C) < uint(o.Raw().ElemCount()) {
 				if e := o.Raw().Elem(int(i.C)); e.O != storage.HoleObject {
 					regs[i.A] = e
 					continue
@@ -871,12 +872,12 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 					}
 				}
 				// The same as OpGetIndex for a string.
-				if o.Kind == storage.KindString && o.Flags()&(storage.ObjASCIIKnown|storage.ObjASCII) == storage.ObjASCIIKnown|storage.ObjASCII && uint(i.C) < uint(len(o.Text)) {
+				if o.Kind == storage.KindString && o.Flags()&(storage.ObjASCIIKnown|storage.ObjASCII) == storage.ObjASCIIKnown|storage.ObjASCII && uint(i.C) < uint(len(o.Text())) {
 					j := int(i.C)
 					if o.Flags()&storage.ObjReversed != 0 {
-						j = len(o.Text) - 1 - j
+						j = len(o.Text()) - 1 - j
 					}
-					regs[i.A] = ag.Strings.Ascii[o.Text[j]]
+					regs[i.A] = ag.Strings.Ascii[o.Text()[j]]
 					continue
 				}
 			}
@@ -884,7 +885,7 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 			// OpSetIndexInt's case at the end of this switch has the same fast paths for the key in
 			// the instruction; a change to one belongs in the other.
 			v, k := regs[i.A], regs[i.B]
-			if o := v.O; o != nil && o.HasProperties() && k.O == storage.NumberObject {
+			if o := v.O; o != nil && k.O == storage.NumberObject {
 				if j := int(k.N); float64(j) == k.N && uint(j) < uint(o.Raw().ElemCount()) {
 					if o.Raw().Elem(j).O != storage.HoleObject && !o.Raw().ElemsShared() {
 						o.Raw().SetElem(j, regs[i.C])
@@ -1598,7 +1599,7 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 			}
 		case bytecode.OpSetIndexInt, bytecode.OpSetIndexIntStrict:
 			// The fast paths of OpSetIndex's case, in the same order, for the key b.
-			if o := regs[i.A].O; o != nil && o.HasProperties() {
+			if o := regs[i.A].O; o != nil {
 				j := int(i.B)
 				if uint(j) < uint(o.Raw().ElemCount()) {
 					if o.Raw().Elem(j).O != storage.HoleObject && !o.Raw().ElemsShared() {
@@ -1848,11 +1849,11 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 			}
 		case bytecode.OpThrowConstAssign:
 			ag.frames[len(ag.frames)-1].pc = pc
-			ag.active.ThrowTypeError("assignment to constant variable '" + wtf8.ToValidUTF8(fp.Keys[i.A].Text) + "'")
+			ag.active.ThrowTypeError("assignment to constant variable '" + wtf8.ToValidUTF8(fp.Keys[i.A].Text()) + "'")
 		case bytecode.OpThrowError:
 			ag.frames[len(ag.frames)-1].pc = pc
 			// Error text is an interned constant.
-			ag.active.throwError(thrownErrorKinds[i.A], wtf8.ToValidUTF8(fp.Consts[i.B].O.Text))
+			ag.active.throwError(thrownErrorKinds[i.A], wtf8.ToValidUTF8(fp.Consts[i.B].O.Text()))
 
 		case bytecode.OpGetGlobal, bytecode.OpGetGlobalStrict, bytecode.OpGetGlobalOrUndef, bytecode.OpGetGlobalOrUndefStrict:
 			goto readProperty
@@ -2063,7 +2064,7 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 			} else {
 				k = storage.Number(float64(i.B))
 			}
-			if o := v.O; o != nil && o.HasProperties() && k.O == storage.NumberObject {
+			if o := v.O; o != nil && k.O == storage.NumberObject {
 				if j := int(k.N); j == o.Raw().ElemCount() && o.Kind == storage.KindArray && uint32(j) == o.Length() && o.Flags() == 0 && float64(j) == k.N && o.Shape() == ag.active.realm.Shapes.Array && ag.active.ArrayProtoPlain() {
 					// Appending to a plain array, as in the first switch.
 					if validateExec {
@@ -2813,7 +2814,7 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 			o.InitSlots(slots[:0])
 			regs[i.A] = storage.Value{O: o}
 		case bytecode.OpNewArray:
-			o, elems := storage.NewObjectWithStorage(int(i.C))
+			o, elems := storage.NewTailObjectWithStorage(int(i.C))
 			o.Kind = storage.KindArray
 			o.Class = storage.ClassArray
 			o.Raw().SetShape(ag.active.realm.Shapes.Array)
@@ -2911,11 +2912,7 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 			regs = ag.reload(regs, ag.frameBase(), fp)
 			regs[i.A] = storage.Value{O: proto}
 		case bytecode.OpPrivateName:
-			name := &storage.Object{
-				Kind:  storage.KindSymbol,
-				Class: storage.ClassPrivateName,
-				Text:  fp.Keys[i.B].Text,
-			}
+			name := storage.NewPrivateName(fp.Keys[i.B].Text())
 			if i.C != 0 {
 				name.FreezeLength()
 			}

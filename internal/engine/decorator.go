@@ -142,7 +142,7 @@ func (cx *ExecutionContext) makeAutoAccessor(k storage.Value) (backing, getter, 
 	}
 	storageName := name
 	if k.O.Class == storage.ClassPrivateName {
-		storageName = k.O.Text
+		storageName = k.O.Text()
 	}
 	backing = storage.NewPrivateName(storageName + " accessor storage")
 	getter = cx.NewNativeWithState("get "+name, 0, nativeAutoAccessorGetter, backing)
@@ -392,7 +392,7 @@ func (cx *ExecutionContext) decoratorResultFunction(o storage.Value, key *storag
 		return v.O
 	}
 	if !v.IsUndefined() {
-		cx.ThrowTypeError("the " + wtf8.ToValidUTF8(key.Text) + " property that an accessor decorator returned must be a function or undefined")
+		cx.ThrowTypeError("the " + wtf8.ToValidUTF8(key.Text()) + " property that an accessor decorator returned must be a function or undefined")
 	}
 	return nil
 }
@@ -472,7 +472,7 @@ func (cx *ExecutionContext) createDecoratorContextObject(kind int, name storage.
 		def("static", storage.Bool(static))
 		if name.O != nil && name.O.Class == storage.ClassPrivateName {
 			def("private", storage.True)
-			def("name", cx.NewString("#"+name.O.Text))
+			def("name", cx.NewString("#"+name.O.Text()))
 		} else {
 			def("private", storage.False)
 			def("name", name)

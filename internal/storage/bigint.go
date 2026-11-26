@@ -13,8 +13,15 @@ import (
 
 // BigIntObject holds a BigInt and its integer header in one allocation.
 type BigIntObject struct {
-	Object
+	PropertyObject
 	Integer big.Int
+}
+
+// InitBigInt makes o, which must be zero, the BigInt i, which must not fit in an int64.
+func (o *BigIntObject) InitBigInt(i *big.Int) Value {
+	o.Kind = KindBigInt
+	o.Ext = i
+	return Value{O: o.Init()}
 }
 
 // NewBigInt returns the BigInt i, which must not be modified afterward.

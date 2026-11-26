@@ -466,7 +466,7 @@ func (r *RealmPart) HasOwnPropertyPlain(o *Object, k Value) (has, ok bool) {
 		if o.DelegatesPropertyAccess() {
 			return false, false
 		}
-		if o.objectProperties != nil && int64(key.Idx) < int64(len(o.elems)) && !o.elems[key.Idx].IsHole() {
+		if int64(key.Idx) < int64(len(o.elems)) && !o.elems[key.Idx].IsHole() {
 			return true, true
 		}
 		switch o.Class {

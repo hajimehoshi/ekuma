@@ -17,7 +17,7 @@ func IsStrictlyEqual(a, b Value) bool {
 		return a.O == b.O && a.N == b.N
 	}
 	if a.IsShortString() || b.IsShortString() {
-		return a.IsString() && b.IsString() && len(a.O.Text) == len(b.O.Text) && math.Float64bits(a.N) == math.Float64bits(b.N)
+		return a.IsString() && b.IsString() && len(a.O.Text()) == len(b.O.Text()) && math.Float64bits(a.N) == math.Float64bits(b.N)
 	}
 	if a.O == b.O {
 		return a.O != BigInt64Object || math.Float64bits(a.N) == math.Float64bits(b.N)

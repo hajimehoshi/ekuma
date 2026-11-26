@@ -302,13 +302,13 @@ func (d *PropDesc) Complete() {
 // and setter.
 func NewAccessor(getter, setter *Object) Value {
 	return Value{
-		O: &Object{
+		O: (&PropertyObject{
 			Kind: KindAccessor,
 			Ext: &accessorPair{
 				Getter: getter,
 				Setter: setter,
 			},
-		},
+		}).Init(),
 	}
 }
 

@@ -4,6 +4,8 @@
 package storage
 
 import (
+	"unsafe"
+
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
@@ -117,7 +119,8 @@ type Object struct {
 	Class class
 	flags uint8
 
-	// Pinned holds the pinned bits of the storage of slots and elems, and [SharedElems].
+	// Pinned holds the pinned bits of the storage of slots and elems, and [SharedElems]. A string,
+	// which has neither, holds its [ConcatCount] there instead.
 	Pinned uint8
 
 	// length is the length of an array, which is at least len(elems). For a string it is 0,
@@ -127,43 +130,147 @@ type Object struct {
 	// shape is the layout of slots. Only the singletons and internal values have none.
 	shape *Shape
 
-	// Primitive values have no property storage.
-	*objectProperties
+	// slots holds the values of the named properties in the order of the shape. Primitive values
+	// have none: a string or a symbol holds its text in the first two words instead. See
+	// [Object.Text].
+	slots []Value
+
+	// objectTail holds what plain objects and most strings do not need. It is never nil: such an
+	// object shares zeroTail, which is never written. See [Object.ownTail].
+	*objectTail
+}
+
+// Text returns the content of a string or the description of a symbol. A string marked
+// ObjReversed holds its bytes in reverse order. Packed-string sentinels use zero bytes to carry
+// only the byte length. Text is empty for the other primitive values, and o must not be an object.
+func (o *Object) Text() wtf8.String {
+	return *o.text()
+}
+
+// SetText makes s the text of the string or the symbol o.
+func (o *Object) SetText(s wtf8.String) {
+	*o.text() = s
+}
+
+// text returns the text of a string or a symbol, which has no slots, in the words of slots: the
+// pointer to the bytes takes the place of the pointer to the values, and the length that of the
+// number of values. The capacity of slots stays zero.
+func (o *Object) text() *wtf8.String {
+	return (*wtf8.String)(unsafe.Pointer(&o.slots))
+}
+
+// textObject is an Object of a string or a symbol, with its text in place of its slots. A
+// composite literal of it makes such an object in one go. Its layout is that of Object, with the
+// same pointers at the same offsets, and a pointer in the word of the capacity of slots, which a
+// string never reads. Every string that can have a builder is allocated as a textObject, so that
+// the collector sees that pointer.
+type textObject struct {
+	Kind   Kind
+	Class  class
+	flags  uint8
+	Pinned uint8
+	length uint32
+	shape  *Shape
+	text   wtf8.String
+
+	// builder is the builder that the string is the tail or the head of: a *ReversedBuilder when
+	// the string is marked ObjReversed, and a *strings.Builder otherwise. See concat.go.
+	builder unsafe.Pointer
+
+	*objectTail
+}
+
+// The layouts of textObject and Object must agree.
+const (
+	_ = -uint(unsafe.Sizeof(textObject{}) ^ unsafe.Sizeof(Object{}))
+	_ = -uint(unsafe.Offsetof(textObject{}.text) ^ unsafe.Offsetof(Object{}.slots))
+	_ = -uint(unsafe.Offsetof(textObject{}.shape) ^ unsafe.Offsetof(Object{}.shape))
+	_ = -uint(unsafe.Offsetof(textObject{}.objectTail) ^ unsafe.Offsetof(Object{}.objectTail))
+	_ = -uint(unsafe.Offsetof(textObject{}.length) ^ unsafe.Offsetof(Object{}.length))
+	_ = -uint(unsafe.Offsetof(textObject{}.builder) ^ (unsafe.Offsetof(Object{}.slots) + 2*unsafe.Sizeof(uintptr(0))))
+)
+
+// stringBuilder returns the builder word of the string o.
+func (o *Object) stringBuilder() unsafe.Pointer {
+	return (*textObject)(unsafe.Pointer(o)).builder
+}
+
+// ClearBuilder records that the string o is no longer the tail or the head of a builder.
+func (o *Object) ClearBuilder() {
+	(*textObject)(unsafe.Pointer(o)).builder = nil
+}
+
+// newText returns the Object of t.
+func newText(t *textObject) *Object {
+	return (*Object)(unsafe.Pointer(t))
+}
+
+// textTailObject is a textObject together with its tail.
+type textTailObject struct {
+	textObject
+	tail objectTail
+}
+
+func (t *textTailObject) Init() *Object {
+	t.objectTail = &t.tail
+	return newText(&t.textObject)
+}
+
+// objectTail holds the fields of an object that plain objects do not use.
+type objectTail struct {
+	// elems holds the properties whose keys are array indices, by index.
+	// An element that does not exist holds Hole.
+	elems []Value
 
 	// Fn is set for a callable object. A closure must call OwnFunction before changing its state.
 	Fn *Function
 
-	// Text is the content of a string or the description of a symbol. A string marked ObjReversed
-	// holds its bytes in reverse order. Packed-string sentinels use zero bytes to carry only the
-	// byte length.
-	Text wtf8.String
-
 	// Ext is the internal state of a built-in object or the push size hint of a closure.
 	// For a string that is not interned it is the interned string with the same content,
-	// once that was looked up, or the state of concatenations onto it (see concat.go).
+	// once that was looked up, or the builder that the string is the tail or the head of (see
+	// concat.go).
 	// When the object has side data, Ext is its *ObjectMeta, which holds the internal state
 	// instead. See [Object.ExtState] and [Object.Meta].
 	Ext any
 }
 
-// objectProperties holds the own properties of a JavaScript object.
-type objectProperties struct {
-	slots []Value
+// zeroTail is the tail of the objects that have no elements, function state or internal state.
+var zeroTail objectTail
 
-	// elems holds the properties whose keys are array indices, by index.
-	// An element that does not exist holds Hole.
-	elems []Value
+// ownTail returns the tail of o, which it gives o first if o shares zeroTail.
+func (o *Object) ownTail() *objectTail {
+	if o.objectTail == &zeroTail {
+		o.newTail()
+	}
+	return o.objectTail
 }
 
-// PropertyObject keeps an object's header and property storage in one allocation.
-// Primitive heap values use only Object.
+// newTail gives o a tail of its own. It stays out of line so that ownTail can be inlined.
+//
+//go:noinline
+func (o *Object) newTail() {
+	o.objectTail = &objectTail{}
+}
+
+// PropertyObject keeps an object's header and its tail in one allocation, for the objects that
+// have elements, function state or internal state.
 type PropertyObject struct {
 	Object
-	objectProperties
+	objectTail
 }
 
 func (o *PropertyObject) Init() *Object {
-	o.Object.objectProperties = &o.objectProperties
+	o.Object.objectTail = &o.objectTail
+	return &o.Object
+}
+
+// plainObject is an object without a tail of its own.
+type plainObject struct {
+	Object
+}
+
+func (o *plainObject) Init() *Object {
+	o.Object.objectTail = &zeroTail
 	return &o.Object
 }
 
@@ -216,19 +323,15 @@ func (o *Object) SetExtState(v any) {
 		m.Ext = v
 		return
 	}
-	o.Ext = v
+	if v == nil && o.objectTail == &zeroTail {
+		return
+	}
+	o.ownTail().Ext = v
 }
 
-// ExtConcatCount returns the concatenation count in the internal state of the string o, or 0.
+// ExtConcatCount returns the concatenation count of the string o, or 0.
 func (o *Object) ExtConcatCount() ConcatCount {
-	if c, ok := o.Ext.(ConcatCount); ok {
-		return c
-	}
-	if m, ok := o.Ext.(*ObjectMeta); ok {
-		c, _ := m.Ext.(ConcatCount)
-		return c
-	}
-	return 0
+	return ConcatCount(o.Pinned)
 }
 
 // ExtObject returns the object in the internal state of o, and reports whether there is one.
@@ -254,8 +357,9 @@ func (o *Object) ensureMeta() *ObjectMeta {
 	if m := o.Meta(); m != nil {
 		return m
 	}
-	m := &ObjectMeta{Ext: o.Ext}
-	o.Ext = m
+	t := o.ownTail()
+	m := &ObjectMeta{Ext: t.Ext}
+	t.Ext = m
 	return m
 }
 
@@ -276,10 +380,10 @@ func (r *RealmPart) NewObject(proto *Object) *Object {
 }
 
 func NewObject(s *Shape) *Object {
-	return (&PropertyObject{
+	return (&plainObject{Object{
 		Kind:  KindObject,
 		shape: s,
-	}).Init()
+	}}).Init()
 }
 
 // maxInstanceSlots bounds the room for properties that NewInstance gives an object.
@@ -328,15 +432,15 @@ func (r *RealmPart) NewEmptyObjectWithRoom(n int) *Object {
 
 const MaxInlineObjectValues = 16
 
-// NewObjectWithStorage returns an object and storage for n values. The object is zero but for
-// its pinned bits. For a small n, both are a single allocation, and the storage may have room
-// for more values.
+// NewObjectWithStorage returns an object without a tail of its own and storage for n values. The
+// object is zero but for its pinned bits. For a small n, both are a single allocation, and the
+// storage may have room for more values.
 func NewObjectWithStorage(n int) (*Object, []Value) {
 	var o *Object
 	var storage []Value
 	switch n {
 	case 0:
-		return (&PropertyObject{}).Init(), nil
+		return (&plainObject{}).Init(), nil
 	case 1:
 		w := &objectWith[[1]Value]{}
 		o, storage = w.Init(), w.storage[:]
@@ -378,6 +482,69 @@ func NewObjectWithStorage(n int) (*Object, []Value) {
 		w := &objectWith[[MaxInlineObjectValues + 1]Value]{}
 		o, storage = w.Init(), w.storage[:n]
 	default:
+		return (&plainObject{}).Init(), make([]Value, n)
+	}
+	// The storage becomes the slots, the elements or both.
+	o.Pinned = PinnedSlots | PinnedElems
+	return o, storage
+}
+
+// objectWith is an object without a tail of its own together with storage for its slots or
+// elements.
+type objectWith[S any] struct {
+	plainObject
+	storage S
+}
+
+// NewTailObjectWithStorage is [NewObjectWithStorage] for an object with a tail of its own, such as
+// an array.
+func NewTailObjectWithStorage(n int) (*Object, []Value) {
+	var o *Object
+	var storage []Value
+	switch n {
+	case 0:
+		return (&PropertyObject{}).Init(), nil
+	case 1:
+		w := &tailObjectWith[[1]Value]{}
+		o, storage = w.Init(), w.storage[:]
+	case 2:
+		w := &tailObjectWith[[2]Value]{}
+		o, storage = w.Init(), w.storage[:]
+	case 3:
+		w := &tailObjectWith[[3]Value]{}
+		o, storage = w.Init(), w.storage[:]
+	case 4:
+		w := &tailObjectWith[[4]Value]{}
+		o, storage = w.Init(), w.storage[:]
+	case 5:
+		w := &tailObjectWith[[5]Value]{}
+		o, storage = w.Init(), w.storage[:]
+	case 6:
+		w := &tailObjectWith[[6]Value]{}
+		o, storage = w.Init(), w.storage[:]
+	case 7:
+		w := &tailObjectWith[[7]Value]{}
+		o, storage = w.Init(), w.storage[:]
+	case 8:
+		w := &tailObjectWith[[8]Value]{}
+		o, storage = w.Init(), w.storage[:]
+	// The capacities of the larger storage fill an allocation size class.
+	case 9:
+		w := &tailObjectWith[[9]Value]{}
+		o, storage = w.Init(), w.storage[:]
+	case 10, 11:
+		w := &tailObjectWith[[11]Value]{}
+		o, storage = w.Init(), w.storage[:n]
+	case 12, 13:
+		w := &tailObjectWith[[13]Value]{}
+		o, storage = w.Init(), w.storage[:n]
+	case 14, 15:
+		w := &tailObjectWith[[15]Value]{}
+		o, storage = w.Init(), w.storage[:n]
+	case MaxInlineObjectValues:
+		w := &tailObjectWith[[MaxInlineObjectValues + 1]Value]{}
+		o, storage = w.Init(), w.storage[:n]
+	default:
 		return (&PropertyObject{}).Init(), make([]Value, n)
 	}
 	// The storage becomes the slots, the elements or both.
@@ -385,8 +552,9 @@ func NewObjectWithStorage(n int) (*Object, []Value) {
 	return o, storage
 }
 
-// objectWith is an object together with storage for its slots or elements.
-type objectWith[S any] struct {
+// tailObjectWith is an object with a tail of its own together with storage for its slots or
+// elements.
+type tailObjectWith[S any] struct {
 	PropertyObject
 	storage S
 }
@@ -432,7 +600,7 @@ func (sp *Space) EndLazy(o *Object) {
 
 // HasProperties reports whether o has property storage, which primitive values lack.
 func (o *Object) HasProperties() bool {
-	return o.objectProperties != nil
+	return o.Kind >= KindFirstObject
 }
 
 // Shape returns the layout of the slots of o, or nil for the singletons and internal values.

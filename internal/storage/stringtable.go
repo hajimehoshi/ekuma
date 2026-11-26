@@ -56,12 +56,13 @@ func (t *stringTable) lookup(s wtf8.String) *Object {
 // add creates the property key of the string s, which must not be interned, with the shape
 // stringShape.
 func (t *stringTable) add(s wtf8.String, stringShape *Shape) *Object {
-	o := &Object{
-		Kind:  KindString,
-		flags: ObjInterned,
-		shape: stringShape,
-		Text:  s,
-	}
+	o := newText(&textObject{
+		Kind:       KindString,
+		flags:      ObjInterned,
+		shape:      stringShape,
+		text:       s,
+		objectTail: &zeroTail,
+	})
 	if t.keepNew {
 		o.flags |= objKept
 	}

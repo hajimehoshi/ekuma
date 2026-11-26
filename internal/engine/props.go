@@ -27,9 +27,9 @@ func (ag *agent) KeyString(k storage.PropKey) wtf8.String {
 		return wtf8.String(strconv.FormatUint(uint64(k.Idx), 10))
 	}
 	if k.Key.Kind == storage.KindSymbol {
-		return "Symbol(" + k.Key.Text + ")"
+		return "Symbol(" + k.Key.Text() + ")"
 	}
-	return k.Key.Text
+	return k.Key.Text()
 }
 
 // ToPropertyKey implements ToPropertyKey.
@@ -570,7 +570,7 @@ func (cx *ExecutionContext) setArrayLength(o *storage.Object, n uint32) bool {
 			if k.Kind != storage.KindString {
 				continue
 			}
-			if i, isIdx := storage.StringIndex(k.Text); isIdx && i >= n {
+			if i, isIdx := storage.StringIndex(k.Text()); isIdx && i >= n {
 				idxs = append(idxs, i)
 			}
 		}

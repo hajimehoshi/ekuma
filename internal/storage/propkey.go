@@ -142,7 +142,7 @@ func IsCanonicalNumericString(key *Object) bool {
 	if key.Kind != KindString {
 		return false
 	}
-	s := key.Text
+	s := key.Text()
 	if len(s) == 0 {
 		return false
 	}

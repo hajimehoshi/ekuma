@@ -87,6 +87,18 @@ var objectStorageExceptions = map[string]storageException{
 		count:  1,
 		reason: "creates the object",
 	},
+	"plainObject.init": {
+		count:  1,
+		reason: "creates the object",
+	},
+	"Object.newTail": {
+		count:  1,
+		reason: "gives the object a tail of its own",
+	},
+	"Object.text": {
+		count:  1,
+		reason: "the text of a string or a symbol, which has no slots, is in their words",
+	},
 }
 
 // bufferExceptions are the functions that reslice the other long-lived buffers.
@@ -137,16 +149,17 @@ var bufferExceptions = map[string]storageException{
 func TestValueStorageOwnership(t *testing.T) {
 	prog := checkProgram(t, "../../...")
 	object := map[types.Object]bool{
-		prog.field(t, "objectProperties", "slots"): true,
-		prog.field(t, "objectProperties", "elems"): true,
+		prog.field(t, "Object", "slots"):     true,
+		prog.field(t, "objectTail", "elems"): true,
 	}
-	// Assigning one of these replaces slots and elems at once.
+	// Assigning one of these replaces slots or elems at once.
 	whole := []*types.Named{
-		prog.typ(t, "objectProperties"),
+		prog.typ(t, "objectTail"),
 		prog.typ(t, "propertyObject"),
+		prog.typ(t, "plainObject"),
 		prog.typ(t, "Object"),
 	}
-	properties := prog.field(t, "Object", "objectProperties")
+	properties := prog.field(t, "Object", "objectTail")
 	buffers := map[types.Object]bool{
 		prog.field(t, "agent", "natives"):             true,
 		prog.field(t, "agent", "openUpvals"):          true,
@@ -271,6 +284,97 @@ func TestValueStorageOwnership(t *testing.T) {
 			if got := tc.counts[name]; got < e.count {
 				t.Errorf("%s: got %d places, want %d (%s)", name, got, e.count, e.reason)
 			}
+		}
+	}
+}
+
+// sharedTailExceptions are the functions that store the function state or the internal state of
+// an object through its tail pointer, which must not be the shared empty tail there.
+var sharedTailExceptions = map[string]storageException{
+	"Object.OwnFunction": {
+		count:  1,
+		reason: "a function object has a tail of its own",
+	},
+	"NewRegExpObject": {
+		count:  1,
+		reason: "creates the object with a tail of its own",
+	},
+}
+
+// TestSharedTailWrites tests that the function state and the internal state of objects are stored
+// through the tail pointer of an object only where it cannot be the shared empty tail of the
+// objects that need neither: through Object.ownTail, through the tail of an allocation that has one
+// of its own, or in sharedTailExceptions. The assignments of elems are in TestValueStorageOwnership.
+func TestSharedTailWrites(t *testing.T) {
+	prog := checkProgram(t, "../../...")
+	tail := prog.field(t, "Object", "objectTail")
+	watched := map[types.Object]bool{
+		prog.field(t, "objectTail", "Fn"):  true,
+		prog.field(t, "objectTail", "Ext"): true,
+	}
+	for name := range sharedTailExceptions {
+		prog.checkUnique(t, name)
+	}
+
+	counts := map[string]int{}
+	for _, p := range prog.pkgs {
+		// throughTail reports whether e is a watched field reached through the tail pointer.
+		throughTail := func(e ast.Expr) bool {
+			sel, ok := ast.Unparen(e).(*ast.SelectorExpr)
+			if !ok || !watched[used(p.info.Uses[sel.Sel])] {
+				return false
+			}
+			typ := p.info.TypeOf(sel.X)
+			_, index, _ := types.LookupFieldOrMethod(typ, true, p.info.Uses[sel.Sel].Pkg(), sel.Sel.Name)
+			for _, i := range index[:max(len(index)-1, 0)] {
+				if ptr, ok := typ.Underlying().(*types.Pointer); ok {
+					typ = ptr.Elem()
+				}
+				st, ok := typ.Underlying().(*types.Struct)
+				if !ok {
+					return false
+				}
+				f := st.Field(i)
+				if f.Origin() == tail {
+					return true
+				}
+				typ = f.Type()
+			}
+			return false
+		}
+		for _, file := range p.files {
+			for _, decl := range file.Decls {
+				report := func(pos token.Pos, msg string) {
+					owner := prog.owner(&p, decl, slices.Collect(maps.Keys(sharedTailExceptions)))
+					counts[owner]++
+					if counts[owner] > sharedTailExceptions[owner].count {
+						t.Errorf("%v: %s in %s", p.fset.Position(pos), msg, owner)
+					}
+				}
+				ast.Inspect(decl, func(n ast.Node) bool {
+					switch n := n.(type) {
+					case *ast.AssignStmt:
+						if n.Tok == token.DEFINE {
+							return true
+						}
+						for _, l := range n.Lhs {
+							if throughTail(l) {
+								report(l.Pos(), "store through a tail pointer")
+							}
+						}
+					case *ast.UnaryExpr:
+						if n.Op == token.AND && throughTail(n.X) {
+							report(n.Pos(), "pointer through a tail pointer")
+						}
+					}
+					return true
+				})
+			}
+		}
+	}
+	for name, e := range sharedTailExceptions {
+		if got := counts[name]; got < e.count {
+			t.Errorf("%s: got %d places, want %d (%s)", name, got, e.count, e.reason)
 		}
 	}
 }

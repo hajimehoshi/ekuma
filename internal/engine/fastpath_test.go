@@ -91,6 +91,9 @@ var fastPathMethods = map[string]bool{
 	"SlotRoom":      true,
 	"Slot":          true,
 	"SetSlot":       true,
+
+	// The text of a string, in the words of its slots.
+	"Text": true,
 }
 
 // TestExecFastPathsCallNothing tests that the head of the interpreter loop and its first switch

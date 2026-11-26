@@ -35,7 +35,7 @@ func (c *sparseIndexCache) list(o *Object) []uint32 {
 			if k.Kind != KindString {
 				continue
 			}
-			if i, ok := StringIndex(k.Text); ok {
+			if i, ok := StringIndex(k.Text()); ok {
 				if p, found := slices.BinarySearch(idxs, i); !found {
 					idxs = slices.Insert(idxs, p, i)
 				}
@@ -51,7 +51,7 @@ func (c *sparseIndexCache) list(o *Object) []uint32 {
 		if k.Kind != KindString {
 			continue
 		}
-		if i, ok := StringIndex(k.Text); ok {
+		if i, ok := StringIndex(k.Text()); ok {
 			idxs = append(idxs, i)
 		}
 	}
@@ -68,7 +68,7 @@ func (c *sparseIndexCache) remove(old, s *Shape, key *Object) {
 		return
 	}
 	if key.Kind == KindString {
-		if i, ok := StringIndex(key.Text); ok {
+		if i, ok := StringIndex(key.Text()); ok {
 			if p, found := slices.BinarySearch(c.indices, i); found {
 				c.indices = slices.Delete(c.indices, p, p+1)
 			}
@@ -199,7 +199,7 @@ func (r *RealmPart) densify(o *Object) {
 		if k.Kind != KindString {
 			continue
 		}
-		i, ok := StringIndex(k.Text)
+		i, ok := StringIndex(k.Text())
 		if !ok {
 			continue
 		}
@@ -234,7 +234,7 @@ func (r *RealmPart) densify(o *Object) {
 	for _, k := range keys[base:] {
 		p, _ := s.Lookup(k)
 		if k.Kind == KindString {
-			if i, ok := StringIndex(k.Text); ok {
+			if i, ok := StringIndex(k.Text()); ok {
 				o.elems[i] = slots[p.Slot]
 				continue
 			}

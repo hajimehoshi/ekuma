@@ -49,7 +49,7 @@ func (r *RealmPart) ArrayCreate(length uint32, proto *Object) *Object {
 	if length > 0 && length <= MaxPresizedElems {
 		// The array is usually filled up to its length afterwards.
 		var elems []Value
-		a, elems = NewObjectWithStorage(int(length))
+		a, elems = NewTailObjectWithStorage(int(length))
 		a.Kind = KindArray
 		a.Class = ClassArray
 		a.shape = r.Shapes.Array
@@ -191,7 +191,7 @@ func containsHole(elems []Value) bool {
 // Element returns the own property of o with the integer index i when reading it
 // cannot run any JavaScript. It reports false when that is not known.
 func Element(o *Object, i int64) (Value, bool) {
-	if o.objectProperties != nil && i >= 0 && i < int64(len(o.elems)) {
+	if i >= 0 && i < int64(len(o.elems)) {
 		if e := o.elems[i]; !e.IsHole() {
 			return e, true
 		}
@@ -209,7 +209,7 @@ func Element(o *Object, i int64) (Value, bool) {
 // Element returns that property, o is not a typed array and its elements are not shared
 // (see [SharedElems]), and reports whether it did.
 func (o *Object) SetElement(i int64, v Value) bool {
-	if o.objectProperties != nil && i >= 0 && i < int64(len(o.elems)) && !o.elems[i].IsHole() && o.Pinned&SharedElems == 0 {
+	if i >= 0 && i < int64(len(o.elems)) && !o.elems[i].IsHole() && o.Pinned&SharedElems == 0 {
 		o.elems[i] = v
 		return true
 	}
@@ -362,7 +362,7 @@ func (r *RealmPart) FillElements(o *Object, n, start, end int64, v Value) bool {
 // SearchElements is quiet.Context.SearchElements.
 func (r *RealmPart) SearchElements(o *Object, i, end int64, target Value, sameValueZero bool) (found, next int64) {
 	// Only strings and BigInts can take long to compare.
-	if t := target.O; t != nil && (len(t.Text) > maxQuickCompare || t.Kind == KindBigInt) {
+	if t := target.O; t != nil && t.Kind < KindFirstObject && (len(t.Text()) > maxQuickCompare || t.Kind == KindBigInt) {
 		return r.searchElementsSlow(o, i, end, target)
 	}
 	eq := IsStrictlyEqual
@@ -448,7 +448,7 @@ func (r *RealmPart) JoinStrings(o *Object, length int64, sep wtf8.String) (Value
 		if e.O == nil || e.O.Kind != KindString || !e.IsASCII() {
 			return Value{}, false
 		}
-		if n += int64(len(e.O.Text)); n > MaxStringLength {
+		if n += int64(len(e.O.Text())); n > MaxStringLength {
 			return Value{}, false
 		}
 		if i&(PollInterval-1) == PollInterval-1 {
@@ -644,7 +644,7 @@ func (o *Object) ElemRoom() int {
 
 // ElementAt returns the element i of o, and reports whether o holds it.
 func (o *Object) ElementAt(i uint32) (Value, bool) {
-	if o.objectProperties != nil && int64(i) < int64(len(o.elems)) {
+	if int64(i) < int64(len(o.elems)) {
 		if e := o.elems[i]; !e.IsHole() {
 			return e, true
 		}
@@ -733,7 +733,7 @@ func (r *RealmPart) AddMappedElement(o *Object, i uint32) {
 
 // NewArrayCopy returns a new array with a copy of elems as its elements.
 func (r *RealmPart) NewArrayCopy(elems []Value) *Object {
-	a, values := NewObjectWithStorage(len(elems))
+	a, values := NewTailObjectWithStorage(len(elems))
 	a.Kind = KindArray
 	a.Class = ClassArray
 	a.shape = r.Shapes.Array
@@ -769,7 +769,7 @@ func (r *RealmPart) NewArrayOfConstants(run []Value) *Object {
 
 // NewEmptyArrayWithRoom returns a new empty array with room for n elements.
 func (r *RealmPart) NewEmptyArrayWithRoom(n int) *Object {
-	a, values := NewObjectWithStorage(n)
+	a, values := NewTailObjectWithStorage(n)
 	a.Kind = KindArray
 	a.Class = ClassArray
 	a.shape = r.Shapes.Array
@@ -782,13 +782,13 @@ func (r *RealmPart) NewArrayWithRoom(length, n int) *Object {
 	var a *Object
 	var values []Value
 	if length+n <= MaxInlineObjectValues {
-		a, values = NewObjectWithStorage(length + n)
+		a, values = NewTailObjectWithStorage(length + n)
 		a.InitElems(values[:length:length])
 		values = values[length:]
 	} else {
 		// Keep the named properties with the object so they cannot retain the elements
 		// after the array shrinks.
-		a, values = NewObjectWithStorage(n)
+		a, values = NewTailObjectWithStorage(n)
 		a.InitElems(make([]Value, length))
 		a.Pinned &^= PinnedElems
 	}

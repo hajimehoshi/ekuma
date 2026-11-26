@@ -25,7 +25,7 @@ func (r Raw) ElemsShared() bool {
 	return r.o.Pinned&SharedElems != 0
 }
 
-// ElemCount returns the number of elements.
+// ElemCount returns the number of elements, which is 0 for a primitive value.
 func (r Raw) ElemCount() int {
 	return len(r.o.elems)
 }

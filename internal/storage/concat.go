@@ -7,6 +7,7 @@ import (
 	"encoding/binary"
 	"math"
 	"strings"
+	"unsafe"
 
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
@@ -65,16 +66,20 @@ func NextCount(ca, cb ConcatCount) ConcatCount {
 
 // TailBuilder returns the builder whose tail the string o is, or nil.
 func TailBuilder(o *Object) *strings.Builder {
-	if sb, ok := o.ExtState().(*strings.Builder); ok && sb.Len() == len(o.Text) {
-		return sb
+	if p := o.stringBuilder(); p != nil && o.flags&ObjReversed == 0 {
+		if sb := (*strings.Builder)(p); sb.Len() == len(o.Text()) {
+			return sb
+		}
 	}
 	return nil
 }
 
 // HeadBuilder returns the builder whose head the string o is, or nil.
 func HeadBuilder(o *Object) *ReversedBuilder {
-	if rb, ok := o.ExtState().(*ReversedBuilder); ok && rb.Sb.Len() == len(o.Text) {
-		return rb
+	if p := o.stringBuilder(); p != nil && o.flags&ObjReversed != 0 {
+		if rb := (*ReversedBuilder)(p); rb.Sb.Len() == len(o.Text()) {
+			return rb
+		}
 	}
 	return nil
 }
@@ -82,21 +87,21 @@ func HeadBuilder(o *Object) *ReversedBuilder {
 // Unreverse makes the reversed string o hold its contents in order.
 func (o *Object) Unreverse() {
 	var sb strings.Builder
-	sb.Grow(len(o.Text))
-	WriteReversed(&sb, o.Text)
-	o.Text = wtf8.String(sb.String())
+	sb.Grow(len(o.Text()))
+	WriteReversed(&sb, o.Text())
+	o.SetText(wtf8.String(sb.String()))
 	o.flags &^= ObjReversed
-	o.SetExtState(nil)
+	o.ClearBuilder()
 }
 
 // sameStrings reports whether the strings a and b have the same contents.
 func sameStrings(a, b *Object) bool {
 	// A reversed string has as many bytes as its contents.
-	if len(a.Text) != len(b.Text) {
+	if len(a.Text()) != len(b.Text()) {
 		return false
 	}
 	if a.flags&b.flags&ObjReversed != 0 {
-		return a.Text == b.Text
+		return a.Text() == b.Text()
 	}
 	return a.Str() == b.Str()
 }
@@ -148,42 +153,57 @@ func reverseBytes(dst []byte, src wtf8.String) {
 // concatenation count count.
 func (r *RealmPart) NewConcatenatedString(s wtf8.String, count ConcatCount) Value {
 	return Value{
-		O: &Object{
-			Kind:  KindString,
-			shape: r.Shapes.String,
-			Text:  s,
-			Ext:   count,
-		},
+		O: newText(&textObject{
+			Kind:       KindString,
+			Pinned:     uint8(count),
+			shape:      r.Shapes.String,
+			text:       s,
+			objectTail: &zeroTail,
+		}),
 	}
 }
 
-// NewBufferedString returns a string with its builder and optional UTF-16 metadata.
+// NewBufferedString returns a string with its builder, a *strings.Builder or, for a string
+// marked ObjReversed, a *ReversedBuilder, and optional UTF-16 metadata.
 func (r *RealmPart) NewBufferedString(s wtf8.String, flags uint8, builder any, meta *ObjectMeta) Value {
+	var b unsafe.Pointer
+	switch x := builder.(type) {
+	case *strings.Builder:
+		b = unsafe.Pointer(x)
+	case *ReversedBuilder:
+		b = unsafe.Pointer(x)
+	}
+	if ValidateExec {
+		if _, ok := builder.(*ReversedBuilder); ok != (flags&ObjReversed != 0) {
+			panic("storage: NewBufferedString with a builder of the other direction")
+		}
+	}
 	if meta == nil {
 		return Value{
-			O: &Object{
-				Kind:  KindString,
-				flags: flags,
-				shape: r.Shapes.String,
-				Text:  s,
-				Ext:   builder,
-			},
+			O: newText(&textObject{
+				Kind:       KindString,
+				flags:      flags,
+				shape:      r.Shapes.String,
+				text:       s,
+				builder:    b,
+				objectTail: &zeroTail,
+			}),
 		}
 	}
 	// The metadata belongs only to this string, so both have the same lifetime.
 	p := &struct {
-		object Object
+		object textTailObject
 		meta   ObjectMeta
 	}{
-		object: Object{
-			Kind:  KindString,
-			flags: flags,
-			shape: r.Shapes.String,
-			Text:  s,
+		object: textTailObject{
+			Kind:    KindString,
+			flags:   flags,
+			shape:   r.Shapes.String,
+			text:    s,
+			builder: b,
 		},
 		meta: *meta,
 	}
-	p.meta.Ext = builder
-	p.object.Ext = &p.meta
-	return Value{O: &p.object}
+	p.object.tail.Ext = &p.meta
+	return Value{O: p.object.Init()}
 }

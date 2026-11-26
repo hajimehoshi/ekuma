@@ -90,8 +90,8 @@ func (cx *ExecutionContext) ToNumber(v storage.Value) float64 {
 	case storage.KindTrue:
 		return 1
 	case storage.KindString:
-		if len(o.Text) <= shortstrings.MaxBytes {
-			if n, ok := shortstrings.ParseDecimal(math.Float64bits(v.N), len(o.Text)); ok {
+		if len(o.Text()) <= shortstrings.MaxBytes {
+			if n, ok := shortstrings.ParseDecimal(math.Float64bits(v.N), len(o.Text())); ok {
 				return float64(n)
 			}
 		}
@@ -428,10 +428,10 @@ func (cx *ExecutionContext) addValues(a, b storage.Value) storage.Value {
 	if as || bs {
 		// The sum of a number and the empty string, in either order, is the string of the number.
 		// The str of every kind of string has the byte length of its contents.
-		if as && b.O == storage.NumberObject && len(a.O.Text) == 0 {
+		if as && b.O == storage.NumberObject && len(a.O.Text()) == 0 {
 			return cx.toStringValue(b)
 		}
-		if bs && a.O == storage.NumberObject && len(b.O.Text) == 0 {
+		if bs && a.O == storage.NumberObject && len(b.O.Text()) == 0 {
 			return cx.toStringValue(a)
 		}
 		var x, y wtf8.String

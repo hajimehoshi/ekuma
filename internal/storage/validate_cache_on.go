@@ -260,7 +260,7 @@ func (c *sparseIndexCache) checkSparseIndices(s *Shape) {
 	var want []uint32
 	for _, k := range s.Keys() {
 		if k.Kind == KindString {
-			if i, ok := StringIndex(k.Text); ok {
+			if i, ok := StringIndex(k.Text()); ok {
 				want = append(want, i)
 			}
 		}

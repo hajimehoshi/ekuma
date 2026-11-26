@@ -10,7 +10,7 @@ import (
 // NewRegExpObject returns a new RegExp object with the shape s, whose only property is lastIndex,
 // and the internal state state.
 func NewRegExpObject(s *Shape, state *RegExpState) *Object {
-	o, slots := NewObjectWithStorage(1)
+	o, slots := NewTailObjectWithStorage(1)
 	o.Kind = KindObject
 	o.Class = ClassRegExp
 	o.shape = s
@@ -131,7 +131,7 @@ func (r *RealmPart) RecordRegExpOriginals(protoKeys, ctorKeys []*Object) {
 		for _, k := range keys {
 			p, ok := holder.shape.Lookup(k)
 			if !ok || p.Slot < 0 {
-				panic("storage: RecordRegExpOriginals: missing property " + k.Text)
+				panic("storage: RecordRegExpOriginals: missing property " + k.Text())
 			}
 			v := holder.slots[p.Slot]
 			var val *Object
@@ -141,7 +141,7 @@ func (r *RealmPart) RecordRegExpOriginals(protoKeys, ctorKeys []*Object) {
 				val = v.O
 			}
 			if val == nil {
-				panic("storage: RecordRegExpOriginals: property " + k.Text + " holds no object")
+				panic("storage: RecordRegExpOriginals: property " + k.Text() + " holds no object")
 			}
 			o.props = append(o.props, originalProp{
 				holder: holder,

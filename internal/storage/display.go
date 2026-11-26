@@ -37,7 +37,7 @@ func DisplayString(v Value) string {
 	case KindString:
 		return wtf8.ToValidUTF8(Clip(v.Str(), maxDisplayString, "..."))
 	case KindSymbol:
-		return "Symbol(" + wtf8.ToValidUTF8(o.Text) + ")"
+		return "Symbol(" + wtf8.ToValidUTF8(o.Text()) + ")"
 	case KindBigInt:
 		return displayBigInt(v)
 	case KindArray:

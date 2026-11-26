@@ -13,7 +13,8 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
-// The internal state (see [storage.Object.ExtState]) of a string that a concatenation made tells how a concatenation onto it proceeds.
+// The builder of a string that a concatenation made (see [storage.TailBuilder] and
+// [storage.HeadBuilder]), or its concatenation count, tells how a concatenation onto it proceeds.
 //
 // A *strings.Builder whose contents are the string makes the string the tail of its builder: a
 // concatenation onto it appends to the builder, and the result becomes the tail in its place.
@@ -24,8 +25,7 @@ import (
 // A *storage.ReversedBuilder whose contents are the str of a reversed string (see
 // [storage.ObjReversed]) makes the string the head of its builder in the same way: a concatenation
 // that prepends to it appends the prepended bytes in reverse order to the builder, and the result
-// becomes the head in its place. Only a head refers to its builder, so the internal state of a
-// reversed string is its builder or nil.
+// becomes the head in its place. Only a head refers to its builder.
 //
 // A storage.ConcatCount counts the concatenations in a row that made the string without a builder.
 
@@ -35,11 +35,11 @@ const _ uint = 1<<storage.PrependShift - 1 - uint(storage.BufferAfter)
 // Concat returns the concatenation of the strings a and b.
 func (cx *ExecutionContext) Concat(a, b storage.Value) storage.Value {
 	if sb := storage.TailBuilder(a.O); sb != nil && b.O.Flags()&(storage.ObjASCIIKnown|storage.ObjASCII|storage.ObjReversed) == storage.ObjASCIIKnown|storage.ObjASCII {
-		y := b.O.Text
+		y := b.O.Text()
 		if y == "" {
 			return a
 		}
-		if len(y) > storage.MaxStringLength-len(a.O.Text) {
+		if len(y) > storage.MaxStringLength-len(a.O.Text()) {
 			cx.ThrowRangeError("invalid string length")
 		}
 		// An ASCII suffix cannot join a surrogate pair.
@@ -48,11 +48,11 @@ func (cx *ExecutionContext) Concat(a, b storage.Value) storage.Value {
 	}
 	if b.O.Flags()&storage.ObjReversed != 0 && a.O.Flags()&(storage.ObjASCIIKnown|storage.ObjASCII|storage.ObjReversed) == storage.ObjASCIIKnown|storage.ObjASCII {
 		if rb := storage.HeadBuilder(b.O); rb != nil {
-			x := a.O.Text
+			x := a.O.Text()
 			if x == "" {
 				return b
 			}
-			if len(x) > storage.MaxStringLength-len(b.O.Text) {
+			if len(x) > storage.MaxStringLength-len(b.O.Text()) {
 				cx.ThrowRangeError("invalid string length")
 			}
 			storage.WriteReversed(&rb.Sb, x)
@@ -188,7 +188,7 @@ func (cx *ExecutionContext) ConcatStrings(parts []storage.Value) storage.Value {
 	var flags uint8
 	last := -1
 	for i, p := range parts {
-		nbytes := len(p.O.Text)
+		nbytes := len(p.O.Text())
 		needsUnpacking = needsUnpacking || nbytes <= shortstrings.MaxBytes && p.O.Flags()&storage.ObjInterned == 0
 		if nbytes == 0 {
 			continue
@@ -243,12 +243,12 @@ func (cx *ExecutionContext) ConcatStrings(parts []storage.Value) storage.Value {
 				if p.IsShortString() {
 					p.WriteShortString(&sb)
 				} else {
-					sb.WriteString(string(p.O.Text))
+					sb.WriteString(string(p.O.Text()))
 				}
 			}
 		} else {
 			for _, p := range parts {
-				sb.WriteString(string(p.O.Text))
+				sb.WriteString(string(p.O.Text()))
 			}
 		}
 		return cx.concatenated(wtf8.String(sb.String()), storage.NextCount(ca, cb))
@@ -265,7 +265,7 @@ func (cx *ExecutionContext) concatSmall(parts []storage.Value, n int, count stor
 		var shift int
 		for _, p := range parts {
 			data |= math.Float64bits(p.N) << shift
-			shift += 8 * len(p.O.Text)
+			shift += 8 * len(p.O.Text())
 		}
 		return storage.Value{
 			N: math.Float64frombits(data),
@@ -280,7 +280,7 @@ func (cx *ExecutionContext) concatSmall(parts []storage.Value, n int, count stor
 		}
 	} else {
 		for _, p := range parts {
-			written += copy(buf[written:], p.O.Text)
+			written += copy(buf[written:], p.O.Text())
 		}
 	}
 	return cx.concatenated(wtf8.String(buf[:n]), count)
@@ -336,9 +336,9 @@ func (cx *ExecutionContext) newBuffered(parts []storage.Value, n int, tail bool)
 // the string b, which is the head of rb. It reports false when two of the strings form a
 // surrogate pair where they meet.
 func (cx *ExecutionContext) prependStrings(parts []storage.Value, b *storage.Object, rb *storage.ReversedBuilder) (storage.Value, bool) {
-	n := len(b.Text)
+	n := len(b.Text())
 	ascii := true
-	next, nextReversed, nextASCII := b.Text, true, b.IsASCII()
+	next, nextReversed, nextASCII := b.Text(), true, b.IsASCII()
 	for _, part := range slices.Backward(parts) {
 		p := part.RawString()
 		if p == "" {
@@ -355,7 +355,7 @@ func (cx *ExecutionContext) prependStrings(parts []storage.Value, b *storage.Obj
 		ascii = ascii && pASCII
 		next, nextReversed, nextASCII = p, false, pASCII
 	}
-	if n == len(b.Text) {
+	if n == len(b.Text()) {
 		return storage.Value{O: b}, true
 	}
 	for _, part := range slices.Backward(parts) {
@@ -387,7 +387,7 @@ func (cx *ExecutionContext) newTail(sb *strings.Builder, ascii bool) storage.Val
 // string a, after strings were appended to the contents of a. ascii reports whether the
 // appended strings are ASCII.
 func (cx *ExecutionContext) extendTail(a *storage.Object, sb *strings.Builder, ascii bool) storage.Value {
-	a.SetExtState(nil)
+	a.ClearBuilder()
 	s := wtf8.String(sb.String())
 	flags := storage.ObjASCIIKnown
 	var meta *storage.ObjectMeta
@@ -400,7 +400,7 @@ func (cx *ExecutionContext) extendTail(a *storage.Object, sb *strings.Builder, a
 			Cursor: m.Cursor,
 		}
 		if m.Length != 0 {
-			meta.Length = m.Length + int32(wtf8.Len(s[len(a.Text):]))
+			meta.Length = m.Length + int32(wtf8.Len(s[len(a.Text()):]))
 		}
 	}
 	return cx.NewBufferedString(s, flags, sb, meta)
@@ -420,7 +420,7 @@ func (cx *ExecutionContext) newHead(rb *storage.ReversedBuilder, ascii bool) sto
 // strings were prepended to the reversed string b by writing them to rb. ascii reports whether
 // the prepended strings are ASCII.
 func (cx *ExecutionContext) extendHead(b *storage.Object, rb *storage.ReversedBuilder, ascii bool) storage.Value {
-	b.SetExtState(nil)
+	b.ClearBuilder()
 	s := wtf8.String(rb.Sb.String())
 	flags := storage.ObjASCIIKnown | storage.ObjReversed
 	var meta *storage.ObjectMeta
@@ -429,7 +429,7 @@ func (cx *ExecutionContext) extendHead(b *storage.Object, rb *storage.ReversedBu
 	} else if m := b.Meta(); m != nil && m.Length != 0 {
 		// Carrying the length over keeps a loop that prepends and reads the length linear.
 		meta = &storage.ObjectMeta{
-			Length: m.Length + int32(wtf8.Len(s[len(b.Text):])),
+			Length: m.Length + int32(wtf8.Len(s[len(b.Text()):])),
 		}
 	}
 	return cx.NewBufferedString(s, flags, rb, meta)
