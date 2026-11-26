@@ -90,34 +90,106 @@ func newClosureObject(n, ncopied int) (*Object, []Upvalue) {
 		w := &closureObjectWith[[3]*Upvalue, [3]Upvalue]{}
 		c, upvals, copies = &w.closureObject, w.upvals[:], w.copies[:]
 	default:
-		// The capacities fill an allocation size class.
-		switch {
-		case n <= 5 && ncopied == 0:
-			w := &closureObjectWith[[5]*Upvalue, struct{}]{}
-			c, upvals = &w.closureObject, w.upvals[:n:n]
-		case n <= 7 && ncopied == 0:
-			w := &closureObjectWith[[7]*Upvalue, struct{}]{}
-			c, upvals = &w.closureObject, w.upvals[:n:n]
-		case n <= 11 && ncopied == 0:
-			w := &closureObjectWith[[11]*Upvalue, struct{}]{}
-			c, upvals = &w.closureObject, w.upvals[:n:n]
-		case n <= 15 && ncopied == 0:
-			w := &closureObjectWith[[15]*Upvalue, struct{}]{}
-			c, upvals = &w.closureObject, w.upvals[:n:n]
-		case n <= 15 && ncopied > 4 && ncopied <= 8:
-			w := &closureObjectWith[[15]*Upvalue, [8]Upvalue]{}
-			c, upvals, copies = &w.closureObject, w.upvals[:n:n], w.copies[:ncopied:ncopied]
-		default:
-			c = &closureObject{}
-			upvals = make([]*Upvalue, n)
-			if ncopied > 0 {
-				copies = make([]Upvalue, ncopied)
-			}
-		}
+		c, upvals, copies = newLargeClosureObject(n, ncopied)
 	}
 	c.state.Upvals = upvals
 	c.Fn = &c.state
 	return c.Init(), copies
+}
+
+// newLargeClosureObject is newClosureObject for more than three upvalues.
+func newLargeClosureObject(n, ncopied int) (*closureObject, []*Upvalue, []Upvalue) {
+	// Up to 32 upvalues and up to 8 copies share the allocation of the closure. The capacities
+	// fill an allocation size class.
+	switch {
+	case n > 32:
+		var copies []Upvalue
+		if ncopied > 0 {
+			copies = make([]Upvalue, ncopied)
+		}
+		return &closureObject{}, make([]*Upvalue, n), copies
+	case ncopied > 8:
+		c, upvals, _ := newLargeClosureObject(n, 0)
+		return c, upvals, make([]Upvalue, ncopied)
+	case ncopied == 0:
+		switch {
+		case n <= 6:
+			w := &closureObjectWith[[6]*Upvalue, struct{}]{}
+			return &w.closureObject, w.upvals[:n:n], nil
+		case n <= 8:
+			w := &closureObjectWith[[8]*Upvalue, struct{}]{}
+			return &w.closureObject, w.upvals[:n:n], nil
+		case n <= 12:
+			w := &closureObjectWith[[12]*Upvalue, struct{}]{}
+			return &w.closureObject, w.upvals[:n:n], nil
+		case n <= 16:
+			w := &closureObjectWith[[16]*Upvalue, struct{}]{}
+			return &w.closureObject, w.upvals[:n:n], nil
+		case n <= 24:
+			w := &closureObjectWith[[24]*Upvalue, struct{}]{}
+			return &w.closureObject, w.upvals[:n:n], nil
+		default:
+			w := &closureObjectWith[[32]*Upvalue, struct{}]{}
+			return &w.closureObject, w.upvals[:n:n], nil
+		}
+	case n <= 4:
+		switch {
+		case ncopied <= 1:
+			w := &closureObjectWith[[4]*Upvalue, [1]Upvalue]{}
+			return &w.closureObject, w.upvals[:n:n], w.copies[:ncopied:ncopied]
+		case ncopied <= 2:
+			w := &closureObjectWith[[4]*Upvalue, [2]Upvalue]{}
+			return &w.closureObject, w.upvals[:n:n], w.copies[:ncopied:ncopied]
+		default:
+			w := &closureObjectWith[[4]*Upvalue, [4]Upvalue]{}
+			return &w.closureObject, w.upvals[:n:n], w.copies[:ncopied:ncopied]
+		}
+	case n <= 8:
+		switch {
+		case ncopied <= 1:
+			w := &closureObjectWith[[8]*Upvalue, [1]Upvalue]{}
+			return &w.closureObject, w.upvals[:n:n], w.copies[:ncopied:ncopied]
+		case ncopied <= 2:
+			w := &closureObjectWith[[8]*Upvalue, [2]Upvalue]{}
+			return &w.closureObject, w.upvals[:n:n], w.copies[:ncopied:ncopied]
+		case ncopied <= 4:
+			w := &closureObjectWith[[8]*Upvalue, [4]Upvalue]{}
+			return &w.closureObject, w.upvals[:n:n], w.copies[:ncopied:ncopied]
+		default:
+			w := &closureObjectWith[[8]*Upvalue, [8]Upvalue]{}
+			return &w.closureObject, w.upvals[:n:n], w.copies[:ncopied:ncopied]
+		}
+	case n <= 16:
+		switch {
+		case ncopied <= 1:
+			w := &closureObjectWith[[16]*Upvalue, [1]Upvalue]{}
+			return &w.closureObject, w.upvals[:n:n], w.copies[:ncopied:ncopied]
+		case ncopied <= 2:
+			w := &closureObjectWith[[16]*Upvalue, [2]Upvalue]{}
+			return &w.closureObject, w.upvals[:n:n], w.copies[:ncopied:ncopied]
+		case ncopied <= 4:
+			w := &closureObjectWith[[16]*Upvalue, [4]Upvalue]{}
+			return &w.closureObject, w.upvals[:n:n], w.copies[:ncopied:ncopied]
+		default:
+			w := &closureObjectWith[[16]*Upvalue, [8]Upvalue]{}
+			return &w.closureObject, w.upvals[:n:n], w.copies[:ncopied:ncopied]
+		}
+	default:
+		switch {
+		case ncopied <= 1:
+			w := &closureObjectWith[[32]*Upvalue, [1]Upvalue]{}
+			return &w.closureObject, w.upvals[:n:n], w.copies[:ncopied:ncopied]
+		case ncopied <= 2:
+			w := &closureObjectWith[[32]*Upvalue, [2]Upvalue]{}
+			return &w.closureObject, w.upvals[:n:n], w.copies[:ncopied:ncopied]
+		case ncopied <= 4:
+			w := &closureObjectWith[[32]*Upvalue, [4]Upvalue]{}
+			return &w.closureObject, w.upvals[:n:n], w.copies[:ncopied:ncopied]
+		default:
+			w := &closureObjectWith[[32]*Upvalue, [8]Upvalue]{}
+			return &w.closureObject, w.upvals[:n:n], w.copies[:ncopied:ncopied]
+		}
+	}
 }
 
 // NewFunctionObject returns a new function object with the shape s and the function state fn,

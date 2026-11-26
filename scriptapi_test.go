@@ -52,6 +52,12 @@ func TestAllocationsPerOperation(t *testing.T) {
 			want:  1,
 		},
 		{
+			name:  "closure capturing four parameters",
+			setup: `function mk(a, b, c, d) { return function () { return a + b + c + d; }; }`,
+			body:  `mk(1, 2, 3, 4);`,
+			want:  1,
+		},
+		{
 			name:  "spread of an array",
 			setup: `var src = []; for (var j = 0; j < 16; j++) src.push(j);`,
 			body:  `[...src];`,
@@ -67,7 +73,7 @@ func TestAllocationsPerOperation(t *testing.T) {
 			name:  "map",
 			setup: `var src = []; for (var j = 0; j < 16; j++) src.push(j);`,
 			body:  `src.map(x => x);`,
-			want:  3,
+			want:  2,
 		},
 		{
 			name: "push onto an empty array",

@@ -321,10 +321,11 @@ func (r *RealmPart) NewEmptyObjectWithRoom(n int) *Object {
 	return o
 }
 
-const MaxInlineObjectValues = 8
+const MaxInlineObjectValues = 16
 
 // NewObjectWithStorage returns an object and storage for n values. The object is zero but for
-// its pinned bits. For a small n, both are a single allocation.
+// its pinned bits. For a small n, both are a single allocation, and the storage may have room
+// for more values.
 func NewObjectWithStorage(n int) (*Object, []Value) {
 	var o *Object
 	var storage []Value
@@ -352,9 +353,25 @@ func NewObjectWithStorage(n int) (*Object, []Value) {
 	case 7:
 		w := &objectWith[[7]Value]{}
 		o, storage = w.Init(), w.storage[:]
-	case MaxInlineObjectValues:
-		w := &objectWith[[MaxInlineObjectValues]Value]{}
+	case 8:
+		w := &objectWith[[8]Value]{}
 		o, storage = w.Init(), w.storage[:]
+	// The capacities of the larger storage fill an allocation size class.
+	case 9:
+		w := &objectWith[[9]Value]{}
+		o, storage = w.Init(), w.storage[:]
+	case 10, 11:
+		w := &objectWith[[11]Value]{}
+		o, storage = w.Init(), w.storage[:n]
+	case 12, 13:
+		w := &objectWith[[13]Value]{}
+		o, storage = w.Init(), w.storage[:n]
+	case 14, 15:
+		w := &objectWith[[15]Value]{}
+		o, storage = w.Init(), w.storage[:n]
+	case MaxInlineObjectValues:
+		w := &objectWith[[MaxInlineObjectValues + 1]Value]{}
+		o, storage = w.Init(), w.storage[:n]
 	default:
 		return (&PropertyObject{}).Init(), make([]Value, n)
 	}
