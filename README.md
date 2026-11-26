@@ -1,8 +1,7 @@
 # Ekuma
 
-Ekuma is a JavaScript engine written in pure Go. Its bytecode interpreter runs without a JIT,
-and it uses `unsafe` only for OS APIs. It implements nearly all of ES2026. The Go API is unstable.
-See [Status](#status).
+Ekuma is a JavaScript engine written in pure Go. Its bytecode interpreter runs without a JIT. It
+implements nearly all of ES2026. The Go API is unstable. See [Status](#status).
 
 ```go
 package main
@@ -33,17 +32,17 @@ The zero value of `ekuma.VM` is ready to use. A `VM` must not be copied after fi
 
 ## Differences from other engines for Go
 
-| Engine | Latest release | Implementation | Execution strategy | Pure Go | `unsafe`-free | ECMAScript | Modules | `Intl` | `Temporal` |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Ekuma | v0.1.0 (2026-11-26) | Written in Go | Bytecode interpreter | ✅ | ⚠️ Except for OS API access | ES2026 | ✅ | ✅ | ✅ |
-| [goja](https://github.com/dop251/goja) | None | Written in Go | Bytecode interpreter | ✅ | ❌ | ES5.1, and much of ES2015 and later | ❌ | ❌ | ❌ |
-| [Sobek](https://github.com/grafana/sobek) | None | Written in Go | Bytecode interpreter | ✅ | ❌ | ES5.1, and much of ES2015 and later | ⚠️ Experimental | ❌ | ❌ |
-| [moejs](https://github.com/MoeForge/moejs) | v0.1.1 (2026-11-15) | Written in Go | Bytecode interpreter | ✅ | ❌ | Much of modern ECMAScript | ✅ | ⚠️ Partial | ❌ |
-| [otto](https://github.com/robertkrimen/otto) | v0.5.1 (2024-11-05) | Written in Go | AST interpreter | ✅ | ✅ | ES5 | ❌ | ❌ | ❌ |
-| [modernc.org/jit/js](https://pkg.go.dev/modernc.org/jit/js) | v0.5.0 (2026-11-22) | QuickJS, translated from C to Go | Bytecode interpreter with a JIT on Linux amd64 | ✅ | ❌ | ES2023 | ✅ | ⚠️ `DateTimeFormat` and `NumberFormat` in en-US | ❌ |
-| [modernc.org/quickjs](https://pkg.go.dev/modernc.org/quickjs) | v0.27.0 (2026-10-24) | QuickJS, translated from C to Go | Bytecode interpreter | ✅ | ❌ | ES2023 | ✅ | ⚠️ `DateTimeFormat` and `NumberFormat` in en-US | ❌ |
-| [QJS](https://github.com/fastschema/qjs) | v0.0.6 (2025-10-28) | QuickJS-ng, compiled to WebAssembly and run by wazero | Bytecode interpreter, compiled to machine code by wazero's AOT compiler on amd64 and arm64 | ✅ | ❌ | ES2023 | ✅ | ❌ | ❌ |
-| [v8go](https://github.com/tommie/v8go) | v0.44.0 (2026-11-12) | Bindings to V8 | JIT compiler, or bytecode interpreter with `--jitless` | ❌ | ❌ | ES2025 | ❌ | ✅ | ❌ |
+| Engine | Latest release | Implementation | Execution strategy | Pure Go | ECMAScript | Modules | `Intl` | `Temporal` |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Ekuma | v0.1.0 (2026-11-26) | Written in Go | Bytecode interpreter | ✅ | ES2026 | ✅ | ✅ | ✅ |
+| [goja](https://github.com/dop251/goja) | None | Written in Go | Bytecode interpreter | ✅ | ES5.1, and much of ES2015 and later | ❌ | ❌ | ❌ |
+| [Sobek](https://github.com/grafana/sobek) | None | Written in Go | Bytecode interpreter | ✅ | ES5.1, and much of ES2015 and later | ⚠️ Experimental | ❌ | ❌ |
+| [moejs](https://github.com/MoeForge/moejs) | v0.1.1 (2026-11-15) | Written in Go | Bytecode interpreter | ✅ | Much of modern ECMAScript | ✅ | ⚠️ Partial | ❌ |
+| [otto](https://github.com/robertkrimen/otto) | v0.5.1 (2024-11-05) | Written in Go | AST interpreter | ✅ | ES5 | ❌ | ❌ | ❌ |
+| [modernc.org/jit/js](https://pkg.go.dev/modernc.org/jit/js) | v0.5.0 (2026-11-22) | QuickJS, translated from C to Go | Bytecode interpreter with a JIT on Linux amd64 | ✅ | ES2023 | ✅ | ⚠️ `DateTimeFormat` and `NumberFormat` in en-US | ❌ |
+| [modernc.org/quickjs](https://pkg.go.dev/modernc.org/quickjs) | v0.27.0 (2026-10-24) | QuickJS, translated from C to Go | Bytecode interpreter | ✅ | ES2023 | ✅ | ⚠️ `DateTimeFormat` and `NumberFormat` in en-US | ❌ |
+| [QJS](https://github.com/fastschema/qjs) | v0.0.6 (2025-10-28) | QuickJS-ng, compiled to WebAssembly and run by wazero | Bytecode interpreter, compiled to machine code by wazero's AOT compiler on amd64 and arm64 | ✅ | ES2023 | ✅ | ❌ | ❌ |
+| [v8go](https://github.com/tommie/v8go) | v0.44.0 (2026-11-12) | Bindings to V8 | JIT compiler, or bytecode interpreter with `--jitless` | ❌ | ES2025 | ❌ | ✅ | ❌ |
 
 goja and Sobek were compared at their latest commits as of 2026-11-16.
 
