@@ -52,6 +52,9 @@ func (it *ArrayIterator) StepPlain(q Context) (key, value storage.Value, st Pair
 				r.PollAtIndex(i)
 				return storage.Number(float64(i)), value, PairYielded
 			}
+			if t.ArrayBuffer().IsShared() {
+				return it.stepShared(q, t)
+			}
 		}
 		n, ok := t.Length()
 		if !ok {
@@ -77,4 +80,24 @@ func (it *ArrayIterator) StepPlain(q Context) (key, value storage.Value, st Pair
 		return key, value, PairYielded
 	}
 	return storage.Undefined, storage.Undefined, PairDeclined
+}
+
+// stepShared is [ArrayIterator.StepPlain] for the next element of t, whose buffer is shared.
+func (it *ArrayIterator) stepShared(q Context, t *storage.TypedArray) (key, value storage.Value, st PairStep) {
+	i := it.NextIndex
+	n, ok := t.Length()
+	if !ok {
+		return storage.Undefined, storage.Undefined, PairDeclined
+	}
+	if i >= int64(n) {
+		it.Object = nil
+		return storage.Undefined, storage.Undefined, PairDone
+	}
+	x, ok := t.LoadElement(int(i))
+	if !ok {
+		return storage.Undefined, storage.Undefined, PairDeclined
+	}
+	it.NextIndex = i + 1
+	q.Realm.PollAtIndex(i)
+	return storage.Number(float64(i)), storage.ElementFromBits(t.Type, x), PairYielded
 }
