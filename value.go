@@ -159,8 +159,7 @@ func (v Value) Float() float64 {
 
 // Int returns the number v truncated toward zero to an int. NaN gives 0, and a number below or
 // above the range of an int gives [math.MinInt] or [math.MaxInt]. It panics with a
-// [*ValueError]
-// when v is not a number.
+// [*ValueError] when v is not a number.
 func (v Value) Int() int {
 	if !v.value.IsNumber() {
 		panic(&ValueError{
@@ -424,10 +423,9 @@ func (v Value) IsPromise() bool {
 }
 
 // PromiseState returns the state of the promise v and, unless it is pending, its result: the
-// value it was fulfilled with or the reason it was rejected with. It runs no JavaScript
-// and does
-// not mark a rejected promise as handled. It panics with a [*ValueError] when v is not
-// a promise.
+// value it was fulfilled with or the reason it was rejected with. It runs no JavaScript and
+// does not mark a rejected promise as handled. It panics with a [*ValueError] when v is not a
+// promise.
 func (v Value) PromiseState() (PromiseState, Value) {
 	e := v.value
 	if !engine.IsPromise(e) {
