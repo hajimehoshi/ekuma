@@ -571,6 +571,14 @@ func (r *RealmPart) SkipHoles(o *Object, i, end int64) int64 {
 	if !o.HolesAreAbsent() {
 		return i
 	}
+	if o.flags&ObjSparse != 0 {
+		// The elements are looked at only up to the next index in the shape, so that a walk over
+		// those indices looks at each element once.
+		idxs := r.sparseIndices.list(o)
+		if p, _ := slices.BinarySearch(idxs, uint32(i)); p < len(idxs) {
+			end = min(end, int64(idxs[p]))
+		}
+	}
 	j, n := end, min(end, int64(len(elems)))
 	if stop := i + PollInterval; n > stop {
 		// The caller continues from there.
@@ -578,14 +586,7 @@ func (r *RealmPart) SkipHoles(o *Object, i, end int64) int64 {
 	}
 	for k := i; k < n; k++ {
 		if !elems[k].IsHole() {
-			j = k
-			break
-		}
-	}
-	if o.flags&ObjSparse != 0 {
-		idxs := r.sparseIndices.list(o)
-		if p, _ := slices.BinarySearch(idxs, uint32(i)); p < len(idxs) && int64(idxs[p]) < j {
-			j = int64(idxs[p])
+			return k
 		}
 	}
 	return j
@@ -604,25 +605,25 @@ func (r *RealmPart) SkipHolesBackward(o *Object, i, end int64) int64 {
 	if !o.HolesAreAbsent() {
 		return i
 	}
-	k := min(i, int64(len(elems))-1)
-	j := max(end, k-PollInterval, -1)
-	for ; k > j; k-- {
-		if !elems[k].IsHole() {
-			j = k
-			break
-		}
-	}
 	if o.flags&ObjSparse != 0 {
+		// The elements are looked at only down to the next index in the shape, as in SkipHoles.
 		idxs := r.sparseIndices.list(o)
 		p, found := slices.BinarySearch(idxs, uint32(i))
 		if found {
 			p++
 		}
-		if p > 0 && int64(idxs[p-1]) > j {
-			j = int64(idxs[p-1])
+		if p > 0 {
+			end = max(end, int64(idxs[p-1]))
 		}
 	}
-	return max(j, end)
+	k := min(i, int64(len(elems))-1)
+	j := max(end, k-PollInterval, -1)
+	for ; k > j; k-- {
+		if !elems[k].IsHole() {
+			return k
+		}
+	}
+	return j
 }
 
 // ElemCount returns how many elements o holds in memory, holes included.
