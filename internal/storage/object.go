@@ -58,6 +58,11 @@ const (
 	PinnedGlobalSlots
 )
 
+// SharedElems is the bit of [Object.Pinned] that marks elements which are the constants of an
+// array literal, shared by the arrays that it made. They have no holes and no room for more
+// elements.
+const SharedElems = PinnedGlobalSlots << 1
+
 // class distinguishes the built-in objects that have internal state or exotic behavior.
 type class uint8
 
@@ -112,7 +117,7 @@ type Object struct {
 	Class class
 	flags uint8
 
-	// Pinned holds the pinned bits of the storage of slots and elems.
+	// Pinned holds the pinned bits of the storage of slots and elems, and [SharedElems].
 	Pinned uint8
 
 	// length is the length of an array, which is at least len(elems). For a string it is 0,

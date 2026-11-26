@@ -68,8 +68,26 @@ func (o *Object) leaveSlots(old []Value) {
 func (o *Object) leaveElems(old []Value) {
 	if o.Pinned&PinnedElems != 0 {
 		clear(old)
-		o.Pinned &^= PinnedElems
 	}
+	// The elements of o are no longer shared, if they were.
+	o.Pinned &^= PinnedElems | SharedElems
+}
+
+// ownElems gives o elements of its own in place of shared ones, so that they can be changed in
+// place.
+func (o *Object) ownElems() {
+	if o.Pinned&SharedElems != 0 {
+		o.copySharedElems()
+	}
+}
+
+// copySharedElems is ownElems for an object with shared elements. It stays out of line so that
+// ownElems can be inlined.
+//
+//go:noinline
+func (o *Object) copySharedElems() {
+	o.elems = slices.Clone(o.elems)
+	o.Pinned &^= SharedElems
 }
 
 // replaceSlots makes slots, which holds the values that remain, the slots of o.

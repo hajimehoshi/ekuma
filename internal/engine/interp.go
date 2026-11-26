@@ -878,11 +878,11 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 			v, k := regs[i.A], regs[i.B]
 			if o := v.O; o != nil && o.HasProperties() && k.O == storage.NumberObject {
 				if j := int(k.N); float64(j) == k.N && uint(j) < uint(o.Raw().ElemCount()) {
-					if o.Raw().Elem(j).O != storage.HoleObject {
+					if o.Raw().Elem(j).O != storage.HoleObject && !o.Raw().ElemsShared() {
 						o.Raw().SetElem(j, regs[i.C])
 						continue
 					}
-					// A store into a hole takes the switch below.
+					// A store into a hole or into shared elements takes the switch below.
 					break
 				}
 				// The stores of a number into a typed array of numbers other than Float16, as in
@@ -1574,7 +1574,7 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 			if o := regs[i.A].O; o != nil && o.HasProperties() {
 				j := int(i.B)
 				if uint(j) < uint(o.Raw().ElemCount()) {
-					if o.Raw().Elem(j).O != storage.HoleObject {
+					if o.Raw().Elem(j).O != storage.HoleObject && !o.Raw().ElemsShared() {
 						o.Raw().SetElem(j, regs[i.C])
 						continue
 					}
@@ -2789,7 +2789,7 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 			o.InitElems(elems[:0])
 			regs[i.A] = storage.Value{O: o}
 		case bytecode.OpNewArrayK:
-			regs[i.A] = storage.Value{O: ag.active.NewArrayCopy(fp.Consts[i.B : i.B+i.C])}
+			regs[i.A] = storage.Value{O: ag.active.NewArrayOfConstants(fp.Consts[i.B : i.B+i.C])}
 		case bytecode.OpArrayPush:
 			o := regs[i.A].O
 			o.PushElement(regs[i.B])

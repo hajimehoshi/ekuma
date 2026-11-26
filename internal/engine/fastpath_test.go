@@ -85,6 +85,7 @@ var fastPathMethods = map[string]bool{
 	"ElemCount":     true,
 	"ElemRoom":      true,
 	"Elem":          true,
+	"ElemsShared":   true,
 	"SetElem":       true,
 	"SlotCount":     true,
 	"SlotRoom":      true,

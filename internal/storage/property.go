@@ -97,6 +97,7 @@ func (r *RealmPart) ReplaceOwn(o *Object, k PropKey, val Value, flags uint8) {
 	name := k.Key
 	if name == nil {
 		if int64(k.Idx) < int64(len(o.elems)) && !o.elems[k.Idx].IsHole() {
+			o.ownElems()
 			if flags == FlagsData {
 				o.elems[k.Idx] = val
 				return

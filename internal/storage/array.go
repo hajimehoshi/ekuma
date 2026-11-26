@@ -206,9 +206,10 @@ func Element(o *Object, i int64) (Value, bool) {
 }
 
 // SetElement stores v as the own property of o with the integer index i when
-// Element returns that property and o is not a typed array, and reports whether it did.
+// Element returns that property, o is not a typed array and its elements are not shared
+// (see [SharedElems]), and reports whether it did.
 func (o *Object) SetElement(i int64, v Value) bool {
-	if o.objectProperties != nil && i >= 0 && i < int64(len(o.elems)) && !o.elems[i].IsHole() {
+	if o.objectProperties != nil && i >= 0 && i < int64(len(o.elems)) && !o.elems[i].IsHole() && o.Pinned&SharedElems == 0 {
 		o.elems[i] = v
 		return true
 	}
@@ -295,6 +296,7 @@ func (o *Object) RemoveLastElement() (Value, bool) {
 	if v.IsHole() {
 		return Value{}, false
 	}
+	o.ownElems()
 	o.removeLastElem()
 	o.length = uint32(n)
 	if o.elemsOversized() {
@@ -318,6 +320,7 @@ func (o *Object) RemoveFirstElement() (Value, bool) {
 	if !o.HolesAreAbsent() && containsHole(o.elems) {
 		return Value{}, false
 	}
+	o.ownElems()
 	n := len(o.elems) - 1
 	if n < shiftCopyElems {
 		copy(o.elems, o.elems[1:])
@@ -342,6 +345,7 @@ func (r *RealmPart) FillElements(o *Object, n, start, end int64, v Value) bool {
 	if start < 0 || start > int64(len(o.elems)) || end > n || !o.HolesAreAbsent() {
 		return false
 	}
+	o.ownElems()
 	for i := start; i < end; i++ {
 		if r.InterruptFlag.Load() {
 			r.Poll()
@@ -480,6 +484,7 @@ func (r *RealmPart) ReverseElements(o *Object) bool {
 	if !o.isDense() {
 		return false
 	}
+	o.ownElems()
 	for i, j := 0, len(o.elems)-1; i < j; i, j = i+1, j-1 {
 		r.PollAtIndex(int64(i))
 		o.elems[i], o.elems[j] = o.elems[j], o.elems[i]
@@ -519,6 +524,7 @@ func (r *RealmPart) SpliceElements(o *Object, length, start, del int64, items []
 	if n-int(start+del) > PollChunk {
 		r.Poll()
 	}
+	o.ownElems()
 	elems := o.elems
 	if newLen > n {
 		elems = slices.Grow(elems, newLen-n)
@@ -657,6 +663,7 @@ func (o *Object) StoreElement(i uint32, v Value) {
 	if ValidateExec && !o.HasElementAt(i) {
 		panic("storage: StoreElement of an element that does not exist")
 	}
+	o.ownElems()
 	o.elems[i] = v
 }
 
@@ -696,6 +703,7 @@ func (p *Poller) CopyDenseElements(o *Object) ([]Value, bool) {
 // TruncateElements removes the elements of the array o from n on and sets its length to n.
 func (p *Poller) TruncateElements(o *Object, n uint32) {
 	if int64(n) < int64(len(o.elems)) {
+		o.ownElems()
 		tail := o.elems[n:]
 		o.elems = o.elems[:n]
 		oversized := o.elemsOversized()
@@ -732,6 +740,29 @@ func (r *RealmPart) NewArrayCopy(elems []Value) *Object {
 	a.elems = values
 	copy(a.elems, elems)
 	a.length = uint32(len(elems))
+	return a
+}
+
+// NewArrayOfConstants returns a new array of the constants in run, the linked constants of an
+// array literal, which no other code uses. The first call replaces run with an array of them, whose
+// elements the returned arrays share until their own change.
+func (r *RealmPart) NewArrayOfConstants(run []Value) *Object {
+	// A constant is never an array.
+	t := run[0].O
+	if t == nil || t.Kind != KindArray {
+		// The arrays keep only the elements reachable, not all the constants of the function.
+		t = r.NewArrayCopy(run)
+		run[0] = Value{O: t}
+		clear(run[1:])
+	}
+	a := (&PropertyObject{
+		Kind:   KindArray,
+		Class:  ClassArray,
+		Pinned: SharedElems,
+		shape:  r.Shapes.Array,
+		length: t.length,
+	}).Init()
+	a.InitElems(slices.Clip(t.elems))
 	return a
 }
 

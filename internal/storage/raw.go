@@ -19,6 +19,12 @@ func (r Raw) Elems() []Value {
 	return r.o.elems
 }
 
+// ElemsShared reports whether the elements are shared with other arrays, so that storing one
+// needs the property operations.
+func (r Raw) ElemsShared() bool {
+	return r.o.Pinned&SharedElems != 0
+}
+
 // ElemCount returns the number of elements.
 func (r Raw) ElemCount() int {
 	return len(r.o.elems)

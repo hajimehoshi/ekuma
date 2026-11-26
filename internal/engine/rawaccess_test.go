@@ -26,7 +26,7 @@ var rawStoreCalls = map[string]int{
 }
 
 // rawLoadMethods are the other methods.
-var rawLoadMethods = []string{"Elem", "ElemCount", "ElemRoom", "Slot", "SlotCount", "SlotRoom"}
+var rawLoadMethods = []string{"Elem", "ElemCount", "ElemRoom", "ElemsShared", "Slot", "SlotCount", "SlotRoom"}
 
 // unguardedUses are the operations of storage that skip the checks of the property operations,
 // with the functions outside storage that use them and how often they do.
