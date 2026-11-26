@@ -100,7 +100,8 @@ func newClosureObject(n, ncopied int) (*Object, []Upvalue) {
 // newLargeClosureObject is newClosureObject for more than three upvalues.
 func newLargeClosureObject(n, ncopied int) (*closureObject, []*Upvalue, []Upvalue) {
 	// Up to 32 upvalues and up to 8 copies share the allocation of the closure. The capacities
-	// fill an allocation size class.
+	// fill an allocation size class up to 512 bytes. A larger block also carries a malloc header,
+	// so it leaves part of its size class unused.
 	switch {
 	case n > 32:
 		var copies []Upvalue

@@ -744,13 +744,14 @@ func (r *RealmPart) NewArrayCopy(elems []Value) *Object {
 }
 
 // NewArrayOfConstants returns a new array of the constants in run, the linked constants of an
-// array literal, which no other code uses. The first call replaces run with an array of them, whose
-// elements the returned arrays share until their own change.
+// array literal, which no other code uses. The first call stores an array of them in run[0] and
+// clears the rest of run. The returned arrays share its elements until their own change.
 func (r *RealmPart) NewArrayOfConstants(run []Value) *Object {
 	// A constant is never an array.
 	t := run[0].O
 	if t == nil || t.Kind != KindArray {
-		// The arrays keep only the elements reachable, not all the constants of the function.
+		// The arrays keep only t and its elements reachable, not all the constants of the
+		// function.
 		t = r.NewArrayCopy(run)
 		run[0] = Value{O: t}
 		clear(run[1:])

@@ -63,8 +63,8 @@ func (o *Object) leaveSlots(old []Value) {
 	o.Pinned &^= PinnedSlots
 }
 
-// leaveElems clears old, storage that the elements of o have moved out of, when it stays
-// reachable.
+// leaveElems clears old, storage that the elements of o have moved out of, when it is pinned and
+// so stays reachable. Shared storage stays as it is, and the new elements of o are its own.
 func (o *Object) leaveElems(old []Value) {
 	if o.Pinned&PinnedElems != 0 {
 		clear(old)
