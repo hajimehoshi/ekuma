@@ -655,6 +655,13 @@ func stringReplaceNative(name string, all bool) engine.NativeFunc {
 			if all {
 				requireGlobalRegExp(cx, pat.Object(), "replaceAll")
 			}
+			// Where it runs no JavaScript and cannot throw but for a too long result, the original
+			// @@replace is done without a native frame.
+			if this.IsString() && rep.IsString() {
+				if v, ok := replaceUnmodified(cx, pat.Object(), this, rep.Str()); ok {
+					return v
+				}
+			}
 			if m := cx.GetMethod(pat, cx.WellKnownSymbol(storage.SymbolReplace)); m != nil {
 				return cx.Call(m, pat, this, rep)
 			}
