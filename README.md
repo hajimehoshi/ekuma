@@ -55,26 +55,27 @@ UTF-16 semantics and allowing well-formed strings to cross the Go boundary witho
 
 ## Performance
 
-Time relative to Ekuma, as the geometric mean over the benchmarks of each suite (lower is
-faster):
+Each value is the geometric mean of the benchmark times relative to Ekuma in one round of
+the suite. Lower is faster.
 
 <!-- BEGIN jsbench summary -->
 
 ```
-                     V8 benchmark  QuickJS
-                     suite v7      microbench    Version
-Ekuma                 1.00         1.00          v0.0.0-20261122162400-5d3411ee3ba0
-goja                  7.35         5.81          v0.0.0-20261118204651-8dfece3d1e1d
-Sobek                 7.19         5.83          v0.0.0-20261119094010-6eceb967bb5b
-otto                 37.0 (9/10)    n/a          v0.5.1
-modernc.org/quickjs   4.88         3.98          v0.27.0
-QJS                   6.41 (6/10)  6.34 (69/74)  v0.0.6
-QuickJS (C)           1.50         1.07          v0.0.0-20260604125329-3d5e064e9dd6
-v8go --jitless        0.821        0.721         v0.44.0
-v8go                  0.0425       0.133         v0.44.0
+                     V8 benchmark   QuickJS
+                     suite v7       microbench    Version
+Ekuma                 1.00          1.00          v0.0.0-20261126072711-8a041c6407f6
+goja                  7.18          5.70          v0.0.0-20261118204651-8dfece3d1e1d
+Sobek                 7.08          5.75          v0.0.0-20261119094010-6eceb967bb5b
+moejs                 0.881 (8/10)  1.20          v0.1.1
+otto                 37.7 (9/10)     n/a          v0.5.1
+modernc.org/quickjs   4.77          3.91          v0.27.0
+QJS                   6.84 (6/10)   6.22 (69/74)  v0.0.6
+QuickJS (C)           1.50          1.03          v0.0.0-20260604125329-3d5e064e9dd6
+v8go --jitless        0.858         0.694         v0.44.0
+v8go                  0.0427        0.135         v0.44.0
 ```
 
-Measured on 2026-11-23: Apple M3 Pro, macOS 27.2, go1.27.4.
+Measured on 2026-11-26: Apple M3 Pro, macOS 27.2, go1.27.4.
 
 <!-- END jsbench summary -->
 

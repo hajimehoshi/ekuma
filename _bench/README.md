@@ -29,13 +29,9 @@ profiling Ekuma and checking a change to its interpreter.
 - otto implements ES5 and uses Go's `regexp`, so it cannot parse microbench.js or the regular
   expressions of the RegExp benchmark.
 
-The comparison uses the dependency versions checked on 2026-11-20, with goja and Sobek at
-their latest upstream commits and the other Go engine modules at their latest releases.
-QuickJS in C stays at the revision translated by modernc.org/quickjs. The summary in
-[Results](#results) gives the version of each engine, and [Environment](RESULTS.md#environment)
-the rest of the setup.
-
-The published results below were collected before moejs was added to the harness.
+The comparison uses the Go engine versions pinned in [go.mod](go.mod). QuickJS in C uses
+the revision translated by modernc.org/quickjs. [Results](#results) lists the measured
+versions, and [Environment](RESULTS.md#environment) records the run configuration.
 
 ## Suites
 
@@ -61,41 +57,41 @@ sums.
   The engine parses and evaluates that script to run all `b.N` iterations. The same VM is
   reused as `go test` increases `b.N`, so a JIT can warm up.
 - A round runs each benchmark once on every engine, in an order that rotates with the round and
-  the benchmark. The V8 suite runs 5 rounds, and microbench.js 3.
-- The tables give the median over the rounds of the time relative to Ekuma's in the same round
-  (lower is faster). A ratio uses only rounds in which both the engine and Ekuma succeeded.
-  A suite's row in the summary is the geometric mean over benchmarks with such paired results;
-  `(k/n)` gives their count when fewer than all n benchmarks have results. Failed runs remain
-  in the raw results and are listed in [Missing results](RESULTS.md#missing-results), even when
-  other rounds of that benchmark succeeded.
+  the benchmark. The published results use one round of each suite. By default the harness
+  runs 5 rounds of the V8 suite and 3 of microbench.js.
+- The tables give the median of the time ratios relative to Ekuma (lower is faster). Each ratio
+  pairs results from the same round where both engines succeeded. A suite's row in the summary is
+  the geometric mean across benchmarks with paired results. `(k/n)` gives their count when fewer
+  than all n benchmarks have results. Failed runs remain in the raw results and appear in
+  [Missing results](RESULTS.md#missing-results), even when other rounds succeeded.
 - Only time is compared. The memory of V8, of QuickJS in C and of QJS's WebAssembly instance is
   not in the Go heap, so allocations are not comparable.
 - This measurement used an external watchdog that checked resident memory every 500 ms and
   killed the benchmark process group above 2 GiB per process or 4 GiB overall. The watchdog
   was validated with a bounded allocation before the run.
-- The machine was not idle: the load averages are in [Environment](RESULTS.md#environment). The
-  medians reduce the influence of unusually slow rounds. A difference of less than about 20%
-  between two engines is within the noise.
+- Small timing differences can reflect noise in a single round. The recorded load averages
+  are in [Environment](RESULTS.md#environment).
 
 ## Results
 
 <!-- BEGIN jsbench summary -->
 
 ```
-                     V8 benchmark  QuickJS
-                     suite v7      microbench    Version
-Ekuma                 1.00         1.00          v0.0.0-20261122162400-5d3411ee3ba0
-goja                  7.35         5.81          v0.0.0-20261118204651-8dfece3d1e1d
-Sobek                 7.19         5.83          v0.0.0-20261119094010-6eceb967bb5b
-otto                 37.0 (9/10)    n/a          v0.5.1
-modernc.org/quickjs   4.88         3.98          v0.27.0
-QJS                   6.41 (6/10)  6.34 (69/74)  v0.0.6
-QuickJS (C)           1.50         1.07          v0.0.0-20260604125329-3d5e064e9dd6
-v8go --jitless        0.821        0.721         v0.44.0
-v8go                  0.0425       0.133         v0.44.0
+                     V8 benchmark   QuickJS
+                     suite v7       microbench    Version
+Ekuma                 1.00          1.00          v0.0.0-20261126072711-8a041c6407f6
+goja                  7.18          5.70          v0.0.0-20261118204651-8dfece3d1e1d
+Sobek                 7.08          5.75          v0.0.0-20261119094010-6eceb967bb5b
+moejs                 0.881 (8/10)  1.20          v0.1.1
+otto                 37.7 (9/10)     n/a          v0.5.1
+modernc.org/quickjs   4.77          3.91          v0.27.0
+QJS                   6.84 (6/10)   6.22 (69/74)  v0.0.6
+QuickJS (C)           1.50          1.03          v0.0.0-20260604125329-3d5e064e9dd6
+v8go --jitless        0.858         0.694         v0.44.0
+v8go                  0.0427        0.135         v0.44.0
 ```
 
-Measured on 2026-11-23: Apple M3 Pro, macOS 27.2, go1.27.4.
+Measured on 2026-11-26: Apple M3 Pro, macOS 27.2, go1.27.4.
 
 <!-- END jsbench summary -->
 
@@ -113,7 +109,8 @@ go run ./cmd/jsbench
 It fetches the benchmark programs and builds QuickJS in C into `ekuma/bench` in the user cache
 directory, or into the directory that `EKUMA_BENCH` names. It writes the output of `go test` to
 `results/GOOS_GOARCH`, which [benchstat](https://pkg.go.dev/golang.org/x/perf/cmd/benchstat) can
-read, and prints the tables. The whole run takes about 25 minutes on an Apple M3 Pro.
+read, and prints the tables. The default run takes about 25 minutes on an Apple M3 Pro.
+Use `GOMAXPROCS=2 go run ./cmd/jsbench -rounds 1` to repeat the published run.
 
 - `-suite V8` or `-suite Micro` runs one suite, `-bench` runs the benchmarks whose names match a
   regular expression, and `-rounds` sets the number of rounds.
