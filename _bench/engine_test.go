@@ -55,7 +55,9 @@ func newVM(engine string) (vm, error) {
 		}, nil
 	case "moejs":
 		return &moejsVM{
-			rt: moejs.NewRuntime(moejs.Options{}),
+			rt: moejs.NewRuntime(moejs.Options{
+				MutableIntrinsics: true,
+			}),
 		}, nil
 	case "otto":
 		return &ottoVM{

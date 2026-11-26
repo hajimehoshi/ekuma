@@ -21,6 +21,8 @@ profiling Ekuma and checking a change to its interpreter.
 | v8go `--jitless` | [github.com/tommie/v8go](https://github.com/tommie/v8go) with V8's `--jitless` flag, which leaves only its bytecode interpreter |
 | v8go | The same with V8's JIT compilers, as a reference |
 
+- moejs runs with `MutableIntrinsics: true` so DeltaBlue and RayTrace can extend built-ins during
+  setup.
 - QuickJS (C) is the commit that modernc.org/quickjs translates, the release 2026-06-04, built
   with its Makefile (`-O2`). It runs as a `qjs` process that evaluates the scripts that it reads
   from its standard input, so the benchmarks time it as they time the other engines.
@@ -77,18 +79,18 @@ sums.
 <!-- BEGIN jsbench summary -->
 
 ```
-                     V8 benchmark   QuickJS
-                     suite v7       microbench    Version
-Ekuma                 1.00          1.00          v0.0.0-20261126072711-8a041c6407f6
-goja                  7.18          5.70          v0.0.0-20261118204651-8dfece3d1e1d
-Sobek                 7.08          5.75          v0.0.0-20261119094010-6eceb967bb5b
-moejs                 0.881 (8/10)  1.20          v0.1.1
-otto                 37.7 (9/10)     n/a          v0.5.1
-modernc.org/quickjs   4.77          3.91          v0.27.0
-QJS                   6.84 (6/10)   6.22 (69/74)  v0.0.6
-QuickJS (C)           1.50          1.03          v0.0.0-20260604125329-3d5e064e9dd6
-v8go --jitless        0.858         0.694         v0.44.0
-v8go                  0.0427        0.135         v0.44.0
+                     V8 benchmark    QuickJS
+                     suite v7        microbench     Version
+Ekuma                 1.00           1.00           v0.0.0-20261126074323-b9ac5f60d84c
+goja                  7.11           5.76           v0.0.0-20261118204651-8dfece3d1e1d
+Sobek                 7.12           5.76           v0.0.0-20261119094010-6eceb967bb5b
+moejs                 0.919          1.21           v0.1.1
+otto                 35.7    (9/10)   n/a           v0.5.1
+modernc.org/quickjs   4.92           3.88           v0.27.0
+QJS                   6.62   (6/10)  6.12  (69/74)  v0.0.6
+QuickJS (C)           1.50           1.04           v0.0.0-20260604125329-3d5e064e9dd6
+v8go --jitless        0.837          0.699          v0.44.0
+v8go                  0.0418         0.134          v0.44.0
 ```
 
 Measured on 2026-11-26: Apple M3 Pro, macOS 27.2, go1.27.4.

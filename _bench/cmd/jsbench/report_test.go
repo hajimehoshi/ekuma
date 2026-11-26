@@ -98,6 +98,26 @@ func TestReportWithoutBaseline(t *testing.T) {
 	}
 }
 
+func TestReportSummaryCountAlignment(t *testing.T) {
+	const results = `BenchmarkV8/Richards/ekuma-2 10 100 ns/op
+BenchmarkV8/Richards/otto-2 10 1250 ns/op
+BenchmarkV8/Richards/qjs-2 10 50 ns/op
+BenchmarkV8/DeltaBlue/ekuma-2 10 100 ns/op
+`
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "v8.txt"), []byte(results), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	sections, err := jsbench.Report(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	const want = "otto   12.5   (1/2)\nQJS     0.500 (1/2)\n"
+	if got := sections["summary"]; !strings.Contains(got, want) {
+		t.Errorf("summary:\n%s\nwant aligned counts:\n%s", got, want)
+	}
+}
+
 // rowFields returns the fields of the first line of section whose first field is label.
 func rowFields(section, label string) []string {
 	for line := range strings.Lines(section) {

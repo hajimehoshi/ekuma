@@ -406,9 +406,8 @@ func table(head []string, rows [][]string, align string) string {
 	return b.String()
 }
 
-// textTable formats a table as left-aligned text in a Markdown code block. aligns has 'l' for
-// each column, or '.' for each column whose cells also align at their periods. A heading wider
-// than the cells of its column takes two lines.
+// textTable formats a table in a Markdown code block. aligns uses 'l' for left alignment and
+// '.' to align decimal points and any count suffixes. A wide heading takes two lines.
 func textTable(aligns string, head []string, rows [][]string) string {
 	cells := make([][]string, len(rows))
 	for i, r := range rows {
@@ -422,7 +421,7 @@ func textTable(aligns string, head []string, rows [][]string) string {
 		for _, r := range cells {
 			column = append(column, r[i])
 		}
-		for j, c := range alignPeriods(column) {
+		for j, c := range alignNumbers(column) {
 			cells[j][i] = c
 		}
 	}
@@ -468,20 +467,23 @@ func textTable(aligns string, head []string, rows [][]string) string {
 	return b.String()
 }
 
-// alignPeriods pads the cells of a column so that their periods align. A cell without a period
-// aligns the end of its leading digits there, and a cell without leading digits starts there.
-// The padded cells have the same width.
-func alignPeriods(column []string) []string {
-	var intWidth, restWidth int
+// alignNumbers aligns decimal points and count suffixes in a column.
+func alignNumbers(column []string) []string {
+	var intWidth, fractionalWidth int
 	for _, c := range column {
-		i := leadingDigits(c)
+		value, _, _ := strings.Cut(c, " ")
+		i := leadingDigits(value)
 		intWidth = max(intWidth, i)
-		restWidth = max(restWidth, utf8.RuneCountInString(c[i:]))
+		fractionalWidth = max(fractionalWidth, utf8.RuneCountInString(value[i:]))
 	}
 	padded := make([]string, len(column))
 	for j, c := range column {
-		i := leadingDigits(c)
-		padded[j] = strings.Repeat(" ", intWidth-i) + c + strings.Repeat(" ", restWidth-utf8.RuneCountInString(c[i:]))
+		value, count, hasCount := strings.Cut(c, " ")
+		i := leadingDigits(value)
+		padded[j] = strings.Repeat(" ", intWidth-i) + value
+		if hasCount {
+			padded[j] += strings.Repeat(" ", fractionalWidth-utf8.RuneCountInString(value[i:])+1) + count
+		}
 	}
 	return padded
 }
