@@ -16,11 +16,12 @@ import (
 // Baseline is the engine that the times of the others are relative to.
 const Baseline = "ekuma"
 
-// Engines lists the names of the engines that every benchmark runs on.
+// Engines lists the engines recognized by the benchmark harness.
 var Engines = []string{
 	Baseline,
 	"goja",
 	"sobek",
+	"moejs",
 	"otto",
 	"quickjs",
 	"qjs",

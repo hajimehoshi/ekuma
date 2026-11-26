@@ -22,6 +22,7 @@ import (
 var engineTitles = map[string]string{
 	"ekuma":        "Ekuma",
 	"goja":         "goja",
+	"moejs":        "moejs",
 	"sobek":        "Sobek",
 	"otto":         "otto",
 	"quickjs":      "modernc.org/quickjs",
@@ -60,7 +61,7 @@ type results struct {
 }
 
 var (
-	configRe  = regexp.MustCompile(`^([a-z][^\sA-Z:]*): (.*)$`)
+	configRe  = regexp.MustCompile(`^([a-z][^\s:]*): (.*)$`)
 	resultRe  = regexp.MustCompile(`^Benchmark(\w+)/([^/\s]+)/([a-z0-9-]+?)(?:-\d+)?\s+\d+\s+(\S+) ns/op`)
 	missingRe = regexp.MustCompile(`^--- (?:SKIP|FAIL): Benchmark(\w+)/([^/\s]+)/([a-z0-9-]+?): ?(.*)$`)
 )
@@ -215,11 +216,20 @@ func report(dir string) (map[string]string, error) {
 	}
 
 	sections := map[string]string{}
+	measuredEngines := map[string]bool{}
+	for _, r := range rs {
+		for k := range r.times {
+			measuredEngines[k.engine] = true
+		}
+	}
+	engines := slices.DeleteFunc(slices.Clone(comparison.Engines), func(e string) bool {
+		return !measuredEngines[e]
+	})
 
 	// The summary has a row for each engine, with its geometric mean in each suite and its
 	// version.
 	var summary [][]string
-	for _, e := range comparison.Engines {
+	for _, e := range engines {
 		row := []string{engineTitles[e]}
 		var versions []string
 		for _, s := range found {
@@ -238,10 +248,10 @@ func report(dir string) (map[string]string, error) {
 	sections["summary"] = textTable("l"+strings.Repeat(".", len(found))+"l", summaryHead, summary) + "\n" + measuredOn(rs[found[0].name])
 
 	var titles []string
-	for _, e := range comparison.Engines {
+	for _, e := range engines {
 		titles = append(titles, engineTitles[e])
 	}
-	periods := strings.Repeat(".", len(comparison.Engines))
+	periods := strings.Repeat(".", len(engines))
 	for _, s := range found {
 		r := rs[s.name]
 		var relative, times [][]string
@@ -250,7 +260,7 @@ func report(dir string) (map[string]string, error) {
 			// The times of a benchmark share the unit that suits the time of the baseline.
 			unit, size := timeUnit(r.cell(b, comparison.Baseline).time)
 			t := []string{b, unit}
-			for _, e := range comparison.Engines {
+			for _, e := range engines {
 				c := r.cell(b, e)
 				if c.paired {
 					rel = append(rel, sig3(c.ratio))
@@ -268,7 +278,7 @@ func report(dir string) (map[string]string, error) {
 		}
 		// The rows above show which benchmarks have paired results for each engine.
 		geomean := []string{"Geomean"}
-		for _, e := range comparison.Engines {
+		for _, e := range engines {
 			if g, n := r.geomean(e); n > 0 {
 				geomean = append(geomean, sig3(g))
 			} else {
@@ -281,7 +291,7 @@ func report(dir string) (map[string]string, error) {
 	}
 
 	sections["environment"] = environmentTable(found, rs)
-	sections["missing"] = missingList(found, rs)
+	sections["missing"] = missingList(found, rs, engines)
 	return sections, nil
 }
 
@@ -331,11 +341,11 @@ func environmentTable(suites []suite, rs map[string]*results) string {
 
 // missingList returns the list of the benchmarks that engines did not run, grouped by the
 // reasons.
-func missingList(suites []suite, rs map[string]*results) string {
+func missingList(suites []suite, rs map[string]*results, engines []string) string {
 	var b strings.Builder
 	for _, s := range suites {
 		r := rs[s.name]
-		for _, e := range comparison.Engines {
+		for _, e := range engines {
 			var reasons []string
 			byReason := map[string][]string{}
 			for _, bm := range r.benchmarks {

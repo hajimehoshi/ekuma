@@ -29,6 +29,7 @@ import (
 var engineModules = map[string]string{
 	comparison.Baseline: ekumaModule,
 	"goja":              "github.com/dop251/goja",
+	"moejs":             "github.com/MoeForge/moejs",
 	"sobek":             "github.com/grafana/sobek",
 	"otto":              "github.com/robertkrimen/otto",
 	"quickjs":           "modernc.org/quickjs",
@@ -68,7 +69,7 @@ func buildTest(ctx context.Context, dir string) (string, error) {
 
 // environment returns the configuration lines that describe the environment of the benchmarks
 // of the test binary bin.
-func environment(ctx context.Context, bin string) ([]string, error) {
+func environment(ctx context.Context, bin string, engines []string) ([]string, error) {
 	goVersion, err := goEnv(ctx, "GOVERSION")
 	if err != nil {
 		return nil, err
@@ -92,7 +93,7 @@ func environment(ctx context.Context, bin string) ([]string, error) {
 	}
 
 	var recorded []string
-	for _, e := range comparison.Engines {
+	for _, e := range engines {
 		m := engineModules[e]
 		if slices.Contains(recorded, m) {
 			continue

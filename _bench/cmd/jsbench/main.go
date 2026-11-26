@@ -188,7 +188,7 @@ func runSuites(ctx context.Context, suites []suite, filter *regexp.Regexp, engin
 	if err != nil {
 		return err
 	}
-	env, err := environment(ctx, bin)
+	env, err := environment(ctx, bin, engines)
 	if err != nil {
 		return err
 	}

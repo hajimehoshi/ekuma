@@ -17,25 +17,25 @@ import (
 // out of the geometric mean and reported with its reason, and that the summary gives the version
 // of an engine.
 func TestReport(t *testing.T) {
-	// In the first round, goja takes 2 times as long as Ekuma on Richards, and 1.5 times in the
+	// In the first round, moejs takes 2 times as long as Ekuma on Richards, and 1.5 times in the
 	// second, so its median ratio is 1.75. The ratio of the medians would be 250 / 150.
 	const results = `date: 2026-11-16T00:00:00Z
-github.com/dop251/goja: v1.2.3
+github.com/MoeForge/moejs: v1.2.3
 goos: darwin
 BenchmarkV8/Richards/ekuma-12 	 10	 100 ns/op
-BenchmarkV8/Richards/goja-12 	 10	 200 ns/op
+BenchmarkV8/Richards/moejs-12 	 10	 200 ns/op
 BenchmarkV8/Richards/otto-12 	 1	 1000 ns/op
-BenchmarkV8/DeltaBlue/goja-12 	 10	 400 ns/op
+BenchmarkV8/DeltaBlue/moejs-12 	 10	 400 ns/op
 --- SKIP: BenchmarkV8/DeltaBlue/otto: SyntaxError: unexpected token
 BenchmarkV8/DeltaBlue/ekuma-12 	 10	 100 ns/op
 BenchmarkV8/Richards/otto-12 	 1	 3000 ns/op
 BenchmarkV8/Richards/ekuma-12 	 10	 200 ns/op
-BenchmarkV8/Richards/goja-12 	 10	 300 ns/op
+BenchmarkV8/Richards/moejs-12 	 10	 300 ns/op
 BenchmarkV8/DeltaBlue/ekuma-12 	 10	 100 ns/op
 --- SKIP: BenchmarkV8/DeltaBlue/otto: SyntaxError: unexpected token
-BenchmarkV8/DeltaBlue/goja-12 	 10	 400 ns/op
+BenchmarkV8/DeltaBlue/moejs-12 	 10	 400 ns/op
 --- FAIL: BenchmarkV8/Richards/ekuma:
-BenchmarkV8/Richards/goja-12 10 1000 ns/op
+BenchmarkV8/Richards/moejs-12 10 1000 ns/op
 `
 	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, "v8.txt"), []byte(results), 0o644); err != nil {
@@ -52,11 +52,11 @@ BenchmarkV8/Richards/goja-12 10 1000 ns/op
 	}{
 		{
 			section: "V8.relative",
-			want:    []string{"Richards", "1.00", "1.75", "n/a", "12.5", "n/a", "n/a", "n/a", "n/a", "n/a"},
+			want:    []string{"Richards", "1.00", "1.75", "12.5"},
 		},
 		{
 			section: "summary",
-			want:    []string{"goja", "2.65", "v1.2.3"},
+			want:    []string{"moejs", "2.65", "v1.2.3"},
 		},
 		{
 			section: "summary",
@@ -87,10 +87,10 @@ func TestReportWithoutBaseline(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := rowFields(sections["V8.time"], "Richards"); len(got) < 4 || got[1] != "ns" || got[3] != "250" {
+	if got := rowFields(sections["V8.time"], "Richards"); len(got) != 3 || got[1] != "ns" || got[2] != "250" {
 		t.Errorf("absolute time row = %q, want 250 ns for goja", got)
 	}
-	if got := rowFields(sections["V8.relative"], "Richards"); len(got) < 3 || got[2] != "n/a" {
+	if got := rowFields(sections["V8.relative"], "Richards"); len(got) != 2 || got[1] != "n/a" {
 		t.Errorf("relative time row = %q, want n/a for goja", got)
 	}
 	if strings.Contains(sections["missing"], "- goja in ") {

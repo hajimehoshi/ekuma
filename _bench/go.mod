@@ -3,6 +3,7 @@ module github.com/hajimehoshi/ekuma/_bench
 go 1.27
 
 require (
+	github.com/MoeForge/moejs v0.1.1
 	github.com/dop251/goja v0.0.0-20261118204651-8dfece3d1e1d
 	github.com/fastschema/qjs v0.0.6
 	github.com/grafana/sobek v0.0.0-20261119094010-6eceb967bb5b
@@ -14,6 +15,7 @@ require (
 )
 
 require (
+	github.com/MoeForge/moego v0.1.0-alpha.3 // indirect
 	github.com/dlclark/regexp2/v2 v2.13.0 // indirect
 	github.com/dustin/go-humanize v1.1.0 // indirect
 	github.com/go-sourcemap/sourcemap v2.1.4+incompatible // indirect

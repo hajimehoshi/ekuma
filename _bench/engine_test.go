@@ -16,6 +16,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/MoeForge/moejs"
 	"github.com/dop251/goja"
 	"github.com/fastschema/qjs"
 	"github.com/grafana/sobek"
@@ -51,6 +52,10 @@ func newVM(engine string) (vm, error) {
 	case "sobek":
 		return &sobekVM{
 			vm: sobek.New(),
+		}, nil
+	case "moejs":
+		return &moejsVM{
+			rt: moejs.NewRuntime(moejs.Options{}),
 		}, nil
 	case "otto":
 		return &ottoVM{
@@ -118,6 +123,21 @@ func (v *sobekVM) eval(name, src string) error {
 }
 
 func (v *sobekVM) close() {}
+
+type moejsVM struct {
+	rt *moejs.Runtime
+}
+
+func (v *moejsVM) eval(name, src string) error {
+	s, err := moejs.CompileScript(name, src)
+	if err != nil {
+		return err
+	}
+	_, err = v.rt.RunScript(s)
+	return err
+}
+
+func (v *moejsVM) close() {}
 
 type ottoVM struct {
 	vm *otto.Otto

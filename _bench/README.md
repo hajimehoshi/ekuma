@@ -13,6 +13,7 @@ profiling Ekuma and checking a change to its interpreter.
 | Ekuma | This repository |
 | goja | [github.com/dop251/goja](https://github.com/dop251/goja), written in Go |
 | Sobek | [github.com/grafana/sobek](https://github.com/grafana/sobek), the fork of goja that k6 uses |
+| moejs | [github.com/MoeForge/moejs](https://github.com/MoeForge/moejs), written in Go |
 | otto | [github.com/robertkrimen/otto](https://github.com/robertkrimen/otto), written in Go |
 | modernc.org/quickjs | [modernc.org/quickjs](https://pkg.go.dev/modernc.org/quickjs), QuickJS translated from C to Go |
 | QJS | [github.com/fastschema/qjs](https://github.com/fastschema/qjs), QuickJS-ng compiled to WebAssembly and run by wazero |
@@ -33,6 +34,8 @@ their latest upstream commits and the other Go engine modules at their latest re
 QuickJS in C stays at the revision translated by modernc.org/quickjs. The summary in
 [Results](#results) gives the version of each engine, and [Environment](RESULTS.md#environment)
 the rest of the setup.
+
+The published results below were collected before moejs was added to the harness.
 
 ## Suites
 
@@ -118,6 +121,8 @@ read, and prints the tables. The whole run takes about 25 minutes on an Apple M3
   DIR` measures Ekuma alone in about 3 minutes, and benchstat compares its results files with
   earlier ones. Times measured hours apart can differ by 20% on a busy machine, so the tables
   come from runs of all the engines.
+- `-engine '^(ekuma|moejs)$' -results results/ekuma-moejs` compares Ekuma with moejs and
+  writes those results to a separate directory.
 - `-report` makes the tables from the results files without running the benchmarks, and
   `-update README.md,RESULTS.md,../README.md` writes them between the markers of these files.
 - `-setup` only fetches the programs and builds QuickJS in C. Then `go test` runs the benchmarks
