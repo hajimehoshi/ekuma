@@ -45,6 +45,15 @@ func TestMatch(t *testing.T) {
 		{pattern: "a[bc]+d", input: "abcbd", want: []int{0, 5}},
 		{pattern: "[^a-z]", input: "abC", want: []int{2, 3}},
 		{pattern: "x", input: "abc", want: nil},
+		{pattern: "(a){0}b", input: "b", want: []int{0, 1, -1, -1}},
+		{pattern: "^abc", input: "xabc", want: nil},
+		{pattern: "^abc", input: "abcd", want: []int{0, 3}},
+		// The rarest byte of a literal is in many places where the literal is not.
+		{
+			pattern: wtf8.String(strings.Repeat("a", 40) + "z"),
+			input:   wtf8.String(strings.Repeat("z", 1000) + strings.Repeat("a", 40) + "z"),
+			want:    []int{1000, 1041},
+		},
 		// Greedy and lazy quantifiers, and giving back characters.
 		{pattern: "a.*c", input: "abcbc", want: []int{0, 5}},
 		{pattern: "a.*?c", input: "abcbc", want: []int{0, 3}},
@@ -405,6 +414,11 @@ func TestPollLongScans(t *testing.T) {
 			name:    "literal prefix",
 			pattern: "abc",
 			input:   strings.Repeat(x+"abc", 300),
+		},
+		{
+			name:    "adjacent literals",
+			pattern: "a",
+			input:   strings.Repeat("a", 60000),
 		},
 		{
 			name:    "required literal without an attempt",

@@ -97,6 +97,14 @@ type program struct {
 	need    wtf8.String
 	needMin int
 	needMax int
+
+	// prefixKey and needKey are the offsets in prefix and need of the bytes that a search for
+	// them looks for first.
+	prefixKey int
+	needKey   int
+
+	// whole is set when every match is prefix and nothing else.
+	whole bool
 }
 
 type compiler struct {
@@ -491,7 +499,54 @@ func (c *compiler) analyze(root *node) {
 		}
 		c.prog.need = ""
 	}
+	c.prog.prefixKey = rareByte(c.prog.prefix)
+	c.prog.needKey = rareByte(c.prog.need)
+	// A group in a repeat of no iterations has no instructions, so ncaps tells whether there are
+	// any groups.
+	if insts := c.prog.insts; c.prog.prefix != "" && len(insts) == 4 && c.prog.ncaps == 2 {
+		switch i := insts[1]; i.op {
+		case iStr:
+			c.prog.whole = i.str == c.prog.prefix
+		case iChar:
+			c.prog.whole = wtf8.String(wtf8.AppendRune(nil, i.r)) == c.prog.prefix
+		}
+	}
 }
+
+// rareByte returns the offset of the byte of lit that is the least frequent in text, the first
+// one of them on a tie, or 0 for an empty lit.
+func rareByte(lit wtf8.String) int {
+	k := 0
+	for i := 1; i < len(lit); i++ {
+		if byteRarity[lit[i]] > byteRarity[lit[k]] {
+			k = i
+		}
+	}
+	return k
+}
+
+// byteRarity ranks the bytes by how rarely they occur in text, markup and code: a byte ranks
+// above the bytes that are more frequent.
+var byteRarity = func() [256]uint8 {
+	// The ASCII characters from the most frequent on. The others are rarer than all of them.
+	const common = " etaoinsrhldcu\"m=/.,<>pfg-wy:b_\\v0k1'2;()\n\t&%#?x3456789jqzETAOINSRHLDCUMPFGWYBVKXJQZ[]{}+*!@$^`|~\r"
+	var r [256]uint8
+	for b := range r {
+		switch {
+		case b >= 0xC0:
+			// Lead bytes of non-ASCII characters: a text in one script repeats a few of them.
+			r[b] = uint8(len(common))
+		case b >= 0x80:
+			r[b] = uint8(len(common) + 1)
+		default:
+			r[b] = uint8(len(common) + 2)
+		}
+	}
+	for i := range len(common) {
+		r[common[i]] = uint8(i)
+	}
+	return r
+}()
 
 // analyzeNeed finds the longest literal that every match contains in its top-level sequence.
 func (c *compiler) analyzeNeed(root *node) {

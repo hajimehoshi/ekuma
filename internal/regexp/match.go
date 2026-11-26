@@ -109,7 +109,8 @@ func (re *Regexp) match(m *Matcher, s wtf8.String, start int, sticky bool, polle
 		pos -= 2
 	}
 	if prog.anchored {
-		if pos != 0 {
+		// Every match starts at the start of the subject, with the prefix.
+		if pos != 0 || !strings.HasPrefix(string(s), string(prog.prefix)) {
 			return nil
 		}
 		sticky = true
@@ -117,19 +118,15 @@ func (re *Regexp) match(m *Matcher, s wtf8.String, start int, sticky bool, polle
 	// need is the position of the first prog.need at or after an earlier pos+prog.needMin.
 	need := -1
 	for {
-		if !sticky {
-			pos = m.skip(prog, pos)
-			if pos < 0 {
-				return nil
-			}
-		}
+		// The search for the required literal goes first, since it can skip much of the subject
+		// faster than the scan for the first characters.
 		if prog.need != "" && need < pos+prog.needMin {
 			// A character spans at least one byte.
 			from := pos + prog.needMin
 			if from > len(s) {
 				return nil
 			}
-			i := xstrings.Index(s[from:], prog.need, m.searchPoll())
+			i := index(s[from:], prog.need, prog.needKey, m.searchPoll())
 			if i < 0 {
 				return nil
 			}
@@ -141,7 +138,28 @@ func (re *Regexp) match(m *Matcher, s wtf8.String, start int, sticky bool, polle
 			// In an ASCII subject, a character spans exactly one byte.
 			if !sticky && m.ascii && prog.needMax != unbounded && need-prog.needMax > pos {
 				pos = need - prog.needMax
-				continue
+			}
+		}
+		if !sticky {
+			p := m.skip(prog, pos)
+			if p < 0 {
+				return nil
+			}
+			if p != pos {
+				pos = p
+				if prog.need != "" && need < pos+prog.needMin {
+					// The literal found is too early for a match from pos.
+					continue
+				}
+			}
+			if prog.whole {
+				// skip found a match. It counted the bytes before it as steps, and the match counts
+				// as one, so that a loop of matches polls.
+				if m.steps--; m.steps <= 0 {
+					m.poll()
+				}
+				m.caps[0], m.caps[1] = pos, pos+len(prog.prefix)
+				return m.results()
 			}
 		}
 		if m.run(prog, pos) {
@@ -158,7 +176,7 @@ func (re *Regexp) match(m *Matcher, s wtf8.String, start int, sticky bool, polle
 func (m *Matcher) skip(prog *program, pos int) int {
 	s := m.s
 	if prog.prefix != "" {
-		i := xstrings.Index(s[pos:], prog.prefix, m.searchPoll())
+		i := index(s[pos:], prog.prefix, prog.prefixKey, m.searchPoll())
 		if i < 0 {
 			return -1
 		}
@@ -215,6 +233,43 @@ func (m *Matcher) skipLong(prog *program, pos int) int {
 			return pos
 		}
 		m.poll()
+	}
+}
+
+// index returns the index of the first lit in s, or -1, in time linear in the lengths of s and lit.
+// key is the offset in lit of the byte that the search looks for first. poll is as for
+// [xstrings.Index].
+func index(s, lit wtf8.String, key int, poll func()) int {
+	n := len(lit)
+	if key == 0 || len(s) > scanChunk {
+		return xstrings.Index(s, lit, poll)
+	}
+	if n > len(s) {
+		return -1
+	}
+	c := lit[key]
+	fails := 0
+	for i := key; ; i++ {
+		j := strings.IndexByte(string(s[i:]), c)
+		if j < 0 {
+			return -1
+		}
+		i += j
+		start := i - key
+		if start+n > len(s) {
+			return -1
+		}
+		if s[start:start+n] == lit {
+			return start
+		}
+		// Each failed candidate counts as a comparison of all of lit, and once those exceed a
+		// linear budget, xstrings.Index takes over.
+		if fails++; fails > 16+4*(start/n) {
+			if k := xstrings.Index(s[start+1:], lit, poll); k >= 0 {
+				return start + 1 + k
+			}
+			return -1
+		}
 	}
 }
 
