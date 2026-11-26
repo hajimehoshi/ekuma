@@ -278,6 +278,11 @@ type fn struct {
 	// Its register starts out undefined.
 	forwardedArgs *binding
 
+	// argsAlias is the variable whose declaration initializes it with the arguments that f
+	// forwards, and whose reads read them through forwardedArgs, or nil. Its own register is
+	// never written.
+	argsAlias *binding
+
 	// chains holds, for every optional chain being compiled, the jumps of its short circuits.
 	chains [][]int
 

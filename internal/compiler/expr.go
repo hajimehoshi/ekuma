@@ -1170,9 +1170,9 @@ func (f *fn) member(n *ast.MemberExpr, dst int32) {
 		f.emit(bytecode.OpGetPrivate, dst, obj, name)
 		return
 	}
-	if id, ok := n.Object.(*ast.Identifier); ok && id.Name == "arguments" && !n.Optional {
+	if id, ok := n.Object.(*ast.Identifier); ok && !n.Optional {
 		// forwardsArguments allows only reads of length and computed keys.
-		if args := f.forwardedArgs; args != nil && f.localReg("arguments") == args.reg {
+		if args := f.forwardedArgs; args != nil && f.holdsForwardedArgs(id.Name) {
 			if s, isString := n.Property.(*ast.StringLit); !n.Computed || isString && s.Value == "length" {
 				f.setPos(n.Property.Start())
 				f.emit(bytecode.OpGetArgsLength, dst, args.reg, f.site("length"))
@@ -1216,6 +1216,26 @@ func (f *fn) member(n *ast.MemberExpr, dst int32) {
 	key := f.immediateOperand(n.Property)
 	f.setPos(n.Property.Start())
 	f.emit(bytecode.OpGetIndex, dst, obj, key)
+}
+
+// holdsForwardedArgs reports whether the variable name, where the code being compiled refers
+// to it, holds the arguments that f forwards. f must forward its arguments.
+func (f *fn) holdsForwardedArgs(name string) bool {
+	if name == "arguments" {
+		return f.localReg(name) == f.forwardedArgs.reg
+	}
+	return f.isArgsAlias(name)
+}
+
+// isArgsAlias reports whether the innermost local binding of name in the code being compiled is
+// f.argsAlias.
+func (f *fn) isArgsAlias(name string) bool {
+	a := f.argsAlias
+	if a == nil || name != a.name {
+		return false
+	}
+	b, _ := f.lookupLocal(name)
+	return b == a
 }
 
 // literalIndex reports the array index that the number or string literal e denotes, when the

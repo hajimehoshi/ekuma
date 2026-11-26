@@ -19,28 +19,35 @@ func (f *fn) closure(node *ast.Function, dst int32, name wtf8.String) {
 }
 
 // forwardsArguments reports whether f can forward its arguments, and read their count and
-// elements, from its parameter registers.
-func (f *fn) forwardsArguments() bool {
+// elements, from its parameter registers. alias is the name of a variable that a declaration at
+// the top level of the body initializes with arguments and that the reads can go through, or "".
+func (f *fn) forwardsArguments() (alias string, ok bool) {
 	node := f.node
 	// The parameter registers hold the arguments only while no parameter code has run.
 	if !node.SimpleParams {
-		return false
+		return "", false
 	}
 	for _, p := range node.Params {
 		// A var or function declaration of a parameter's name assigns to the parameter.
 		if name := p.(*ast.Identifier).Name; f.assigns(name) || f.redeclares(name) {
-			return false
+			return "", false
 		}
 	}
 	for _, d := range node.Scope.Decls {
 		if d.Name == "arguments" {
-			return false
+			return "", false
 		}
 	}
 
-	// allowed holds the references to arguments that are in a forwarding position, or that are
-	// the object of a read of length or of a computed key.
+	aliasVar, aliasInit := argumentsAlias(node)
+	// allowed holds the identifiers that can stand for the arguments: references to arguments in
+	// a forwarding position, references to arguments or to the alias that are the object of a
+	// read of length or of a computed key, and the identifiers of the alias declaration.
 	allowed := map[*ast.Identifier]bool{}
+	if aliasVar != nil {
+		allowed[aliasVar] = true
+		allowed[aliasInit] = true
+	}
 	// notRead holds the member expressions that can be more than a read of their property:
 	// assignment targets, operands of updates and delete, and callees, tags and decorators
 	// that receive their object as this. Every member expression of a target counts.
@@ -61,7 +68,7 @@ func (f *fn) forwardsArguments() bool {
 	// The registers of a generator or an async function do not live on the stack, where a read
 	// finds the arguments.
 	reads := !node.Generator && !node.Async
-	ok := true
+	ok = true
 	depth := 0
 	var visit func(ast.Node) bool
 	visit = func(n ast.Node) bool {
@@ -71,6 +78,12 @@ func (f *fn) forwardsArguments() bool {
 				return true
 			}
 			if !n.Arrow {
+				// The function has arguments of its own. An alias is not taken in a function
+				// with nested functions, which could capture it or, as declarations of its
+				// name, assign to it.
+				if aliasVar != nil {
+					ok = false
+				}
 				return false
 			}
 			// The arguments of an arrow function are those of the enclosing function,
@@ -124,21 +137,64 @@ func (f *fn) forwardsArguments() bool {
 			markNotRead(n.Target)
 		case *ast.MemberExpr:
 			id, isID := n.Object.(*ast.Identifier)
-			if !isID || id.Name != "arguments" || depth > 0 || !reads || n.Optional || notRead[n] {
+			if !isID || depth > 0 || !reads || n.Optional || notRead[n] {
 				break
 			}
-			if p, named := n.Property.(*ast.Identifier); n.Computed || named && p.Name == "length" {
-				allowed[id] = true
+			isArgs := id.Name == "arguments"
+			// The alias holds the arguments after its initializer, which is in a statement of
+			// the top level of the body.
+			isAlias := aliasVar != nil && id.Name == aliasVar.Name && id.Start() >= aliasInit.End()
+			if !isArgs && !isAlias {
+				break
 			}
+			if !n.Computed {
+				if p, named := n.Property.(*ast.Identifier); named && p.Name == "length" {
+					allowed[id] = true
+				}
+				break
+			}
+			// The alias is not taken for a constant key other than length or an index, which a
+			// read of the object finds through an inline cache.
+			if s, isString := n.Property.(*ast.StringLit); isAlias && isString && s.Value != "length" {
+				if _, isIndex := int32Index(s.Value); !isIndex {
+					break
+				}
+			}
+			allowed[id] = true
 		case *ast.Identifier:
-			if n.Name == "arguments" && !allowed[n] {
+			if (n.Name == "arguments" || aliasVar != nil && n.Name == aliasVar.Name) && !allowed[n] {
 				ok = false
 			}
 		}
 		return ok
 	}
 	walk(node, visit)
-	return ok
+	if !ok {
+		return "", false
+	}
+	if aliasVar != nil {
+		alias = aliasVar.Name
+	}
+	return alias, true
+}
+
+// argumentsAlias finds the first declarator of a var, let or const declaration at the top level
+// of the body of node that initializes a variable with arguments. It returns the variable and the
+// initializer, or nils when there is none.
+func argumentsAlias(node *ast.Function) (variable, init *ast.Identifier) {
+	for _, s := range node.Body {
+		d, ok := s.(*ast.VarDecl)
+		if !ok || d.Kind != ast.DeclVar && d.Kind != ast.DeclLet && d.Kind != ast.DeclConst {
+			continue
+		}
+		for i := range d.Decls {
+			v, isID := d.Decls[i].Target.(*ast.Identifier)
+			if in, ok := d.Decls[i].Init.(*ast.Identifier); isID && ok && in.Name == "arguments" {
+				return v, in
+			}
+		}
+	}
+	return nil, nil
 }
 
 // mappedArguments returns the operand of OpArguments that says whether
@@ -270,6 +326,9 @@ func (c *compiler) compileFunction(parent *fn, node *ast.Function, name wtf8.Str
 		}
 	}
 
+	// argsAlias is the name of the variable that reads of the forwarded arguments can go through.
+	var argsAlias string
+
 	// The values that the engine provides. An arrow function uses those of the enclosing function.
 	if !node.Arrow {
 		if node.UsesThis || node.DerivedConstructor || node.ClassConstructor || node.HasDirectEval {
@@ -309,8 +368,12 @@ func (c *compiler) compileFunction(parent *fn, node *ast.Function, name wtf8.Str
 		}
 		if node.UsesArguments || node.HasDirectEval && !node.FieldInit {
 			if f.scope.lookup("arguments") == nil && !paramNames["arguments"] {
+				forwards := false
+				if !node.Scope.ContainsDirectEval {
+					argsAlias, forwards = f.forwardsArguments()
+				}
 				switch {
-				case !node.Scope.ContainsDirectEval && f.forwardsArguments():
+				case forwards:
 					f.forwardedArgs = f.declare("arguments", bindVar)
 				case !node.UsesArguments && mappedArguments(node) != 0 &&
 					!arrowsHaveDirectEval(node):
@@ -404,6 +467,9 @@ func (c *compiler) compileFunction(parent *fn, node *ast.Function, name wtf8.Str
 			lb.tdz = true
 			lexicals = append(lexicals, lb)
 		}
+	}
+	if argsAlias != "" {
+		f.argsAlias, _ = f.lookupLocal(argsAlias)
 	}
 	// Parameters that are patterns or have defaults bind after the registers above are
 	// reserved, because their code can contain closures that capture any of them.

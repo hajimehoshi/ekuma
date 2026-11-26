@@ -88,8 +88,12 @@ func (f *fn) initBinding(n ast.Node, name string, src int32) {
 func (f *fn) varDecl(n *ast.VarDecl) {
 	for i := range n.Decls {
 		d := &n.Decls[i]
-		mark := f.top
 		id, isID := d.Target.(*ast.Identifier)
+		if isID && f.isArgsAlias(id.Name) {
+			// The reads of the alias read the arguments where they are.
+			continue
+		}
+		mark := f.top
 		switch {
 		case !isID:
 			v := f.sourceOperand(d.Init, d.Target)
