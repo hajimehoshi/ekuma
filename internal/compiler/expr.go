@@ -1173,9 +1173,14 @@ func (f *fn) member(n *ast.MemberExpr, dst int32) {
 	if id, ok := n.Object.(*ast.Identifier); ok && id.Name == "arguments" && !n.Optional {
 		// forwardsArguments allows only reads of length and computed keys.
 		if args := f.forwardedArgs; args != nil && f.localReg("arguments") == args.reg {
-			if !n.Computed {
+			if s, isString := n.Property.(*ast.StringLit); !n.Computed || isString && s.Value == "length" {
 				f.setPos(n.Property.Start())
-				f.emit(bytecode.OpGetArgsLength, dst, args.reg, 0)
+				f.emit(bytecode.OpGetArgsLength, dst, args.reg, f.site("length"))
+				return
+			}
+			if i, ok := literalIndex(n.Property); ok {
+				f.setPos(n.Property.Start())
+				f.emit(bytecode.OpGetArgsIndexInt, dst, args.reg, i)
 				return
 			}
 			key := f.immediateOperand(n.Property)

@@ -80,15 +80,16 @@ const (
 	OpClosure         // a = closure of Protos[b]
 
 	// The values that the running function provides.
-	OpLoadThis       // a = this
-	OpLoadThisSloppy // a = this, converted the way a sloppy function sees it
-	OpLoadCallee     // a = the running function
-	OpLoadNewTarget  // a = new.target
-	OpLoadHome       // a = the home object of the running function
-	OpArguments      // a = the arguments object, mapped to the parameters with the flag b
-	OpRestArgs       // a = the arguments from index b on, as an array
-	OpGetArgsLength  // a = arguments.length. b holds the arguments object once materialized
-	OpGetArgsIndex   // a = arguments[c]. b holds the arguments object once materialized
+	OpLoadThis        // a = this
+	OpLoadThisSloppy  // a = this, converted the way a sloppy function sees it
+	OpLoadCallee      // a = the running function
+	OpLoadNewTarget   // a = new.target
+	OpLoadHome        // a = the home object of the running function
+	OpArguments       // a = the arguments object, mapped to the parameters with the flag b
+	OpRestArgs        // a = the arguments from index b on, as an array
+	OpGetArgsLength   // a = arguments.length; c is a site. b holds the arguments object once materialized
+	OpGetArgsIndex    // a = arguments[c]. b holds the arguments object once materialized
+	OpGetArgsIndexInt // a = arguments[the integer c]. b holds the arguments object once materialized
 
 	// Properties.
 	OpGetProp           // a = b.Keys[c]; c is a site

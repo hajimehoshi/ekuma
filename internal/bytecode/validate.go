@@ -394,7 +394,7 @@ func (v *validator) regs(pc int, in, x Instr, ops *Operands, r Regs) error {
 func (v *validator) special(pc int, in Instr) error {
 	code := v.f.Code
 	switch in.Op {
-	case OpGetArgsIndex:
+	case OpGetArgsIndex, OpGetArgsIndexInt:
 		if v.f.IsGenerator || v.f.IsAsync {
 			return v.errorf(pc, ErrOpcode, "indexed arguments read requires a stack frame with the surplus arguments")
 		}

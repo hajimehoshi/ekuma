@@ -705,6 +705,14 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 					}
 				}
 			}
+		case bytecode.OpGetArgsLength:
+			// The argument count, while the arguments object is not materialized. Once it is,
+			// the length of the object, as in OpGetLength.
+			if a := &regs[i.A]; regs[i.B].O == nil {
+				storage.SetNumber(a, float64(ag.frames[len(ag.frames)-1].argc))
+				continue
+			}
+			fallthrough
 		case bytecode.OpGetLength:
 			if o := regs[i.B].O; o != nil && o.Kind == storage.KindArray {
 				if validateExec {
@@ -1547,25 +1555,44 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 				regs[ret] = r
 				continue
 			}
-		case bytecode.OpGetArgsLength:
-			// The argument count, while the arguments object is not materialized.
-			if a := &regs[i.A]; regs[i.B].O == nil {
-				storage.SetNumber(a, float64(ag.frames[len(ag.frames)-1].argc))
-				continue
-			}
 		case bytecode.OpGetArgsIndex:
 			// An argument, while the arguments object is not materialized, where the call left
 			// it: in a parameter register, or among the surplus arguments below the registers.
-			// The destination is read before the tests and the argument after them, as in
-			// OpGetIndex.
-			if a, k := &regs[i.A], regs[i.C]; regs[i.B].O == nil && k.O == storage.NumberObject {
-				fr := &ag.frames[len(ag.frames)-1]
-				if j := int(k.N); float64(j) == k.N && uint(j) < uint(fr.argc) {
-					if n := fp.Nparams; j < n {
-						*a = regs[j]
-					} else {
-						*a = ag.stack[fr.extraBase+j-n]
+			// Once it is, an element that the object stores, as in OpGetIndex. The destination
+			// is read before the tests and the argument after them, as in OpGetIndex.
+			if a, k := &regs[i.A], regs[i.C]; k.O == storage.NumberObject {
+				if o := regs[i.B].O; o == nil {
+					fr := &ag.frames[len(ag.frames)-1]
+					if j := int(k.N); float64(j) == k.N && uint(j) < uint(fr.argc) {
+						if n := fp.Nparams; j < n {
+							*a = regs[j]
+						} else {
+							*a = ag.stack[fr.extraBase+j-n]
+						}
+						continue
 					}
+				} else if j := int(k.N); float64(j) == k.N && uint(j) < uint(o.Raw().ElemCount()) {
+					if e := o.Raw().Elem(j); e.O != storage.HoleObject {
+						*a = e
+						continue
+					}
+				}
+			}
+		case bytecode.OpGetArgsIndexInt:
+			// The fast paths of OpGetArgsIndex's case for the index c.
+			if o := regs[i.B].O; o == nil {
+				fr := &ag.frames[len(ag.frames)-1]
+				if j := int(i.C); uint(j) < uint(fr.argc) {
+					if n := fp.Nparams; j < n {
+						regs[i.A] = regs[j]
+					} else {
+						regs[i.A] = ag.stack[fr.extraBase+j-n]
+					}
+					continue
+				}
+			} else if j := int(i.C); uint(j) < uint(o.Raw().ElemCount()) {
+				if e := o.Raw().Elem(j); e.O != storage.HoleObject {
+					regs[i.A] = e
 					continue
 				}
 			}
@@ -1921,13 +1948,17 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 				rest = ag.active.NewArray(nil)
 			}
 			regs[i.A] = storage.Value{O: rest}
-		case bytecode.OpGetArgsLength, bytecode.OpGetArgsIndex:
-			// A prototype getter must see the arguments object shared by later reads.
-			ag.frames[len(ag.frames)-1].pc = pc
-			receiver = ag.active.forwardedArguments(i.B)
-			if i.Op == bytecode.OpGetArgsLength {
-				name = ag.Key(storage.KeyLength)
-			} else {
+		case bytecode.OpGetArgsLength, bytecode.OpGetArgsIndex, bytecode.OpGetArgsIndexInt:
+			receiver = regs[i.B]
+			if receiver.IsUndefined() {
+				// A prototype getter must see the arguments object shared by later reads.
+				ag.frames[len(ag.frames)-1].pc = pc
+				receiver = ag.active.forwardedArguments(i.B)
+			}
+			switch i.Op {
+			case bytecode.OpGetArgsLength:
+				name, site = ag.Key(storage.KeyLength), &fp.Caches[i.C]
+			case bytecode.OpGetArgsIndex:
 				key = regs[i.C]
 			}
 			goto readProperty
@@ -3241,13 +3272,11 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 			var val storage.Value
 			var getter *storage.Object
 			switch i.Op {
-			case bytecode.OpGetProp, bytecode.OpGetPropChain, bytecode.OpGetMethod, bytecode.OpGetLength:
+			case bytecode.OpGetProp, bytecode.OpGetPropChain, bytecode.OpGetMethod, bytecode.OpGetLength, bytecode.OpGetArgsLength:
 				val, getter = ag.active.getNamedAtSite(receiver, name, site)
-			case bytecode.OpGetArgsLength:
-				val, getter = ag.active.getNamed(receiver, name, nil)
 			case bytecode.OpGetIndex, bytecode.OpGetArgsIndex:
 				val, getter = ag.active.getValue(receiver, key)
-			case bytecode.OpGetIndexInt:
+			case bytecode.OpGetIndexInt, bytecode.OpGetArgsIndexInt:
 				val, getter = ag.active.getIndex(receiver, uint32(i.C))
 			case bytecode.OpCopyPropToGlobal:
 				// The following global store owns the cache and fills it only for writable bindings.

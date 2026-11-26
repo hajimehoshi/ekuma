@@ -683,6 +683,7 @@ var opcodes = [...]struct {
 		operands: Operands{
 			A:      OperandReg,
 			B:      OperandReg,
+			C:      OperandSite,
 			Reads:  regB,
 			Writes: regAB,
 		},
@@ -695,6 +696,17 @@ var opcodes = [...]struct {
 			B:      OperandReg,
 			C:      OperandReg,
 			Reads:  regBC,
+			Writes: regAB,
+		},
+		flow: FlowNext,
+	},
+	OpGetArgsIndexInt: {
+		name: "OpGetArgsIndexInt",
+		operands: Operands{
+			A:      OperandReg,
+			B:      OperandReg,
+			C:      OperandInt,
+			Reads:  regB,
 			Writes: regAB,
 		},
 		flow: FlowNext,

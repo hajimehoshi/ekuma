@@ -153,20 +153,21 @@ func TestJumpTargetConvention(t *testing.T) {
 func TestResultConvention(t *testing.T) {
 	// alsoOthers are the opcodes that write a and other registers as well.
 	alsoOthers := map[string]bool{
-		"OpGetSuper":      true,
-		"OpPostInc":       true,
-		"OpPostDec":       true,
-		"OpCallUndef":     true,
-		"OpTailCallUndef": true,
-		"OpApplyFwd":      true,
-		"OpTailApplyFwd":  true,
-		"OpCallFwd":       true,
-		"OpGetArgsLength": true,
-		"OpGetArgsIndex":  true,
-		"OpTailCallFwd":   true,
-		"OpIterNext":      true,
-		"OpIterNextPair":  true,
-		"OpIterReturn":    true,
+		"OpGetSuper":        true,
+		"OpPostInc":         true,
+		"OpPostDec":         true,
+		"OpCallUndef":       true,
+		"OpTailCallUndef":   true,
+		"OpApplyFwd":        true,
+		"OpTailApplyFwd":    true,
+		"OpCallFwd":         true,
+		"OpGetArgsLength":   true,
+		"OpGetArgsIndex":    true,
+		"OpGetArgsIndexInt": true,
+		"OpTailCallFwd":     true,
+		"OpIterNext":        true,
+		"OpIterNextPair":    true,
+		"OpIterReturn":      true,
 	}
 	for i, name := range opcodeNames(t) {
 		ops := bytecode.Opcode(i).Operands()
