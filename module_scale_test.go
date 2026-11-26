@@ -95,7 +95,7 @@ func TestLargeModuleGraphs(t *testing.T) {
 				}
 				src := tc.src(tc.n, i)
 				if src == "" {
-					m := vm.NewSyntheticModule(req.Specifier, ekuma.Undefined)
+					m := vm.NewDefaultExportSyntheticModule(req.Specifier, ekuma.Undefined)
 					loaded[req.Specifier] = m
 					return m, nil
 				}

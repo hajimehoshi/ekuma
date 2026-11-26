@@ -83,6 +83,50 @@ func Example_modules() {
 	// Hello, modules
 }
 
+// This example imports a Go function and a value from a synthetic module.
+func ExampleVM_NewSyntheticModule() {
+	var vm ekuma.VM
+	native := vm.NewSyntheticModule("native", map[string]ekuma.Value{
+		"appName": vm.ValueOf("Ekuma"),
+		"greet": vm.FuncOf("greet", func(_ ekuma.Value, _ []ekuma.Value) (any, error) {
+			return "Hello", nil
+		}),
+	})
+	vm.SetModuleLoader(func(req ekuma.ModuleRequest) (*ekuma.Module, error) {
+		if req.Specifier != "native" {
+			return nil, fmt.Errorf("unknown module %q", req.Specifier)
+		}
+		return native, nil
+	})
+
+	main, err := vm.ParseModule("main.js", `
+		import { appName, greet } from "native";
+		export const message = greet() + ", " + appName;
+	`)
+	if err != nil {
+		panic(err)
+	}
+	p, err := main.Evaluate(context.Background())
+	if err != nil {
+		panic(err)
+	}
+	if state, reason := p.PromiseState(); state != ekuma.PromiseFulfilled {
+		panic(fmt.Errorf("module evaluation %v: %v", state, reason))
+	}
+
+	ns, err := main.Namespace()
+	if err != nil {
+		panic(err)
+	}
+	message, err := ns.Get("message")
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(message.String())
+
+	// Output: Hello, Ekuma
+}
+
 // This example parses a script once and evaluates it several times.
 func ExampleVM_ParseScript() {
 	var vm ekuma.VM

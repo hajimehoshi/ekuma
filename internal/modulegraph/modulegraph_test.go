@@ -121,7 +121,11 @@ func TestExportsOfManyNames(t *testing.T) {
 			g.local("lower2", "lowerClash")
 			g.star("lower", "lower1", "lower2")
 
+			// A synthetic module contributes named exports, including conflicting bindings.
 			g["synthetic"].Code = nil
+			g["synthetic"].SyntheticExportNames = []string{"default", "host", "hostClash"}
+			g.local("e", "hostClash")
+			want["host"] = "synthetic.1"
 
 			if cyclic {
 				g.star("d", "root")

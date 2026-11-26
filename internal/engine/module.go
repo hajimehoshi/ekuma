@@ -155,8 +155,7 @@ const (
 	asyncOrderDone  = -1
 )
 
-// Module is a Module Record: a Source Text Module Record, or a Synthetic Module Record whose only
-// export is default.
+// Module is a Source Text Module Record or a Synthetic Module Record.
 type Module struct {
 	ref         scriptOrModule
 	hostDefined any
@@ -167,8 +166,8 @@ type Module struct {
 
 	body *storage.FuncProto
 
-	// env holds the bindings of the top level, in the order of node.Code.Bindings. A binding of an
-	// import is the binding of the exporting module, and fn has the bindings as its upvalues.
+	// env holds the bindings of the top level, in the order of node.Code.Bindings or
+	// node.SyntheticExportNames. An import shares the exporting module's binding.
 	env []*storage.Upvalue
 	fn  *storage.Object
 
@@ -247,20 +246,44 @@ func (cx *ExecutionContext) ParseModule(file, src string, hostDefined any) (*Mod
 	return m, nil
 }
 
-// CreateDefaultExportSyntheticModule implements CreateDefaultExportSyntheticModule: it returns
-// a module whose default export is v. hostDefined is the [[HostDefined]].
-func (cx *ExecutionContext) CreateDefaultExportSyntheticModule(v storage.Value, hostDefined any) *Module {
+// SyntheticExport is an export name and its value in a synthetic module.
+type SyntheticExport struct {
+	Name  string
+	Value storage.Value
+}
+
+// CreateSyntheticModule returns a synthetic module with the given exports and [[HostDefined]].
+// The export names must be unique. It may reorder exports.
+func (cx *ExecutionContext) CreateSyntheticModule(exports []SyntheticExport, hostDefined any) *Module {
 	m := &Module{
 		hostDefined: hostDefined,
-		env:         []*storage.Upvalue{newCell(v)},
+		env:         make([]*storage.Upvalue, len(exports)),
 		status:      moduleEvaluated,
 	}
 	m.node.Module = m
+	m.node.SyntheticExportNames = make([]string, len(exports))
+	slices.SortFunc(exports, func(a, b SyntheticExport) int {
+		return strings.Compare(a.Name, b.Name)
+	})
+	for binding, e := range exports {
+		m.node.SyntheticExportNames[binding] = e.Name
+		m.env[binding] = newCell(e.Value)
+	}
 	m.ref = scriptOrModule{
 		module: m,
 		realm:  cx.realm,
 	}
 	return m
+}
+
+// CreateDefaultExportSyntheticModule returns a synthetic module whose only export is default.
+func (cx *ExecutionContext) CreateDefaultExportSyntheticModule(v storage.Value, hostDefined any) *Module {
+	return cx.CreateSyntheticModule([]SyntheticExport{
+		{
+			Name:  "default",
+			Value: v,
+		},
+	}, hostDefined)
 }
 
 // SetModuleSource makes source, a module source object, the [[ModuleSource]] of m, which

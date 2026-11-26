@@ -98,7 +98,9 @@ across VMs, use `ParseUnboundScript` and bind the result in each VM with `VM.Bin
 
 ### Modules
 
-Use `VM.ParseModule`, `VM.ParseJSONModule`, or `VM.NewSyntheticModule` to create a module.
+Use `VM.ParseModule` or `VM.ParseJSONModule` to parse a module. For host-provided values, use
+`VM.NewSyntheticModule` with a map from export names to values or
+`VM.NewDefaultExportSyntheticModule` with a single default export.
 The host supplies a synchronous loader through `VM.SetModuleLoader`, including for `import()`.
 `Module.Evaluate` loads, links, and evaluates the module and returns a promise.
 
@@ -230,7 +232,7 @@ See the [ICU coverage inventory](internal/icutest/upstream-inventory.md).
 
 Host API for these, some of which the engine has and only the tests use:
 
-- Giving a module a module source
+- Providing a module source object for `import source` and `import.source()`
 - Property descriptors, and listing the keys of an object
 - Limits on stack depth or memory, and statistics of the memory that a VM uses
 

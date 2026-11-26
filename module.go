@@ -152,9 +152,15 @@ func (vm *VM) ParseJSONModule(name, src string) (*Module, error) {
 }
 
 // NewSyntheticModule is [Realm.NewSyntheticModule] of the initial realm.
-func (vm *VM) NewSyntheticModule(name string, v Value) *Module {
+func (vm *VM) NewSyntheticModule(name string, exports map[string]Value) *Module {
 	vm.initIfNeeded()
-	return vm.initialRealm.NewSyntheticModule(name, v)
+	return vm.initialRealm.NewSyntheticModule(name, exports)
+}
+
+// NewDefaultExportSyntheticModule is [Realm.NewDefaultExportSyntheticModule] of the initial realm.
+func (vm *VM) NewDefaultExportSyntheticModule(name string, v Value) *Module {
+	vm.initIfNeeded()
+	return vm.initialRealm.NewDefaultExportSyntheticModule(name, v)
 }
 
 // Name returns the name that m was created with.

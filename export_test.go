@@ -243,7 +243,7 @@ func AbstractModuleSource(r *Realm) Value {
 // NewSourceModule returns a module of r whose only export is a default of undefined and
 // whose module source is an instance of %AbstractModuleSource% named className.
 func NewSourceModule(r *Realm, name, className string) *Module {
-	m := r.NewSyntheticModule(name, Undefined)
+	m := r.NewDefaultExportSyntheticModule(name, Undefined)
 	r.in(func() {
 		cx := r.cx
 		proto := cx.NewObject(r.cx.Intrinsic(storage.IntrinsicAbstractModuleSourcePrototype))

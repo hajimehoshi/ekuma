@@ -20,6 +20,10 @@ type Node[M comparable] struct {
 	// Code describes a source text module, and is nil for a synthetic module.
 	Code *bytecode.Module
 
+	// SyntheticExportNames holds the export names of a synthetic module in byte order.
+	// Each name's index is its binding index.
+	SyntheticExportNames []string
+
 	// Requested holds the node of the module of each of Code.Requests once that is loaded.
 	Requested []*Node[M]
 
@@ -105,8 +109,8 @@ type Resolution[M comparable] struct {
 	Kind   ResolutionKind
 	Module M
 
-	// Binding is the index of the binding in [bytecode.Module.Bindings] of a source text module, 0
-	// for the default export of a synthetic module, or [BindingNamespace] or [BindingSource].
+	// Binding is the index into [bytecode.Module.Bindings] or [Node.SyntheticExportNames], or
+	// [BindingNamespace] or [BindingSource].
 	Binding int
 }
 
@@ -140,10 +144,11 @@ func (n *Node[M]) ResolveExport(name string) Resolution[M] {
 		if fr.star < 0 {
 			if !node.isSourceText() {
 				ret = Resolution[M]{}
-				if fr.name == "default" {
+				if binding, ok := slices.BinarySearch(node.SyntheticExportNames, fr.name); ok {
 					ret = Resolution[M]{
-						Kind:   Found,
-						Module: node.Module,
+						Kind:    Found,
+						Module:  node.Module,
+						Binding: binding,
 					}
 				}
 				frames = frames[:len(frames)-1]
@@ -235,7 +240,7 @@ func (n *Node[M]) ResolveExport(name string) Resolution[M] {
 // exportedNames implements GetExportedNames for the module of n.
 func (n *Node[M]) exportedNames() []string {
 	if !n.isSourceText() {
-		return []string{"default"}
+		return n.SyntheticExportNames
 	}
 	visited := map[*Node[M]]bool{}
 	seen := map[string]bool{}
@@ -250,12 +255,17 @@ func (n *Node[M]) exportedNames() []string {
 	for len(stack) > 0 {
 		node := stack[len(stack)-1]
 		stack = stack[:len(stack)-1]
-		if visited[node] || !node.isSourceText() {
-			// The default export of a synthetic module is not exported by an export * from.
+		if visited[node] {
 			continue
 		}
 		visited[node] = true
 		root := node == n
+		if !node.isSourceText() {
+			for _, name := range node.SyntheticExportNames {
+				add(name, root)
+			}
+			continue
+		}
 		for _, e := range node.Code.LocalExports {
 			add(e.Name, root)
 		}
@@ -362,7 +372,18 @@ func (n *Node[M]) starTable() map[string]Resolution[M] {
 			return t
 		}
 		if !node.isSourceText() {
-			// A synthetic module provides only a default export, which star exports skip.
+			for binding, name := range node.SyntheticExportNames {
+				if name != "default" {
+					t = setStarEntry(t, name, Resolution[M]{
+						Kind:    Found,
+						Module:  node.Module,
+						Binding: binding,
+					})
+				}
+			}
+			if t != nil {
+				provided[node] = t
+			}
 			continue
 		}
 		// The own exports of node hide those of its star exports.

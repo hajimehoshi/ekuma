@@ -4,6 +4,8 @@
 package ekuma
 
 import (
+	"unicode/utf8"
+
 	"github.com/hajimehoshi/ekuma/internal/builtin"
 	"github.com/hajimehoshi/ekuma/internal/engine"
 	"github.com/hajimehoshi/ekuma/internal/storage"
@@ -153,9 +155,29 @@ func (r *Realm) ParseJSONModule(name, src string) (*Module, error) {
 	return m, nil
 }
 
-// NewSyntheticModule returns a module of r whose only export is default, with the value v.
+// NewSyntheticModule returns a module of r with the given exports, including a default
+// export if exports contains "default". The bindings are fixed at construction.
+// It panics if an export name is invalid UTF-8 or an exported value belongs to another VM.
+func (r *Realm) NewSyntheticModule(name string, exports map[string]Value) *Module {
+	cx := r.context()
+	bindings := make([]engine.SyntheticExport, 0, len(exports))
+	for exportName, value := range exports {
+		if !utf8.ValidString(exportName) {
+			panic("ekuma: NewSyntheticModule: invalid UTF-8 export name")
+		}
+		bindings = append(bindings, engine.SyntheticExport{
+			Name:  exportName,
+			Value: r.vm.acceptValue(value),
+		})
+	}
+	m := r.newModule(name)
+	m.m = cx.CreateSyntheticModule(bindings, m)
+	return m
+}
+
+// NewDefaultExportSyntheticModule returns a module of r whose only export is default, with the value v.
 // It panics if v belongs to another VM.
-func (r *Realm) NewSyntheticModule(name string, v Value) *Module {
+func (r *Realm) NewDefaultExportSyntheticModule(name string, v Value) *Module {
 	m := r.newModule(name)
 	m.m = r.context().CreateDefaultExportSyntheticModule(r.vm.acceptValue(v), m)
 	return m

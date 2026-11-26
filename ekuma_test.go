@@ -27,7 +27,7 @@ import (
 func TestForeignValueEntry(t *testing.T) {
 	for _, name := range []string{
 		"ValueOf", "RealmValueOf", "Nested", "Set", "SetIndex", "Invoke", "Call", "New",
-		"Result", "Exception", "SyntheticModule", "InstanceOf", "LoaderException", "ImportMeta",
+		"Result", "Exception", "SyntheticModule", "DefaultExportSyntheticModule", "InstanceOf", "LoaderException", "ImportMeta",
 		"GetWithValueKey", "SetWithValueKey", "DeleteWithValueKey", "CallWithValueKey",
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -75,7 +75,11 @@ func TestForeignValueEntry(t *testing.T) {
 				})
 				_, _ = callback.Invoke(t.Context())
 			case "SyntheticModule":
-				b.NewRealm().NewSyntheticModule("foreign", foreign)
+				b.NewSyntheticModule("native", map[string]ekuma.Value{
+					"foreign": foreign,
+				})
+			case "DefaultExportSyntheticModule":
+				b.NewRealm().NewDefaultExportSyntheticModule("foreign", foreign)
 			case "InstanceOf":
 				ctor, err := b.Global().Get("Object")
 				if err != nil {
@@ -3258,7 +3262,7 @@ func TestModuleLoaderReentry(t *testing.T) {
 // TestModuleOfAnotherVM checks that a loader that returns a Module of another VM panics.
 func TestModuleOfAnotherVM(t *testing.T) {
 	var vm, other ekuma.VM
-	dep := other.NewSyntheticModule("dep", ekuma.Undefined)
+	dep := other.NewDefaultExportSyntheticModule("dep", ekuma.Undefined)
 	vm.SetModuleLoader(func(req ekuma.ModuleRequest) (*ekuma.Module, error) {
 		return dep, nil
 	})
@@ -3274,10 +3278,10 @@ func TestModuleOfAnotherVM(t *testing.T) {
 	_ = m.LoadRequestedModules()
 }
 
-// TestSyntheticModules checks the modules of NewSyntheticModule and ParseJSONModule.
+// TestSyntheticModules checks the modules of NewDefaultExportSyntheticModule and ParseJSONModule.
 func TestSyntheticModules(t *testing.T) {
 	var vm ekuma.VM
-	syn := vm.NewSyntheticModule("syn", vm.ValueOf("synthetic"))
+	syn := vm.NewDefaultExportSyntheticModule("syn", vm.ValueOf("synthetic"))
 	j, err := vm.ParseJSONModule("data.json", `{"a": [1, 2]}`)
 	if err != nil {
 		t.Fatal(err)
@@ -3333,7 +3337,7 @@ func TestSyntheticModules(t *testing.T) {
 		}
 	}
 	other := vm.NewRealm()
-	otherSyn := other.NewSyntheticModule("other-syn", other.ValueOf(1))
+	otherSyn := other.NewDefaultExportSyntheticModule("other-syn", other.ValueOf(1))
 	otherJSON, err := other.ParseJSONModule("other.json", `{"b": 2}`)
 	if err != nil {
 		t.Fatal(err)
@@ -3360,6 +3364,103 @@ func TestSyntheticModules(t *testing.T) {
 			t.Errorf("%s Evaluate promise instanceof other.Promise = %v, %v", tc.name, ok, err)
 		}
 	}
+}
+
+func TestSyntheticModuleNamedExports(t *testing.T) {
+	var vm ekuma.VM
+	r := vm.NewRealm()
+	exports := map[string]ekuma.Value{
+		"answer":       r.ValueOf(42),
+		"default":      r.ValueOf("default export"),
+		"display-name": r.ValueOf("native"),
+		"greet": r.FuncOf("greet", func(_ ekuma.Value, _ []ekuma.Value) (any, error) {
+			return "hello", nil
+		}),
+		"state": vm.ValueOf(map[string]any{}),
+	}
+	native := r.NewSyntheticModule("native", exports)
+	exports["answer"] = r.ValueOf(-1)
+	exports["extra"] = ekuma.Undefined
+	barrel, err := vm.ParseModule("barrel", `export { state as alias } from "native";`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	modules := map[string]*ekuma.Module{
+		"native": native,
+		"barrel": barrel,
+	}
+	vm.SetModuleLoader(func(req ekuma.ModuleRequest) (*ekuma.Module, error) {
+		return modules[req.Specifier], nil
+	})
+	m, err := vm.ParseModule("main", `
+		import d, { answer, greet, state, "display-name" as name } from "native";
+		import * as ns from "native";
+		import { alias } from "barrel";
+		const dynamic = await import("native");
+		export const values = [d, answer, greet(), name].join(",");
+		export const keys = Object.keys(ns).join(",");
+		export const same = state === dynamic.state && state === alias && ns === dynamic;
+		export const sameRealm = state instanceof Object;
+	`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p, err := m.Evaluate(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if state, reason := p.PromiseState(); state != ekuma.PromiseFulfilled {
+		t.Fatalf("Evaluate returned %v promise: %v", state, reason)
+	}
+	ns, err := m.Namespace()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, want := range map[string]any{
+		"values":    "default export,42,hello,native",
+		"keys":      "answer,default,display-name,greet,state",
+		"same":      true,
+		"sameRealm": true,
+	} {
+		v, err := ns.Get(name)
+		if err != nil {
+			t.Errorf("Get(%q): %v", name, err)
+			continue
+		}
+		if !v.Equal(vm.ValueOf(want)) {
+			t.Errorf("%s = %v, want %v", name, v, want)
+		}
+	}
+}
+
+func TestSyntheticModuleMissingExport(t *testing.T) {
+	var vm ekuma.VM
+	native := vm.NewSyntheticModule("native", map[string]ekuma.Value{
+		"answer": vm.ValueOf(42),
+	})
+	vm.SetModuleLoader(func(ekuma.ModuleRequest) (*ekuma.Module, error) {
+		return native, nil
+	})
+	m, err := vm.ParseModule("main", `import missing from "native";`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var ex *ekuma.ScriptError
+	if err := m.Link(); !errors.As(err, &ex) || !isInstance(t, &vm, ex.Value, "SyntaxError") {
+		t.Errorf("Link error = %v, want a SyntaxError", err)
+	}
+}
+
+func TestSyntheticModuleInvalidExportName(t *testing.T) {
+	var vm ekuma.VM
+	defer func() {
+		if recover() == nil {
+			t.Error("NewSyntheticModule accepted an invalid UTF-8 export name")
+		}
+	}()
+	vm.NewSyntheticModule("native", map[string]ekuma.Value{
+		"\xff": ekuma.Undefined,
+	})
 }
 
 func TestModuleLinkRealm(t *testing.T) {

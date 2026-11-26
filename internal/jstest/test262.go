@@ -441,7 +441,7 @@ func (l *moduleLoader) loadFile(path, typ string) (*ekuma.Module, error) {
 	case "json":
 		m, err = l.realm.ParseJSONModule(path, string(b))
 	case "text":
-		m = l.realm.NewSyntheticModule(path, l.realm.ValueOf(string(b)))
+		m = l.realm.NewDefaultExportSyntheticModule(path, l.realm.ValueOf(string(b)))
 	case "bytes":
 		var v ekuma.Value
 		v, err = l.call("(n => new Uint8Array(n))", len(b))
@@ -449,7 +449,7 @@ func (l *moduleLoader) loadFile(path, typ string) (*ekuma.Module, error) {
 			ekuma.CopyBytesToJS(v, b)
 			v, err = l.call("(a => new Uint8Array(a.buffer.transferToImmutable()))", v)
 		}
-		m = l.realm.NewSyntheticModule(path, v)
+		m = l.realm.NewDefaultExportSyntheticModule(path, v)
 	default:
 		return nil, fmt.Errorf("unsupported module type %q", typ)
 	}
