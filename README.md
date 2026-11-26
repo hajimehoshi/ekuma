@@ -33,17 +33,17 @@ The zero value of `ekuma.VM` is ready to use. A `VM` must not be copied after fi
 
 ## Differences from other engines for Go
 
-| | Ekuma | [goja](https://github.com/dop251/goja) | [Sobek](https://github.com/grafana/sobek) | [moejs](https://github.com/MoeForge/moejs) | [otto](https://github.com/robertkrimen/otto) | [modernc.org/jit/js](https://pkg.go.dev/modernc.org/jit/js) | [modernc.org/quickjs](https://pkg.go.dev/modernc.org/quickjs) | [QJS](https://github.com/fastschema/qjs) | [v8go](https://github.com/tommie/v8go) |
-|---|---|---|---|---|---|---|---|---|---|
-| Latest release | v0.1.0 (2026-11-26) | None | None | v0.1.1 (2026-11-15) | v0.5.1 (2024-11-05) | v0.5.0 (2026-11-22) | v0.27.0 (2026-10-24) | v0.0.6 (2025-10-28) | v0.44.0 (2026-11-12) |
-| Implementation | Written in Go | Written in Go | Written in Go | Written in Go | Written in Go | QuickJS, translated from C to Go | QuickJS, translated from C to Go | QuickJS-ng, compiled to WebAssembly and run by wazero | Bindings to V8 |
-| Execution strategy | Bytecode interpreter | Bytecode interpreter | Bytecode interpreter | Bytecode interpreter | AST interpreter | Bytecode interpreter with a JIT on Linux amd64 | Bytecode interpreter | Bytecode interpreter, compiled to machine code by wazero's AOT compiler on amd64 and arm64 | JIT compiler, or bytecode interpreter with `--jitless` |
-| Pure Go | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
-| `unsafe`-free | ⚠️ Except for OS API access | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| ECMAScript | ES2026 | ES5.1, and much of ES2015 and later | ES5.1, and much of ES2015 and later | Much of modern ECMAScript | ES5 | ES2023 | ES2023 | ES2023 | ES2025 |
-| Modules | ✅ | ❌ | ⚠️ Experimental | ✅ | ❌ | ✅ | ✅ | ✅ | ❌ |
-| `Intl` | ✅ | ❌ | ❌ | ⚠️ Partial | ❌ | ⚠️ `DateTimeFormat` and `NumberFormat` in en-US | ⚠️ `DateTimeFormat` and `NumberFormat` in en-US | ❌ | ✅ |
-| `Temporal` | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Engine | Latest release | Implementation | Execution strategy | Pure Go | `unsafe`-free | ECMAScript | Modules | `Intl` | `Temporal` |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Ekuma | v0.1.0 (2026-11-26) | Written in Go | Bytecode interpreter | ✅ | ⚠️ Except for OS API access | ES2026 | ✅ | ✅ | ✅ |
+| [goja](https://github.com/dop251/goja) | None | Written in Go | Bytecode interpreter | ✅ | ❌ | ES5.1, and much of ES2015 and later | ❌ | ❌ | ❌ |
+| [Sobek](https://github.com/grafana/sobek) | None | Written in Go | Bytecode interpreter | ✅ | ❌ | ES5.1, and much of ES2015 and later | ⚠️ Experimental | ❌ | ❌ |
+| [moejs](https://github.com/MoeForge/moejs) | v0.1.1 (2026-11-15) | Written in Go | Bytecode interpreter | ✅ | ❌ | Much of modern ECMAScript | ✅ | ⚠️ Partial | ❌ |
+| [otto](https://github.com/robertkrimen/otto) | v0.5.1 (2024-11-05) | Written in Go | AST interpreter | ✅ | ✅ | ES5 | ❌ | ❌ | ❌ |
+| [modernc.org/jit/js](https://pkg.go.dev/modernc.org/jit/js) | v0.5.0 (2026-11-22) | QuickJS, translated from C to Go | Bytecode interpreter with a JIT on Linux amd64 | ✅ | ❌ | ES2023 | ✅ | ⚠️ `DateTimeFormat` and `NumberFormat` in en-US | ❌ |
+| [modernc.org/quickjs](https://pkg.go.dev/modernc.org/quickjs) | v0.27.0 (2026-10-24) | QuickJS, translated from C to Go | Bytecode interpreter | ✅ | ❌ | ES2023 | ✅ | ⚠️ `DateTimeFormat` and `NumberFormat` in en-US | ❌ |
+| [QJS](https://github.com/fastschema/qjs) | v0.0.6 (2025-10-28) | QuickJS-ng, compiled to WebAssembly and run by wazero | Bytecode interpreter, compiled to machine code by wazero's AOT compiler on amd64 and arm64 | ✅ | ❌ | ES2023 | ✅ | ❌ | ❌ |
+| [v8go](https://github.com/tommie/v8go) | v0.44.0 (2026-11-12) | Bindings to V8 | JIT compiler, or bytecode interpreter with `--jitless` | ❌ | ❌ | ES2025 | ❌ | ✅ | ❌ |
 
 goja and Sobek were compared at their latest commits as of 2026-11-16.
 
@@ -133,7 +133,7 @@ import _ "github.com/hajimehoshi/ekuma/intl"
 
 With Go 1.27.4 and default build flags, the import increases the hello-world binary
 from 9.1 to 18.0 MiB on macOS arm64 and from 12.0 to 21.2 MiB on `js/wasm`.
-`VM.SetLocale` overrides the host default locale. iOS builds with `intl` require `CGO_ENABLED=1`.
+`VM.SetLocale` overrides the host default locale.
 See the [intl package documentation](https://pkg.go.dev/github.com/hajimehoshi/ekuma/intl)
 for host locale selection and [License](#license) for distribution notices.
 
