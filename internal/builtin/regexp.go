@@ -760,6 +760,9 @@ func regExpReplace(cx *engine.ExecutionContext, rx *storage.Object, s storage.Va
 	var template wtf8.String
 	if !functional {
 		template = cx.ToString(replaceValue)
+		if v, ok := replaceUnmodified(cx, rx, s, template); ok {
+			return v
+		}
 	}
 	global, fullUnicode := getMatchFlags(cx, rx)
 	if global {
@@ -893,6 +896,74 @@ func regExpReplace(cx *engine.ExecutionContext, rx *storage.Object, s storage.Va
 	}
 	writeLimited(cx, &b, s.Substring(next, length))
 	return cx.NewString(b.String())
+}
+
+// replaceUnmodified is regExpReplace with the string template for a RegExp object rx whose
+// matches run no JavaScript. It reports false, having done nothing, when rx is not such an object
+// or is sticky but not global.
+func replaceUnmodified(cx *engine.ExecutionContext, rx *storage.Object, s storage.Value, template wtf8.String) (storage.Value, bool) {
+	re := cx.Quiet().UnmodifiedRegExpMatcher(rx)
+	if re == nil {
+		return storage.Undefined, false
+	}
+	// Each exec converts lastIndex, which runs JavaScript unless it is a number.
+	if v, _ := cx.Quiet().RegExpLastIndex(rx); !v.IsNumber() {
+		return storage.Undefined, false
+	}
+	f := re.Flags()
+	global := f&regexp.FlagGlobal != 0
+	if !global && f&regexp.FlagSticky != 0 {
+		return storage.Undefined, false
+	}
+	fullUnicode := f&(regexp.FlagUnicode|regexp.FlagUnicodeSets) != 0
+	// Without the g flag, the match starts at 0 and lastIndex stays. With it, lastIndex changes
+	// as each exec and each advance after an empty match change it, which no JavaScript can read
+	// in between, but which agrees with the legacy static properties when the loop is stopped.
+	if global {
+		setLastIndex(cx, rx, 0)
+	}
+	length := s.StringLength()
+	var b wtf8.Builder
+	// next is the index after the last replaced match, or -1 once the result is too long.
+	next := 0
+	found := false
+	for pos := 0; pos <= length; {
+		caps := cx.Quiet().MatchRegExp(re, s, pos)
+		if caps == nil {
+			break
+		}
+		if !found {
+			b.Grow(len(s.Str()))
+			found = true
+		}
+		cx.Quiet().RecordRegExpMatch(rx, s, caps)
+		// When the result gets too long, the remaining matches are found before the error is
+		// thrown, as they can be observed.
+		if next >= 0 {
+			next = substituteMatch(cx, &b, re, s, caps, template, next)
+		}
+		if !global {
+			break
+		}
+		pos = caps[1]
+		if caps[0] == caps[1] {
+			pos = int(quiet.AdvanceStringIndex(s, int64(pos), fullUnicode))
+		}
+		setLastIndex(cx, rx, int64(pos))
+	}
+	if global {
+		setLastIndex(cx, rx, 0)
+	}
+	if !found {
+		return s, true
+	}
+	if next < 0 {
+		cx.ThrowRangeError("invalid string length")
+	}
+	if next < length {
+		writeLimited(cx, &b, s.Substring(next, length))
+	}
+	return cx.NewString(b.String()), true
 }
 
 // substituteMatch writes to b the part of s from next up to a match of re with the capture
