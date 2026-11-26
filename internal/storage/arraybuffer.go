@@ -177,18 +177,28 @@ func CopyBufferBytes(dst *ArrayBuffer, dstOffset int, src *ArrayBuffer, srcOffse
 		copyWithin(dst, dstOffset, srcOffset, n)
 		return
 	}
-	// The source is read before the destination is locked, as one agent locks one block at a time.
-	writeBytes(dst, dstOffset, readBytes(src, srcOffset, n))
+	if dst.block != nil && src.block != nil {
+		// The source is read before the destination is locked, as one agent locks one block at a time.
+		writeBytes(dst, dstOffset, cloneBytes(src, srcOffset, n))
+		return
+	}
+	copyWithOneShared(dst, dstOffset, src, srcOffset, n)
 }
 
-// readBytes returns the n bytes of b at offset, copied when b is shared.
-func readBytes(b *ArrayBuffer, offset, n int) []byte {
+// cloneBytes returns a copy of the n bytes of b at offset.
+func cloneBytes(b *ArrayBuffer, offset, n int) []byte {
 	d := b.Lock()
 	defer b.Unlock()
-	if b.block != nil {
-		return slices.Clone(d[offset : offset+n])
-	}
-	return d[offset : offset+n]
+	return slices.Clone(d[offset : offset+n])
+}
+
+// copyWithOneShared copies n bytes from src at srcOffset to dst at dstOffset, one of which is not shared.
+func copyWithOneShared(dst *ArrayBuffer, dstOffset int, src *ArrayBuffer, srcOffset, n int) {
+	s := src.Lock()
+	defer src.Unlock()
+	d := dst.Lock()
+	defer dst.Unlock()
+	copy(d[dstOffset:dstOffset+n], s[srcOffset:srcOffset+n])
 }
 
 // writeBytes copies src to b at offset.

@@ -406,7 +406,13 @@ func constructTypedArray(cx *engine.ExecutionContext, typ element.Type, args []s
 			cx.ThrowTypeError("cannot mix BigInt and other types, use explicit conversions")
 		}
 		o := newTypedArray(cx, proto, typ, int64(n))
-		storeConverted(cx, storage.TypedArrayData(storage.ObjectValue(o)), 0, elementsOf(src), src.ElementType(), n)
+		t := storage.TypedArrayData(storage.ObjectValue(o))
+		if src.ArrayBuffer().IsShared() && src.ElementType() == typ {
+			// The shared bytes are copied directly, without the copy that elementsOf makes.
+			copyElements(t, 0, src, n)
+		} else {
+			storeConverted(cx, t, 0, elementsOf(src), src.ElementType(), n)
+		}
 		return storage.ObjectValue(o)
 	}
 	if b := storage.ArrayBufferData(first); b != nil {
@@ -1294,7 +1300,10 @@ func setTypedArrayFrom(cx *engine.ExecutionContext, target *storage.Object, t *s
 		if typ.IsBigInt() != srcType.IsBigInt() {
 			cx.ThrowTypeError("cannot mix BigInt and other types, use explicit conversions")
 		}
-		if srcType == typ && src.ArrayBuffer().SameDataBlock(t.ArrayBuffer()) {
+		// A shared source is copied directly to a target that is not shared, without the copy that
+		// elementsOf makes.
+		from, to := src.ArrayBuffer(), t.ArrayBuffer()
+		if srcType == typ && (from.SameDataBlock(to) || from.IsShared() && !to.IsShared()) {
 			copyElements(t, int(offset), src, srcLen)
 			return
 		}
