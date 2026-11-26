@@ -177,6 +177,11 @@ func TestUTF16(t *testing.T) {
 		{pattern: `(?<=\uDE00)x`, input: pair + "x", want: []int{2, 3}},
 		{pattern: `(?<=^.)x`, flags: "u", input: pair + "x", want: []int{2, 3}},
 		{pattern: `(?<=^.)x`, input: pair + "x", want: nil},
+		// Captures before the end of the match, counted back from it, also from and to the middle of
+		// a pair.
+		{pattern: `(?<=(é))a`, input: "éa", want: []int{1, 2, 0, 1}},
+		{pattern: `(?<=(\uD83D))\uDE00`, input: "a" + pair, want: []int{2, 3, 1, 2}},
+		{pattern: `(\uDE00)b`, input: pair + "b", want: []int{1, 3, 1, 2}},
 		// Indices after non-ASCII characters.
 		{pattern: `b`, input: "éあ" + pair + "b", want: []int{4, 5}},
 		{pattern: `é+`, flags: "i", input: "xÉé", want: []int{1, 3}},

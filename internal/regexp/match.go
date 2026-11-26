@@ -327,7 +327,7 @@ func (m *Matcher) unitIndex(pos int) int {
 	}
 	s := m.s
 	p := wtf8.Pos{}
-	if m.lastS == s && m.last.Byte <= pos {
+	if m.lastS == s {
 		p = m.last
 		if p.Low {
 			p.Low = false
@@ -335,11 +335,23 @@ func (m *Matcher) unitIndex(pos int) int {
 		}
 	}
 	// A middle position is one code unit after the start of its sequence.
-	if m.isMiddle(pos) {
-		return p.Unit + countUnits(s[p.Byte:pos-2]) + 1
+	q, middle := pos, m.isMiddle(pos)
+	if middle {
+		q -= 2
 	}
-	u := p.Unit + countUnits(s[p.Byte:pos])
-	m.lastS, m.last = s, wtf8.Pos{Unit: u, Byte: pos}
+	var u int
+	switch {
+	case q >= p.Byte:
+		u = p.Unit + countUnits(s[p.Byte:q])
+	case q < p.Byte/2:
+		u = countUnits(s[:q])
+	default:
+		u = p.Unit - countUnits(s[q:p.Byte])
+	}
+	m.lastS, m.last = s, wtf8.Pos{Unit: u, Byte: q}
+	if middle {
+		return u + 1
+	}
 	return u
 }
 
@@ -387,7 +399,8 @@ func (m *Matcher) results() []int {
 		}
 		return m.out
 	}
-	// Convert in increasing order of position, so that the conversion moves forward.
+	// Each conversion counts from the position of the one before, so a match costs as much as
+	// the distances between its captures.
 	for i, p := range m.caps {
 		if p < 0 || i%2 == 1 && m.caps[i-1] < 0 {
 			m.out[i] = -1
