@@ -102,6 +102,8 @@ Use `VM.ParseModule` or `VM.ParseJSONModule` to parse a module. For host-provide
 `VM.NewDefaultExportSyntheticModule` with a single default export.
 The host supplies a synchronous loader through `VM.SetModuleLoader`, including for `import()`.
 `Module.Evaluate` loads, links, and evaluates the module and returns a promise.
+To share one JavaScript module parse across VMs, use `ParseUnboundModule` and bind the result
+in each VM with `VM.BindModule`.
 
 ### Realms
 

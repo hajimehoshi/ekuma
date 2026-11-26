@@ -299,6 +299,41 @@ func ExampleParseUnboundScript() {
 	// Hello, Bob
 }
 
+func ExampleParseUnboundModule() {
+	u, err := ekuma.ParseUnboundModule("greeting.js", `export const greeting = "Hello, " + name;`)
+	if err != nil {
+		panic(err)
+	}
+
+	for _, name := range []string{"Alice", "Bob"} {
+		var vm ekuma.VM
+		if err := vm.Global().Set("name", name); err != nil {
+			panic(err)
+		}
+		m := vm.BindModule(u)
+		p, err := m.Evaluate(context.Background())
+		if err != nil {
+			panic(err)
+		}
+		if state, reason := p.PromiseState(); state != ekuma.PromiseFulfilled {
+			panic(fmt.Errorf("module evaluation %v: %v", state, reason))
+		}
+		ns, err := m.Namespace()
+		if err != nil {
+			panic(err)
+		}
+		greeting, err := ns.Get("greeting")
+		if err != nil {
+			panic(err)
+		}
+		fmt.Println(greeting.String())
+	}
+
+	// Output:
+	// Hello, Alice
+	// Hello, Bob
+}
+
 func ExampleVM_NewPromise() {
 	ctx := context.Background()
 	var vm ekuma.VM

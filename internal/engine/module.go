@@ -214,36 +214,71 @@ func newCell(v storage.Value) *storage.Upvalue {
 	return u
 }
 
+// UnboundModule is a compiled source text module that can be bound by multiple agents.
+type UnboundModule struct {
+	body *bytecode.Func
+	code *bytecode.Module
+}
+
 // ParseModule implements ParseModule for the source text src. file names the module in error
 // messages and stack traces, and hostDefined is the [[HostDefined]]. The error is a [*SyntaxError].
 func (cx *ExecutionContext) ParseModule(file, src string, hostDefined any) (*Module, error) {
+	u, err := compileModuleCode(file, src)
+	if err != nil {
+		return nil, err
+	}
+	return cx.newSourceTextModule(u, hostDefined, true), nil
+}
+
+// ParseUnboundModule parses src as a source text module for no particular agent.
+func ParseUnboundModule(file, src string) (*UnboundModule, error) {
+	u, err := compileModuleCode(file, src)
+	if err != nil {
+		return nil, err
+	}
+	return &u, nil
+}
+
+// BindModule creates a fresh module record of u in the current realm.
+func (cx *ExecutionContext) BindModule(u *UnboundModule, hostDefined any) *Module {
+	return cx.newSourceTextModule(*u, hostDefined, false)
+}
+
+func compileModuleCode(file, src string) (UnboundModule, error) {
 	prog, err := parser.ParseModule(wtf8.FromValidUTF8(src), parser.Options{})
 	if err != nil {
-		return nil, toSyntaxError(file, err)
+		return UnboundModule{}, toSyntaxError(file, err)
 	}
 	bc, code, err := compiler.CompileModule(prog, file)
 	if err != nil {
-		return nil, toSyntaxError(file, err)
+		return UnboundModule{}, toSyntaxError(file, err)
 	}
+	return UnboundModule{
+		body: bc,
+		code: code,
+	}, nil
+}
+
+func (cx *ExecutionContext) newSourceTextModule(u UnboundModule, hostDefined any, consume bool) *Module {
 	m := &Module{
 		hostDefined: hostDefined,
-		env:         make([]*storage.Upvalue, len(code.Bindings)),
+		env:         make([]*storage.Upvalue, len(u.code.Bindings)),
 	}
 	m.node = modulegraph.Node[*Module]{
 		Module:    m,
-		Code:      code,
-		Requested: make([]*modulegraph.Node[*Module], len(code.Requests)),
+		Code:      u.code,
+		Requested: make([]*modulegraph.Node[*Module], len(u.code.Requests)),
 	}
 	m.ref = scriptOrModule{
-		file:   file,
+		file:   u.body.File,
 		module: m,
 		realm:  cx.realm,
 	}
-	m.body = cx.link(bc, &m.ref)
+	m.body = cx.linkFunc(u.body, &m.ref, consume)
 	for i := range m.env {
 		m.env[i] = newCell(tdz)
 	}
-	return m, nil
+	return m
 }
 
 // SyntheticExport is an export name and its value in a synthetic module.

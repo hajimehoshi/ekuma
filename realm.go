@@ -142,6 +142,13 @@ func (r *Realm) ParseModule(name, src string) (*Module, error) {
 	return m, nil
 }
 
+// BindModule creates a fresh module record of u in r.
+func (r *Realm) BindModule(u *UnboundModule) *Module {
+	m := r.newModule(u.name)
+	m.m = r.context().BindModule(u.m, m)
+	return m
+}
+
 // ParseJSONModule returns a JSON module of r: a module whose only export is default, with the
 // value returned by JSON.parse in r for src. The error is a [*ScriptError] holding a JavaScript
 // SyntaxError when src is not valid JSON.

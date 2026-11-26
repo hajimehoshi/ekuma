@@ -27,6 +27,27 @@ type Module struct {
 	name  string
 }
 
+// UnboundModule is a JavaScript source text module parsed for no particular VM.
+// It is immutable and may be bound concurrently by separate VMs.
+type UnboundModule struct {
+	m    *engine.UnboundModule
+	name string
+}
+
+// ParseUnboundModule parses src as the source text of a module for no particular VM.
+// name identifies the bound module as in [Realm.ParseModule].
+// The error is a [*SyntaxError] when src is not a valid module.
+func ParseUnboundModule(name, src string) (*UnboundModule, error) {
+	m, err := engine.ParseUnboundModule(name, src)
+	if err != nil {
+		return nil, publicError(err)
+	}
+	return &UnboundModule{
+		m:    m,
+		name: name,
+	}, nil
+}
+
 // ModuleRequest is a request to load a module.
 type ModuleRequest struct {
 	// Realm is the realm of the code requesting the import.
@@ -143,6 +164,12 @@ func (vm *VM) SetImportMeta(f func(m *Module) map[string]any) {
 func (vm *VM) ParseModule(name, src string) (*Module, error) {
 	vm.initIfNeeded()
 	return vm.initialRealm.ParseModule(name, src)
+}
+
+// BindModule is [Realm.BindModule] of the initial realm.
+func (vm *VM) BindModule(u *UnboundModule) *Module {
+	vm.initIfNeeded()
+	return vm.initialRealm.BindModule(u)
 }
 
 // ParseJSONModule is [Realm.ParseJSONModule] of the initial realm.

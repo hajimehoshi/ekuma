@@ -1667,3 +1667,55 @@ func TestBindScriptRealm(t *testing.T) {
 		t.Error("the script did not run in the realm that it is bound to")
 	}
 }
+
+func TestUnboundModule(t *testing.T) {
+	const name = "main.js"
+	u, err := ekuma.ParseUnboundModule(name, `
+		import prefix from "./prefix.js";
+		function next() {
+			globalThis.count = (globalThis.count ?? 0) + 1;
+			return prefix + globalThis.count;
+		}
+		export const message = next();
+	`)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, prefix := range []string{"A", "B"} {
+		t.Run(prefix, func(t *testing.T) {
+			t.Parallel()
+			var vm ekuma.VM
+			r := vm.NewRealm()
+			dep := r.NewDefaultExportSyntheticModule("prefix.js", r.ValueOf(prefix))
+			var m *ekuma.Module
+			vm.SetModuleLoader(func(req ekuma.ModuleRequest) (*ekuma.Module, error) {
+				if req.Realm != r || req.Referrer != m || req.ReferrerName != name || req.Specifier != "./prefix.js" {
+					t.Errorf("unexpected module request: %+v", req)
+				}
+				return dep, nil
+			})
+			for i := 1; i <= 2; i++ {
+				m = r.BindModule(u)
+				p, err := m.Evaluate(t.Context())
+				if err != nil {
+					t.Fatal(err)
+				}
+				if state, reason := p.PromiseState(); state != ekuma.PromiseFulfilled {
+					t.Fatalf("module evaluation %v: %v", state, reason)
+				}
+				ns, err := m.Namespace()
+				if err != nil {
+					t.Fatal(err)
+				}
+				message, err := ns.Get("message")
+				if err != nil {
+					t.Fatal(err)
+				}
+				if got, want := message.String(), prefix+strconv.Itoa(i); got != want {
+					t.Errorf("binding %d: got %q, want %q", i, got, want)
+				}
+			}
+		})
+	}
+}
