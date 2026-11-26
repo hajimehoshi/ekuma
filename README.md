@@ -104,7 +104,7 @@ The host supplies a synchronous loader through `VM.SetModuleLoader`, including f
 ### Realms
 
 `VM.NewRealm` creates a global object with its own built-ins. Realms in a VM share values,
-jobs, and settings. Use separate VMs to isolate code.
+jobs, and settings. Use separate VMs for independent JavaScript environments.
 
 ### Promises and jobs
 
@@ -145,6 +145,17 @@ a waiter of `Atomics.waitAsync`, its promise is settled by the
 jobs that the waiting VM runs at the end of its current or next outermost call from Go.
 `VM.AwaitJobs` runs pending jobs. If none are ready, it waits for an asynchronous waiter to be
 notified or time out. With no pending jobs or waiters, it returns immediately.
+
+## Execution limits
+
+Use a context with a deadline to cancel script execution and the promise jobs it runs.
+Property operations such as `Value.Get` and `Value.Set` can run JavaScript through getters,
+setters, or proxies. These operations inherit the current context inside a host callback
+and can run without a deadline when called directly from Go.
+
+Each VM runs in the host process. For untrusted scripts, run Ekuma in a separate process
+with operating-system resource limits. See [Missing](#missing) for the current gaps in
+per-VM resource controls.
 
 ## Status
 
