@@ -45,6 +45,10 @@ type Matcher struct {
 	looks []int
 	out   []int
 
+	// dirty is the number of the first captures in the capacity of caps that may hold anything but
+	// -1. The others hold -1, but for the start of the match.
+	dirty int
+
 	s      wtf8.String
 	ascii  bool
 	asciiS wtf8.String // the subject ascii was computed for
@@ -97,6 +101,7 @@ func (re *Regexp) match(m *Matcher, s wtf8.String, start int, sticky bool, polle
 	m.poller = poller
 	if cap(m.caps) < prog.ncaps {
 		m.caps = make([]int, prog.ncaps)
+		m.dirty = prog.ncaps
 	}
 	m.caps = m.caps[:prog.ncaps]
 	if cap(m.regs) < 2*prog.nregs {
@@ -158,6 +163,7 @@ func (re *Regexp) match(m *Matcher, s wtf8.String, start int, sticky bool, polle
 				if m.steps--; m.steps <= 0 {
 					m.poll()
 				}
+				m.dirty = max(m.dirty, 2)
 				m.caps[0], m.caps[1] = pos, pos+len(prog.prefix)
 				return m.results()
 			}
@@ -370,6 +376,17 @@ func (m *Matcher) results() []int {
 		m.out = make([]int, n)
 	}
 	m.out = m.out[:n]
+	if m.ascii {
+		// A position is a code unit index.
+		for i := 0; i < n; i += 2 {
+			a, b := m.caps[i], m.caps[i+1]
+			if a < 0 || b < 0 {
+				a, b = -1, -1
+			}
+			m.out[i], m.out[i+1] = a, b
+		}
+		return m.out
+	}
 	// Convert in increasing order of position, so that the conversion moves forward.
 	for i, p := range m.caps {
 		if p < 0 || i%2 == 1 && m.caps[i-1] < 0 {
@@ -506,15 +523,21 @@ func (m *Matcher) poll() {
 
 // run tries to match prog at pos.
 func (m *Matcher) run(prog *program, pos int) bool {
-	for i := range m.caps {
-		m.caps[i] = -1
+	// A failed attempt restores every capture but the start of the match. A match, or one that
+	// the poller stops, leaves them set.
+	c := m.caps[:m.dirty]
+	for i := range c {
+		c[i] = -1
 	}
+	m.dirty = len(m.caps)
 	m.stack = m.stack[:0]
 	m.looks = m.looks[:0]
 	insts := prog.insts
 	uni := prog.unicode
 	s := m.s
-	pc := 0
+	// insts[0] saves the start of the match, which no alternative needs to restore.
+	m.caps[0] = pos
+	pc := 1
 	for {
 		if m.steps--; m.steps <= 0 {
 			m.poll()
@@ -679,6 +702,7 @@ func (m *Matcher) run(prog *program, pos int) bool {
 	fail:
 		for {
 			if len(m.stack) == 0 {
+				m.dirty = 0
 				return false
 			}
 			f := m.stack[len(m.stack)-1]

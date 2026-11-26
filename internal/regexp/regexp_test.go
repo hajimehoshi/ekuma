@@ -393,6 +393,38 @@ func TestPoll(t *testing.T) {
 	}
 }
 
+// stopAtPoller stops a match at the poll after n polls.
+type stopAtPoller struct {
+	n int
+}
+
+func (p *stopAtPoller) Poll() {
+	if p.n--; p.n < 0 {
+		panic(stop{})
+	}
+}
+
+// TestMatchAfterStop checks the captures of a match after a match with captures that the poller
+// stopped.
+func TestMatchAfterStop(t *testing.T) {
+	var m regexp.Matcher
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				if _, ok := r.(stop); !ok {
+					panic(r)
+				}
+			}
+		}()
+		// The first attempt of a Matcher polls before it sets any capture.
+		mustCompile(t, "^(a)(?:b+)+$", "").Match(&m, "abbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbc", 0, &stopAtPoller{n: 1})
+		t.Fatal("the match was not stopped")
+	}()
+	if got, want := mustCompile(t, "(x)?a", "").Match(&m, "a", 0, nil), []int{0, 1, -1, -1}; !slices.Equal(got, want) {
+		t.Errorf("got %v, want %v", got, want)
+	}
+}
+
 type tickPoller struct {
 	n int
 }
