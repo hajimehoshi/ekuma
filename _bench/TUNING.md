@@ -31,7 +31,7 @@ reloads. When a fast path of the first switch runs out of registers and reloads 
 store moves to the loop head and runs before every instruction. arm64 has registers enough that
 its loop head stores nothing; amd64 has fewer, so check a change to exec on both.
 
-The stores show in the disassembly of exec, from the start of `i := &fp.code[pc]`, where the loop
+The stores show in the disassembly of exec, from the start of `i := &fp.Code[pc]`, where the loop
 jumps back to, to the jump through the table of the first switch: `JMP 0(R10)(DX*8)` or similar on
 amd64, `JMP (R27)` on arm64. From the repository root:
 
