@@ -644,8 +644,9 @@ var (
 //
 //go:noinline
 func stringReplaceNative(name string, all bool) engine.NativeFunc {
+	fullName := "String.prototype." + name
 	return func(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
-		cx.RequireObjectCoercible(this, "String.prototype."+name)
+		cx.RequireObjectCoercible(this, fullName)
 		pat, rep := arg(args, 0), arg(args, 1)
 		if !this.IsString() || rep.IsObject() && !rep.IsCallable() {
 			pat = cx.OwnRegExp(pat)
@@ -721,8 +722,9 @@ var (
 //
 //go:noinline
 func stringMatchNative(name string, key storage.WellKnownSymbol) engine.NativeFunc {
+	fullName := "String.prototype." + name
 	return func(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
-		cx.RequireObjectCoercible(this, "String.prototype."+name)
+		cx.RequireObjectCoercible(this, fullName)
 		pat := arg(args, 0)
 		if !this.IsString() {
 			pat = cx.OwnRegExp(pat)
