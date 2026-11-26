@@ -8,9 +8,11 @@ package ekuma_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io/fs"
 	"path"
+	"strings"
 	"testing/fstest"
 
 	"github.com/hajimehoshi/ekuma"
@@ -180,4 +182,147 @@ func Example_sharedArrayBuffer() {
 	}
 	fmt.Println(v.Int())
 	// Output: 42
+}
+
+func ExampleVM_FuncOf() {
+	var vm ekuma.VM
+	uppercase := vm.FuncOf("uppercase", func(_ ekuma.Value, args []ekuma.Value) (any, error) {
+		if len(args) != 1 || args[0].Type() != ekuma.TypeString {
+			return nil, errors.New("uppercase expects one string")
+		}
+		return strings.ToUpper(args[0].String()), nil
+	})
+	if err := vm.Global().Set("uppercase", uppercase); err != nil {
+		panic(err)
+	}
+
+	s, err := vm.ParseScript("greeting.js", `"Hello, " + uppercase("Ekuma")`)
+	if err != nil {
+		panic(err)
+	}
+	v, err := s.Evaluate(context.Background())
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(v.String())
+
+	// Output: Hello, EKUMA
+}
+
+func ExampleValue_Invoke() {
+	ctx := context.Background()
+	var vm ekuma.VM
+	s, err := vm.ParseScript("total.js", `(order) => order.price * order.quantity`)
+	if err != nil {
+		panic(err)
+	}
+	total, err := s.Evaluate(ctx)
+	if err != nil {
+		panic(err)
+	}
+	v, err := total.Invoke(ctx, map[string]any{
+		"price":    12,
+		"quantity": 3,
+	})
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(v.Int())
+
+	// Output: 36
+}
+
+func ExampleParseUnboundScript() {
+	s, err := ekuma.ParseUnboundScript("greeting.js", `"Hello, " + name`)
+	if err != nil {
+		panic(err)
+	}
+
+	for _, name := range []string{"Alice", "Bob"} {
+		var vm ekuma.VM
+		if err := vm.Global().Set("name", name); err != nil {
+			panic(err)
+		}
+		v, err := vm.BindScript(s).Evaluate(context.Background())
+		if err != nil {
+			panic(err)
+		}
+		fmt.Println(v.String())
+	}
+
+	// Output:
+	// Hello, Alice
+	// Hello, Bob
+}
+
+func ExampleVM_NewPromise() {
+	ctx := context.Background()
+	var vm ekuma.VM
+	promise, resolver := vm.NewPromise()
+	if err := vm.Global().Set("message", promise); err != nil {
+		panic(err)
+	}
+	s, err := vm.ParseScript("greeting.js", `message.then((name) => "Hello, " + name)`)
+	if err != nil {
+		panic(err)
+	}
+	greeting, err := s.Evaluate(ctx)
+	if err != nil {
+		panic(err)
+	}
+	state, _ := greeting.PromiseState()
+	fmt.Println(state)
+
+	if err := resolver.Resolve(ctx, "Ekuma"); err != nil {
+		panic(err)
+	}
+	state, value := greeting.PromiseState()
+	fmt.Println(state, value.String())
+
+	// Output:
+	// pending
+	// fulfilled Hello, Ekuma
+}
+
+func ExampleVM_NewArrayBuffer() {
+	var vm ekuma.VM
+	pixels := []byte{10, 20, 30, 255}
+	if err := vm.Global().Set("pixels", vm.NewArrayBuffer(pixels)); err != nil {
+		panic(err)
+	}
+	s, err := vm.ParseScript("invert.js", `
+		const rgba = new Uint8Array(pixels);
+		for (let i = 0; i < 3; i++) {
+			rgba[i] = 255 - rgba[i];
+		}
+	`)
+	if err != nil {
+		panic(err)
+	}
+	if _, err := s.Evaluate(context.Background()); err != nil {
+		panic(err)
+	}
+	fmt.Println(pixels)
+
+	// Output: [245 235 225 255]
+}
+
+func ExampleScriptError() {
+	var vm ekuma.VM
+	s, err := vm.ParseScript("order.js", `throw { code: "OUT_OF_STOCK" }`)
+	if err != nil {
+		panic(err)
+	}
+	_, err = s.Evaluate(context.Background())
+	exception, ok := errors.AsType[*ekuma.ScriptError](err)
+	if !ok {
+		panic(fmt.Sprintf("expected a JavaScript exception, got %v", err))
+	}
+	code, err := exception.Value.Get("code")
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(code.String())
+
+	// Output: OUT_OF_STOCK
 }
