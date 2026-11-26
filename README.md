@@ -35,7 +35,7 @@ The zero value of `ekuma.VM` is ready to use. A `VM` must not be copied after fi
 
 | | Ekuma | [goja](https://github.com/dop251/goja) | [Sobek](https://github.com/grafana/sobek) | [moejs](https://github.com/MoeForge/moejs) | [otto](https://github.com/robertkrimen/otto) | [modernc.org/jit/js](https://pkg.go.dev/modernc.org/jit/js) | [modernc.org/quickjs](https://pkg.go.dev/modernc.org/quickjs) | [QJS](https://github.com/fastschema/qjs) | [v8go](https://github.com/tommie/v8go) |
 |---|---|---|---|---|---|---|---|---|---|
-| Latest release | None | None | None | v0.1.1 (2026-11-15) | v0.5.1 (2024-11-05) | v0.5.0 (2026-11-22) | v0.27.0 (2026-10-24) | v0.0.6 (2025-10-28) | v0.44.0 (2026-11-12) |
+| Latest release | v0.1.0 (2026-11-26) | None | None | v0.1.1 (2026-11-15) | v0.5.1 (2024-11-05) | v0.5.0 (2026-11-22) | v0.27.0 (2026-10-24) | v0.0.6 (2025-10-28) | v0.44.0 (2026-11-12) |
 | Implementation | Written in Go | Written in Go | Written in Go | Written in Go | Written in Go | QuickJS, translated from C to Go | QuickJS, translated from C to Go | QuickJS-ng, compiled to WebAssembly and run by wazero | Bindings to V8 |
 | Execution strategy | Bytecode interpreter | Bytecode interpreter | Bytecode interpreter | Bytecode interpreter | AST interpreter | Bytecode interpreter with a JIT on Linux amd64 | Bytecode interpreter | Bytecode interpreter, compiled to machine code by wazero's AOT compiler on amd64 and arm64 | JIT compiler, or bytecode interpreter with `--jitless` |
 | Pure Go | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
