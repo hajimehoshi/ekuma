@@ -377,6 +377,33 @@ func (c *compiler) repeat(n *node, back bool) {
 			return
 		}
 	}
+	if lo, _ := width(sub); lo > 0 {
+		// An iteration cannot match the empty string, so the loop needs neither a count nor the
+		// check for an empty iteration. Each iteration starts where the one before ended.
+		switch {
+		case n.min == 0 && n.max == 1:
+			// A single iteration leaves no captures of an earlier one to clear.
+			split := c.emit(inst{op: iSplit})
+			c.node(sub, back)
+			c.choose(split, split+1, c.pc(), n.greedy)
+			return
+		case n.min <= 1 && n.max == unbounded && (n.cap == n.capEnd || sub.op == opCapture && n.capEnd-n.cap == 1):
+			// The captures of an earlier iteration need no clearing either: there are none, or
+			// the iteration is a group without groups inside, which each iteration sets again.
+			if n.min == 0 {
+				split := c.emit(inst{op: iSplit})
+				c.node(sub, back)
+				c.emit(inst{op: iJmp, x: split})
+				c.choose(split, split+1, c.pc(), n.greedy)
+				return
+			}
+			body := c.pc()
+			c.node(sub, back)
+			split := c.emit(inst{op: iSplit})
+			c.choose(split, body, split+1, n.greedy)
+			return
+		}
+	}
 	r := c.newReg()
 	c.emit(inst{op: iRepStart, n: r})
 	check := c.emit(inst{op: iRepCheck, n: r, min: n.min, max: n.max, greedy: n.greedy})
@@ -384,6 +411,17 @@ func (c *compiler) repeat(n *node, back bool) {
 	c.node(sub, back)
 	c.emit(inst{op: iRepEnd, n: r, min: n.min, x: check})
 	c.prog.insts[check].x = c.pc()
+}
+
+// choose makes the iSplit at pc try more, the next iteration of a loop, before less when greedy,
+// and the other way round otherwise.
+func (c *compiler) choose(pc, more, less int, greedy bool) {
+	in := &c.prog.insts[pc]
+	if greedy {
+		in.x, in.y = more, less
+	} else {
+		in.x, in.y = less, more
+	}
 }
 
 // Analysis of where a match can start.

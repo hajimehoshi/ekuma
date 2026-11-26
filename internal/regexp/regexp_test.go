@@ -61,6 +61,12 @@ func TestMatch(t *testing.T) {
 		{pattern: "(a|ab)(c|bcd)(d*)", input: "abcd", want: []int{0, 4, 0, 1, 1, 4, 4, 4}},
 		// Captures are reset on each iteration of a quantifier.
 		{pattern: "(z)((a+)?(b+)?(c))*", input: "zaacbbbcac", want: []int{0, 10, 0, 1, 8, 10, 8, 9, -1, -1, 9, 10}},
+		// Loops whose iterations cannot match the empty string: a group that each iteration sets
+		// again, also through a backreference to itself, and a group inside one, which each
+		// iteration clears.
+		{pattern: `(a\1)+`, input: "aaa", want: []int{0, 3, 2, 3}},
+		{pattern: `(?<=(a\1)+)b`, input: "aab", want: []int{2, 3, 0, 1}},
+		{pattern: `((a)|b)+`, input: "ab", want: []int{0, 2, 1, 2, -1, -1}},
 		// An iteration that matches the empty string ends the loop.
 		{pattern: "(a*)*b", input: "b", want: []int{0, 1, -1, -1}},
 		{pattern: "(?:a|())*?b", input: "ab", want: []int{0, 2, -1, -1}},
