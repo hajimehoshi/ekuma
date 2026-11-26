@@ -81,16 +81,16 @@ sums.
 ```
                      V8 benchmark    QuickJS
                      suite v7        microbench     Version
-Ekuma                 1.00           1.00           v0.0.0-20261126074323-b9ac5f60d84c
-goja                  7.11           5.76           v0.0.0-20261118204651-8dfece3d1e1d
-Sobek                 7.12           5.76           v0.0.0-20261119094010-6eceb967bb5b
-moejs                 0.919          1.21           v0.1.1
+Ekuma                 1.00           1.00           v0.0.0-20261126103810-5acd587489b5
+goja                  7.55           5.75           v0.0.0-20261118204651-8dfece3d1e1d
+Sobek                 7.43           5.77           v0.0.0-20261119094010-6eceb967bb5b
+moejs                 0.975          1.21           v0.1.1
 otto                 35.7    (9/10)   n/a           v0.5.1
-modernc.org/quickjs   4.92           3.88           v0.27.0
-QJS                   6.62   (6/10)  6.12  (69/74)  v0.0.6
-QuickJS (C)           1.50           1.04           v0.0.0-20260604125329-3d5e064e9dd6
-v8go --jitless        0.837          0.699          v0.44.0
-v8go                  0.0418         0.134          v0.44.0
+modernc.org/quickjs   5.07           3.88           v0.27.0
+QJS                   6.76   (6/10)  6.17  (69/74)  v0.0.6
+QuickJS (C)           1.58           1.05           v0.0.0-20260604125329-3d5e064e9dd6
+v8go --jitless        0.862          0.702          v0.44.0
+v8go                  0.0426         0.137          v0.44.0
 ```
 
 Measured on 2026-11-26: Apple M3 Pro, macOS 27.2, go1.27.4.

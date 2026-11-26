@@ -1,7 +1,7 @@
-date: 2026-11-26T16:48:43+09:00
+date: 2026-11-26T19:41:14+09:00
 os: macOS 27.2
 go: go1.27.4
-github.com/hajimehoshi/ekuma: v0.0.0-20261126074323-b9ac5f60d84c
+github.com/hajimehoshi/ekuma: v0.0.0-20261126103810-5acd587489b5
 github.com/dop251/goja: v0.0.0-20261118204651-8dfece3d1e1d
 github.com/grafana/sobek: v0.0.0-20261119094010-6eceb967bb5b
 github.com/MoeForge/moejs: v0.1.1
@@ -12,109 +12,109 @@ github.com/bellard/quickjs: v0.0.0-20260604125329-3d5e064e9dd6
 github.com/tommie/v8go: v0.44.0
 rounds: 1
 benchtime: 1s
-load-start: 2.08 2.43 3.29
-load-end: 3.80 2.80 3.27
+load-start: 5.01 4.60 4.27
+load-end: 2.83 3.91 4.05
 goos: darwin
 goarch: arm64
 pkg: github.com/hajimehoshi/ekuma/_bench
 cpu: Apple M3 Pro
-BenchmarkV8/Richards/ekuma-2   	     800	   1501533 ns/op
-BenchmarkV8/Richards/goja-2    	     134	   8822350 ns/op
-BenchmarkV8/Richards/sobek-2   	     138	   8813020 ns/op
-BenchmarkV8/Richards/moejs-2   	     746	   1591472 ns/op
-BenchmarkV8/Richards/otto-2    	      21	  54503768 ns/op
-BenchmarkV8/Richards/quickjs-2 	     158	   7575926 ns/op
-BenchmarkV8/Richards/qjs-2     	     157	   7561762 ns/op
-BenchmarkV8/Richards/quickjs-c-2         	     528	   2184202 ns/op
-BenchmarkV8/Richards/v8go-jitless-2         	     718	   1654742 ns/op
-BenchmarkV8/Richards/v8go-2    	   24356	     48622 ns/op
-BenchmarkV8/DeltaBlue/goja-2    	      87	  14082855 ns/op
-BenchmarkV8/DeltaBlue/sobek-2   	      86	  14116284 ns/op
-BenchmarkV8/DeltaBlue/moejs-2   	     394	   3031017 ns/op
-BenchmarkV8/DeltaBlue/otto-2    	       9	 123351213 ns/op
-BenchmarkV8/DeltaBlue/quickjs-2 	      81	  14188653 ns/op
-BenchmarkV8/DeltaBlue/qjs-2     	      91	  13215988 ns/op
-BenchmarkV8/DeltaBlue/quickjs-c-2         	     289	   4040620 ns/op
-BenchmarkV8/DeltaBlue/v8go-jitless-2         	     405	   2967684 ns/op
-BenchmarkV8/DeltaBlue/v8go-2    	   33234	     35520 ns/op
-BenchmarkV8/DeltaBlue/ekuma-2   	     475	   2550638 ns/op
-BenchmarkV8/Encrypt/sobek-2   	      48	  24119987 ns/op
-BenchmarkV8/Encrypt/moejs-2   	     422	   2803970 ns/op
-BenchmarkV8/Encrypt/otto-2    	      10	 102717904 ns/op
-BenchmarkV8/Encrypt/quickjs-2 	      90	  13467219 ns/op
+BenchmarkV8/Richards/ekuma-2   	     750	   1604892 ns/op
+BenchmarkV8/Richards/goja-2    	     100	  11039410 ns/op
+BenchmarkV8/Richards/sobek-2   	     121	  11080203 ns/op
+BenchmarkV8/Richards/moejs-2   	     687	   1654526 ns/op
+BenchmarkV8/Richards/otto-2    	      19	  58994996 ns/op
+BenchmarkV8/Richards/quickjs-2 	     154	   7701816 ns/op
+BenchmarkV8/Richards/qjs-2     	     158	   7594184 ns/op
+BenchmarkV8/Richards/quickjs-c-2         	     520	   2306548 ns/op
+BenchmarkV8/Richards/v8go-jitless-2         	     712	   1669596 ns/op
+BenchmarkV8/Richards/v8go-2    	   24607	     48900 ns/op
+BenchmarkV8/DeltaBlue/goja-2    	      81	  14212984 ns/op
+BenchmarkV8/DeltaBlue/sobek-2   	      85	  14138357 ns/op
+BenchmarkV8/DeltaBlue/moejs-2   	     399	   3534523 ns/op
+BenchmarkV8/DeltaBlue/otto-2    	       9	 120450810 ns/op
+BenchmarkV8/DeltaBlue/quickjs-2 	      80	  14322511 ns/op
+BenchmarkV8/DeltaBlue/qjs-2     	      90	  13053747 ns/op
+BenchmarkV8/DeltaBlue/quickjs-c-2         	     294	   4080435 ns/op
+BenchmarkV8/DeltaBlue/v8go-jitless-2         	     404	   2972752 ns/op
+BenchmarkV8/DeltaBlue/v8go-2    	   33495	     35081 ns/op
+BenchmarkV8/DeltaBlue/ekuma-2   	     474	   2495247 ns/op
+BenchmarkV8/Encrypt/sobek-2   	      48	  24177464 ns/op
+BenchmarkV8/Encrypt/moejs-2   	     416	   2878061 ns/op
+BenchmarkV8/Encrypt/otto-2    	      10	 107526583 ns/op
+BenchmarkV8/Encrypt/quickjs-2 	      75	  13897670 ns/op
 --- SKIP: BenchmarkV8/Encrypt/qjs: ReferenceError: setupEngine is not defined
-BenchmarkV8/Encrypt/quickjs-c-2         	     331	   3648812 ns/op
-BenchmarkV8/Encrypt/v8go-jitless-2         	     374	   3164572 ns/op
-BenchmarkV8/Encrypt/v8go-2    	   16275	     73683 ns/op
-BenchmarkV8/Encrypt/ekuma-2   	     489	   2409787 ns/op
-BenchmarkV8/Encrypt/goja-2    	      48	  23940310 ns/op
-BenchmarkV8/Decrypt/moejs-2   	      21	  53524976 ns/op
-BenchmarkV8/Decrypt/otto-2    	       1	1930898000 ns/op
-BenchmarkV8/Decrypt/quickjs-2 	       4	 253776156 ns/op
+BenchmarkV8/Encrypt/quickjs-c-2         	     330	   4689993 ns/op
+BenchmarkV8/Encrypt/v8go-jitless-2         	     300	   3528409 ns/op
+BenchmarkV8/Encrypt/v8go-2    	   16359	     72959 ns/op
+BenchmarkV8/Encrypt/ekuma-2   	     511	   2329024 ns/op
+BenchmarkV8/Encrypt/goja-2    	      48	  24114244 ns/op
+BenchmarkV8/Decrypt/moejs-2   	      21	  53620204 ns/op
+BenchmarkV8/Decrypt/otto-2    	       1	2032585917 ns/op
+BenchmarkV8/Decrypt/quickjs-2 	       4	 255945594 ns/op
 --- SKIP: BenchmarkV8/Decrypt/qjs: ReferenceError: setupEngine is not defined
-BenchmarkV8/Decrypt/quickjs-c-2         	      16	  68313969 ns/op
-BenchmarkV8/Decrypt/v8go-jitless-2         	      19	  60211989 ns/op
-BenchmarkV8/Decrypt/v8go-2    	     918	   1277429 ns/op
-BenchmarkV8/Decrypt/ekuma-2   	      25	  44834097 ns/op
-BenchmarkV8/Decrypt/goja-2    	       3	 448063486 ns/op
-BenchmarkV8/Decrypt/sobek-2   	       3	 448379389 ns/op
-BenchmarkV8/RayTrace/otto-2    	       3	 413135653 ns/op
-BenchmarkV8/RayTrace/quickjs-2 	      15	  76218181 ns/op
-BenchmarkV8/RayTrace/qjs-2     	      12	  97937642 ns/op
-BenchmarkV8/RayTrace/quickjs-c-2         	      58	  20248463 ns/op
-BenchmarkV8/RayTrace/v8go-jitless-2         	     100	  10818893 ns/op
-BenchmarkV8/RayTrace/v8go-2    	    3254	    362727 ns/op
-BenchmarkV8/RayTrace/ekuma-2   	      87	  13423297 ns/op
-BenchmarkV8/RayTrace/goja-2    	       9	 122850278 ns/op
-BenchmarkV8/RayTrace/sobek-2   	       9	 124341153 ns/op
-BenchmarkV8/RayTrace/moejs-2   	      84	  13832810 ns/op
-BenchmarkV8/Earley/quickjs-2 	      94	  13333403 ns/op
+BenchmarkV8/Decrypt/quickjs-c-2         	      16	  67751169 ns/op
+BenchmarkV8/Decrypt/v8go-jitless-2         	      19	  58901998 ns/op
+BenchmarkV8/Decrypt/v8go-2    	     921	   1485442 ns/op
+BenchmarkV8/Decrypt/ekuma-2   	      24	  47071389 ns/op
+BenchmarkV8/Decrypt/goja-2    	       3	 552099806 ns/op
+BenchmarkV8/Decrypt/sobek-2   	       3	 454163694 ns/op
+BenchmarkV8/RayTrace/otto-2    	       3	 427371278 ns/op
+BenchmarkV8/RayTrace/quickjs-2 	      14	  76660872 ns/op
+BenchmarkV8/RayTrace/qjs-2     	      12	  97655656 ns/op
+BenchmarkV8/RayTrace/quickjs-c-2         	      58	  20534328 ns/op
+BenchmarkV8/RayTrace/v8go-jitless-2         	      93	  10853715 ns/op
+BenchmarkV8/RayTrace/v8go-2    	    3271	    357892 ns/op
+BenchmarkV8/RayTrace/ekuma-2   	      85	  13708080 ns/op
+BenchmarkV8/RayTrace/goja-2    	       8	 127301302 ns/op
+BenchmarkV8/RayTrace/sobek-2   	       8	 128567151 ns/op
+BenchmarkV8/RayTrace/moejs-2   	      73	  14213777 ns/op
+BenchmarkV8/Earley/quickjs-2 	      93	  13297425 ns/op
 --- SKIP: BenchmarkV8/Earley/qjs: SyntaxError: Octal escape sequences are not allowed in strict mode
-BenchmarkV8/Earley/quickjs-c-2         	     310	   3827802 ns/op
-BenchmarkV8/Earley/v8go-jitless-2         	     763	   1610285 ns/op
-BenchmarkV8/Earley/v8go-2    	   12130	     96805 ns/op
-BenchmarkV8/Earley/ekuma-2   	     409	   2973486 ns/op
-BenchmarkV8/Earley/goja-2    	      72	  16115014 ns/op
-BenchmarkV8/Earley/sobek-2   	      70	  16269179 ns/op
-BenchmarkV8/Earley/moejs-2   	     500	   2384909 ns/op
-BenchmarkV8/Earley/otto-2    	      13	  87698635 ns/op
+BenchmarkV8/Earley/quickjs-c-2         	     306	   3888940 ns/op
+BenchmarkV8/Earley/v8go-jitless-2         	     780	   1531041 ns/op
+BenchmarkV8/Earley/v8go-2    	   12259	     95791 ns/op
+BenchmarkV8/Earley/ekuma-2   	     405	   3079228 ns/op
+BenchmarkV8/Earley/goja-2    	      70	  16111468 ns/op
+BenchmarkV8/Earley/sobek-2   	      72	  16436862 ns/op
+BenchmarkV8/Earley/moejs-2   	     465	   2830814 ns/op
+BenchmarkV8/Earley/otto-2    	      13	  88996599 ns/op
 --- SKIP: BenchmarkV8/Boyer/qjs: SyntaxError: Octal escape sequences are not allowed in strict mode
-BenchmarkV8/Boyer/quickjs-c-2         	      20	  55487229 ns/op
-BenchmarkV8/Boyer/v8go-jitless-2         	      36	  30566119 ns/op
-BenchmarkV8/Boyer/v8go-2    	     508	   2166249 ns/op
-BenchmarkV8/Boyer/ekuma-2   	      22	  49591519 ns/op
-BenchmarkV8/Boyer/goja-2    	       4	 307644490 ns/op
-BenchmarkV8/Boyer/sobek-2   	       4	 305804031 ns/op
-BenchmarkV8/Boyer/moejs-2   	      30	  38100621 ns/op
-BenchmarkV8/Boyer/otto-2    	       1	1722299125 ns/op
-BenchmarkV8/Boyer/quickjs-2 	       5	 242904967 ns/op
-BenchmarkV8/RegExp/quickjs-c-2         	       8	 140275781 ns/op
-BenchmarkV8/RegExp/v8go-jitless-2         	      99	  11736301 ns/op
-BenchmarkV8/RegExp/v8go-2    	     276	   4298092 ns/op
-BenchmarkV8/RegExp/ekuma-2   	      39	  28538004 ns/op
-BenchmarkV8/RegExp/goja-2    	       5	 216281825 ns/op
-BenchmarkV8/RegExp/sobek-2   	       5	 216260567 ns/op
-BenchmarkV8/RegExp/moejs-2   	      56	  21314222 ns/op
+BenchmarkV8/Boyer/quickjs-c-2         	      20	  56042673 ns/op
+BenchmarkV8/Boyer/v8go-jitless-2         	      36	  30259770 ns/op
+BenchmarkV8/Boyer/v8go-2    	     553	   1974619 ns/op
+BenchmarkV8/Boyer/ekuma-2   	      22	  48047523 ns/op
+BenchmarkV8/Boyer/goja-2    	       4	 299640646 ns/op
+BenchmarkV8/Boyer/sobek-2   	       4	 308051364 ns/op
+BenchmarkV8/Boyer/moejs-2   	      30	  37247868 ns/op
+BenchmarkV8/Boyer/otto-2    	       1	1726141500 ns/op
+BenchmarkV8/Boyer/quickjs-2 	       5	 239519633 ns/op
+BenchmarkV8/RegExp/quickjs-c-2         	       8	 140331115 ns/op
+BenchmarkV8/RegExp/v8go-jitless-2         	     100	  12858929 ns/op
+BenchmarkV8/RegExp/v8go-2    	     273	   4224366 ns/op
+BenchmarkV8/RegExp/ekuma-2   	      55	  21500228 ns/op
+BenchmarkV8/RegExp/goja-2    	       5	 213643517 ns/op
+BenchmarkV8/RegExp/sobek-2   	       5	 214697925 ns/op
+BenchmarkV8/RegExp/moejs-2   	      50	  21198228 ns/op
 --- SKIP: BenchmarkV8/RegExp/otto: regexp.js: Line 1096:7 Invalid regular expression: re2: Invalid (?=) <lookahead> (and 1 more errors)
-BenchmarkV8/RegExp/quickjs-2 	       5	 223650817 ns/op
-BenchmarkV8/RegExp/qjs-2     	       2	 565261125 ns/op
-BenchmarkV8/Splay/v8go-jitless-2         	    2125	    609809 ns/op
-BenchmarkV8/Splay/v8go-2    	   10164	    110653 ns/op
-BenchmarkV8/Splay/ekuma-2   	     889	   1381188 ns/op
-BenchmarkV8/Splay/goja-2    	     232	   5116580 ns/op
-BenchmarkV8/Splay/sobek-2   	     247	   5149780 ns/op
-BenchmarkV8/Splay/moejs-2   	    1482	    847233 ns/op
-BenchmarkV8/Splay/otto-2    	      67	  24632058 ns/op
-BenchmarkV8/Splay/quickjs-2 	     361	   3369629 ns/op
-BenchmarkV8/Splay/qjs-2     	     303	   4062524 ns/op
-BenchmarkV8/Splay/quickjs-c-2         	    1140	   1052618 ns/op
-BenchmarkV8/NavierStokes/v8go-2    	     430	   2821022 ns/op
-BenchmarkV8/NavierStokes/ekuma-2   	      37	  31500851 ns/op
-BenchmarkV8/NavierStokes/goja-2    	       3	 371553847 ns/op
-BenchmarkV8/NavierStokes/sobek-2   	       3	 365536556 ns/op
-BenchmarkV8/NavierStokes/moejs-2   	      44	  26577534 ns/op
-BenchmarkV8/NavierStokes/otto-2    	       1	1628932708 ns/op
-BenchmarkV8/NavierStokes/quickjs-2 	       9	 122595824 ns/op
-BenchmarkV8/NavierStokes/qjs-2     	       5	 238009083 ns/op
-BenchmarkV8/NavierStokes/quickjs-c-2         	      26	  43242688 ns/op
-BenchmarkV8/NavierStokes/v8go-jitless-2         	      24	  47910085 ns/op
+BenchmarkV8/RegExp/quickjs-2 	       5	 222938525 ns/op
+BenchmarkV8/RegExp/qjs-2     	       2	 560744688 ns/op
+BenchmarkV8/Splay/v8go-jitless-2         	    2136	    595700 ns/op
+BenchmarkV8/Splay/v8go-2    	   10555	    107857 ns/op
+BenchmarkV8/Splay/ekuma-2   	     910	   1390824 ns/op
+BenchmarkV8/Splay/goja-2    	     237	   5028555 ns/op
+BenchmarkV8/Splay/sobek-2   	     254	   4984647 ns/op
+BenchmarkV8/Splay/moejs-2   	    1405	    849035 ns/op
+BenchmarkV8/Splay/otto-2    	      67	  23276317 ns/op
+BenchmarkV8/Splay/quickjs-2 	     375	   3180878 ns/op
+BenchmarkV8/Splay/qjs-2     	     327	   3811559 ns/op
+BenchmarkV8/Splay/quickjs-c-2         	    1168	   1024691 ns/op
+BenchmarkV8/NavierStokes/v8go-2    	     415	   2833265 ns/op
+BenchmarkV8/NavierStokes/ekuma-2   	      38	  31147265 ns/op
+BenchmarkV8/NavierStokes/goja-2    	       3	 362318833 ns/op
+BenchmarkV8/NavierStokes/sobek-2   	       3	 357054375 ns/op
+BenchmarkV8/NavierStokes/moejs-2   	      44	  26403973 ns/op
+BenchmarkV8/NavierStokes/otto-2    	       1	1519576166 ns/op
+BenchmarkV8/NavierStokes/quickjs-2 	       9	 136325153 ns/op
+BenchmarkV8/NavierStokes/qjs-2     	       5	 236044867 ns/op
+BenchmarkV8/NavierStokes/quickjs-c-2         	      26	  42862907 ns/op
+BenchmarkV8/NavierStokes/v8go-jitless-2         	      24	  47550122 ns/op
