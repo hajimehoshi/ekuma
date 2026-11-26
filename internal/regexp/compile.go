@@ -103,7 +103,7 @@ type program struct {
 	prefixKey int
 	needKey   int
 
-	// whole is set when every match is prefix and nothing else.
+	// whole is set when the pattern is prefix alone, without groups.
 	whole bool
 }
 

@@ -899,14 +899,14 @@ func regExpReplace(cx *engine.ExecutionContext, rx *storage.Object, s storage.Va
 }
 
 // replaceUnmodified is regExpReplace with the string template for a RegExp object rx whose
-// matches run no JavaScript. It reports false, having done nothing, when rx is not such an object
-// or is sticky but not global.
+// matches run no JavaScript. It reports false, having done nothing, when rx is not such an object,
+// its lastIndex is not a number, or it is sticky but not global.
 func replaceUnmodified(cx *engine.ExecutionContext, rx *storage.Object, s storage.Value, template wtf8.String) (storage.Value, bool) {
 	re := cx.Quiet().UnmodifiedRegExpMatcher(rx)
 	if re == nil {
 		return storage.Undefined, false
 	}
-	// Each exec converts lastIndex, which runs JavaScript unless it is a number.
+	// Each exec converts lastIndex, which can run JavaScript or throw unless it is a number.
 	if v, _ := cx.Quiet().RegExpLastIndex(rx); !v.IsNumber() {
 		return storage.Undefined, false
 	}
