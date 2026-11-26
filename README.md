@@ -5,16 +5,28 @@ and it uses `unsafe` only for OS APIs. It implements nearly all of ES2026. The G
 See [Status](#status).
 
 ```go
-var vm ekuma.VM
-s, err := vm.ParseScript("hello.js", `"Hello, " + ["wor", "ld"].join("")`)
-if err != nil {
-	// A *ekuma.SyntaxError.
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+
+	"github.com/hajimehoshi/ekuma"
+)
+
+func main() {
+	var vm ekuma.VM
+	script, err := vm.ParseScript("hello.js", `"Hello, " + ["wor", "ld"].join("")`)
+	if err != nil {
+		log.Fatalf("parse: %v", err)
+	}
+	result, err := script.Evaluate(context.Background())
+	if err != nil {
+		log.Fatalf("evaluate: %v", err)
+	}
+	fmt.Println(result.String()) // Hello, world
 }
-v, err := s.Evaluate(ctx)
-if err != nil {
-	// A *ekuma.ScriptError when the script throws.
-}
-fmt.Println(v.String()) // Hello, world
 ```
 
 The zero value of `ekuma.VM` is ready to use. A `VM` must not be copied after first use.
