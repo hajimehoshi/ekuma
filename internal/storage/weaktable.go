@@ -344,7 +344,7 @@ func (w *weakEntries) set(t *WeakTable, k *Object, v Value, primitive bool) bool
 	if w.firstTable.Value() == nil {
 		// This table might already have an entry outside the inline slot.
 		var wasTracked bool
-		if ex != nil {
+		if ex != nil && (t.prims != nil || ex.rest != nil) {
 			_, wasTracked = ex.rest[t.self]
 			delete(ex.rest, t.self)
 			t.deletePrim(ex)
