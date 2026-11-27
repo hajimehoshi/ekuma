@@ -385,6 +385,11 @@ func stringConcat(cx *engine.ExecutionContext, this storage.Value, args []storag
 	}
 	// Two surrogate pairs can occupy twelve input bytes and fit after joining.
 	if byteLength > 12 {
+		if reserve && len(args) > 0 {
+			if v, ok := cx.Quiet().ConcatASCIIStrings(s, args, byteLength); ok {
+				return v
+			}
+		}
 		var b wtf8.Buffer
 		if reserve {
 			b.Grow(byteLength)

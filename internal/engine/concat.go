@@ -5,6 +5,7 @@ package engine
 
 import (
 	"math"
+	"math/bits"
 	"slices"
 	"strings"
 
@@ -31,6 +32,8 @@ import (
 
 // Both counts of a storage.ConcatCount must fit in their bits.
 const _ uint = 1<<storage.PrependShift - 1 - uint(storage.BufferAfter)
+
+const minExclusiveCapacity = 64
 
 // Concat returns the concatenation of the strings a and b.
 func (cx *ExecutionContext) Concat(a, b storage.Value) storage.Value {
@@ -66,17 +69,15 @@ func (cx *ExecutionContext) Concat(a, b storage.Value) storage.Value {
 			}
 		}
 	}
-	if b.O.Flags()&storage.ObjReversed != 0 && a.O.Flags()&(storage.ObjASCIIKnown|storage.ObjASCII|storage.ObjReversed) == storage.ObjASCIIKnown|storage.ObjASCII {
+	if b.O.Flags()&storage.ObjReversed != 0 {
 		if rb := storage.HeadBuilder(b.O); rb != nil {
-			x := a.O.Text()
-			if x == "" {
-				return b
+			n, ok := cx.writeASCIIPrefix(rb, a, len(b.O.Text()))
+			if ok {
+				if n == 0 {
+					return b
+				}
+				return cx.extendHead(b.O, rb, true)
 			}
-			if len(x) > storage.MaxStringLength-len(b.O.Text()) {
-				cx.ThrowRangeError("invalid string length")
-			}
-			storage.WriteReversed(&rb.Sb, x)
-			return cx.extendHead(b.O, rb, true)
 		}
 	}
 	aN := a.StringByteLength()
@@ -463,6 +464,19 @@ func (cx *ExecutionContext) extendHead(b *storage.Object, rb *storage.ReversedBu
 // Append returns the concatenation of the strings a and b for an append to a variable that
 // holds a and receives the result. A result that is a new tail is marked [storage.ObjExclusive].
 func (cx *ExecutionContext) Append(a, b storage.Value) storage.Value {
+	if a.O.ExtConcatCount().Appends() >= storage.BufferAfter {
+		aLen, bLen := a.StringByteLength(), b.StringByteLength()
+		if bLen > 0 && bLen <= storage.MaxStringLength-aLen &&
+			b.O.Flags()&storage.ObjReversed == 0 && a.IsASCII() && b.IsASCII() {
+			sb := new(strings.Builder)
+			sb.Grow(max(minExclusiveCapacity, aLen+bLen))
+			sb.WriteString(string(a.O.Text()))
+			sb.WriteString(string(b.Str()))
+			v := cx.newTail(sb, true)
+			v.O.MarkExclusive()
+			return v
+		}
+	}
 	v := cx.Concat(a, b)
 	if v.O != a.O && v.O != b.O && storage.TailBuilder(v.O) != nil {
 		v.O.MarkExclusive()
@@ -517,4 +531,87 @@ func (cx *ExecutionContext) appendInPlace(a, b storage.Value) bool {
 	sb.WriteString(string(y))
 	a.O.ExtendExclusive(sb, storage.IsASCII(b, y))
 	return true
+}
+
+// Prepend returns b + a for a variable that held a, with a new head marked exclusive.
+func (cx *ExecutionContext) Prepend(a, b storage.Value) storage.Value {
+	if a.O.ExtConcatCount().Prepends() >= storage.BufferAfter {
+		aLen, bLen := a.StringByteLength(), b.StringByteLength()
+		if bLen > 0 && bLen <= storage.MaxStringLength-aLen &&
+			b.O.Flags()&storage.ObjReversed == 0 && a.IsASCII() && b.IsASCII() {
+			rb := new(storage.ReversedBuilder)
+			rb.Sb.Grow(max(minExclusiveCapacity, aLen+bLen))
+			storage.WriteReversed(&rb.Sb, a.O.Text())
+			storage.WriteReversed(&rb.Sb, b.Str())
+			v := cx.newHead(rb, true)
+			v.O.MarkExclusive()
+			return v
+		}
+	}
+	v := cx.Concat(b, a)
+	if v.O != a.O && v.O != b.O && storage.HeadBuilder(v.O) != nil {
+		v.O.MarkExclusive()
+	}
+	return v
+}
+
+// prependInPlace prepends b to the exclusive string a when its head can hold the result.
+func (cx *ExecutionContext) prependInPlace(a, b storage.Value) bool {
+	rb := storage.HeadBuilder(a.O)
+	if rb == nil {
+		return false
+	}
+	x := a.O.Text()
+	n, ok := cx.writeASCIIPrefix(rb, b, len(x))
+	if ok {
+		if n != 0 {
+			a.O.ExtendHeadExclusive(rb, true)
+		}
+		return true
+	}
+	y := b.RawString()
+	reversed := b.O.Flags()&storage.ObjReversed != 0
+	if !a.O.IsASCII() && storage.JoinsPair(y, reversed, x, true) {
+		return false
+	}
+	if len(y) > storage.MaxStringLength-len(x) {
+		cx.ThrowRangeError("invalid string length")
+	}
+	ascii := storage.IsASCII(b, y)
+	if reversed {
+		rb.Sb.WriteString(string(y))
+	} else {
+		storage.WriteReversed(&rb.Sb, y)
+	}
+	a.O.ExtendHeadExclusive(rb, ascii)
+	return true
+}
+
+// writeASCIIPrefix writes an unreversed ASCII prefix to the reversed builder and reports
+// the number of bytes written. It returns false for other prefixes.
+func (cx *ExecutionContext) writeASCIIPrefix(rb *storage.ReversedBuilder, prefix storage.Value, oldLen int) (int, bool) {
+	n := prefix.StringByteLength()
+	if n <= shortstrings.MaxBytes {
+		data := math.Float64bits(prefix.N)
+		if !shortstrings.IsASCII(data) {
+			return 0, false
+		}
+		if n == 0 {
+			return 0, true
+		}
+		if n > storage.MaxStringLength-oldLen {
+			cx.ThrowRangeError("invalid string length")
+		}
+		bytes := shortstrings.Bytes(bits.ReverseBytes64(data))
+		rb.Sb.Write(bytes[shortstrings.MaxBytes-n:])
+		return n, true
+	}
+	if prefix.O.Flags()&(storage.ObjASCIIKnown|storage.ObjASCII|storage.ObjReversed) != storage.ObjASCIIKnown|storage.ObjASCII {
+		return 0, false
+	}
+	if n > storage.MaxStringLength-oldLen {
+		cx.ThrowRangeError("invalid string length")
+	}
+	storage.WriteReversed(&rb.Sb, prefix.O.Text())
+	return n, true
 }

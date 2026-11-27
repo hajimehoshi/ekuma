@@ -2320,6 +2320,36 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 			v := ag.active.addValues(x, y)
 			regs = ag.reload(regs, ag.frameBase(), fp)
 			regs[i.A] = v
+		case bytecode.OpPrepend:
+			x, y := regs[i.A], regs[i.B]
+			ag.frames[len(ag.frames)-1].pc = pc
+			if x.IsString() && y.IsString() {
+				if x.O.Flags()&storage.ObjExclusive != 0 && ag.active.prependInPlace(x, y) {
+					continue
+				}
+				regs[i.A] = ag.active.Prepend(x, y)
+				continue
+			}
+			v := ag.active.addValues(y, x)
+			regs = ag.reload(regs, ag.frameBase(), fp)
+			regs[i.A] = v
+		case bytecode.OpPrependK:
+			x, y := regs[i.A], fp.Consts[i.B]
+			ag.frames[len(ag.frames)-1].pc = pc
+			if x.IsString() {
+				if i.C != 0 {
+					regs[i.A] = ag.active.Concat(y, x)
+					continue
+				}
+				if x.O.Flags()&storage.ObjExclusive != 0 && ag.active.prependInPlace(x, y) {
+					continue
+				}
+				regs[i.A] = ag.active.Prepend(x, y)
+				continue
+			}
+			v := ag.active.addValues(y, x)
+			regs = ag.reload(regs, ag.frameBase(), fp)
+			regs[i.A] = v
 		case bytecode.OpConcatK:
 			x, y := regs[i.B], fp.Consts[i.C]
 			ag.frames[len(ag.frames)-1].pc = pc

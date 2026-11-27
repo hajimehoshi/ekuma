@@ -1127,6 +1127,27 @@ var opcodes = [...]struct {
 		},
 		flow: FlowNext,
 	},
+	OpPrepend: {
+		name: "OpPrepend",
+		operands: Operands{
+			A:      OperandReg,
+			B:      OperandReg,
+			Reads:  regAB,
+			Writes: regA,
+		},
+		flow: FlowNext,
+	},
+	OpPrependK: {
+		name: "OpPrependK",
+		operands: Operands{
+			A:      OperandReg,
+			B:      OperandConst,
+			C:      OperandFlag,
+			Reads:  regA,
+			Writes: regA,
+		},
+		flow: FlowNext,
+	},
 	OpConcatK: {
 		name:     "OpConcatK",
 		operands: binaryKOperands,

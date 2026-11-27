@@ -757,14 +757,20 @@ func objectHasOwn(cx *engine.ExecutionContext, this storage.Value, args []storag
 
 // listFromArrayLike implements CreateListFromArrayLike.
 func listFromArrayLike(cx *engine.ExecutionContext, v storage.Value) []storage.Value {
+	if v.IsObject() {
+		if list, ok := v.Object().ElementList(); ok {
+			return list
+		}
+	}
+	return readArrayLike(cx, v)
+}
+
+func readArrayLike(cx *engine.ExecutionContext, v storage.Value) []storage.Value {
 	if v.IsNullish() {
 		return nil
 	}
 	if !v.IsObject() {
 		cx.ThrowTypeError("CreateListFromArrayLike called on non-object")
-	}
-	if list, ok := v.Object().ElementList(); ok {
-		return list
 	}
 	n := numconv.ToLength(cx.ToNumber(cx.GetV(v, cx.Key(storage.KeyLength))))
 	if n > 1<<24 {
@@ -835,7 +841,11 @@ func functionApply(cx *engine.ExecutionContext, this storage.Value, args []stora
 	if !this.IsCallable() {
 		cx.ThrowTypeError("Function.prototype.apply called on a value that is not a function")
 	}
-	return cx.Call(this.Object(), arg(args, 0), listFromArrayLike(cx, arg(args, 1))...)
+	f, thisArg, array := this.Object(), arg(args, 0), arg(args, 1)
+	if result, ok := cx.CallWithArray(f, thisArg, array); ok {
+		return result
+	}
+	return cx.Call(f, thisArg, readArrayLike(cx, array)...)
 }
 
 func functionBind(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {

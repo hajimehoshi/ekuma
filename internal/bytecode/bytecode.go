@@ -169,7 +169,7 @@ const (
 	OpToString        // a = b converted to a string
 	OpConcat          // a = the concatenation of the c strings from b on
 	OpAppend          // a = a + b. The next OpAppend to a may extend the string that it leaves there in place, so any other read of a must follow an [OpSeal] of a
-	OpSeal            // make the string in a one that an [OpAppend] does not change
+	OpSeal            // share the string in a before another register or object takes a reference to it
 	OpAppendK         // like [OpAppend] with the string Consts[b] in place of the register b
 	OpConcatK         // a = b + Consts[c], where Consts[c] is a string
 
@@ -351,6 +351,10 @@ const (
 	// Modules.
 	OpImport     // a = the promise of a dynamic import of b with the options c in the [Phase] c+1, an integer
 	OpImportMeta // a = import.meta
+
+	// Prepending to a local string.
+	OpPrepend  // a = b + a, with the same ownership rules as [OpAppend]
+	OpPrependK // a = Consts[b] + a, where Consts[b] is a string. c = 1 disables in-place growth
 
 	// Others.
 	OpExtra // the operands of the instruction before it that do not fit in it; it is never executed

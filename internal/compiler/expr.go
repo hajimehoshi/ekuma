@@ -2189,13 +2189,18 @@ func (f *fn) assign(n *ast.AssignExpr, dst int32) {
 				if v, ok := n.Value.(*ast.BinaryExpr); ok && v.Op == ast.OpAdd {
 					if id, ok := v.Left.(*ast.Identifier); ok && id.Name == name && !f.clobbers(name, v.Right) {
 						if f.appends(lb, v.Right) {
-							f.emitAppend(local, v.Right, dst)
+							f.emitStringGrowth(local, v.Right, dst, bytecode.OpAppend)
 							return
 						}
 						if s, ok := v.Right.(*ast.StringLit); ok {
 							f.emitConcatK(local, s, dst)
 							return
 						}
+					}
+					if id, ok := v.Right.(*ast.Identifier); ok && id.Name == name &&
+						!f.clobbers(name, v.Left) && f.appends(lb, v.Left) {
+						f.emitStringGrowth(local, v.Left, dst, bytecode.OpPrepend)
+						return
 					}
 				}
 				if f.chainedStore(n.Value, name, local) {
@@ -2236,7 +2241,7 @@ func (f *fn) assign(n *ast.AssignExpr, dst int32) {
 		default:
 			if local >= 0 && !f.clobbers(name, n.Value) {
 				if n.Op == ast.OpAdd && f.appends(lb, n.Value) {
-					f.emitAppend(local, n.Value, dst)
+					f.emitStringGrowth(local, n.Value, dst, bytecode.OpAppend)
 					return
 				}
 				if s, ok := n.Value.(*ast.StringLit); ok && n.Op == ast.OpAdd {

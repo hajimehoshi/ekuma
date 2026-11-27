@@ -86,6 +86,11 @@ func TestAllocationsPerOperation(t *testing.T) {
 			want:  2,
 		},
 		{
+			name: "repeated String.prototype.concat with a ten-byte result",
+			body: `"abcd".concat("efghij");`,
+			want: 0,
+		},
+		{
 			name:  "template literal",
 			setup: `var a = "0123456";`,
 			body:  "`x${a}x${a}x${a}x${a}x${a}x${a}x${a}x${a}x${a}x${a}`;",

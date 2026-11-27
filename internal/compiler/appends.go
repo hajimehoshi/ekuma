@@ -10,17 +10,12 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/bytecode"
 )
 
-// An OpAppend or OpAppendK to a variable may leave in its register a string that the next one
-// extends in place. This is right only while nothing else refers to the string, so every
-// other read of the register is preceded by an OpSeal, which makes the string an ordinary one. A
-// read of the length of the string needs no seal, since it keeps no reference to the string.
-// The compiler emits the seals once it has compiled an OpAppend to the variable, and settleAppends
-// checks the finished code: when a read can see the register as an OpAppend left it, or when code
-// can read the register without an instruction that names it, the appends to the variable become
-// OpAdds and OpConcatKs again.
+// Appending or prepending to a variable can leave a string in its register that the next
+// instruction growing it may extend in place. An OpSeal precedes other reads that can retain
+// a reference to the string. Reading its length needs no seal. settleAppends disables in-place
+// growth when the finished code can read the string through a hidden or unsealed reference.
 
-// seal emits an OpSeal of the register of b when b has OpAppends, before an instruction that reads
-// the register.
+// seal shares the string in b before an instruction can retain a reference to it.
 func (f *fn) seal(b *binding) {
 	if b.appended {
 		f.emit(bytecode.OpSeal, b.reg, 0, 0)
@@ -35,9 +30,7 @@ func (f *fn) sealLocal(name string) {
 	}
 }
 
-// appends reports whether an assignment of local + value to the local variable b, whose
-// assignments are register writes, can be an append, and prepares for it. The assignment must
-// be one that reads the variable after evaluating value.
+// appends prepares b for in-place string growth. The caller must preserve operand evaluation order.
 func (f *fn) appends(b *binding, value ast.Expr) bool {
 	if b.appended {
 		return true
@@ -80,15 +73,19 @@ func (f *fn) lengthOf(n *ast.MemberExpr) *binding {
 	return nil
 }
 
-// emitAppend compiles the assignment local = local + value of the local variable that appends
-// reported true for, and leaves its value in dst unless dst is -1.
-func (f *fn) emitAppend(local int32, value ast.Expr, dst int32) {
+// emitStringGrowth compiles an append or prepend to local and leaves its value in dst if needed.
+func (f *fn) emitStringGrowth(local int32, value ast.Expr, dst int32, op bytecode.Opcode) {
 	if s, ok := value.(*ast.StringLit); ok {
-		f.emit(bytecode.OpAppendK, local, f.constStr(s.Value), 0)
+		if op == bytecode.OpAppend {
+			op = bytecode.OpAppendK
+		} else {
+			op = bytecode.OpPrependK
+		}
+		f.emit(op, local, f.constStr(s.Value), 0)
 	} else {
 		mark := f.top
 		r := f.immediateOperand(value)
-		f.emit(bytecode.OpAppend, local, r, 0)
+		f.emit(op, local, r, 0)
 		f.free(mark)
 	}
 	if dst >= 0 && dst != local {
@@ -140,9 +137,8 @@ func (f *fn) nestedMentions(name string) bool {
 	return found
 }
 
-// settleAppends turns the OpAppends and OpAppendKs to a variable back into OpAdds and OpConcatKs
-// unless the code of f, which must be complete, reads the register of the variable, other than for
-// its length, only where no string that an append may extend can be in it.
+// settleAppends disables in-place string growth for registers with unsafe reads in the
+// completed code of f.
 func (f *fn) settleAppends() {
 	if len(f.appendRegs) == 0 {
 		return
@@ -171,18 +167,23 @@ func (f *fn) settleAppends() {
 	}
 	for pc := range code {
 		in := &code[pc]
-		if in.Op != bytecode.OpAppend && in.Op != bytecode.OpAppendK || !isRefused(in.A) {
+		switch in.Op {
+		case bytecode.OpAppend, bytecode.OpAppendK, bytecode.OpPrepend, bytecode.OpPrependK:
+			if !isRefused(in.A) {
+				continue
+			}
+		default:
 			continue
 		}
-		op := bytecode.OpAdd
-		if in.Op == bytecode.OpAppendK {
-			op = bytecode.OpConcatK
-		}
-		*in = bytecode.Instr{
-			Op: op,
-			A:  in.A,
-			B:  in.A,
-			C:  in.B,
+		switch in.Op {
+		case bytecode.OpAppend:
+			in.Op, in.B, in.C = bytecode.OpAdd, in.A, in.B
+		case bytecode.OpAppendK:
+			in.Op, in.B, in.C = bytecode.OpConcatK, in.A, in.B
+		case bytecode.OpPrepend:
+			in.Op, in.C = bytecode.OpAdd, in.A
+		case bytecode.OpPrependK:
+			in.C = 1
 		}
 	}
 }
@@ -237,9 +238,8 @@ func (f *fn) hiddenReads(regs []int32) uint64 {
 	return refused
 }
 
-// unsealedReads returns the set of the indices in regs of the registers that an instruction other
-// than an append to the register or a read of its length can read while it may hold a string that
-// an append left.
+// unsealedReads returns the indices in regs of registers that unsafe reads may see holding
+// an exclusive string.
 func (f *fn) unsealedReads(regs []int32) uint64 {
 	code := f.f.Code
 	handlers := f.f.Handlers
@@ -269,6 +269,8 @@ func (f *fn) unsealedReads(regs []int32) uint64 {
 			continue
 		}
 		fl := &opFlows[inst.Op]
+		grows := inst.Op == bytecode.OpAppend || inst.Op == bytecode.OpAppendK ||
+			inst.Op == bytecode.OpPrepend || inst.Op == bytecode.OpPrependK && inst.C == 0
 		before := in[pc]
 		after := before
 		for k, r := range regs {
@@ -277,8 +279,8 @@ func (f *fn) unsealedReads(regs []int32) uint64 {
 			case inst.Op == bytecode.OpSeal && inst.A == r:
 				after &^= bit
 				continue
-			case (inst.Op == bytecode.OpAppend || inst.Op == bytecode.OpAppendK) && inst.A == r:
-				if before&bit != 0 && inst.Op == bytecode.OpAppend && inst.B == r {
+			case grows && inst.A == r:
+				if before&bit != 0 && (inst.Op == bytecode.OpAppend || inst.Op == bytecode.OpPrepend) && inst.B == r {
 					refused |= bit
 				}
 				after |= bit

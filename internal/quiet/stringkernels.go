@@ -10,6 +10,11 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/storage"
 )
 
+// ConcatASCIIStrings is [storage.RealmPart.ConcatASCIIStrings].
+func (q Context) ConcatASCIIStrings(first storage.Value, rest []storage.Value, length int) (storage.Value, bool) {
+	return q.Realm.ConcatASCIIStrings(first, rest, length)
+}
+
 func StringConstructorKernel(q Context, this, x storage.Value) (storage.Value, bool) {
 	if x.IsString() {
 		return x, true

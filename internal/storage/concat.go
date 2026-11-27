@@ -9,6 +9,7 @@ import (
 	"strings"
 	"unsafe"
 
+	"github.com/hajimehoshi/ekuma/internal/shortstrings"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
@@ -84,8 +85,7 @@ func HeadBuilder(o *Object) *ReversedBuilder {
 	return nil
 }
 
-// MarkExclusive marks the string o, a new tail that only the register of a variable refers to,
-// [ObjExclusive].
+// MarkExclusive marks o as a new builder tail or head owned by one variable's register.
 func (o *Object) MarkExclusive() {
 	o.flags |= ObjExclusive
 }
@@ -102,8 +102,19 @@ func (o *Object) ExtendExclusive(sb *strings.Builder, ascii bool) {
 	if ValidateExec && (o.flags&(ObjExclusive|ObjInterned|ObjReversed|ObjASCIIKnown) != ObjExclusive|ObjASCIIKnown || o.length != 0 || o.stringBuilder() != unsafe.Pointer(sb)) {
 		panic("storage: ExtendExclusive of a string that is not an exclusive tail")
 	}
+	o.extendExclusive(wtf8.String(sb.String()), ascii)
+}
+
+// ExtendHeadExclusive updates the exclusive string o to the current contents of rb.
+func (o *Object) ExtendHeadExclusive(rb *ReversedBuilder, ascii bool) {
+	if ValidateExec && (o.flags&(ObjExclusive|ObjInterned|ObjReversed|ObjASCIIKnown) != ObjExclusive|ObjReversed|ObjASCIIKnown || o.length != 0 || o.stringBuilder() != unsafe.Pointer(rb)) {
+		panic("storage: ExtendHeadExclusive of a string that is not an exclusive head")
+	}
+	o.extendExclusive(wtf8.String(rb.Sb.String()), ascii)
+}
+
+func (o *Object) extendExclusive(s wtf8.String, ascii bool) {
 	n := len(o.Text())
-	s := wtf8.String(sb.String())
 	o.SetText(s)
 	if o.flags&ObjASCII != 0 {
 		if !ascii {
@@ -111,7 +122,8 @@ func (o *Object) ExtendExclusive(sb *strings.Builder, ascii bool) {
 		}
 		return
 	}
-	// The UTF-16 view of o stays valid for its prefix.
+	// Growth changes the length. A tail's UTF-16 positions stay valid, and a
+	// reversed head caches only the length.
 	if m := o.Meta(); m != nil && m.Length != 0 {
 		m.Length += int32(wtf8.Len(s[n:]))
 	}
@@ -180,6 +192,49 @@ func reverseBytes(dst []byte, src wtf8.String) {
 	for ; i < n; i++ {
 		dst[i] = src[n-1-i]
 	}
+}
+
+// ConcatASCIIStrings joins first and rest if they are unreversed ASCII strings.
+// length is their combined byte length and must fit within [MaxStringLength].
+func (r *RealmPart) ConcatASCIIStrings(first Value, rest []Value, length int) (Value, bool) {
+	if !flatASCIIString(first) {
+		return Value{}, false
+	}
+	for _, s := range rest {
+		if !flatASCIIString(s) {
+			return Value{}, false
+		}
+	}
+	var w joinWriter
+	w.sb.Grow(length)
+	writeFlatString(&w, first)
+	for _, s := range rest {
+		writeFlatString(&w, s)
+	}
+	w.flush()
+	return r.newJoined(w.sb.String()), true
+}
+
+func flatASCIIString(v Value) bool {
+	if !v.IsString() || v.O.flags&ObjReversed != 0 {
+		return false
+	}
+	if v.StringByteLength() <= shortstrings.MaxBytes {
+		return shortstrings.IsASCII(math.Float64bits(v.N))
+	}
+	return v.O.flags&(ObjASCIIKnown|ObjASCII) == ObjASCIIKnown|ObjASCII
+}
+
+func writeFlatString(w *joinWriter, v Value) {
+	text := v.O.Text()
+	if len(text) <= shortstrings.MaxBytes {
+		w.writePacked(math.Float64bits(v.N), len(text))
+		return
+	}
+	if w.k != 0 {
+		w.flush()
+	}
+	w.sb.WriteString(string(text))
 }
 
 // NewConcatenatedString returns the string s, which is longer than a short string, with the

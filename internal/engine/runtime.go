@@ -1101,6 +1101,16 @@ func (cx *ExecutionContext) Call(f *storage.Object, this storage.Value, args ...
 	return cx.callOnStack(f, this, args)
 }
 
+// CallWithArray calls f with a snapshot of the elements of arr if they can all be read directly.
+func (cx *ExecutionContext) CallWithArray(f *storage.Object, this, arr storage.Value) (storage.Value, bool) {
+	elems, ok := arr.O.PlainElems()
+	if !ok {
+		return storage.Undefined, false
+	}
+	// callOnStack copies the arguments before the callee can mutate arr.
+	return cx.callOnStack(f, this, elems), true
+}
+
 // CallValue calls f, which must be callable, or throws a TypeError.
 func (cx *ExecutionContext) CallValue(f, this storage.Value, args ...storage.Value) storage.Value {
 	if !f.IsCallable() {

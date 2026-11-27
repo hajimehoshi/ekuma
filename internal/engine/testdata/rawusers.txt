@@ -3,10 +3,10 @@
 
 # Store to raw storage, refer to it, or create objects, short strings or property keys from their parts.
 [stores]
-ExecutionContext.Concat ReversedBuilder.Sb:ref
 ExecutionContext.EnumerableOwnKeys Shape.Order:ref
 ExecutionContext.GetVCached PropCache.CacheEntry:ref PropCache.Second:ref Value.accessor:read
 ExecutionContext.NewStringBytes space.strings:ref
+ExecutionContext.Prepend ReversedBuilder.Sb:ref*3
 ExecutionContext.concat ReversedBuilder.Sb:ref*3
 ExecutionContext.concatReversed ReversedBuilder.Sb:ref*4
 ExecutionContext.concatShort Value.N:lit shapeTable.ShortStrings:ref
@@ -22,6 +22,7 @@ ExecutionContext.mapASCII Value.N:lit shapeTable.ShortStrings:ref space.strings:
 ExecutionContext.newBuffered ReversedBuilder.Sb:ref*2
 ExecutionContext.newHead ReversedBuilder.Sb:ref
 ExecutionContext.padShort Value.N:lit shapeTable.ShortStrings:ref space.strings:ref
+ExecutionContext.prependInPlace ReversedBuilder.Sb:ref*2
 ExecutionContext.prependStrings ReversedBuilder.Sb:ref
 ExecutionContext.propKey PropKey.Key:lit
 ExecutionContext.regExpLiteralMethod PropCache.CacheEntry:ref PropCache.Second:ref
@@ -30,6 +31,7 @@ ExecutionContext.resolveGlobal GlobalCache.Holder:write GlobalCache.Shape:write 
 ExecutionContext.setNamed CacheEntry.Epoch:write CacheEntry.Holder:write CacheEntry.Kind:write*2 CacheEntry.Next:write CacheEntry.Shape:write*2 CacheEntry.Slot:write Value.accessor:read
 ExecutionContext.toWellFormedShort Value.N:lit shapeTable.ShortStrings:ref
 ExecutionContext.trimShortString Value.N:lit shapeTable.ShortStrings:ref space.strings:ref
+ExecutionContext.writeASCIIPrefix ReversedBuilder.Sb:ref*2
 NewExecutionContext Shape.Small:lit Shape.Space:lit space.strings:ref*3
 agent.exec CacheEntry.Holder:write CacheEntry.Next:write GlobalCache.Ref:write*2 Object.Class:write*2 Object.Kind:write*3 PropCache.CacheEntry:ref*10 PropCache.Second:ref*6 PropKey.Key:lit*2 Value.N:write*2 Value.accessor:read shape.lookup:read
 

@@ -254,3 +254,34 @@ func TestAppendLengthReads(t *testing.T) {
 		t.Errorf("OpSeal instructions: got %d, want 0", got)
 	}
 }
+
+func TestPrependRefusesUnsealedRead(t *testing.T) {
+	f := compileF(t, `function f(n) {
+		var r = "", saved;
+		for (var i = 0; i < n; i++) {
+			saved = r;
+			r = "a" + r;
+			r = (i ? "b" : "c") + r;
+		}
+		return saved;
+	}`)
+	var constants, additions int
+	for _, in := range f.Code {
+		switch in.Op {
+		case bytecode.OpPrependK:
+			constants++
+			if in.C != 1 {
+				t.Error("constant prepend may grow the string in place")
+			}
+		case bytecode.OpPrepend:
+			t.Error("register prepend may grow the string in place")
+		case bytecode.OpAdd:
+			if in.C == in.A && in.B != in.A {
+				additions++
+			}
+		}
+	}
+	if constants != 1 || additions != 1 {
+		t.Errorf("got %d constant prepends and %d register additions, want one of each", constants, additions)
+	}
+}
