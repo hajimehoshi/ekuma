@@ -2100,6 +2100,8 @@ func (f *fn) presizeNewObjects() {
 				if store.A == reg {
 					break scan
 				}
+			case bytecode.OpSeal:
+				// A seal before a store of a string with appends writes no register.
 			default:
 				break scan
 			}

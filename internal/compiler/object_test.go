@@ -29,6 +29,11 @@ func TestObjectLiteralCapacity(t *testing.T) {
 			want: 1,
 		},
 		{
+			name: "stores of a variable with appends",
+			body: `var r = ""; for (var i = 0; i < 3; i++) r += "x"; var o = {}; o.a = r; o.b = r;`,
+			want: 2,
+		},
+		{
 			name: "keep literal hint",
 			body: "var o = {a: 1}; o.b = 2; o.c = 3;",
 			want: 1,
