@@ -5,6 +5,7 @@ package engine
 
 import (
 	"math"
+	"math/bits"
 	"slices"
 	"sort"
 
@@ -1005,16 +1006,35 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 			if x, y := regs[i.B], regs[i.C]; x.O == storage.NumberObject && y.O == storage.NumberObject {
 				storage.SetNumber(&regs[i.A], x.N+y.N)
 				continue
+			} else if x.O == storage.BigInt64Object && y.O == storage.BigInt64Object {
+				if result, ok := storage.Add64(int64(math.Float64bits(x.N)), int64(math.Float64bits(y.N))); ok {
+					storage.SetBigInt64(&regs[i.A], result)
+					continue
+				}
 			}
 		case bytecode.OpSub:
 			if x, y := regs[i.B], regs[i.C]; x.O == storage.NumberObject && y.O == storage.NumberObject {
 				storage.SetNumber(&regs[i.A], x.N-y.N)
 				continue
+			} else if x.O == storage.BigInt64Object && y.O == storage.BigInt64Object {
+				if result, ok := storage.Sub64(int64(math.Float64bits(x.N)), int64(math.Float64bits(y.N))); ok {
+					storage.SetBigInt64(&regs[i.A], result)
+					continue
+				}
 			}
 		case bytecode.OpMul:
 			if x, y := regs[i.B], regs[i.C]; x.O == storage.NumberObject && y.O == storage.NumberObject {
 				storage.SetNumber(&regs[i.A], x.N*y.N)
 				continue
+			} else if x.O == storage.BigInt64Object && y.O == storage.BigInt64Object {
+				a, b := int64(math.Float64bits(x.N)), int64(math.Float64bits(y.N))
+				hi, lo := bits.Mul64(uint64(a), uint64(b))
+				// Correct the high word for the sign of each operand.
+				hi -= uint64(a>>63)&uint64(b) + uint64(b>>63)&uint64(a)
+				if product := int64(lo); hi == uint64(product>>63) {
+					storage.SetBigInt64(&regs[i.A], product)
+					continue
+				}
 			}
 		case bytecode.OpDiv:
 			if x, y := regs[i.B], regs[i.C]; x.O == storage.NumberObject && y.O == storage.NumberObject {
@@ -2285,6 +2305,10 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 				regs[i.A] = ag.active.Concat(x, y)
 				continue
 			}
+			if x.IsBigInt() && y.IsBigInt() {
+				regs[i.A] = ag.active.addBigInts(x, y)
+				continue
+			}
 			v := ag.active.addValues(x, y)
 			regs = ag.reload(regs, ag.frameBase(), fp)
 			regs[i.A] = v
@@ -2366,7 +2390,23 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 				continue
 			}
 			goto arith
-		case bytecode.OpSub, bytecode.OpMul, bytecode.OpDiv, bytecode.OpBitOr, bytecode.OpBitAnd, bytecode.OpBitXor, bytecode.OpShl, bytecode.OpShr, bytecode.OpUShr:
+		case bytecode.OpSub:
+			x, y := regs[i.B], regs[i.C]
+			if x.IsBigInt() && y.IsBigInt() {
+				ag.frames[len(ag.frames)-1].pc = pc
+				regs[i.A] = ag.active.subBigInts(x, y)
+				continue
+			}
+			goto arith
+		case bytecode.OpMul:
+			x, y := regs[i.B], regs[i.C]
+			if x.IsBigInt() && y.IsBigInt() {
+				ag.frames[len(ag.frames)-1].pc = pc
+				regs[i.A] = ag.active.mulBigInts(x, y)
+				continue
+			}
+			goto arith
+		case bytecode.OpDiv, bytecode.OpBitOr, bytecode.OpBitAnd, bytecode.OpBitXor, bytecode.OpShl, bytecode.OpShr, bytecode.OpUShr:
 			goto arith
 		case bytecode.OpExp:
 			x, y := regs[i.B], regs[i.C]

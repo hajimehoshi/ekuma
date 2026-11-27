@@ -312,6 +312,14 @@ func StringIndex(s wtf8.String) (uint32, bool) {
 	return uint32(n), true
 }
 
+// SetBigInt64 stores the BigInt i in the register r.
+func SetBigInt64(r *Value, i int64) {
+	if r.O != BigInt64Object {
+		r.O = BigInt64Object
+	}
+	r.N = math.Float64frombits(uint64(i))
+}
+
 // SetNumber stores the number n in the register r.
 func SetNumber(r *Value, n float64) {
 	// Over a number only N changes. Leaving the object pointer as it is needs no write barrier

@@ -40,3 +40,31 @@ func TestBigIntBitwiseSizeLimit(t *testing.T) {
 		}
 	}
 }
+
+func TestBigIntArithmeticSizeLimit(t *testing.T) {
+	cx := engine.NewExecutionContextWithBigIntResultLimit(128)
+	builtin.Install(cx)
+	if _, err := runScript(cx, "setup", `
+		const max = BigInt.asUintN(128, -1n);
+		const half = BigInt.asUintN(64, -1n);
+		function throwsRangeError(f) {
+			try { f(); } catch (e) { return e instanceof RangeError; }
+			return false;
+		}
+	`); err != nil {
+		t.Fatal(err)
+	}
+	for _, expr := range []string{
+		`throwsRangeError(() => max + 1n)`,
+		`throwsRangeError(() => -max - 1n)`,
+		`throwsRangeError(() => max * 2n)`,
+		`(half + 1n) * half === max - half`,
+	} {
+		got, err := runScript(cx, "arithmetic", expr)
+		if err != nil {
+			t.Errorf("%s: %v", expr, err)
+		} else if !storage.ToBoolean(got) {
+			t.Errorf("%s is false", expr)
+		}
+	}
+}

@@ -675,19 +675,20 @@ func (cx *ExecutionContext) arith(op bytecode.Opcode, x, y storage.Value) storag
 	if x.O == storage.NumberObject || y.O == storage.NumberObject {
 		cx.ThrowTypeError("cannot mix BigInt and other types, use explicit conversions")
 	}
-	// Subtraction, the bitwise operations and the shifts on huge BigInts cannot stop once they
-	// start, so a pending interruption is taken before them.
+	switch op {
+	case bytecode.OpSub:
+		return cx.subBigInts(x, y)
+	case bytecode.OpMul:
+		return cx.mulBigInts(x, y)
+	}
+	// The bitwise operations and the shifts on huge BigInts cannot stop once they start, so a
+	// pending interruption is taken before them.
 	if cx.InterruptFlag.Load() {
 		cx.Poll()
 	}
 	a, b := x.BigInt(), y.BigInt()
 	r := new(big.Int)
 	switch op {
-	case bytecode.OpSub:
-		r.Sub(a, b)
-		cx.checkBigIntBits(int64(r.BitLen()))
-	case bytecode.OpMul:
-		return cx.multiplyBigInts(a, b)
 	case bytecode.OpDiv:
 		if b.Sign() == 0 {
 			cx.ThrowRangeError("division by zero")

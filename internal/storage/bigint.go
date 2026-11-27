@@ -44,8 +44,8 @@ func Add64(x, y int64) (int64, bool) {
 	return s, (s > x) == (y > 0)
 }
 
-// sub64 returns x - y, and reports whether it does not overflow.
-func sub64(x, y int64) (int64, bool) {
+// Sub64 returns x - y, and reports whether it does not overflow.
+func Sub64(x, y int64) (int64, bool) {
 	d := x - y
 	return d, (d < x) == (y > 0)
 }
@@ -67,7 +67,7 @@ func ArithBigInt64(op bytecode.Opcode, x, y int64) (Value, bool) {
 	ok := true
 	switch op {
 	case bytecode.OpSub:
-		r, ok = sub64(x, y)
+		r, ok = Sub64(x, y)
 	case bytecode.OpMul:
 		r, ok = mul64(x, y)
 	case bytecode.OpDiv:

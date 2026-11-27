@@ -173,6 +173,10 @@ func bigIntBoundaries() []*big.Int {
 }
 
 func FuzzBigIntOperators(f *testing.F) {
+	// The carry crosses every word of the largest inline addend.
+	maxInline := new(big.Int).Lsh(big.NewInt(1), 512)
+	maxInline.Sub(maxInline, big.NewInt(1))
+	f.Add(bytesOfBigInt(maxInline), bytesOfBigInt(big.NewInt(1)))
 	for _, x := range bigIntBoundaries() {
 		for _, y := range bigIntBoundaries() {
 			f.Add(bytesOfBigInt(x), bytesOfBigInt(y))
@@ -191,7 +195,7 @@ func FuzzBigIntOperators(f *testing.F) {
 		fns = append(fns, fn)
 	}
 	f.Fuzz(func(t *testing.T, xb, yb []byte) {
-		if len(xb) > 64 || len(yb) > 64 {
+		if len(xb) > 65 || len(yb) > 65 {
 			t.Skip("too long")
 		}
 		x, y := bigIntFromBytes(xb), bigIntFromBytes(yb)
