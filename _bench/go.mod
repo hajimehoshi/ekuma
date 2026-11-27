@@ -8,7 +8,7 @@ require (
 	github.com/fastschema/qjs v0.0.6
 	github.com/grafana/sobek v0.0.0-20261119094010-6eceb967bb5b
 	github.com/hajimehoshi/ekuma v0.0.0-00010101000000-000000000000
-	github.com/liustack/beastjs v0.33.2
+	github.com/liustack/beastjs v0.33.3
 	github.com/robertkrimen/otto v0.5.1
 	github.com/tommie/v8go v0.44.0
 	golang.org/x/mod v0.43.0

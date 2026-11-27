@@ -26,8 +26,8 @@ github.com/grafana/sobek v0.0.0-20261119094010-6eceb967bb5b h1:XaKKTIYjMh1fbPVGx
 github.com/grafana/sobek v0.0.0-20261119094010-6eceb967bb5b/go.mod h1:IEklgr8b8AjMvu4Mt9X+6AbAg1d8xcus80/px3NPU18=
 github.com/hashicorp/golang-lru/v2 v2.0.7 h1:a+bsQ5rvGLjzHuww6tVxozPZFVghXaHOwFs4luLUK2k=
 github.com/hashicorp/golang-lru/v2 v2.0.7/go.mod h1:QeFd9opnmA6QUJc5vARoKUSoFhyfM2/ZepoAG6RGpeM=
-github.com/liustack/beastjs v0.33.2 h1:iDo0hP0SMCiqYIwBHUUIhip4zSUWRasEWBj6XPKoons=
-github.com/liustack/beastjs v0.33.2/go.mod h1:UUPBm0f2zGsVKeE7lEatpolCMckHyVGtIQcgbLoNE+8=
+github.com/liustack/beastjs v0.33.3 h1:vH3WW7JjOl4o8pyRVeTTLeJBxbIbNWXfDYvkumeEncc=
+github.com/liustack/beastjs v0.33.3/go.mod h1:UUPBm0f2zGsVKeE7lEatpolCMckHyVGtIQcgbLoNE+8=
 github.com/mattn/go-isatty v0.0.24 h1:tGZZoVgT/KiqK1c8ocVLeDS8BSWMRd47J3Lbz7vsReI=
 github.com/mattn/go-isatty v0.0.24/go.mod h1:nMCL3Zebbrt45jsMDgnfIwz6ydEQApk5oEI3HqDio6A=
 github.com/ncruces/go-strftime v1.1.0 h1:vtPmPWMkb539RGV9WpWT9EwJGvrOCKvMNI4obWL47Hk=
