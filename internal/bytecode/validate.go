@@ -430,6 +430,10 @@ func (v *validator) special(pc int, in Instr) error {
 			(set.Op != OpSetGlobal && set.Op != OpSetGlobalStrict) || set.A != get.A {
 			return v.errorf(pc, ErrSequence, "fallback must read the source property and store it to the global")
 		}
+	case OpIterRest:
+		if in.A == in.B || in.A == in.B+1 {
+			return v.errorf(pc, ErrValue, "the rest array overlaps the iterator")
+		}
 	case OpIterNextPair:
 		if pc+2 >= len(code) || code[pc+2].Op != OpIterNext || code[pc+2].B != in.B {
 			return v.errorf(pc, ErrSequence, "not followed by an OpIterNext of b")

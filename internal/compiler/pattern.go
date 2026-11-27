@@ -168,36 +168,35 @@ func (f *fn) arrayPattern(p *ast.ArrayPattern, src int32, mode patMode) {
 	base := f.top
 	start := f.pc()
 	for _, e := range p.Elements {
-		mark := f.top
 		if e == nil {
-			f.elision(it)
-			f.free(mark)
+			f.emit(bytecode.OpIterElision, it, 0, 0)
 			continue
 		}
+		mark := f.top
 		// A reference as the target is evaluated before the iterator steps.
 		ref, prepared := f.elementRef(e, mode)
-		v := f.newReg()
-		if _, rest := e.(*ast.RestElement); rest {
-			f.emit(bytecode.OpNewArray, v, 0, 0)
-			t := f.newReg()
-			loop := f.pc()
-			done := f.emit(bytecode.OpIterNext, t, it, 0)
-			f.emit(bytecode.OpArrayPush, v, t, 0)
-			f.jumpTo(loop)
-			f.patchC(done)
+		target := e
+		rest, isRest := e.(*ast.RestElement)
+		if isRest {
+			target = rest.Target
+		}
+		v := int32(-1)
+		if !prepared {
+			v = f.targetReg(target, mode)
+		}
+		if v < 0 {
+			v = f.newReg()
+		}
+		if isRest {
+			f.emit(bytecode.OpIterRest, v, it, 0)
 		} else {
-			if !prepared {
-				if r := f.targetReg(e, mode); r >= 0 {
-					v = r
-				}
-			}
 			// The step stores undefined when the iterator is done.
 			f.emit(bytecode.OpIterNext, v, it, f.pc()+1)
 		}
 		if prepared {
 			f.storeElement(ref, v)
 		} else {
-			f.destructure(e, v, mode)
+			f.destructure(target, v, mode)
 		}
 		f.free(mark)
 	}
@@ -254,36 +253,6 @@ func (f *fn) assignableLocal(name string) *binding {
 		return b
 	}
 	return nil
-}
-
-// elision steps the iterator it, it+1 without reading the value of the iterator result, as
-// IteratorStep does for an Elision.
-func (f *fn) elision(it int32) {
-	t := f.newRegs(3)
-	f.emit(bytecode.OpTypeof, t, it, 0)
-	f.emit(bytecode.OpLoadK, t+1, f.constStr("number"), 0)
-	generic := f.emit(bytecode.OpJumpNotSEq, 0, t, t+1)
-	// A plain array iterated by index has no iterator result to skip.
-	arrayDone := f.emit(bytecode.OpIterNext, t, it, 0)
-	arrayStepped := f.jump()
-
-	f.patch(generic)
-	finished := f.emit(bytecode.OpJumpIfUndef, 0, it, 0)
-	// The iterator counts as finished while it steps, so that a step that throws does not close it.
-	f.emit(bytecode.OpMove, t, it, 0)
-	f.emit(bytecode.OpLoadUndef, it, 0, 0)
-	f.emit(bytecode.OpMove, t+1, it+1, 0)
-	f.emit(bytecode.OpMove, t+2, t, 0)
-	f.emit(bytecode.OpCall, t+1, t+1, 0)
-	f.emit(bytecode.OpIterCheckResult, t+1, 0, 0)
-	f.emitGetProp(t+1, t+1, f.site("done"))
-	done := f.emit(bytecode.OpJumpIf, 0, t+1, 0)
-	f.emit(bytecode.OpMove, it, t, 0)
-
-	f.patchC(arrayDone)
-	f.patch(arrayStepped)
-	f.patch(finished)
-	f.patch(done)
 }
 
 // elementRef is the reference that is the target of an assignment element, evaluated before

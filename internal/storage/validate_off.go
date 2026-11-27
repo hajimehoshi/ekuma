@@ -15,7 +15,7 @@ func (r *RealmPart) checkArrayIteration() {}
 
 func (r *RealmPart) CheckNoIteratorReturn() {}
 
-func (r *RealmPart) checkPlainArray(*Object) {}
+func (r *RealmPart) CheckPlainArrayIteration(*Object) {}
 
 func (r *RealmPart) checkUnmodifiedRegExp(*Object) {}
 

@@ -168,6 +168,7 @@ func TestResultConvention(t *testing.T) {
 		"OpTailCallFwd":     true,
 		"OpIterNext":        true,
 		"OpIterNextPair":    true,
+		"OpIterRest":        true,
 		"OpIterReturn":      true,
 	}
 	for i, name := range opcodeNames(t) {

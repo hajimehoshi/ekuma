@@ -115,6 +115,18 @@ func TestNumericArrayOperationsKeepPackedStorage(t *testing.T) {
 			})()`,
 			want: `a.length === 2 && a[0] === 1 && a[1] === 2`,
 		},
+		{
+			name: "destructuring rest copies a packed suffix",
+			src: `(() => {
+				const a = numbers();
+				const [, ...rest] = a;
+				rest[0] = -1;
+				a[2] = -2;
+				if (a[1] !== 1 || rest[1] !== 2) throw Error();
+				return rest;
+			})()`,
+			want: `a.length === 40 && a[0] === -1 && a[39] === 40`,
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			cx := newTestContext(t)

@@ -61,6 +61,7 @@ var unguardedUses = map[string]map[string]int{
 	},
 	"Object.PushElement": {
 		"ExecutionContext.appendIterable": 1,
+		"ExecutionContext.iteratorRest":   2,
 		"agent.exec":                      2,
 	},
 	"Object.SetArrayIndex": {

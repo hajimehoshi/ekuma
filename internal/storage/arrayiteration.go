@@ -5,24 +5,30 @@ package storage
 
 // arrayIterCache is what [Space.ArrayIterationUnmodified] found for arrays with the initial shape.
 type arrayIterCache struct {
-	// iter and next are the data properties that iterating such an array reads.
-	iter dataSlot
-	next dataSlot
+	// IterRef and NextRef point to the live data slots for iteration at Epoch, or are both nil.
+	// The interpreter reads these slots without modifying them.
+	IterRef *Value
+	NextRef *Value
 
-	// Epoch is the value of [Space.ProtoEpoch] at which iter and next were found.
+	// Epoch is the value of [Space.ProtoEpoch] at which the slots were found.
 	Epoch   uint32
 	checked bool
-	// found reports whether iter and next were found as data properties.
-	found bool
 	// NoReturn reports whether array iterators had no return method at Epoch.
 	NoReturn bool
+}
+
+// hasOriginalMethods reports whether the cached slots still hold the original iterator methods.
+func (c *arrayIterCache) hasOriginalMethods(r *RealmPart) bool {
+	// Existing data slots can change value while the epoch stays the same.
+	return c.IterRef != nil && c.IterRef.O == r.Intrinsics[IntrinsicArrayPrototypeValues] &&
+		c.NextRef.O == r.Intrinsics[IntrinsicArrayIteratorPrototypeNext]
 }
 
 // ArrayIterationPlain reports whether o uses the original array values and next methods.
 // Reading an element can still invoke a getter.
 func (r *RealmPart) ArrayIterationPlain(o *Object) bool {
 	if ValidateExec {
-		r.checkPlainArray(o)
+		r.CheckPlainArrayIteration(o)
 	}
 	return o.shape == r.Shapes.Array && r.ArrayIterationUnmodified(r)
 }
@@ -32,20 +38,21 @@ func (r *RealmPart) ArrayIterationPlain(o *Object) bool {
 func (sp *Space) ArrayIterationUnmodified(r *RealmPart) bool {
 	c := &r.ArrayIter
 	if c.Epoch != sp.ProtoEpoch || !c.checked {
+		iter := r.LookupDataSlot(r.Intrinsics[IntrinsicArrayPrototype], sp.WellKnownSymbol(SymbolIterator))
+		next := r.LookupDataSlot(r.Intrinsics[IntrinsicArrayIteratorPrototype], sp.Key(KeyNext))
+		c.IterRef, c.NextRef = nil, nil
+		if iter.Holder != nil && next.Holder != nil {
+			c.IterRef = &iter.Holder.slots[iter.slot]
+			c.NextRef = &next.Holder.slots[next.slot]
+		}
+		c.NoReturn = sp.NoArrayIteratorReturn(r.Intrinsics[IntrinsicArrayIteratorPrototype])
 		c.checked = true
 		c.Epoch = sp.ProtoEpoch
-		c.iter = r.LookupDataSlot(r.Intrinsics[IntrinsicArrayPrototype], sp.WellKnownSymbol(SymbolIterator))
-		c.next = r.LookupDataSlot(r.Intrinsics[IntrinsicArrayIteratorPrototype], sp.Key(KeyNext))
-		c.found = c.iter.Holder != nil && c.next.Holder != nil
-		c.NoReturn = sp.NoArrayIteratorReturn(r.Intrinsics[IntrinsicArrayIteratorPrototype])
 	}
 	if ValidateExec {
 		r.checkArrayIteration()
 	}
-	// Assigning to an existing data property does not move ProtoEpoch, so the values are
-	// compared on every call.
-	return c.found && c.iter.Value().O == r.Intrinsics[IntrinsicArrayPrototypeValues] &&
-		c.next.Value().O == r.Intrinsics[IntrinsicArrayIteratorPrototypeNext]
+	return c.hasOriginalMethods(r)
 }
 
 // NoArrayIteratorReturn reports whether array iterators have no return method, which closing

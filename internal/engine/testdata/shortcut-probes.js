@@ -775,6 +775,10 @@ var pending = {
   "spread call": raise => ran(...(raise(), [1])),
   "spread of a generator": raise => [...raising(raise, unstarted())],
   "destructuring of a generator": raise => { var [x] = raising(raise, unstarted()); },
+  "destructuring rest of a small array": raise => {
+    var [...rest] = (raise(), [1]);
+    started = true;
+  },
   "for of a generator": raise => { for (var x of raising(raise, unstarted())); },
   "Array.from of a generator": raise => Array.from(raising(raise, unstarted())),
   "construction of a Map": raise => new Map((raise(), [Object.defineProperty([], 0, {get: ran})])),

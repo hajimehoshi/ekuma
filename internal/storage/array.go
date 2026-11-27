@@ -1212,6 +1212,44 @@ func (r *RealmPart) NewArrayCopy(elems []Value) *Object {
 	return a
 }
 
+// NewArraySlice returns a new array with a copy of the dense suffix of a plain array.
+func (r *RealmPart) NewArraySlice(o *Object, from uint32) (*Object, bool) {
+	end := o.length
+	if from >= end {
+		return r.NewArray(nil), true
+	}
+	if o.Kind != KindArray || o.shape != r.Shapes.Array || o.flags != 0 || !r.ArrayProtoPlain() {
+		return nil, false
+	}
+	if nums := o.numericElements(); uint64(end) <= uint64(len(nums)) {
+		suffix := nums[from:end]
+		if len(suffix) <= MaxInlineObjectValues {
+			a := r.NewArrayWithRoom(len(suffix), 0)
+			boxNums(&r.Poller, a.elems, suffix)
+			return a, true
+		}
+		return r.newPackedNumArray(appendPolled(&r.Poller, nil, suffix)), true
+	}
+	if uint64(end) > uint64(len(o.elems)) {
+		return nil, false
+	}
+	suffix := o.elems[from:end]
+	for base := 0; base < len(suffix); {
+		if base > 0 {
+			r.Poll()
+		}
+		limit := base + min(len(suffix)-base, PollInterval)
+		if containsHole(suffix[base:limit]) {
+			return nil, false
+		}
+		base = limit
+	}
+	if len(suffix) <= MaxInlineObjectValues {
+		return r.NewArrayCopy(suffix), true
+	}
+	return r.NewArray(appendPolled(&r.Poller, nil, suffix)), true
+}
+
 // NewArrayOfConstants returns a new array of the constants in run, the linked constants of an
 // array literal, which no other code uses. The first call stores an array of them in run[0] and
 // clears the rest of run. The returned arrays share its elements until their own change.

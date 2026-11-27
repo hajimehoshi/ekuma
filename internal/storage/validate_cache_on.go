@@ -169,7 +169,7 @@ func (r *RealmPart) checkArrayIteration() {
 	c := &r.ArrayIter
 	values := r.Intrinsics[IntrinsicArrayPrototypeValues]
 	next := r.Intrinsics[IntrinsicArrayIteratorPrototypeNext]
-	if c.found && c.iter.Value().O == values && c.next.Value().O == next {
+	if c.hasOriginalMethods(r) {
 		r.checkOriginal(r.Intrinsics[IntrinsicArrayPrototype], r.WellKnownSymbol(SymbolIterator), values)
 		r.checkOriginal(r.Intrinsics[IntrinsicArrayIteratorPrototype], r.Key(KeyNext), next)
 	}
@@ -186,9 +186,8 @@ func (r *RealmPart) CheckNoIteratorReturn() {
 	}
 }
 
-// checkPlainArray checks that iterating o starts with the original values method, if
-// ArrayIterationPlain says so.
-func (r *RealmPart) checkPlainArray(o *Object) {
+// CheckPlainArrayIteration checks the array iteration cache for o.
+func (r *RealmPart) CheckPlainArrayIteration(o *Object) {
 	if o.shape != r.Shapes.Array || !r.ArrayIterationUnmodified(r) {
 		return
 	}

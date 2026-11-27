@@ -1837,6 +1837,23 @@ func (ag *agent) execFast(stop int, fp *storage.FuncProto, pc int, regs []storag
 				regs[ret] = r
 				continue
 			}
+		case bytecode.OpGetIterator:
+			v := regs[i.B]
+			r := ag.active.realm
+			if o := v.O; i.C == bytecode.IterSync && o != nil && o.Kind == storage.KindArray && o.Shape() == r.Shapes.Array && o.Flags() == 0 {
+				if c := &r.ArrayIter; c.Epoch == ag.ProtoEpoch {
+					iter, next := c.IterRef, c.NextRef
+					if iter != nil && iter.O == r.Intrinsics[storage.IntrinsicArrayPrototypeValues] &&
+						next.O == r.Intrinsics[storage.IntrinsicArrayIteratorPrototypeNext] {
+						if validateExec {
+							r.CheckPlainArrayIteration(o)
+						}
+						storage.SetNumber(&regs[i.A], 0)
+						regs[i.A+1] = v
+						continue
+					}
+				}
+			}
 		case bytecode.OpIterNext:
 			if idx := regs[i.B]; idx.O == nil {
 				regs[i.A] = storage.Undefined
@@ -1863,6 +1880,22 @@ func (ag *agent) execFast(stop int, fp *storage.FuncProto, pc int, regs []storag
 					regs[i.B].N = idx.N + 1
 					storage.SetNumber(&regs[i.A], nums[j])
 					goto tryAddLoaded
+				}
+			}
+		case bytecode.OpIterElision:
+			if idx := regs[i.A]; idx.O == nil {
+				continue
+			} else if idx.O == storage.NumberObject {
+				o := regs[i.A+1].O
+				j := uint32(idx.N)
+				if j >= o.Length() {
+					regs[i.A] = storage.Undefined
+					regs[i.A+1] = storage.Undefined
+					continue
+				}
+				if uint(j) < uint(o.Raw().NumCount()) || uint(j) < uint(o.Raw().ElemCount()) && o.Raw().Elem(int(j)).O != storage.HoleObject {
+					storage.SetNumber(&regs[i.A], idx.N+1)
+					continue
 				}
 			}
 		case bytecode.OpIterClose:
@@ -3629,6 +3662,32 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 					goto throw
 				}
 			}
+		case bytecode.OpIterElision:
+			ag.frames[len(ag.frames)-1].pc = pc
+			it, next := regs[i.A], regs[i.A+1]
+			// A throw from next, done or an index getter finishes the iterator.
+			regs[i.A] = storage.Undefined
+			regs[i.A+1] = storage.Undefined
+			if it.O == storage.NumberObject {
+				ag.active.plainArrayIteratorIndex(next.O, uint32(it.N))
+				it = storage.Number(it.N + 1)
+			} else if !ag.active.IteratorStep(it, next) {
+				it, next = storage.Undefined, storage.Undefined
+			}
+			regs = ag.reload(regs, ag.frameBase(), fp)
+			regs[i.A] = it
+			regs[i.A+1] = next
+		case bytecode.OpIterRest:
+			ag.frames[len(ag.frames)-1].pc = pc
+			if ag.InterruptFlag.Load() {
+				ag.Poll()
+			}
+			it, next := regs[i.B], regs[i.B+1]
+			regs[i.B] = storage.Undefined
+			regs[i.B+1] = storage.Undefined
+			a := ag.active.iteratorRest(it, next)
+			regs = ag.reload(regs, ag.frameBase(), fp)
+			regs[i.A] = storage.Value{O: a}
 		case bytecode.OpIterNextPair:
 			// The elements of the next value go to their registers without the value when nothing
 			// can tell. When the step has run and something can tell, the pair becomes the value of

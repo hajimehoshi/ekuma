@@ -329,6 +329,39 @@ func (cx *ExecutionContext) iteratorStep(it, next storage.Value) (storage.Value,
 	return v, st == iterValue
 }
 
+// iteratorRest collects the remaining values of an iterator record or indexed array cursor.
+func (cx *ExecutionContext) iteratorRest(it, next storage.Value) *storage.Object {
+	if it.O == storage.NumberObject {
+		o, from := next.O, uint32(it.N)
+		if a, ok := cx.NewArraySlice(o, from); ok {
+			return a
+		}
+		a := cx.NewArray(nil)
+		for j := from; j < o.Length(); j++ {
+			v, ok := o.ElementAt(j)
+			if !ok {
+				v = cx.plainArrayIteratorIndex(o, j)
+			}
+			a.PushElement(v)
+			cx.PollStep()
+		}
+		return a
+	}
+
+	a := cx.NewArray(nil)
+	if it.O != nil {
+		for {
+			v, ok := cx.iteratorStep(it, next)
+			if !ok {
+				break
+			}
+			a.PushElement(v)
+			cx.PollStep()
+		}
+	}
+	return a
+}
+
 // iteratorClose implements IteratorClose. With pending set, an exception is already
 // being propagated and the errors of closing are dropped.
 func (cx *ExecutionContext) iteratorClose(it storage.Value, pending bool) {

@@ -1847,6 +1847,25 @@ var opcodes = [...]struct {
 		},
 		flow: FlowNext,
 	},
+	OpIterElision: {
+		name: "OpIterElision",
+		operands: Operands{
+			A:      OperandReg,
+			Reads:  regPairA,
+			Writes: regPairA,
+		},
+		flow: FlowNext,
+	},
+	OpIterRest: {
+		name: "OpIterRest",
+		operands: Operands{
+			A:      OperandReg,
+			B:      OperandReg,
+			Reads:  []Regs{{At: FieldB, Len: 2}},
+			Writes: []Regs{{At: FieldA, Len: 1}, {At: FieldB, Len: 2}},
+		},
+		flow: FlowNext,
+	},
 	OpIterNextPair: {
 		name: "OpIterNextPair",
 		operands: Operands{
