@@ -133,6 +133,11 @@ func (f *fn) appends(b *binding, value ast.Expr) bool {
 	if !stringValued(value) {
 		return false
 	}
+	// An append outside the loops of the function runs once each time the code runs, so that
+	// extending its result in place gains little, and the reads of the variable would need seals.
+	if !f.inLoop() {
+		return false
+	}
 	// An arguments object can read and write a parameter.
 	if f.isParam(name) && (f.node.UsesArguments || f.mutated[name]) {
 		return false
@@ -145,6 +150,16 @@ func (f *fn) appends(b *binding, value ast.Expr) bool {
 	f.appendRegs = append(f.appendRegs, b.reg)
 	f.appendBindings = append(f.appendBindings, b)
 	return true
+}
+
+// inLoop reports whether the code being compiled is in a loop of f.
+func (f *fn) inLoop() bool {
+	for _, c := range f.control {
+		if c.isLoop {
+			return true
+		}
+	}
+	return false
 }
 
 // lengthOf returns the local variable with appends whose length n reads without an optional

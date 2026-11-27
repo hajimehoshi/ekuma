@@ -148,6 +148,11 @@ func TestAppend(t *testing.T) {
 			appends: 2,
 		},
 		{
+			name:    "appends outside loops",
+			src:     `function f(k) { var s = "<"; s += k; s += ">"; s = "(" + s; return s; }`,
+			concats: 1,
+		},
+		{
 			name:    "top-level code",
 			src:     `{ let r = ""; for (let i = 0; i < 3; i++) r += "x"; g = r; } function f() {}`,
 			concats: 1,
