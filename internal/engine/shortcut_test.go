@@ -67,6 +67,28 @@ func TestNamedReadDifferential(t *testing.T) {
 		[]int{1, 2, 1, 1}, []int{1, 1, 1, 1})
 }
 
+func TestBigIntMultiplyAddDifferential(t *testing.T) {
+	const setup = `
+		function combine(a, b, c) { c = a * b + c; return c; }
+		combine;
+	`
+	const scenario = `
+		const half = (1n << 256n) - 1n;
+		const wide = 1n << 512n;
+		[
+			combine(-7n, 5n, 12n),
+			combine(4000000000n, 5000000000n, -17000000000000000000n),
+			combine(9223372036854775807n, 1n, 1n),
+			combine(half, half, (1n << 257n) - 1n) === wide,
+			combine(half, 1n, wide) === wide + half,
+			combine(2n, 3n, "a"),
+			combine({ valueOf() { return 2n; } }, 3n, 1n),
+		].join();
+	`
+	compareShortcut(t, bytecode.OpMulAdd, setup, scenario, "-23,3000000000000000000,9223372036854775808,true,true,6a,7",
+		[]int{2, 2, 1, 2, 1, 1, 1}, []int{1, 1, 1, 1, 1, 1, 1})
+}
+
 func TestIncrementIndexDifferential(t *testing.T) {
 	// read(a, k - step) reads a[k]: step is 1 for a[++i] and 0 for a[i++]. The first two
 	// reads take an element, and each of the others leaves the read on its own for a

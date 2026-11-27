@@ -356,6 +356,8 @@ const (
 	OpPrepend  // a = b + a, with the same ownership rules as [OpAppend]
 	OpPrependK // a = Consts[b] + a, where Consts[b] is a string. c = 1 disables in-place growth
 
+	OpMulAdd // like [OpMul], followed by an [OpAdd] whose only use of the temporary a is one operand
+
 	// Others.
 	OpExtra // the operands of the instruction before it that do not fit in it; it is never executed
 )

@@ -3,10 +3,7 @@
 
 package storage
 
-import (
-	"math/big"
-	"sync/atomic"
-)
+import "sync/atomic"
 
 // InterruptSignal is what an interruption unwinds Go frames with. No JavaScript code can catch it.
 type InterruptSignal struct {
@@ -87,7 +84,7 @@ func comparedBytes(v Value) int {
 		return len(v.O.Text())
 	case KindBigInt:
 		if v.O != BigInt64Object {
-			return v.O.ExtState().(*big.Int).BitLen() / 8
+			return v.O.heapBigInt().BitLen() / 8
 		}
 	}
 	return 0

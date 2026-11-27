@@ -25,7 +25,7 @@ func (cx *ExecutionContext) checkBigIntBits(n int64) {
 	}
 }
 
-const bigIntInlineWords = 512 / bits.UintSize
+const bigIntInlineWords = storage.BigIntInlineWords
 
 func bigIntMagnitude(v storage.Value, buf *[64 / bits.UintSize]big.Word) (words []big.Word, negative bool) {
 	if i, ok := v.BigInt64(); ok {
@@ -129,54 +129,10 @@ func significantWords(words []big.Word) int {
 
 // makeBigInt publishes a result with a normalized magnitude of up to bigIntInlineWords+1 words.
 func (cx *ExecutionContext) makeBigInt(words []big.Word, negative bool) storage.Value {
-	n := len(words)
-	if int64(n)*bits.UintSize > cx.MaxBigIntResultBits {
+	if int64(len(words))*bits.UintSize > cx.MaxBigIntResultBits {
 		cx.checkBigIntBits(wordBitLen(words))
 	}
-	if n == 0 {
-		return storage.BigIntFromInt64(0)
-	}
-	if n*bits.UintSize <= 64 {
-		magnitude := uint64(words[0])
-		if bits.UintSize == 32 && n == 2 {
-			magnitude |= uint64(words[1]) << 32
-		}
-		if negative && magnitude <= 1<<63 {
-			return storage.BigIntFromInt64(int64(-magnitude))
-		}
-		if !negative && magnitude <= math.MaxInt64 {
-			return storage.BigIntFromInt64(int64(magnitude))
-		}
-	}
-	var o *bigIntObject
-	var magnitude []big.Word
-	switch {
-	case n <= 192/bits.UintSize:
-		result := &struct {
-			bigIntObject
-			magnitude [192 / bits.UintSize]big.Word
-		}{}
-		o, magnitude = &result.bigIntObject, result.magnitude[:n:n]
-	case n <= 320/bits.UintSize:
-		result := &struct {
-			bigIntObject
-			magnitude [320 / bits.UintSize]big.Word
-		}{}
-		o, magnitude = &result.bigIntObject, result.magnitude[:n:n]
-	default:
-		result := &struct {
-			bigIntObject
-			magnitude [bigIntInlineWords + 1]big.Word
-		}{}
-		o, magnitude = &result.bigIntObject, result.magnitude[:n:n]
-	}
-	// SetBits shares the immutable magnitude stored in the result's allocation.
-	copy(magnitude, words)
-	o.Integer.SetBits(magnitude)
-	if negative {
-		o.Integer.Neg(&o.Integer)
-	}
-	return o.InitBigInt(&o.Integer)
+	return storage.NewBigIntFromWords(words, negative)
 }
 
 func (cx *ExecutionContext) addBigInts(a, b storage.Value) storage.Value {
@@ -217,22 +173,24 @@ func (cx *ExecutionContext) addSubBigInts(a, b storage.Value, subtract bool) sto
 	}
 
 	var result [bigIntInlineWords + 1]big.Word
-	yNegative = yNegative != subtract
+	n, negative := addSignedWords(result[:], x, y, xNegative, yNegative != subtract)
+	return cx.makeBigInt(result[:n], negative)
+}
+
+func addSignedWords(dst, x, y []big.Word, xNegative, yNegative bool) (int, bool) {
 	if xNegative == yNegative {
 		if len(x) < len(y) {
 			x, y = y, x
 		}
-		n := addWords(result[:], x, y)
-		return cx.makeBigInt(result[:n], xNegative)
+		return addWords(dst, x, y), xNegative
 	}
 	switch c := compareWords(x, y); {
 	case c == 0:
-		return storage.BigIntFromInt64(0)
+		return 0, false
 	case c < 0:
 		x, y, xNegative = y, x, yNegative
 	}
-	n := subWords(result[:], x, y)
-	return cx.makeBigInt(result[:n], xNegative)
+	return subWords(dst, x, y), xNegative
 }
 
 func (cx *ExecutionContext) mulBigInts(a, b storage.Value) storage.Value {
@@ -256,6 +214,30 @@ func (cx *ExecutionContext) mulBigInts(a, b storage.Value) storage.Value {
 	var result [bigIntInlineWords]big.Word
 	n := mulWords(result[:], x, y)
 	return cx.makeBigInt(result[:n], xNegative != yNegative)
+}
+
+// mulAddBigInts computes a*b+c when both operations fit in bounded scratch storage.
+// The caller has set the frame's PC for the multiplication.
+func (cx *ExecutionContext) mulAddBigInts(a, b, c storage.Value, addPC int) (storage.Value, bool) {
+	var xBuf, yBuf, zBuf [64 / bits.UintSize]big.Word
+	x, xNegative := bigIntMagnitude(a, &xBuf)
+	y, yNegative := bigIntMagnitude(b, &yBuf)
+	z, zNegative := bigIntMagnitude(c, &zBuf)
+	if len(x) == 0 || len(y) == 0 || len(z) == 0 || len(x)+len(y) > bigIntInlineWords || len(z) > bigIntInlineWords {
+		return storage.Value{}, false
+	}
+	if cx.InterruptFlag.Load() {
+		cx.Poll()
+	}
+	var product [bigIntInlineWords]big.Word
+	n := mulWords(product[:], x, y)
+	if int64(n)*bits.UintSize > cx.MaxBigIntResultBits {
+		cx.checkBigIntBits(wordBitLen(product[:n]))
+	}
+	cx.frames[len(cx.frames)-1].pc = addPC
+	var sum [bigIntInlineWords + 1]big.Word
+	n, negative := addSignedWords(sum[:], product[:n], z, xNegative != yNegative, zNegative)
+	return cx.makeBigInt(sum[:n], negative), true
 }
 
 // BigIntToString implements BigInt::toString. It throws a RangeError when the result would be

@@ -411,6 +411,10 @@ func (v *validator) special(pc int, in Instr) error {
 		if in.Op == OpPostIncGetIndex && in.A == in.B {
 			return v.errorf(pc, ErrSequence, "a postfix increment whose key is the variable")
 		}
+	case OpMulAdd:
+		if pc+1 >= len(code) || code[pc+1].Op != OpAdd || (code[pc+1].B == in.A) == (code[pc+1].C == in.A) {
+			return v.errorf(pc, ErrSequence, "not followed by an OpAdd with exactly one operand a")
+		}
 	case OpCopyPropToGlobal:
 		if int(in.C) < pc+3 {
 			return v.errorf(pc, ErrSequence, "missing global property assignment")

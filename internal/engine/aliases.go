@@ -10,7 +10,6 @@ import (
 // These are the embedded types. An embedded type gives the field its name, and the fields must not
 // be exported.
 type (
-	bigIntObject   = storage.BigIntObject
 	propertyObject = storage.PropertyObject
 	realmPart      = storage.RealmPart
 	space          = storage.Space

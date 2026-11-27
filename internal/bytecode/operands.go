@@ -911,6 +911,11 @@ var opcodes = [...]struct {
 		operands: binaryOperands,
 		flow:     FlowNext,
 	},
+	OpMulAdd: {
+		name:     "OpMulAdd",
+		operands: binaryOperands,
+		flow:     FlowNext,
+	},
 	OpDiv: {
 		name:     "OpDiv",
 		operands: binaryOperands,

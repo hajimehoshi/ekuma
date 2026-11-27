@@ -448,6 +448,12 @@ func (f *fn) binary(n *ast.BinaryExpr, dst int32) {
 		// OpIn takes the object before the key.
 		l, r = r, l
 	}
+	if n.Op == ast.OpAdd && l != r && len(f.f.Code) != 0 {
+		// Only an operand allocated by this expression can be dead after the add.
+		if p := &f.f.Code[len(f.f.Code)-1]; p.Op == bytecode.OpMul && p.A >= mark && (p.A == l || p.A == r) {
+			p.Op = bytecode.OpMulAdd
+		}
+	}
 	f.emit(binaryOps[n.Op], dst, l, r)
 	if n.Op == ast.OpInstanceof {
 		f.emit(bytecode.OpExtra, f.site("prototype"), 0, 0)

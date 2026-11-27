@@ -7,21 +7,44 @@ import (
 	"math"
 	"math/big"
 	"math/bits"
+	"unsafe"
 
 	"github.com/hajimehoshi/ekuma/internal/bytecode"
 )
 
-// BigIntObject holds a BigInt and its integer header in one allocation.
-type BigIntObject struct {
-	PropertyObject
-	Integer big.Int
+// bigIntObject is the allocation behind every KindBigInt object except BigInt64Object.
+type bigIntObject struct {
+	plainObject
+	integer big.Int
 }
 
-// InitBigInt makes o, which must be zero, the BigInt i, which must not fit in an int64.
-func (o *BigIntObject) InitBigInt(i *big.Int) Value {
+const (
+	_ = -uint(unsafe.Offsetof(bigIntObject{}.Object))
+	_ = -uint(unsafe.Sizeof(bigIntObject{}) ^ (unsafe.Sizeof(Object{}) + unsafe.Sizeof(big.Int{})))
+)
+
+func (o *bigIntObject) init(words []big.Word, negative bool) Value {
 	o.Kind = KindBigInt
-	o.Ext = i
-	return Value{O: o.Init()}
+	o.integer.SetBits(words)
+	if negative {
+		o.integer.Neg(&o.integer)
+	}
+	return Value{O: o.plainObject.Init()}
+}
+
+func (o *Object) heapBigInt() *big.Int {
+	if o == nil || o.Kind != KindBigInt || o == BigInt64Object {
+		panic("storage: expected a heap BigInt")
+	}
+	return &(*bigIntObject)(unsafe.Pointer(o)).integer
+}
+
+// BigInt returns the BigInt v, which must not be modified.
+func (v Value) BigInt() *big.Int {
+	if i, ok := v.BigInt64(); ok {
+		return big.NewInt(i)
+	}
+	return v.O.heapBigInt()
 }
 
 // NewBigInt returns the BigInt i, which must not be modified afterward.
@@ -29,13 +52,54 @@ func NewBigInt(i *big.Int) Value {
 	if i.IsInt64() {
 		return BigIntFromInt64(i.Int64())
 	}
-	o := &BigIntObject{}
-	// SetBits shares the immutable magnitude without retaining i's header.
-	o.Integer.SetBits(i.Bits())
-	if i.Sign() < 0 {
-		o.Integer.Neg(&o.Integer)
+	return (&bigIntObject{}).init(i.Bits(), i.Sign() < 0)
+}
+
+// BigIntInlineWords is the word count up to which arithmetic uses a bounded scratch buffer.
+const BigIntInlineWords = 512 / bits.UintSize
+
+// NewBigIntFromWords copies a normalized magnitude of up to [BigIntInlineWords]+1 words.
+func NewBigIntFromWords(words []big.Word, negative bool) Value {
+	n := len(words)
+	if n == 0 {
+		return BigIntFromInt64(0)
 	}
-	return o.InitBigInt(&o.Integer)
+	if n <= 64/bits.UintSize {
+		magnitude := uint64(words[0])
+		if bits.UintSize == 32 && n == 2 {
+			magnitude |= uint64(words[1]) << 32
+		}
+		if negative && magnitude <= 1<<63 {
+			return BigIntFromInt64(int64(-magnitude))
+		}
+		if !negative && magnitude <= math.MaxInt64 {
+			return BigIntFromInt64(int64(magnitude))
+		}
+	}
+	var o *bigIntObject
+	var magnitude []big.Word
+	switch {
+	case n <= 192/bits.UintSize:
+		result := &struct {
+			bigIntObject
+			words [192 / bits.UintSize]big.Word
+		}{}
+		o, magnitude = &result.bigIntObject, result.words[:n:n]
+	case n <= 320/bits.UintSize:
+		result := &struct {
+			bigIntObject
+			words [320 / bits.UintSize]big.Word
+		}{}
+		o, magnitude = &result.bigIntObject, result.words[:n:n]
+	default:
+		result := &struct {
+			bigIntObject
+			words [BigIntInlineWords + 1]big.Word
+		}{}
+		o, magnitude = &result.bigIntObject, result.words[:n:n]
+	}
+	copy(magnitude, words)
+	return o.init(magnitude, negative)
 }
 
 // Add64 returns x + y, and reports whether it does not overflow.

@@ -7,7 +7,6 @@ package storage
 
 import (
 	"math"
-	"math/big"
 
 	"github.com/hajimehoshi/ekuma/internal/shortstrings"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
@@ -68,7 +67,7 @@ var TrueObject = &Object{Kind: KindTrue, objectTail: &zeroTail}
 var HoleObject = &Object{Kind: KindHole, objectTail: &zeroTail}
 
 // BigInt64Object is the O of every BigInt that fits in an int64. Every other BigInt is an
-// object of its own holding a *big.Int, so each BigInt has exactly one representation.
+// object of its own, so each BigInt has exactly one representation.
 var BigInt64Object = &Object{Kind: KindBigInt, objectTail: &zeroTail}
 
 // Undefined is the value undefined.
@@ -186,14 +185,6 @@ func (v Value) BigInt64() (int64, bool) {
 		return 0, false
 	}
 	return int64(math.Float64bits(v.N)), true
-}
-
-// BigInt returns the BigInt v, which must not be modified.
-func (v Value) BigInt() *big.Int {
-	if i, ok := v.BigInt64(); ok {
-		return big.NewInt(i)
-	}
-	return v.O.ExtState().(*big.Int)
 }
 
 // IsObject reports whether v is an object, which includes functions and arrays.

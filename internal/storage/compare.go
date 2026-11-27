@@ -5,7 +5,6 @@ package storage
 
 import (
 	"math"
-	"math/big"
 
 	"github.com/hajimehoshi/ekuma/internal/shortstrings"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
@@ -30,7 +29,7 @@ func IsStrictlyEqual(a, b Value) bool {
 		return sameStrings(a.O, b.O)
 	case KindBigInt:
 		// A BigInt that fits in an int64 never equals one that does not.
-		return a.O != BigInt64Object && b.O != BigInt64Object && a.O.ExtState().(*big.Int).Cmp(b.O.ExtState().(*big.Int)) == 0
+		return a.O != BigInt64Object && b.O != BigInt64Object && a.O.heapBigInt().Cmp(b.O.heapBigInt()) == 0
 	}
 	return false
 }

@@ -82,6 +82,14 @@ func TraceShortcut(t *testing.T, f storage.Value, op bytecode.Opcode, bypass boo
 		if call.Op != bytecode.OpCall || call.B != fp.Code[site].A {
 			t.Fatal("expected a call of the loaded method after OpGetMethod")
 		}
+	case bytecode.OpMulAdd:
+		if add := fp.Code[site+1]; add.Op != bytecode.OpAdd || (add.B == fp.Code[site].A) == (add.C == fp.Code[site].A) {
+			t.Fatal("expected an addition of the product after OpMulAdd")
+		}
+		if bypass {
+			fp.Code = slices.Clone(fp.Code)
+			fp.Code[site].Op = bytecode.OpMul
+		}
 	case bytecode.OpIncGetIndex, bytecode.OpPostIncGetIndex:
 		read := fp.Code[site+1]
 		if read.Op != bytecode.OpGetIndex || read.C != fp.Code[site].A {
