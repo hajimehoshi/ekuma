@@ -809,6 +809,21 @@ func (f *fn) emitGetProp(dst, obj, site int32) {
 	f.emit(bytecode.OpGetProp, dst, obj, site)
 }
 
+// emitGetIndex emits OpGetIndex dst, obj, key.
+func (f *fn) emitGetIndex(dst, obj, key int32) {
+	// An increment right before it that writes key becomes one that may run both, as in
+	// a[++i] and a[i++]. A jump to the new instruction still runs it on its own.
+	if n := len(f.f.Code); n > 0 {
+		switch p := &f.f.Code[n-1]; {
+		case p.Op == bytecode.OpInc && p.A == key:
+			p.Op = bytecode.OpIncGetIndex
+		case p.Op == bytecode.OpPostInc && p.A == key && p.B != key:
+			p.Op = bytecode.OpPostIncGetIndex
+		}
+	}
+	f.emit(bytecode.OpGetIndex, dst, obj, key)
+}
+
 // pc returns the index of the next instruction.
 func (f *fn) pc() int32 {
 	return int32(len(f.f.Code))

@@ -352,6 +352,8 @@ func canFuse(first, second bytecode.Instr) bool {
 		return second.Op == bytecode.OpGetProp
 	case bytecode.OpGetPropChain:
 		return (second.Op == bytecode.OpGetProp || second.Op == bytecode.OpGetPropChain) && second.B == first.A
+	case bytecode.OpIncGetIndex, bytecode.OpPostIncGetIndex:
+		return second.Op == bytecode.OpGetIndex && second.C == first.A
 	case bytecode.OpGetMethod:
 		return second.Op == bytecode.OpCall && second.B == first.A
 	case bytecode.OpIterNextPair:

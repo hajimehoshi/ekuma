@@ -1108,6 +1108,42 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 				storage.SetNumber(&regs[i.B], x.N-1)
 				continue
 			}
+		case bytecode.OpIncGetIndex:
+			if x := regs[i.B]; x.O == storage.NumberObject {
+				k := x.N + 1
+				storage.SetNumber(&regs[i.A], k)
+				// The next instruction is an OpGetIndex with the key k. It runs here only when it
+				// reads an element, as in its own fast path, and runs on its own otherwise.
+				n := &fp.Code[pc]
+				if o := regs[n.B].O; o != nil {
+					if j := int(k); float64(j) == k && uint(j) < uint(o.Raw().ElemCount()) {
+						if e := o.Raw().Elem(j); e.O != storage.HoleObject {
+							regs[n.A] = e
+							pc++
+						}
+					}
+				}
+				continue
+			}
+		case bytecode.OpPostIncGetIndex:
+			// Only an integer key can read an element, and a counter that is not one takes the
+			// switch below. The test comes before the stores: a write barrier does not keep
+			// floating-point registers, so no float may be needed after the second store.
+			if x := regs[i.B]; x.O == storage.NumberObject {
+				if k, j := x.N, int(x.N); float64(j) == k {
+					storage.SetNumber(&regs[i.A], k)
+					storage.SetNumber(&regs[i.B], k+1)
+					// As in OpIncGetIndex.
+					n := &fp.Code[pc]
+					if o := regs[n.B].O; o != nil && uint(j) < uint(o.Raw().ElemCount()) {
+						if e := o.Raw().Elem(j); e.O != storage.HoleObject {
+							regs[n.A] = e
+							pc++
+						}
+					}
+					continue
+				}
+			}
 		case bytecode.OpLt:
 			if x, y := regs[i.B], regs[i.C]; x.O == storage.NumberObject && y.O == storage.NumberObject {
 				regs[i.A] = storage.Bool(x.N < y.N)
@@ -2249,7 +2285,8 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 			v := ag.active.ToNumeric(x)
 			regs = ag.reload(regs, ag.frameBase(), fp)
 			regs[i.A] = v
-		case bytecode.OpPostInc, bytecode.OpPostDec:
+		case bytecode.OpPostInc, bytecode.OpPostDec, bytecode.OpPostIncGetIndex:
+			// After an OpPostIncGetIndex, the next instruction runs on its own.
 			x := regs[i.B]
 			ag.frames[len(ag.frames)-1].pc = pc
 			v := ag.active.ToNumeric(x)
@@ -2276,7 +2313,8 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 			regs[i.A] = ag.active.ConcatStrings(slices.Clip(regs)[i.B : i.B+i.C])
 		case bytecode.OpTypeof:
 			regs[i.A] = ag.TypeofValue(regs[i.B])
-		case bytecode.OpInc, bytecode.OpDec:
+		case bytecode.OpInc, bytecode.OpDec, bytecode.OpIncGetIndex:
+			// After an OpIncGetIndex, the next instruction runs on its own.
 			x := regs[i.B]
 			ag.frames[len(ag.frames)-1].pc = pc
 			d := int64(1)

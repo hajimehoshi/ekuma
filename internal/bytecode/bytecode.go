@@ -36,7 +36,8 @@ type Opcode uint8
 //     the rest, written x.a and x.b.
 //   - Some instructions work together with the next instruction. [OpResolveGlobal] and
 //     [OpCopyPropToGlobal] may run a following [OpGetProp]. [OpGetPropChain] may run the
-//     next named read and [OpGetMethod] may run the following [OpCall]. [OpIterNextPair]
+//     next named read and [OpGetMethod] may run the following [OpCall]. [OpIncGetIndex] and
+//     [OpPostIncGetIndex] may run the following [OpGetIndex]. [OpIterNextPair]
 //     may supply the value of the following [OpIterNext]. [OpRegExpArg] and [OpSpreadArgs]
 //     prepare the call that follows them.
 const (
@@ -149,18 +150,20 @@ const (
 	OpUShrK   // a = b >>> Consts[c]
 
 	// Unary operators and conversions.
-	OpNeg       // a = -b
-	OpPlus      // a = +b
-	OpNot       // a = !b
-	OpBitNot    // a = ~b
-	OpTypeof    // a = typeof b
-	OpInc       // a = b + 1, where b is already numeric
-	OpDec       // a = b - 1, where b is already numeric
-	OpToNumeric // a = b converted to a number or BigInt
-	OpPostInc   // a = b converted to a number or BigInt, then b = a + 1
-	OpPostDec   // a = b converted to a number or BigInt, then b = a - 1
-	OpToString  // a = b converted to a string
-	OpConcat    // a = the concatenation of the c strings from b on
+	OpNeg             // a = -b
+	OpPlus            // a = +b
+	OpNot             // a = !b
+	OpBitNot          // a = ~b
+	OpTypeof          // a = typeof b
+	OpInc             // a = b + 1, where b is already numeric
+	OpDec             // a = b - 1, where b is already numeric
+	OpToNumeric       // a = b converted to a number or BigInt
+	OpPostInc         // a = b converted to a number or BigInt, then b = a + 1
+	OpPostDec         // a = b converted to a number or BigInt, then b = a - 1
+	OpIncGetIndex     // like [OpInc], followed by an [OpGetIndex] with the key a, which it may run too
+	OpPostIncGetIndex // like [OpPostInc], followed by an [OpGetIndex] with the key a, which it may run too
+	OpToString        // a = b converted to a string
+	OpConcat          // a = the concatenation of the c strings from b on
 
 	// Comparisons.
 	OpLt       // a = b < c

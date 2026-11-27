@@ -224,6 +224,54 @@ func TestValidate(t *testing.T) {
 			pc:  2,
 		},
 		{
+			name: "increment without its index read",
+			breakFunc: func(f *bytecode.Func) {
+				f.Code[2] = bytecode.Instr{
+					Op: bytecode.OpIncGetIndex,
+					A:  1,
+					B:  0,
+				}
+			},
+			err: bytecode.ErrSequence,
+			pc:  2,
+		},
+		{
+			name: "increment before a read with another key",
+			breakFunc: func(f *bytecode.Func) {
+				f.Code[2] = bytecode.Instr{
+					Op: bytecode.OpIncGetIndex,
+					A:  1,
+					B:  0,
+				}
+				f.Code[3] = bytecode.Instr{
+					Op: bytecode.OpGetIndex,
+					A:  2,
+					B:  0,
+					C:  0,
+				}
+			},
+			err: bytecode.ErrSequence,
+			pc:  2,
+		},
+		{
+			name: "postfix increment whose key is the variable",
+			breakFunc: func(f *bytecode.Func) {
+				f.Code[2] = bytecode.Instr{
+					Op: bytecode.OpPostIncGetIndex,
+					A:  1,
+					B:  1,
+				}
+				f.Code[3] = bytecode.Instr{
+					Op: bytecode.OpGetIndex,
+					A:  2,
+					B:  0,
+					C:  1,
+				}
+			},
+			err: bytecode.ErrSequence,
+			pc:  2,
+		},
+		{
 			name: "shared site",
 			breakFunc: func(f *bytecode.Func) {
 				f.Code[3].C = 0

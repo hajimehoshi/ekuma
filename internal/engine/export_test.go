@@ -82,6 +82,20 @@ func TraceShortcut(t *testing.T, f storage.Value, op bytecode.Opcode, bypass boo
 		if call.Op != bytecode.OpCall || call.B != fp.Code[site].A {
 			t.Fatal("expected a call of the loaded method after OpGetMethod")
 		}
+	case bytecode.OpIncGetIndex, bytecode.OpPostIncGetIndex:
+		read := fp.Code[site+1]
+		if read.Op != bytecode.OpGetIndex || read.C != fp.Code[site].A {
+			t.Fatalf("expected an index read with the key of %v after it", op)
+		}
+		if bypass {
+			// Give this VM its own copy, where the increment does not run the read.
+			fp.Code = slices.Clone(fp.Code)
+			if op == bytecode.OpIncGetIndex {
+				fp.Code[site].Op = bytecode.OpInc
+			} else {
+				fp.Code[site].Op = bytecode.OpPostInc
+			}
+		}
 	case bytecode.OpIterNextPair:
 		if fp.Code[site+1].Op != bytecode.OpExtra || fp.Code[site+2].Op != bytecode.OpIterNext {
 			t.Fatal("expected the extra word and ordinary iterator step after OpIterNextPair")

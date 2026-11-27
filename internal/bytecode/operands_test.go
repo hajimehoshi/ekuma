@@ -156,6 +156,7 @@ func TestResultConvention(t *testing.T) {
 		"OpGetSuper":        true,
 		"OpPostInc":         true,
 		"OpPostDec":         true,
+		"OpPostIncGetIndex": true,
 		"OpCallUndef":       true,
 		"OpTailCallUndef":   true,
 		"OpApplyFwd":        true,

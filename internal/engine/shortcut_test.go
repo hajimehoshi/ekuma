@@ -67,6 +67,49 @@ func TestNamedReadDifferential(t *testing.T) {
 		[]int{1, 2, 1, 1}, []int{1, 1, 1, 1})
 }
 
+func TestIncrementIndexDifferential(t *testing.T) {
+	// read(a, k - step) reads a[k]: step is 1 for a[++i] and 0 for a[i++]. The first two
+	// reads take an element, and each of the others leaves the read on its own for a
+	// reason of its own: a hole, no elements, a key past the end, a key that is not an
+	// integer, a counter that is not a number, and no object.
+	const scenario = `
+		const dense = [10, 20, 30];
+		JSON.stringify([read(dense, 1 - step), read(dense, 0 - step), read([10, , 30], 1 - step),
+			read("abc", 1 - step), read(dense, 3 - step), read(dense, 1.5 - step),
+			read(dense, String(1 - step)), read(null, 1 - step)]);
+	`
+	normal := []int{2, 2, 1, 1, 1, 1, 1, 1}
+	generic := []int{1, 1, 1, 1, 1, 1, 1, 1}
+	t.Run("prefix", func(t *testing.T) {
+		const setup = `
+			var step = 1;
+			function read(a, i) {
+				let v;
+				try { v = a[++i]; } catch (e) { v = e.name; }
+				return [v, i];
+			}
+			read;
+		`
+		compareShortcut(t, bytecode.OpIncGetIndex, setup, scenario,
+			`[[20,1],[10,0],[null,1],["b",1],[null,3],[null,1.5],[20,1],["TypeError",1]]`,
+			normal, generic)
+	})
+	t.Run("postfix", func(t *testing.T) {
+		const setup = `
+			var step = 0;
+			function read(a, i) {
+				let v;
+				try { v = a[i++]; } catch (e) { v = e.name; }
+				return [v, i];
+			}
+			read;
+		`
+		compareShortcut(t, bytecode.OpPostIncGetIndex, setup, scenario,
+			`[[20,2],[10,1],[null,2],["b",2],[null,4],[null,2.5],[20,2],["TypeError",2]]`,
+			normal, generic)
+	})
+}
+
 func TestGlobalDestructuringDifferential(t *testing.T) {
 	const setup = `
 		globalThis.target = 0;

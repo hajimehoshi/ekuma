@@ -12,7 +12,7 @@ import (
 // TestPostfixUpdateLocal tests that a postfix update of a local variable whose result is used
 // is one instruction.
 func TestPostfixUpdateLocal(t *testing.T) {
-	f := compileF(t, `function f(a, i) { return a[i++]; }`)
+	f := compileF(t, `function f(g, i) { return g(i++); }`)
 	fused := false
 	for _, i := range f.Code {
 		switch i.Op {

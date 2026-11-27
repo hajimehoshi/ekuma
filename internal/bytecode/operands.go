@@ -1042,6 +1042,21 @@ var opcodes = [...]struct {
 		},
 		flow: FlowNext,
 	},
+	OpIncGetIndex: {
+		name:     "OpIncGetIndex",
+		operands: unaryOperands,
+		flow:     FlowNextOrSkip,
+	},
+	OpPostIncGetIndex: {
+		name: "OpPostIncGetIndex",
+		operands: Operands{
+			A:      OperandReg,
+			B:      OperandReg,
+			Reads:  regB,
+			Writes: regAB,
+		},
+		flow: FlowNextOrSkip,
+	},
 	OpToString: {
 		name:     "OpToString",
 		operands: unaryOperands,

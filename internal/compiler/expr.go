@@ -1215,7 +1215,7 @@ func (f *fn) member(n *ast.MemberExpr, dst int32) {
 	}
 	key := f.immediateOperand(n.Property)
 	f.setPos(n.Property.Start())
-	f.emit(bytecode.OpGetIndex, dst, obj, key)
+	f.emitGetIndex(dst, obj, key)
 }
 
 // holdsForwardedArgs reports whether the variable name, where the code being compiled refers
@@ -1444,7 +1444,7 @@ func (f *fn) methodReference(c *ast.MemberExpr, base int32) {
 	}
 	key := f.immediateOperand(c.Property)
 	f.setPos(c.Property.Start())
-	f.emit(bytecode.OpGetIndex, base, base+1, key)
+	f.emitGetIndex(base, base+1, key)
 }
 
 // call compiles the call n and leaves its result in dst, or drops it when dst is -1.

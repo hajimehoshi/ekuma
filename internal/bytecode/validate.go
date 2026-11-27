@@ -403,6 +403,14 @@ func (v *validator) special(pc int, in Instr) error {
 		if pc+1 >= len(code) || code[pc+1].Op != OpGetProp && code[pc+1].Op != OpGetPropChain || code[pc+1].B != in.A {
 			return v.errorf(pc, ErrSequence, "not followed by an OpGetProp of a")
 		}
+	case OpIncGetIndex, OpPostIncGetIndex:
+		// The instruction may run the next one with the value that it writes to a as the key.
+		if pc+1 >= len(code) || code[pc+1].Op != OpGetIndex || code[pc+1].C != in.A {
+			return v.errorf(pc, ErrSequence, "not followed by an OpGetIndex with the key a")
+		}
+		if in.Op == OpPostIncGetIndex && in.A == in.B {
+			return v.errorf(pc, ErrSequence, "a postfix increment whose key is the variable")
+		}
 	case OpCopyPropToGlobal:
 		if int(in.C) < pc+3 {
 			return v.errorf(pc, ErrSequence, "missing global property assignment")
