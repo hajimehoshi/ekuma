@@ -4,6 +4,7 @@
 package compiler_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/hajimehoshi/ekuma/internal/bytecode"
@@ -97,5 +98,38 @@ func TestPutGlobal(t *testing.T) {
 		if got := countOps(s, bytecode.OpResolveGlobal); got != tc.resolve {
 			t.Errorf("%s: OpResolveGlobal instructions: got %d, want %d", tc.name, got, tc.resolve)
 		}
+	}
+}
+
+// TestPutGlobalOfLocal tests that a global store of a local variable that no other code can
+// assign reads the register of the variable.
+func TestPutGlobalOfLocal(t *testing.T) {
+	const src = `function f(a) { g = a; }`
+	prog, err := parser.ParseScript(wtf8.String(src), parser.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	s, err := compiler.CompileScript(prog, "test.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	f := s.Protos[0]
+	if got := countOps(f, bytecode.OpMove); got != 0 {
+		t.Errorf("OpMove instructions: got %d, want 0", got)
+	}
+	for pc, i := range f.Code {
+		if i.Op != bytecode.OpPutGlobal {
+			continue
+		}
+		// The parameter a is in the first register.
+		if i.A != 0 {
+			t.Errorf("OpPutGlobal operand: got r%d, want r0", i.A)
+		}
+		if got, want := f.SourceOffset(pc), int32(strings.Index(src, "g = a")); got != want {
+			t.Errorf("source offset of OpPutGlobal: got %d, want %d", got, want)
+		}
+	}
+	if got := countOps(f, bytecode.OpPutGlobal); got != 1 {
+		t.Errorf("OpPutGlobal instructions: got %d, want 1", got)
 	}
 }

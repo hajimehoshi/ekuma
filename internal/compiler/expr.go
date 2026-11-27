@@ -2120,6 +2120,14 @@ func (f *fn) assign(n *ast.AssignExpr, dst int32) {
 				return
 			}
 			scope := f.assignmentScope(target, name, f.inert(n.Value))
+			if id, ok := n.Value.(*ast.Identifier); ok && scope == storeResolves && dst < 0 {
+				// An inert local variable keeps its value until the store, which can read
+				// its register.
+				if r := f.localReg(id.Name); r >= 0 {
+					f.storeVarTo(n, name, r, false, scope)
+					return
+				}
+			}
 			t := dst
 			if t < 0 {
 				t = f.newReg()
