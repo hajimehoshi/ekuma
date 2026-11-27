@@ -88,6 +88,10 @@ type binding struct {
 	// appended is set once exclusive string growth to the binding was compiled. Every other read
 	// of its register compiled from then on follows an OpSeal of it.
 	appended bool
+
+	// loopSealed is set while a loop that has no appends to the binding is compiled, after an
+	// OpSeal of its register before the loop.
+	loopSealed bool
 }
 
 // symbol is a variable name of the program being compiled.
@@ -321,8 +325,14 @@ type fn struct {
 	// tails are the calls in tail position of the expression being compiled.
 	tails []ast.Expr
 
-	// appendRegs holds the registers of the bindings that have appended set.
-	appendRegs []int32
+	// appendRegs holds the registers of the bindings that have appended set, and appendBindings
+	// the bindings.
+	appendRegs     []int32
+	appendBindings []*binding
+
+	// loopSeals holds the bindings that loops being compiled set loopSealed of.
+	loopSeals []*binding
+	loopScan  loopScan
 }
 
 type compiler struct {

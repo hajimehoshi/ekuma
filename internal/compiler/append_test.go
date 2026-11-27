@@ -285,3 +285,148 @@ func TestPrependRefusesUnsealedRead(t *testing.T) {
 		t.Errorf("got %d constant prepends and %d register additions, want one of each", constants, additions)
 	}
 }
+
+// TestAppendLoopSeals tests that a loop without appends to a variable with appends seals the
+// variable once before it instead of at each read in it.
+func TestAppendLoopSeals(t *testing.T) {
+	testCases := []struct {
+		name string
+
+		// src declares a function f.
+		src string
+
+		// appends is the number of OpAppend and OpAppendK instructions of f that extend strings
+		// in place, and seals the number of its OpSeal instructions.
+		appends int
+		seals   int
+	}{
+		{
+			name:    "reads in a later loop",
+			src:     `function f(n) { var r = "", m = 0; for (var i = 0; i < n; i++) r = "x" + r; for (var i = 0; i < n; i++) m += r.charCodeAt(i) + r.charCodeAt(0); return m; }`,
+			appends: 1,
+			seals:   1,
+		},
+		{
+			name:    "reads in a loop with appends",
+			src:     `function f(n) { var r = "<"; for (var i = 0; i < n; i++) r += "<"; for (var i = 0; i < n; i++) { g = r; r += "x"; } }`,
+			appends: 2,
+			seals:   1,
+		},
+		{
+			name:    "reads in a loop with prepends",
+			src:     `function f(n) { var r = "<"; for (var i = 0; i < n; i++) r = "<" + r; for (var i = 0; i < n; i++) { r = "x" + r; g = r; } }`,
+			appends: 2,
+			seals:   1,
+		},
+		{
+			name:    "prepend before another assignment in a loop",
+			src:     `function f(n, a, b) { var r = "<", kept = []; for (var i = 0; i < n; i++) r = "x" + r; for (r = "y" + r; kept.length < 3; r = a + b) kept.push(r); return kept; }`,
+			appends: 2,
+			seals:   1,
+		},
+		{
+			name:    "reads after a sealed loop",
+			src:     `function f(n) { var r = "<"; for (var i = 0; i < n; i++) r += "<"; for (var i = 0; i < n; i++) h(r); r += "x"; g = r; }`,
+			appends: 2,
+			seals:   2,
+		},
+	}
+	for _, tc := range testCases {
+		prog, err := parser.ParseScript(wtf8.String(tc.src), parser.Options{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		s, err := compiler.CompileScript(prog, "test.js")
+		if err != nil {
+			t.Fatal(err)
+		}
+		f := findFunc(s, "f")
+		var appends int
+		for _, in := range f.Code {
+			if grows(in) {
+				appends++
+			}
+		}
+		if seals := countOps(f, bytecode.OpSeal); appends != tc.appends || seals != tc.seals {
+			var b strings.Builder
+			f.Disassemble(&b)
+			t.Errorf("%s: appends and seals: got %d, %d, want %d, %d\n%s", tc.name, appends, seals, tc.appends, tc.seals, b.String())
+		}
+	}
+}
+
+// TestAppendLoopScanLimit tests that a function whose loops are too large to scan for appends
+// seals the reads in its later loops one by one, and keeps the appends of the loop whose scan
+// stopped.
+func TestAppendLoopScanLimit(t *testing.T) {
+	// Each loop has about 4 nodes per read and a few more.
+	const reads = 100
+	loops := compiler.MaxLoopScanNodes/(4*reads) + 10
+	testCases := []struct {
+		name string
+
+		// end ends the body of each loop.
+		end string
+
+		// appends is the number of OpPrependK instructions that extend strings in place, and
+		// minSeals one less than the smallest number of OpSeal instructions.
+		appends  int
+		minSeals int
+	}{
+		{
+			name:     "reads",
+			appends:  1,
+			minSeals: loops,
+		},
+		{
+			name:     "reads and a prepend",
+			end:      ` r = "y" + r;`,
+			appends:  loops + 1,
+			minSeals: 0,
+		},
+	}
+	for _, tc := range testCases {
+		var b strings.Builder
+		b.WriteString(`function f(n) { var r = ""; for (var i = 0; i < n; i++) r = "x" + r;`)
+		for range loops {
+			b.WriteString(` for (var i = 0; i < n; i++) {`)
+			for range reads {
+				b.WriteString(` h(r);`)
+			}
+			b.WriteString(tc.end + ` }`)
+		}
+		b.WriteString(` }`)
+		prog, err := parser.ParseScript(wtf8.String(b.String()), parser.Options{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		s, err := compiler.CompileScript(prog, "test.js")
+		if err != nil {
+			t.Fatal(err)
+		}
+		f := findFunc(s, "f")
+		var appends int
+		for _, in := range f.Code {
+			if in.Op == bytecode.OpPrependK && grows(in) {
+				appends++
+			}
+		}
+		if appends != tc.appends {
+			t.Errorf("%s: OpPrependK instructions that extend strings in place: got %d, want %d", tc.name, appends, tc.appends)
+		}
+		if got := countOps(f, bytecode.OpSeal); got <= tc.minSeals {
+			t.Errorf("%s: OpSeal instructions: got %d, want more than %d", tc.name, got, tc.minSeals)
+		}
+	}
+}
+
+// grows reports whether in is an append or a prepend that may extend a string in place.
+func grows(in bytecode.Instr) bool {
+	switch in.Op {
+	case bytecode.OpAppend, bytecode.OpAppendK, bytecode.OpPrepend:
+		return true
+	case bytecode.OpPrependK:
+		return in.C == 0
+	}
+	return false
+}

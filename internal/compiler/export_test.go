@@ -14,6 +14,8 @@ const (
 	MaxFreeCode     = maxFreeCode
 	MaxFreeChunks   = maxFreeChunks
 	MaxSearches     = maxSearches
+
+	MaxLoopScanNodes = maxLoopScanNodes
 )
 
 // KeptScratch compiles the scripts progs in turn with one scratch set and returns the total

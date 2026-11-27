@@ -17,9 +17,98 @@ import (
 
 // seal shares the string in b before an instruction can retain a reference to it.
 func (f *fn) seal(b *binding) {
-	if b.appended {
+	if b.appended && !b.loopSealed {
 		f.emit(bytecode.OpSeal, b.reg, 0, 0)
 	}
+}
+
+// sealLoop emits, before the loop s, an OpSeal of each variable with OpAppends that s mentions but
+// does not append to, so that its reads in s need no seals. It returns the mark to pass to
+// endLoop after s.
+func (f *fn) sealLoop(s ast.Stmt) int {
+	mark := len(f.loopSeals)
+	for _, b := range f.appendBindings {
+		if b.loopSealed || f.uncheckedLocal(b.name) != b {
+			continue
+		}
+		if mentioned, appended, ok := f.loopUse(s, b.name); !ok || !mentioned || appended {
+			continue
+		}
+		f.emit(bytecode.OpSeal, b.reg, 0, 0)
+		b.loopSealed = true
+		f.loopSeals = append(f.loopSeals, b)
+	}
+	return mark
+}
+
+// endLoop ends what sealLoop started for the loop that returned mark.
+func (f *fn) endLoop(mark int) {
+	for _, b := range f.loopSeals[mark:] {
+		b.loopSealed = false
+	}
+	clear(f.loopSeals[mark:])
+	f.loopSeals = f.loopSeals[:mark]
+}
+
+// maxLoopScanNodes is the number of nodes that the walks of loopUse visit at most in a function,
+// so that the walks of nested loops stay linear in the size of the function.
+const maxLoopScanNodes = 1 << 16
+
+// loopScan is the state of the walks of loopUse in a function.
+type loopScan struct {
+	name      string
+	mentioned bool
+	appended  bool
+
+	// nodes is the number of nodes visited so far in the function.
+	nodes int
+
+	// visit is the function that walks the nodes, made once.
+	visit func(ast.Node) bool
+}
+
+// loopUse reports whether n mentions the variable name, and whether it has an assignment to the
+// variable that can be an append. ok is false when the function walked too many nodes to tell.
+func (f *fn) loopUse(n ast.Node, name string) (mentioned, appended, ok bool) {
+	ls := &f.loopScan
+	if ls.nodes >= maxLoopScanNodes {
+		return false, false, false
+	}
+	if ls.visit == nil {
+		ls.visit = ls.node
+	}
+	ls.name = name
+	ls.mentioned = false
+	ls.appended = false
+	walk(n, ls.visit)
+	return ls.mentioned, ls.appended, ls.nodes < maxLoopScanNodes
+}
+
+func (ls *loopScan) node(n ast.Node) bool {
+	ls.nodes++
+	if ls.appended || ls.nodes >= maxLoopScanNodes {
+		return false
+	}
+	switch n := n.(type) {
+	case *ast.Identifier:
+		ls.mentioned = ls.mentioned || n.Name == ls.name
+	case *ast.AssignExpr:
+		id, ok := n.Target.(*ast.Identifier)
+		if !ok || id.Name != ls.name {
+			break
+		}
+		switch n.Op {
+		case ast.OpAdd:
+			ls.appended = true
+		case ast.OpNone:
+			if v, ok := n.Value.(*ast.BinaryExpr); ok && v.Op == ast.OpAdd {
+				l, lok := v.Left.(*ast.Identifier)
+				r, rok := v.Right.(*ast.Identifier)
+				ls.appended = lok && l.Name == ls.name || rok && r.Name == ls.name
+			}
+		}
+	}
+	return !ls.appended
 }
 
 // sealLocal is seal for the variable name when it is a local of f that can be read without a
@@ -54,6 +143,7 @@ func (f *fn) appends(b *binding, value ast.Expr) bool {
 	}
 	b.appended = true
 	f.appendRegs = append(f.appendRegs, b.reg)
+	f.appendBindings = append(f.appendBindings, b)
 	return true
 }
 
@@ -145,6 +235,8 @@ func (f *fn) settleAppends() {
 	}
 	regs := f.appendRegs
 	f.appendRegs = f.appendRegs[:0]
+	clear(f.appendBindings)
+	f.appendBindings = f.appendBindings[:0]
 	code := f.f.Code
 	var refused uint64
 	if len(regs) > 64 || f.readsByName() {

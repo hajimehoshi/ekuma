@@ -474,19 +474,28 @@ func (f *fn) stmt(s ast.Stmt, labels []string) {
 		f.stmt(s.Alternate, nil)
 		f.patch(end)
 	case *ast.ForStmt:
+		seals := f.sealLoop(s)
 		f.forStmt(s, labels)
+		f.endLoop(seals)
 	case *ast.ForInStmt:
+		seals := f.sealLoop(s)
 		f.forIn(s, labels)
+		f.endLoop(seals)
 	case *ast.ForOfStmt:
+		seals := f.sealLoop(s)
 		f.forOf(s, labels)
+		f.endLoop(seals)
 	case *ast.WhileStmt:
+		seals := f.sealLoop(s)
 		c := f.pushLoop(labels)
 		t := f.loopStart(s.Test)
 		f.stmt(s.Body, nil)
 		f.patchAll(c.continues)
 		f.loopEnd(t, s.Test)
 		f.popLoop(c)
+		f.endLoop(seals)
 	case *ast.DoWhileStmt:
+		seals := f.sealLoop(s)
 		c := f.pushLoop(labels)
 		top := f.pc()
 		f.stmt(s.Body, nil)
@@ -498,6 +507,7 @@ func (f *fn) stmt(s ast.Stmt, labels []string) {
 		f.loopBack(s.Test, top)
 		f.setPos(body)
 		f.popLoop(c)
+		f.endLoop(seals)
 	case *ast.ReturnStmt:
 		var v int32
 		if s.Arg != nil {
