@@ -136,6 +136,8 @@ const (
 	IntrinsicEval
 	IntrinsicFunctionPrototypeHasInstance
 	IntrinsicArrayPrototypeValues
+	IntrinsicArrayPrototypePush
+	IntrinsicArrayPrototypePop
 	IntrinsicArrayIteratorPrototypeNext
 	IntrinsicArraySpeciesGetter
 	IntrinsicTypedArrayPrototypeLengthGetter

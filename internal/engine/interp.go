@@ -242,6 +242,15 @@ func (ag *agent) placeCallArgs(firstReg, argc int) int {
 	return base
 }
 
+// placeSpreadArgs copies the arguments in o onto the stack.
+func (ag *agent) placeSpreadArgs(o *storage.Object, base, pc int) int {
+	ag.frames[len(ag.frames)-1].pc = pc
+	argc := o.ElemCount()
+	ag.ensureStack(base + argc)
+	ag.CopyElementsTo(ag.stack[base:base+argc], o)
+	return argc
+}
+
 // registers returns the registers of fr given its agent's stack.
 func (fr *frame) registers(stack []storage.Value) []storage.Value {
 	// Keep the storage selection small enough to inline in exec.
@@ -1644,16 +1653,89 @@ func (ag *agent) execFast(stop int, fp *storage.FuncProto, pc int, regs []storag
 						}
 						continue
 					}
-				} else if c == nil && argc == 2 {
-					// Math.min and Math.max of two numbers. Go's min and max of floats give NaN
-					// when an argument is NaN and order -0 below +0, as the specification does.
-					if info := f.Fn.Info; info != nil && info.Extremum != ExtremumNone {
-						if x, y := regs[first], regs[first+1]; x.O == storage.NumberObject && y.O == storage.NumberObject {
-							if info.Extremum == ExtremumMin {
-								storage.SetNumber(&regs[i.A], min(x.N, y.N))
-							} else {
-								storage.SetNumber(&regs[i.A], max(x.N, y.N))
+				} else if c == nil {
+					switch argc {
+					case 2:
+						// Go's min and max of floats handle NaN and signed zero as Math.min and Math.max do.
+						if info := f.Fn.Info; info != nil && info.Extremum != ExtremumNone {
+							if x, y := regs[first], regs[first+1]; x.O == storage.NumberObject && y.O == storage.NumberObject {
+								if info.Extremum == ExtremumMin {
+									storage.SetNumber(&regs[i.A], min(x.N, y.N))
+								} else {
+									storage.SetNumber(&regs[i.A], max(x.N, y.N))
+								}
+								continue
 							}
+						}
+					case 0, 1:
+						if i.Op == bytecode.OpCallUndef || (i.Op == bytecode.OpCallCall && i.C == 0) {
+							break
+						}
+						r := ag.active.realm
+						o := regs[first-1].O
+						if o == nil || o.Kind != storage.KindArray || o.Flags() != 0 || o.Shape() != r.Shapes.Array {
+							break
+						}
+						n := int(o.Length())
+						if argc == 1 && f == r.Intrinsics[storage.IntrinsicArrayPrototypePush] {
+							if uint64(n) > storage.MaxArrayIndex || o.Raw().ElemsShared() {
+								break
+							}
+							a := r.Intrinsics[storage.IntrinsicArrayPrototype]
+							p := a.Shape().Proto
+							if a.Raw().ElemCount() != 0 || a.Flags()&storage.ObjSparse != 0 || p != r.Intrinsics[storage.IntrinsicObjectPrototype] ||
+								p.Raw().ElemCount() != 0 || p.Flags()&storage.ObjSparse != 0 {
+								break
+							}
+							v := regs[first]
+							room := o.Raw().ElemRoom()
+							if n == o.Raw().ElemCount() && n < room {
+								if n+1 > storage.MinElems && n+1 <= storage.MaxPresizedElems && pushSample(uint32(n+1), room) {
+									break
+								}
+								if validateExec {
+									ag.active.checkAppend(o)
+								}
+								o.Raw().ExtendElems(n + 1)
+								o.Raw().SetElem(n, v)
+							} else if room = o.Raw().NumRoom(); v.O == storage.NumberObject && n == o.Raw().NumCount() && n < room {
+								if n+1 <= storage.MaxPresizedElems && pushSample(uint32(n+1), room) {
+									break
+								}
+								if validateExec {
+									ag.active.checkAppend(o)
+								}
+								o.Raw().ExtendNums(n + 1)
+								o.Raw().SetNum(n, v.N)
+							} else {
+								break
+							}
+							o.Raw().SetLength(uint32(n + 1))
+							storage.SetNumber(&regs[i.A], float64(n+1))
+							continue
+						}
+						if argc == 0 && f == r.Intrinsics[storage.IntrinsicArrayPrototypePop] {
+							if n == 0 {
+								regs[i.A] = storage.Undefined
+								continue
+							}
+							if n == o.Raw().ElemCount() && o.Ext == nil && !o.Raw().ElemsShared() && !storage.ElemsStorageOversized(n-1, o.Raw().ElemRoom()) {
+								v := o.Raw().Elem(n - 1)
+								if v.O == storage.HoleObject {
+									break
+								}
+								if v.O != storage.NumberObject {
+									o.Raw().SetElem(n-1, storage.Value{})
+								}
+								o.Raw().ExtendElems(n - 1)
+								regs[i.A] = v
+							} else if nums := o.Raw().Nums(); n == len(nums) && !o.Raw().HasNumSideData() && !storage.ElemsStorageOversized(n-1, cap(nums)) {
+								storage.SetNumber(&regs[i.A], nums[n-1])
+								o.Raw().ExtendNums(n - 1)
+							} else {
+								break
+							}
+							o.Raw().SetLength(uint32(n - 1))
 							continue
 						}
 					}
@@ -2821,6 +2903,25 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 			// Calls of ordinary functions that fit take the inline frame of the fast path above.
 			b := int(i.B)
 			f, callThis, firstArgReg, argc, ret, isNew, newTarget = regs[b].O, regs[b+1], b+2, int(i.C), i.A, false, nil
+			// These kernels only need the caller's PC and can read the arguments in place.
+			if f != nil && argc <= 1 && !ag.InterruptFlag.Load() {
+				switch {
+				case argc == 1 && f == ag.active.realm.Intrinsics[storage.IntrinsicArrayPrototypePush]:
+					ag.frames[len(ag.frames)-1].pc = pc
+					if v, ok := ArrayPushKernel(ag.active.Quiet(), callThis, regs[firstArgReg]); ok {
+						regs[ret] = v
+						continue
+					}
+					methodDeclined = true
+				case argc == 0 && f == ag.active.realm.Intrinsics[storage.IntrinsicArrayPrototypePop]:
+					ag.frames[len(ag.frames)-1].pc = pc
+					if v, ok := quiet.ArrayPopKernel(ag.active.Quiet(), callThis); ok {
+						regs[ret] = v
+						continue
+					}
+					methodDeclined = true
+				}
+			}
 			// Short method kernels can read arguments in place without recording a call frame.
 			if argc <= 1 && callThis.IsNumber() && f != nil && f.Fn != nil && !ag.InterruptFlag.Load() {
 				if info := f.Fn.Info; info != nil && info.Realm == ag.active.realmPart && info.Native.HasFast() {
@@ -2927,11 +3028,8 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 		case bytecode.OpCallSpread, bytecode.OpNewSpread, bytecode.OpSuperSpread:
 			b := int(i.B)
 			f, callThis, ret, isNew, newTarget = regs[b].O, regs[b+1], i.A, false, nil
-			args := regs[b+2].O.Raw().Elems()
-			argc = len(args)
 			argBase = ag.frames[len(ag.frames)-1].top()
-			ag.ensureStack(argBase + argc)
-			copy(ag.stack[argBase:], args)
+			argc = ag.placeSpreadArgs(regs[b+2].O, argBase, pc)
 			regs = ag.reload(regs, ag.frameBase(), fp)
 			switch i.Op {
 			case bytecode.OpNewSpread:
@@ -2976,11 +3074,8 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 		case bytecode.OpTailCallSpread:
 			b := int(i.B)
 			f, callThis, ret, isNew, newTarget = regs[b].O, regs[b+1], i.A, false, nil
-			args := regs[b+2].O.Raw().Elems()
-			argc = len(args)
 			argBase = ag.sp
-			ag.ensureStack(argBase + argc)
-			copy(ag.stack[argBase:], args)
+			argc = ag.placeSpreadArgs(regs[b+2].O, argBase, pc)
 			goto tailCall
 		case bytecode.OpNew:
 			b := int(i.B)
@@ -3689,11 +3784,10 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 		// A call with the arguments of the running function.
 		if (i.Op == bytecode.OpCallFwd || i.Op == bytecode.OpTailCallFwd) && (!regs[i.C].IsUndefined() || !ag.ArrayIterationUnmodified(ag.active.realmPart)) {
 			ag.frames[len(ag.frames)-1].pc = pc
-			args := ag.active.spreadArgs(ag.active.forwardedArguments(i.C)).Raw().Elems()
-			argc, ret, isNew, newTarget = len(args), i.A, false, nil
+			args := ag.active.spreadArgs(ag.active.forwardedArguments(i.C))
+			ret, isNew, newTarget = i.A, false, nil
 			argBase = ag.frames[len(ag.frames)-1].top()
-			ag.ensureStack(argBase + argc)
-			copy(ag.stack[argBase:], args)
+			argc = ag.placeSpreadArgs(args, argBase, pc)
 			regs = ag.reload(regs, ag.frameBase(), fp)
 		} else {
 			cur := &ag.frames[len(ag.frames)-1]

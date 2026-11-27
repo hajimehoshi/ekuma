@@ -28,6 +28,11 @@ func (q Context) ArraySpeciesCreatePlain(o *storage.Object, n int64) (*storage.O
 	return r.ArrayCreate(uint32(n), r.Intrinsic(storage.IntrinsicArrayPrototype)), true
 }
 
+// AppendElement adds v at the end of the array o and returns the new length when it can do so directly.
+func (q Context) AppendElement(o *storage.Object, v storage.Value) (uint32, bool) {
+	return q.Realm.AppendElement(o, v)
+}
+
 // AppendElements adds vals at the end of the array o and returns the new length.
 func (q Context) AppendElements(o *storage.Object, vals []storage.Value) (uint32, bool) {
 	return q.Realm.AppendElements(o, vals)

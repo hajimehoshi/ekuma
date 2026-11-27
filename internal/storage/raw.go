@@ -14,12 +14,6 @@ func (o *Object) Raw() Raw {
 	return Raw{o: o}
 }
 
-// Elems returns the elements, which the caller must not change.
-func (r Raw) Elems() []Value {
-	r.o.ensureUnpacked()
-	return r.o.elems
-}
-
 // ElemsShared reports whether the elements are shared with other arrays, so that storing one
 // needs the property operations.
 func (r Raw) ElemsShared() bool {

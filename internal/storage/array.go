@@ -184,10 +184,15 @@ func (o *Object) ElemsResizable() bool {
 	return ok && int(o.length) == len(p.values)
 }
 
+// ElementsPlain reports whether o is an array with an own data property at every index below its length.
+func (o *Object) ElementsPlain() bool {
+	return o != nil && o.elemsComplete() && !containsHole(o.elems)
+}
+
 // PlainElems returns the elements of o, which the caller must not modify, when o is an array
 // whose elements can be read without running any JavaScript. o may be nil.
 func (o *Object) PlainElems() ([]Value, bool) {
-	if o == nil || !o.elemsComplete() || containsHole(o.elems) {
+	if !o.ElementsPlain() {
 		return nil, false
 	}
 	o.ensureUnpacked()
@@ -312,24 +317,49 @@ func (r *RealmPart) ArrayCtorPlain(o *Object) bool {
 	return true
 }
 
-// AppendElements is quiet.Context.AppendElements.
-func (r *RealmPart) AppendElements(o *Object, vals []Value) (uint32, bool) {
-	if !o.ElemsResizable() || !r.NewElementsPlain(o) {
+// AppendElement adds v at the end of the array o and returns the new length when it can do so directly.
+func (r *RealmPart) AppendElement(o *Object, v Value) (uint32, bool) {
+	if o.length == MaxArrayIndex+1 || !o.ElemsResizable() || !r.NewElementsPlain(o) {
 		return 0, false
 	}
-	n := len(vals)
-	if n == 0 {
-		return o.length, true
+	o.AppendElem(v)
+	o.length++
+	return o.length, true
+}
+
+// AppendElements is quiet.Context.AppendElements.
+func (r *RealmPart) AppendElements(o *Object, vals []Value) (uint32, bool) {
+	if len(vals) == 1 {
+		return r.AppendElement(o, vals[0])
 	}
-	if n == 1 && len(o.elems) == cap(o.elems) {
-		o.AppendElem(vals[0])
-	} else {
-		if cap(o.elems)-len(o.elems) < n {
-			o.ReserveElems(n)
+	n := int64(o.length) + int64(len(vals))
+	if n > MaxArrayIndex+1 || int64(int(n)) != n || !o.ElemsResizable() || !r.NewElementsPlain(o) {
+		return 0, false
+	}
+	if len(vals) != 0 && !o.appendNumericValues(&r.Poller, vals) {
+		if packed := o.packedNums(); packed != nil {
+			var extra int
+			if len(vals) <= PollChunk {
+				extra = len(vals)
+			}
+			o.unpackNums(packed, extra)
 		}
-		o.elems = append(o.elems, vals...)
+		if cap(o.elems) == 0 && len(vals) < MinElems {
+			o.ReserveElems(MinElems)
+		}
+		old := o.elems
+		if len(vals) > PollChunk {
+			// A poll during the copy may leave references beyond the visible length.
+			o.setElems(appendPolled(&r.Poller, old[:len(old):len(old)], vals))
+			o.leaveElems(old)
+		} else {
+			o.setElems(appendPolled(&r.Poller, old, vals))
+			if cap(o.elems) != cap(old) {
+				o.leaveElems(old)
+			}
+		}
 	}
-	o.length += uint32(n)
+	o.length = uint32(n)
 	return o.length, true
 }
 
@@ -358,36 +388,62 @@ func (r *RealmPart) PrependElements(o *Object, vals []Value) (uint32, bool) {
 }
 
 // RemoveLastElement removes the last element of the array o and returns it.
-// It reports false and does nothing when o is empty or needs the generic algorithm.
+// It reports false and does nothing when o needs the generic algorithm.
 func (o *Object) RemoveLastElement() (Value, bool) {
-	if !o.ElemsResizable() || o.ElemCount() == 0 {
+	return o.removeLastElement(true)
+}
+
+// RemoveLastElementInPlace is RemoveLastElement when the array can keep its storage.
+func (o *Object) RemoveLastElementInPlace() (Value, bool) {
+	return o.removeLastElement(false)
+}
+
+func (o *Object) removeLastElement(resize bool) (Value, bool) {
+	if !o.elemsChangeable() {
 		return Value{}, false
 	}
+	if o.length == 0 {
+		return Undefined, true
+	}
 	if p := o.packedNums(); p != nil {
+		if int(o.length) != len(p.values) {
+			return Value{}, false
+		}
 		n := len(p.values) - 1
+		oversized := ElemsStorageOversized(n, o.ElemsStorage())
+		if oversized && !resize {
+			return Value{}, false
+		}
 		v := Number(p.values[n])
 		p.values = p.values[:n]
 		o.length = uint32(n)
-		if o.elemsOversized() {
+		if oversized {
 			o.shape.Space.reallocElems(o)
 		}
 		return v, true
 	}
 	elems := o.elems
+	if int(o.length) != len(elems) {
+		return Value{}, false
+	}
 	// Holes before the last element stay holes after it is removed.
 	n := len(elems) - 1
 	v := elems[n]
 	if v.IsHole() {
 		return Value{}, false
 	}
-	if o.Pinned&SharedElems != 0 {
-		// The call removes the last of the copied elements, which are the array's own.
-		o.copySharedElems()
-		return o.RemoveLastElement()
+	shared := o.Pinned&SharedElems != 0
+	oversized := !shared && ElemsStorageOversized(n, o.ElemsStorage())
+	if !resize && (shared || oversized) {
+		return Value{}, false
 	}
-	o.removeLastElem(elems)
+	if shared {
+		o.replaceElems(appendPolled(&o.shape.Space.Poller, nil, elems[:n]))
+	} else {
+		o.removeLastElem(elems)
+	}
 	o.length = uint32(n)
-	if o.elemsOversized() {
+	if oversized {
 		o.shape.Space.reallocElems(o)
 	}
 	return v, true
@@ -744,14 +800,71 @@ func (r *RealmPart) SpliceElements(o *Object, length, start, del int64, items []
 	if length != int64(o.ElemCount()) || start < 0 || start > length || del < 0 || del > length-start {
 		return nil, false
 	}
+	n := length - del + int64(len(items))
+	if n > MaxArrayIndex+1 || int64(int(n)) != n {
+		return nil, false
+	}
 	if !o.elemsMovable() || !r.ArrayCtorPlain(o) || !r.ArrayProtoPlain() {
 		return nil, false
 	}
-	o.ensureUnpacked()
+	if packed := o.packedNums(); packed != nil {
+		var removed *Object
+		if del == 0 {
+			removed = r.NewArray(nil)
+		} else {
+			removed = r.newPackedNumArray(appendPolled(&r.Poller, nil, packed.values[start:start+del]))
+		}
+		if allNumeric(&r.Poller, items) {
+			r.spliceNums(o, packed, int(start), int(del), items)
+		} else {
+			o.unpackNums(packed, 0)
+			r.spliceBoxed(o, int(start), int(del), items)
+		}
+		return removed, true
+	}
 	removed := appendPolled(&r.Poller, nil, o.elems[start:start+del])
-	n, k := int(length), len(items)
-	newLen := n - int(del) + k
-	if n-int(start+del) > PollChunk {
+	r.spliceBoxed(o, int(start), int(del), items)
+	return r.NewArray(removed), true
+}
+
+func (r *RealmPart) spliceNums(o *Object, packed *packedNumElems, start, del int, items []Value) {
+	nums := packed.values
+	end, newEnd := start+del, start+len(items)
+	tail := nums[end:]
+	newLen := newEnd + len(tail)
+	// Stage long edits in separate storage so a poll cannot interrupt an in-place move.
+	if newLen > cap(nums) || (end != newEnd && len(tail) > PollChunk) || len(items) > PollInterval {
+		room := cap(nums)
+		if newLen > room {
+			room += room / 4
+		}
+		if ElemsStorageOversized(newLen, room) {
+			room = max(2*newLen, MinElems)
+		}
+		grown := make([]float64, newLen, max(newLen, room))
+		CopyPolled(&r.Poller, grown[:start], nums[:start])
+		CopyPolled(&r.Poller, grown[newEnd:], tail)
+		writeNums(&r.Poller, grown[start:newEnd], items)
+		nums = grown
+		o.clearShiftedElems()
+	} else {
+		nums = nums[:max(len(nums), newLen)]
+		if end != newEnd {
+			copy(nums[newEnd:], tail)
+		}
+		writeNums(&r.Poller, nums[start:newEnd], items)
+	}
+	packed.values = nums[:newLen]
+	o.length = uint32(newLen)
+	if o.elemsOversized() {
+		r.reallocElems(o)
+	}
+}
+
+func (r *RealmPart) spliceBoxed(o *Object, start, del int, items []Value) {
+	n, k := len(o.elems), len(items)
+	newLen := n - del + k
+	if n-start-del > PollChunk {
 		r.Poll()
 	}
 	o.ownElems()
@@ -763,7 +876,7 @@ func (r *RealmPart) SpliceElements(o *Object, length, start, del int64, items []
 		}
 	}
 	elems = elems[:max(n, newLen)]
-	copy(elems[int(start)+k:], elems[start+del:n])
+	copy(elems[start+k:], elems[start+del:n])
 	copy(elems[start:], items)
 	// The storage that the elements keep still holds the values past the new length.
 	if tail := elems[newLen:]; len(tail) == 1 {
@@ -776,22 +889,50 @@ func (r *RealmPart) SpliceElements(o *Object, length, start, del int64, items []
 	if o.elemsOversized() {
 		r.reallocElems(o)
 	}
-	return r.NewArray(removed), true
+}
+
+// AppendNumericSpread appends the values of an unmodified array iterator using numeric storage.
+func (r *RealmPart) AppendNumericSpread(dst, src *Object) bool {
+	if dst.Kind != KindArray || dst.flags != 0 || dst.Pinned&SharedElems != 0 || dst.length != uint32(dst.ElemCount()) ||
+		!src.elemsComplete() || !r.ArrayIterationPlain(src) {
+		return false
+	}
+	n := int64(dst.length) + int64(src.length)
+	if n > MaxArrayIndex+1 || int64(int(n)) != n {
+		return false
+	}
+	if nums := src.numericElements(); nums != nil {
+		if len(nums) == 0 {
+			return true
+		}
+		if packed := dst.packedNums(); packed != nil {
+			packed.values = appendPolled(&r.Poller, packed.values, nums)
+		} else {
+			elems := dst.elems
+			if !allNumeric(&r.Poller, elems) {
+				return false
+			}
+			packed := newPackedNums(int(n))
+			writeNums(&r.Poller, packed.values, elems)
+			CopyPolled(&r.Poller, packed.values[len(elems):], nums)
+			dst.packElems(packed)
+		}
+	} else if len(src.elems) == 0 {
+		return true
+	} else if !dst.appendNumericValues(&r.Poller, src.elems) {
+		return false
+	}
+	dst.length = uint32(n)
+	return true
 }
 
 // ReserveElementsForIteration gives dst room to collect the elements of src.
 func (r *RealmPart) ReserveElementsForIteration(dst, src *Object) {
-	n := src.ElemCount()
 	if dst.packedNums() != nil {
 		// Appending grows the numeric storage or unpacks it according to the values read.
 		return
 	}
-	if n == 2*packElemsThreshold && n > dst.ElemRoom() && dst.ElemCount() == 0 && dst.flags == 0 &&
-		dst.Kind == KindArray && src.packedNums() != nil && src.elemsComplete() && r.ArrayIterationPlain(src) {
-		dst.packElems(newPackedNumBlock(0, n))
-		return
-	}
-	dst.ReserveElems(n)
+	dst.ReserveElems(src.ElemCount())
 }
 
 // AppendElementsOf is quiet.Context.AppendElementsOf.
@@ -998,6 +1139,15 @@ func (p *Poller) CopyDenseElements(o *Object) ([]Value, bool) {
 		return appendPolled(p, nil, o.elems[:n]), true
 	}
 	return nil, false
+}
+
+// CopyElementsTo copies the elements of o into dst, which must have room for all of them.
+func (p *Poller) CopyElementsTo(dst []Value, o *Object) {
+	if nums := o.numericElements(); nums != nil {
+		boxNums(p, dst, nums)
+	} else {
+		CopyPolled(p, dst, o.elems)
+	}
 }
 
 // TruncateElements removes the elements of the array o from n on and sets its length to n.

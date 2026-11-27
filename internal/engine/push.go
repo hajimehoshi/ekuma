@@ -25,15 +25,36 @@ type pushSizeHint struct {
 // If o requires the generic Array.prototype.push algorithm, it leaves o unchanged
 // and returns 0, false.
 func PushElements(q quiet.Context, o *storage.Object, vals []storage.Value) (uint32, bool) {
-	n, ok := q.AppendElements(o, vals)
-	// Sample single-element pushes so earlier array lengths at this call site can
-	// guide how much space to reserve.
-	if ok && len(vals) == 1 && n > storage.MinElems && n <= storage.MaxPresizedElems {
-		if n == storage.MinElems+1 || int(n) == o.ElemRoom() || n%pushSampleInterval == 0 {
-			observePush(q, o)
-		}
+	if len(vals) == 1 {
+		return pushElement(q, o, vals[0])
+	}
+	return q.AppendElements(o, vals)
+}
+
+// ArrayPushKernel is the shortcut of Array.prototype.push for one argument.
+func ArrayPushKernel(q quiet.Context, this, v storage.Value) (storage.Value, bool) {
+	if !this.IsObject() {
+		return storage.Undefined, false
+	}
+	n, ok := pushElement(q, this.O, v)
+	if !ok {
+		return storage.Undefined, false
+	}
+	return storage.Number(float64(n)), true
+}
+
+func pushElement(q quiet.Context, o *storage.Object, v storage.Value) (uint32, bool) {
+	n, ok := q.AppendElement(o, v)
+	// Earlier array lengths at this call site guide how much space to reserve.
+	if ok && n > storage.MinElems && n <= storage.MaxPresizedElems && pushSample(n, o.ElemRoom()) {
+		observePush(q, o)
 	}
 	return n, ok
+}
+
+// pushSample tests lengths in the sampling range (MinElems, MaxPresizedElems].
+func pushSample(n uint32, room int) bool {
+	return n == storage.MinElems+1 || int(n) == room || n%pushSampleInterval == 0
 }
 
 // observePush is [agent.observePush].

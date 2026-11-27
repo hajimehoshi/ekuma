@@ -143,6 +143,15 @@ func newPackedNumBlock(n, room int) *packedNumElems {
 	return &p.packedNumElems
 }
 
+func newPackedNums(n int) *packedNumElems {
+	if n <= 2*packElemsThreshold {
+		return newPackedNumBlock(n, 2*packElemsThreshold)
+	}
+	return &packedNumElems{
+		values: make([]float64, n),
+	}
+}
+
 func (o *Object) packedNums() *packedNumElems {
 	p, _ := o.Ext.(*packedNumElems)
 	return p
@@ -260,6 +269,59 @@ func (o *Object) tryPackNums(v float64) bool {
 	}
 	p.values[n] = v
 	o.packElems(p)
+	return true
+}
+
+func allNumeric(p *Poller, vals []Value) bool {
+	for i, v := range vals {
+		if v.O != NumberObject {
+			return false
+		}
+		if i%PollInterval == PollInterval-1 {
+			p.Poll()
+		}
+	}
+	return true
+}
+
+func writeNums(p *Poller, dst []float64, vals []Value) {
+	for i, v := range vals {
+		if i > 0 && i%PollInterval == 0 {
+			p.Poll()
+		}
+		dst[i] = v.N
+	}
+}
+
+// appendNumericValues appends numeric values to an array, packing its own numeric elements on growth.
+func (o *Object) appendNumericValues(p *Poller, vals []Value) bool {
+	if packed := o.packedNums(); packed != nil {
+		if !allNumeric(p, vals) {
+			return false
+		}
+		nums := packed.values
+		n, newLen := len(nums), len(nums)+len(vals)
+		if newLen > cap(nums) {
+			room := cap(nums)
+			grown := make([]float64, newLen, max(newLen, min(2*room, MaxPresizedElems), room+room/4))
+			CopyPolled(p, grown, nums)
+			nums = grown
+		}
+		nums = nums[:newLen]
+		writeNums(p, nums[n:], vals)
+		packed.values = nums
+		return true
+	}
+	elems := o.elems
+	n := len(elems) + len(vals)
+	if n <= max(cap(elems), packElemsThreshold) || o.flags != 0 || o.Pinned&SharedElems != 0 ||
+		!allNumeric(p, vals) || !allNumeric(p, elems) {
+		return false
+	}
+	packed := newPackedNums(n)
+	writeNums(p, packed.values, elems)
+	writeNums(p, packed.values[len(elems):], vals)
+	o.packElems(packed)
 	return true
 }
 

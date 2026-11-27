@@ -304,6 +304,9 @@ func Shortcuts(t *testing.T, cx *ExecutionContext, holders []*storage.Object, ob
 		nativeTable.fastCount = count
 	})
 	var shortcuts []*Shortcut
+	// Probe the registered kernels without taking the interpreter's intrinsic shortcuts.
+	cx.realm.Intrinsics[storage.IntrinsicArrayPrototypePush] = nil
+	cx.realm.Intrinsics[storage.IntrinsicArrayPrototypePop] = nil
 	for _, o := range objects {
 		if o.Fn == nil || o.Fn.Info == nil || nativeFastOf(o.Fn.Info.Native) == nil && o.Fn.Info.Extremum == ExtremumNone {
 			continue

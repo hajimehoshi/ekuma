@@ -16,7 +16,7 @@ func ArrayPopKernel(q Context, this storage.Value) (storage.Value, bool) {
 	if !this.IsObject() {
 		return storage.Undefined, false
 	}
-	return this.Object().RemoveLastElement()
+	return this.Object().RemoveLastElementInPlace()
 }
 
 func ArrayIndexOfKernel(q Context, this, target storage.Value) (storage.Value, bool) {

@@ -299,7 +299,7 @@ var (
 	nativeArrayOf   = engine.RegisterNative(arrayOf)
 	nativeArrayFrom = engine.RegisterNative(arrayFrom)
 	nativeArrayPush = engine.RegisterNativeWithKernels(arrayPush, engine.Kernels{
-		Method1:  arrayPushKernel,
+		Method1:  engine.ArrayPushKernel,
 		Contract: polledContract,
 	})
 	nativeArrayPop = engine.RegisterNativeWithKernels(arrayPop, engine.Kernels{
@@ -343,8 +343,8 @@ func initArray(cx *engine.ExecutionContext) {
 	method(cx, ctor, "of", 0, nativeArrayOf)
 	method(cx, ctor, "from", 1, nativeArrayFrom)
 
-	method(cx, proto, "push", 1, nativeArrayPush)
-	method(cx, proto, "pop", 0, nativeArrayPop)
+	cx.SetIntrinsic(storage.IntrinsicArrayPrototypePush, method(cx, proto, "push", 1, nativeArrayPush))
+	cx.SetIntrinsic(storage.IntrinsicArrayPrototypePop, method(cx, proto, "pop", 0, nativeArrayPop))
 	method(cx, proto, "shift", 0, nativeArrayShift)
 	method(cx, proto, "unshift", 1, nativeArrayUnshift)
 	method(cx, proto, "slice", 2, nativeArraySlice)
@@ -512,19 +512,6 @@ func arrayPush(cx *engine.ExecutionContext, this storage.Value, args []storage.V
 	}
 	setLength(cx, o, n)
 	return storage.Number(float64(n))
-}
-
-// arrayPushKernel is the fast path of push for a single value.
-func arrayPushKernel(q quiet.Context, this, v storage.Value) (storage.Value, bool) {
-	if !this.IsObject() {
-		return storage.Undefined, false
-	}
-	vals := [...]storage.Value{v}
-	n, ok := engine.PushElements(q, this.Object(), vals[:])
-	if !ok {
-		return storage.Undefined, false
-	}
-	return storage.Number(float64(n)), true
 }
 
 func arrayPop(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {

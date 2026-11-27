@@ -23,10 +23,6 @@ type storageException struct {
 
 // objectStorageExceptions are the functions that assign the slots or the elements of objects.
 var objectStorageExceptions = map[string]storageException{
-	"realmPart.appendElements": {
-		count:  1,
-		reason: "appends within the room that reserveElems made; a helper costs each push a spill",
-	},
 	"realmPart.appendElementsOf": {
 		count:  1,
 		reason: "calls leaveElems itself; a helper is not inlined",
@@ -39,7 +35,7 @@ var objectStorageExceptions = map[string]storageException{
 		count:  1,
 		reason: "clears the removed element itself; a helper is not inlined",
 	},
-	"realmPart.spliceElements": {
+	"realmPart.spliceBoxed": {
 		count:  1,
 		reason: "calls leaveElems and clears the tail itself; a helper is not inlined",
 	},

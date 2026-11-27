@@ -114,7 +114,7 @@ func TestFrameRegisterBoundary(t *testing.T) {
 			what: "direct stack access",
 			objs: []types.Object{prog.field(t, "agent", "stack")},
 			owners: []string{
-				"agent.frameRegs", "agent.placeCallArgs", "agent.extraArgs", "agent.reload", "agent.findUpval",
+				"agent.frameRegs", "agent.placeCallArgs", "agent.placeSpreadArgs", "agent.extraArgs", "agent.reload", "agent.findUpval",
 				"NewExecutionContext", "agent.ensureStack", "agent.releaseStack", "agent.clearStale", "agent.pushFrame", "agent.exec", "agent.execFast",
 				"ExecutionContext.callOnStack", "ExecutionContext.callSlow", "ExecutionContext.callBound",
 				"ExecutionContext.replaceFrame", "ExecutionContext.unbind",

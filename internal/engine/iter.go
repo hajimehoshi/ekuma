@@ -514,10 +514,8 @@ func (cx *ExecutionContext) iterate(step func() (storage.Value, bool), closeIter
 // copies them before running any JavaScript. The array is v itself when iterating v reads its
 // elements without running JavaScript.
 func (cx *ExecutionContext) spreadArgs(v storage.Value) *storage.Object {
-	if s := v.O; s != nil && s.Kind == storage.KindArray && cx.ArrayIterationPlain(s) {
-		if _, ok := s.PlainElems(); ok {
-			return s
-		}
+	if s := v.O; s != nil && s.Kind == storage.KindArray && cx.ArrayIterationPlain(s) && s.ElementsPlain() {
+		return s
 	}
 	o := cx.NewArray(nil)
 	cx.appendIterable(o, v)
@@ -527,6 +525,12 @@ func (cx *ExecutionContext) spreadArgs(v storage.Value) *storage.Object {
 // appendIterable appends the values that iterating v yields to the array o.
 func (cx *ExecutionContext) appendIterable(o *storage.Object, v storage.Value) {
 	if s := v.O; s != nil && s.Kind == storage.KindArray {
+		if cx.InterruptFlag.Load() {
+			cx.Poll()
+		}
+		if cx.AppendNumericSpread(o, s) {
+			return
+		}
 		cx.ReserveElementsForIteration(o, s)
 	}
 	cx.Iterate(v, func(e storage.Value) bool {

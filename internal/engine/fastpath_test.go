@@ -68,6 +68,7 @@ var fastPathCalls = map[string]bool{
 	"math.Float32bits":      true,
 	"math.Float64frombits":  true,
 	"math.Float64bits":      true,
+	"pushSample":            true,
 
 	// Packed numeric array truncation.
 	"ag.Key":                        true,

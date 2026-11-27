@@ -63,6 +63,34 @@ const frozen = Object.freeze(numbers());
 assert.sameValue(Reflect.set(frozen, 1, 10), false);
 assert.sameValue(frozen[1], 1);
 
+function pushAtSite(array, value) { const n = array.push(value); return n; }
+function popAtSite(array) { const value = array.pop(); return value; }
+const withInheritedIndex = numbers();
+assert.sameValue(pushAtSite(withInheritedIndex, 70), 21);
+assert.sameValue(popAtSite(withInheritedIndex), 70);
+let stored;
+Object.defineProperty(Array.prototype, "20", {
+	configurable: true,
+	set(value) { stored = value; },
+	get() { return 72; },
+});
+try {
+	assert.sameValue(pushAtSite(withInheritedIndex, 71), 21);
+	assert.sameValue(stored, 71);
+	assert.sameValue(popAtSite(withInheritedIndex), 72);
+	assert.sameValue(withInheritedIndex.length, 20);
+} finally {
+	delete Array.prototype[20];
+}
+const originalPush = Array.prototype.push;
+try {
+	Array.prototype.push = function () { return 73; };
+	assert.sameValue(pushAtSite(withInheritedIndex, 74), 73);
+	assert.sameValue(withInheritedIndex.length, 20);
+} finally {
+	Array.prototype.push = originalPush;
+}
+
 const weakKey = numbers();
 const weak = new WeakMap();
 weak.set(weakKey, 42);

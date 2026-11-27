@@ -13,17 +13,16 @@ import (
 
 // rawStoreCalls lists the interpreter's raw writes and accesses to writable storage.
 var rawStoreCalls = map[string]map[string]int{
-	"ExtendElems": {"agent.execFast": 6},
-	"ExtendNums":  {"agent.execFast": 4},
+	"ExtendElems": {"agent.execFast": 8},
+	"ExtendNums":  {"agent.execFast": 6},
 	"ExtendSlots": {"agent.execFast": 2},
-	"SetElem":     {"agent.execFast": 8},
-	"SetNum":      {"agent.execFast": 5},
+	"SetElem":     {"agent.execFast": 10},
+	"SetNum":      {"agent.execFast": 6},
 	"SetFlags":    {"agent.exec": 1},
-	"SetLength":   {"agent.exec": 1, "agent.execFast": 7},
+	"SetLength":   {"agent.exec": 1, "agent.execFast": 9},
 	"SetShape":    {"agent.exec": 6, "agent.execFast": 2},
 	"SetSlot":     {"agent.execFast": 3},
-	"Elems":       {"agent.exec": 3},
-	"Nums":        {"agent.execFast": 5},
+	"Nums":        {"agent.execFast": 6},
 	"SlotRef":     nil,
 }
 
