@@ -82,13 +82,13 @@ func TestAllocationsPerOperation(t *testing.T) {
 		},
 		{
 			name:  "concatenation of two long strings",
-			setup: `var a = "a".repeat(20), b = "b".repeat(20);`,
+			setup: `var a = "a".repeat(40), b = "b".repeat(40);`,
 			body:  `a + b;`,
 			want:  2,
 		},
 		{
 			name:  "template literal",
-			setup: `var a = "0";`,
+			setup: `var a = "0123456";`,
 			body:  "`x${a}x${a}x${a}x${a}x${a}x${a}x${a}x${a}x${a}x${a}`;",
 			want:  2,
 		},

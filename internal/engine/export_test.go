@@ -463,3 +463,9 @@ func ArraysPlain(cx *ExecutionContext) bool {
 	return cx.ArrayProtoPlain() && a.HolesAreAbsent() && cx.ArrayCtorPlain(a) &&
 		cx.ArrayIterationPlain(a) && cx.PairDestructuringPlain(cx.realmPart)
 }
+
+// The thresholds of the gate of the memo of concatenations.
+const (
+	MemoWindow = memoWindow
+	MemoSkip   = memoSkip
+)

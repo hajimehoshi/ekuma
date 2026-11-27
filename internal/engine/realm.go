@@ -61,6 +61,9 @@ type realm struct {
 
 	// intlFallbackSymbol is the [[FallbackSymbol]] of %Intl%, or nil until it is needed.
 	intlFallbackSymbol *storage.Object
+
+	// concatMemo holds the last strings that concatenations of the realm made.
+	concatMemo concatMemo
 }
 
 func (ag *agent) newRealm() *realm {

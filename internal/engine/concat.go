@@ -149,6 +149,11 @@ func (cx *ExecutionContext) concat(a storage.Value, x wtf8.String, b storage.Val
 		copy(data[len(x):], y)
 		return cx.ShortString(wtf8.String(data[:n]))
 	}
+	if n <= storage.MaxStackConcatBytes {
+		var buf [storage.MaxStackConcatBytes]byte
+		copy(buf[copy(buf[:], x):], y)
+		return cx.memoizedConcat(&buf, n, storage.NextCount(ca, cb))
+	}
 	return cx.concatenated(x+y, storage.NextCount(ca, cb))
 }
 
@@ -283,7 +288,7 @@ func (cx *ExecutionContext) concatSmall(parts []storage.Value, n int, count stor
 			written += copy(buf[written:], p.O.Text())
 		}
 	}
-	return cx.concatenated(wtf8.String(buf[:n]), count)
+	return cx.memoizedConcat(&buf, n, count)
 }
 
 // concatReversedStrings is [ExecutionContext.ConcatStrings] for parts one or more of which are reversed
