@@ -33,6 +33,7 @@ var engineModules = map[string]string{
 	"sobek":             "github.com/grafana/sobek",
 	"otto":              "github.com/robertkrimen/otto",
 	"quickjs":           "modernc.org/quickjs",
+	"beastjs":           "github.com/liustack/beastjs",
 	"qjs":               "github.com/fastschema/qjs",
 	"quickjs-c":         comparison.QuickJSRepository,
 	"v8go-jitless":      "github.com/tommie/v8go",

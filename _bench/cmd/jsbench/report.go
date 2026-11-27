@@ -26,6 +26,7 @@ var engineTitles = map[string]string{
 	"sobek":        "Sobek",
 	"otto":         "otto",
 	"quickjs":      "modernc.org/quickjs",
+	"beastjs":      "BeastJS",
 	"qjs":          "QJS",
 	"quickjs-c":    "QuickJS (C)",
 	"v8go-jitless": "v8go --jitless",

@@ -24,6 +24,7 @@ var Engines = []string{
 	"moejs",
 	"otto",
 	"quickjs",
+	"beastjs",
 	"qjs",
 	"quickjs-c",
 	"v8go-jitless",

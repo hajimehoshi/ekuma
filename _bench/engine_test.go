@@ -20,6 +20,7 @@ import (
 	"github.com/dop251/goja"
 	"github.com/fastschema/qjs"
 	"github.com/grafana/sobek"
+	"github.com/liustack/beastjs"
 	"github.com/robertkrimen/otto"
 	"github.com/tommie/v8go"
 	"modernc.org/quickjs"
@@ -69,6 +70,14 @@ func newVM(engine string) (vm, error) {
 			return nil, err
 		}
 		return &quickjsVM{
+			vm: m,
+		}, nil
+	case "beastjs":
+		m, err := beastjs.NewVM()
+		if err != nil {
+			return nil, err
+		}
+		return &beastjsVM{
 			vm: m,
 		}, nil
 	case "qjs":
@@ -166,6 +175,23 @@ func (v *quickjsVM) eval(name, src string) error {
 }
 
 func (v *quickjsVM) close() {
+	v.vm.Close()
+}
+
+type beastjsVM struct {
+	vm *beastjs.VM
+}
+
+func (v *beastjsVM) eval(name, src string) error {
+	result, err := v.vm.EvalFile(name, src, beastjs.EvalGlobal)
+	if err != nil {
+		return err
+	}
+	result.Free()
+	return nil
+}
+
+func (v *beastjsVM) close() {
 	v.vm.Close()
 }
 

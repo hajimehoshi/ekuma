@@ -16,6 +16,7 @@ profiling Ekuma and checking a change to its interpreter.
 | moejs | [github.com/MoeForge/moejs](https://github.com/MoeForge/moejs), written in Go |
 | otto | [github.com/robertkrimen/otto](https://github.com/robertkrimen/otto), written in Go |
 | modernc.org/quickjs | [modernc.org/quickjs](https://pkg.go.dev/modernc.org/quickjs), QuickJS translated from C to Go |
+| BeastJS | [github.com/liustack/beastjs](https://github.com/liustack/beastjs), QuickJS compiled to Go assembly |
 | QJS | [github.com/fastschema/qjs](https://github.com/fastschema/qjs), QuickJS-ng compiled to WebAssembly and run by wazero |
 | QuickJS (C) | [QuickJS](https://github.com/bellard/quickjs) in C, as a reference |
 | v8go `--jitless` | [github.com/tommie/v8go](https://github.com/tommie/v8go) with V8's `--jitless` flag, which leaves only its bytecode interpreter |
@@ -101,8 +102,11 @@ Measured on 2026-11-26: Apple M3 Pro, macOS 27.2, go1.27.4.
 
 ## Running
 
-This needs Go, make and Clang 21 or later, which [v8go](https://github.com/tommie/v8go) needs for
-the libc++ headers of V8. In this directory:
+Use a Go version supported by every engine in the suite. The harness uses make to build
+QuickJS in C and needs Clang 21 or later for [v8go](https://github.com/tommie/v8go)'s V8 libc++
+headers.
+BeastJS supports Linux, macOS, and Windows on amd64 and arm64.
+Run from this directory:
 
 ```sh
 go run ./cmd/jsbench
@@ -120,7 +124,7 @@ Use `GOMAXPROCS=2 go run ./cmd/jsbench -rounds 1` to repeat the published run.
   DIR` measures Ekuma alone in about 3 minutes, and benchstat compares its results files with
   earlier ones. Times measured hours apart can differ by 20% on a busy machine, so the tables
   come from runs of all the engines.
-- `-engine '^(ekuma|moejs)$' -results results/ekuma-moejs` compares Ekuma with moejs and
+- `-engine '^(ekuma|beastjs)$' -results results/ekuma-beastjs` compares Ekuma with BeastJS and
   writes those results to a separate directory.
 - `-report` makes the tables from the results files without running the benchmarks, and
   `-update README.md,RESULTS.md,../README.md` writes them between the markers of these files.

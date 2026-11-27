@@ -41,6 +41,7 @@ The zero value of `ekuma.VM` is ready to use. A `VM` must not be copied after fi
 | [otto](https://github.com/robertkrimen/otto) | v0.5.1 (2024-11-05) | Written in Go | AST interpreter | ✅ | ES5 | ❌ | ❌ | ❌ |
 | [modernc.org/jit/js](https://pkg.go.dev/modernc.org/jit/js) | v0.5.0 (2026-11-22) | QuickJS, translated from C to Go | Bytecode interpreter with a JIT on Linux amd64 | ✅ | ES2023 | ✅ | ⚠️ `DateTimeFormat` and `NumberFormat` in en-US | ❌ |
 | [modernc.org/quickjs](https://pkg.go.dev/modernc.org/quickjs) | v0.27.0 (2026-10-24) | QuickJS, translated from C to Go | Bytecode interpreter | ✅ | ES2023 | ✅ | ⚠️ `DateTimeFormat` and `NumberFormat` in en-US | ❌ |
+| [BeastJS](https://github.com/liustack/beastjs) | v0.33.2 (2026-11-27) | QuickJS, compiled to Go assembly | Bytecode interpreter | ✅ | ES2023 | ✅ | ✅ Opt-in | ✅ Opt-in |
 | [QJS](https://github.com/fastschema/qjs) | v0.0.6 (2025-10-28) | QuickJS-ng, compiled to WebAssembly and run by wazero | Bytecode interpreter, compiled to machine code by wazero's AOT compiler on amd64 and arm64 | ✅ | ES2023 | ✅ | ❌ | ❌ |
 | [v8go](https://github.com/tommie/v8go) | v0.44.0 (2026-11-12) | Bindings to V8 | JIT compiler, or bytecode interpreter with `--jitless` | ❌ | ES2025 | ❌ | ✅ | ❌ |
 
