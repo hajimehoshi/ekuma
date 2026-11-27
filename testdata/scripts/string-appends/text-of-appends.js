@@ -44,6 +44,19 @@ for (var c = 0; c < cases.length; c++) {
 	}
 }
 
+// A surrogate pair split over two appends of literals to a string that grows in place.
+function literalPair() {
+	var r = long;
+	for (var i = 0; i < 10; i++) {
+		r += "x";
+	}
+	r += "\ud83d";
+	r += "\ude00";
+	r += "y";
+	return r;
+}
+assert.sameValue(literalPair(), long + "x".repeat(10) + "\u{1f600}y");
+
 // Lengths read between appends.
 function lengths() {
 	var r = "é" + long, kept = [];

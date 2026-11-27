@@ -2240,6 +2240,12 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 			x, y := regs[i.A], regs[i.B]
 			ag.frames[len(ag.frames)-1].pc = pc
 			if x.O != nil && y.O != nil && x.O.Kind == storage.KindString && y.O.Kind == storage.KindString {
+				if x.O.Flags()&storage.ObjExclusive != 0 {
+					// A string that grows in place stays in the register.
+					if ag.active.appendInPlace(x, y) {
+						continue
+					}
+				}
 				regs[i.A] = ag.active.Append(x, y)
 				continue
 			}
@@ -2250,6 +2256,12 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 			x, y := regs[i.A], fp.Consts[i.B]
 			ag.frames[len(ag.frames)-1].pc = pc
 			if x.O != nil && x.O.Kind == storage.KindString {
+				if x.O.Flags()&storage.ObjExclusive != 0 {
+					// A string that grows in place stays in the register.
+					if ag.active.appendInPlace(x, y) {
+						continue
+					}
+				}
 				regs[i.A] = ag.active.Append(x, y)
 				continue
 			}

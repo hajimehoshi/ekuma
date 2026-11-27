@@ -461,14 +461,8 @@ func (cx *ExecutionContext) extendHead(b *storage.Object, rb *storage.ReversedBu
 }
 
 // Append returns the concatenation of the strings a and b for an append to a variable that
-// holds a and receives the result. A string marked [storage.ObjExclusive] grows in place, and a
-// result that is a new tail is marked so.
+// holds a and receives the result. A result that is a new tail is marked [storage.ObjExclusive].
 func (cx *ExecutionContext) Append(a, b storage.Value) storage.Value {
-	if a.O.Flags()&storage.ObjExclusive != 0 {
-		if sb := storage.TailBuilder(a.O); sb != nil && cx.appendInPlace(a, b, sb) {
-			return a
-		}
-	}
 	v := cx.Concat(a, b)
 	if v.O != a.O && v.O != b.O && storage.TailBuilder(v.O) != nil {
 		v.O.MarkExclusive()
@@ -476,10 +470,14 @@ func (cx *ExecutionContext) Append(a, b storage.Value) storage.Value {
 	return v
 }
 
-// appendInPlace appends the string b to the string a, which is marked [storage.ObjExclusive]
-// and is the tail of sb, and reports whether it did. It does not when b is reversed or when the
-// strings form a surrogate pair where they meet.
-func (cx *ExecutionContext) appendInPlace(a, b storage.Value, sb *strings.Builder) bool {
+// appendInPlace appends the string b to the string a, which is marked [storage.ObjExclusive],
+// and reports whether it did. It does not when a is no longer the tail of its builder, when b is
+// reversed, or when the strings form a surrogate pair where they meet.
+func (cx *ExecutionContext) appendInPlace(a, b storage.Value) bool {
+	sb := storage.TailBuilder(a.O)
+	if sb == nil {
+		return false
+	}
 	x := a.O.Text()
 	// An ASCII suffix cannot join a surrogate pair.
 	if b.O.Flags()&(storage.ObjASCIIKnown|storage.ObjASCII|storage.ObjReversed) == storage.ObjASCIIKnown|storage.ObjASCII {
