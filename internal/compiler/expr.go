@@ -2113,9 +2113,15 @@ func (f *fn) assign(n *ast.AssignExpr, dst int32) {
 		case n.Op == ast.OpNone:
 			if local >= 0 {
 				if v, ok := n.Value.(*ast.BinaryExpr); ok && v.Op == ast.OpAdd {
-					if id, ok := v.Left.(*ast.Identifier); ok && id.Name == name && !f.clobbers(name, v.Right) && f.appends(name, local, v.Right) {
-						f.emitAppend(local, v.Right, dst)
-						return
+					if id, ok := v.Left.(*ast.Identifier); ok && id.Name == name && !f.clobbers(name, v.Right) {
+						if f.appends(name, local, v.Right) {
+							f.emitAppend(local, v.Right, dst)
+							return
+						}
+						if s, ok := v.Right.(*ast.StringLit); ok {
+							f.emitConcatK(local, s, dst)
+							return
+						}
 					}
 				}
 				if f.chainedStore(n.Value, name, local) {
@@ -2157,6 +2163,10 @@ func (f *fn) assign(n *ast.AssignExpr, dst int32) {
 			if local >= 0 && !f.clobbers(name, n.Value) {
 				if n.Op == ast.OpAdd && f.appends(name, local, n.Value) {
 					f.emitAppend(local, n.Value, dst)
+					return
+				}
+				if s, ok := n.Value.(*ast.StringLit); ok && n.Op == ast.OpAdd {
+					f.emitConcatK(local, s, dst)
 					return
 				}
 				f.sealLocal(name)

@@ -85,8 +85,8 @@ type binding struct {
 	// got its first value.
 	initialized bool
 
-	// appended is set once an OpAppend to the binding was compiled. Every other read of its
-	// register compiled from then on follows an OpSeal of it.
+	// appended is set once an OpAppend or OpAppendK to the binding was compiled. Every other read
+	// of its register compiled from then on follows an OpSeal of it.
 	appended bool
 }
 

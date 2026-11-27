@@ -10,13 +10,13 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/bytecode"
 )
 
-// An OpAppend to a variable may leave in its register a string that the next OpAppend to the
-// variable extends in place. This is right only while nothing else refers to the string, so every
+// An OpAppend or OpAppendK to a variable may leave in its register a string that the next one
+// extends in place. This is right only while nothing else refers to the string, so every
 // other read of the register is preceded by an OpSeal, which makes the string an ordinary one.
 // The compiler emits the seals once it has compiled an OpAppend to the variable, and settleAppends
 // checks the finished code: when a read can see the register as an OpAppend left it, or when code
-// can read the register without an instruction that names it, the OpAppends to the variable become
-// OpAdds again.
+// can read the register without an instruction that names it, the appends to the variable become
+// OpAdds and OpConcatKs again.
 
 // seal emits an OpSeal of the register of b when b has OpAppends, before an instruction that reads
 // the register.
@@ -69,12 +69,25 @@ func (f *fn) appends(name string, local int32, value ast.Expr) bool {
 // emitAppend compiles the assignment local = local + value of the local variable that appends
 // reported true for, and leaves its value in dst unless dst is -1.
 func (f *fn) emitAppend(local int32, value ast.Expr, dst int32) {
-	mark := f.top
-	r := f.immediateOperand(value)
-	f.emit(bytecode.OpAppend, local, r, 0)
-	f.free(mark)
+	if s, ok := value.(*ast.StringLit); ok {
+		f.emit(bytecode.OpAppendK, local, f.constStr(s.Value), 0)
+	} else {
+		mark := f.top
+		r := f.immediateOperand(value)
+		f.emit(bytecode.OpAppend, local, r, 0)
+		f.free(mark)
+	}
 	if dst >= 0 && dst != local {
 		f.emit(bytecode.OpSeal, local, 0, 0)
+		f.emit(bytecode.OpMove, dst, local, 0)
+	}
+}
+
+// emitConcatK compiles the assignment local = local + s of a local variable that has no
+// OpAppends, and leaves its value in dst unless dst is -1.
+func (f *fn) emitConcatK(local int32, s *ast.StringLit, dst int32) {
+	f.emit(bytecode.OpConcatK, local, local, f.constStr(s.Value))
+	if dst >= 0 && dst != local {
 		f.emit(bytecode.OpMove, dst, local, 0)
 	}
 }
@@ -113,9 +126,9 @@ func (f *fn) nestedMentions(name string) bool {
 	return found
 }
 
-// settleAppends turns the OpAppends to a variable back into OpAdds unless the code of f, which
-// must be complete, reads the register of the variable only where no string that an OpAppend
-// may extend can be in it.
+// settleAppends turns the OpAppends and OpAppendKs to a variable back into OpAdds and OpConcatKs
+// unless the code of f, which must be complete, reads the register of the variable only where no
+// string that an append may extend can be in it.
 func (f *fn) settleAppends() {
 	if len(f.appendRegs) == 0 {
 		return
@@ -144,11 +157,15 @@ func (f *fn) settleAppends() {
 	}
 	for pc := range code {
 		in := &code[pc]
-		if in.Op != bytecode.OpAppend || !isRefused(in.A) {
+		if in.Op != bytecode.OpAppend && in.Op != bytecode.OpAppendK || !isRefused(in.A) {
 			continue
 		}
+		op := bytecode.OpAdd
+		if in.Op == bytecode.OpAppendK {
+			op = bytecode.OpConcatK
+		}
 		*in = bytecode.Instr{
-			Op: bytecode.OpAdd,
+			Op: op,
 			A:  in.A,
 			B:  in.A,
 			C:  in.B,
@@ -207,7 +224,7 @@ func (f *fn) hiddenReads(regs []int32) uint64 {
 }
 
 // unsealedReads returns the set of the indices in regs of the registers that an instruction other
-// than an OpAppend to the register can read while it may hold a string that an OpAppend left.
+// than an append to the register can read while it may hold a string that an append left.
 func (f *fn) unsealedReads(regs []int32) uint64 {
 	code := f.f.Code
 	handlers := f.f.Handlers
@@ -245,8 +262,8 @@ func (f *fn) unsealedReads(regs []int32) uint64 {
 			case inst.Op == bytecode.OpSeal && inst.A == r:
 				after &^= bit
 				continue
-			case inst.Op == bytecode.OpAppend && inst.A == r:
-				if before&bit != 0 && inst.B == r {
+			case (inst.Op == bytecode.OpAppend || inst.Op == bytecode.OpAppendK) && inst.A == r:
+				if before&bit != 0 && inst.Op == bytecode.OpAppend && inst.B == r {
 					refused |= bit
 				}
 				after |= bit

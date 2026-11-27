@@ -83,6 +83,21 @@ assert.sameValue(num[1], "5" + "x".repeat(19));
 var obj = notString({ toString() { return long; } });
 assert.sameValue(obj[0], long + "x".repeat(21));
 
+// A variable that a closure reads takes string constants without appends in place.
+function captured(start) {
+	var r = start;
+	function get() { return r; }
+	for (var i = 0; i < 40; i++) {
+		r += "x";
+		r = r + "y";
+	}
+	return get();
+}
+assert.sameValue(captured(undefined), "undefined" + "xy".repeat(40));
+assert.sameValue(captured(1.5), "1.5" + "xy".repeat(40));
+assert.sameValue(captured({ valueOf() { return 7; } }), "7" + "xy".repeat(40));
+assert.sameValue(captured(long), long + "xy".repeat(40));
+
 // Numbers appended after the variable became a string, and other compound assignments.
 function numbers() {
 	var r = "", kept = [];

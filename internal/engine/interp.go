@@ -2246,6 +2246,26 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 			v := ag.active.addValues(x, y)
 			regs = ag.reload(regs, ag.frameBase(), fp)
 			regs[i.A] = v
+		case bytecode.OpAppendK:
+			x, y := regs[i.A], fp.Consts[i.B]
+			ag.frames[len(ag.frames)-1].pc = pc
+			if x.O != nil && x.O.Kind == storage.KindString {
+				regs[i.A] = ag.active.Append(x, y)
+				continue
+			}
+			v := ag.active.addValues(x, y)
+			regs = ag.reload(regs, ag.frameBase(), fp)
+			regs[i.A] = v
+		case bytecode.OpConcatK:
+			x, y := regs[i.B], fp.Consts[i.C]
+			ag.frames[len(ag.frames)-1].pc = pc
+			if x.O != nil && x.O.Kind == storage.KindString {
+				regs[i.A] = ag.active.Concat(x, y)
+				continue
+			}
+			v := ag.active.addValues(x, y)
+			regs = ag.reload(regs, ag.frameBase(), fp)
+			regs[i.A] = v
 		case bytecode.OpMod:
 			if x, y := regs[i.B], regs[i.C]; x.O == storage.NumberObject && y.O == storage.NumberObject {
 				regs[i.A] = storage.Number(math.Mod(x.N, y.N))

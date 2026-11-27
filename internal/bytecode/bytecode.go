@@ -168,6 +168,8 @@ const (
 	OpConcat          // a = the concatenation of the c strings from b on
 	OpAppend          // a = a + b. The next OpAppend to a may extend the string that it leaves there in place, so any other read of a must follow an [OpSeal] of a
 	OpSeal            // make the string in a one that an [OpAppend] does not change
+	OpAppendK         // like [OpAppend] with the string Consts[b] in place of the register b
+	OpConcatK         // a = b + Consts[c], where Consts[c] is a string
 
 	// Comparisons.
 	OpLt       // a = b < c
