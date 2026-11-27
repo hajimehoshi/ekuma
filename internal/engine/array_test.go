@@ -4,7 +4,9 @@
 package engine_test
 
 import (
+	"runtime"
 	"testing"
+	"weak"
 
 	"github.com/hajimehoshi/ekuma/internal/engine"
 	"github.com/hajimehoshi/ekuma/internal/storage"
@@ -125,4 +127,34 @@ func TestNumericArrayOperationsKeepPackedStorage(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestUnpackedSliceReleasesNumbers tests that a slice of a packed array keeps its old numbers
+// unreachable once a store of another value boxes its elements.
+func TestUnpackedSliceReleasesNumbers(t *testing.T) {
+	cx := newTestContext(t)
+	v, err := runScript(cx, "slice", `
+		var a = [];
+		for (var i = 0; i < 100; i++) a.push(i);
+		var b = a.slice();
+		b;
+	`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if v.O.Raw().NumCount() == 0 {
+		t.Fatal("the slice of a packed array is not packed")
+	}
+	w := weak.Make(&v.O.Raw().Nums()[0])
+	if _, err := runScript(cx, "unpack", `b[0] = "x";`); err != nil {
+		t.Fatal(err)
+	}
+	if v.O.Raw().NumCount() != 0 {
+		t.Fatal("the slice is still packed after a store of a string")
+	}
+	runtime.GC()
+	if w.Value() != nil {
+		t.Error("the unpacked slice keeps its old numbers reachable")
+	}
+	runtime.KeepAlive(v)
 }

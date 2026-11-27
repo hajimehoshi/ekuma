@@ -341,6 +341,8 @@ func (o *Object) unpackNums(p *packedNumElems, extra int) {
 	elems := make([]Value, n, room)
 	boxNums(&o.shape.Space.Poller, elems, p.values)
 	o.ownTail().Ext = p.ext
+	// p can be part of the allocation of o, which must not keep the numbers reachable.
+	*p = packedNumElems{}
 	o.replaceElems(elems)
 }
 
