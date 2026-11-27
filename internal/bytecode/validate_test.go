@@ -224,6 +224,14 @@ func TestValidate(t *testing.T) {
 			pc:  2,
 		},
 		{
+			name: "fusion hint before a different instruction",
+			breakFunc: func(f *bytecode.Func) {
+				f.Code[3].FuseNext = true
+			},
+			err: bytecode.ErrSequence,
+			pc:  3,
+		},
+		{
 			name: "increment without its index read",
 			breakFunc: func(f *bytecode.Func) {
 				f.Code[2] = bytecode.Instr{

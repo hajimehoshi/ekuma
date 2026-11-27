@@ -755,6 +755,8 @@ func (f *fn) finish() *bytecode.Func {
 		f.presizeNewObjects()
 	}
 
+	b.MarkFusions()
+
 	// Give the upvalues of the bindings of outer functions back to those functions.
 	for i, u := range slices.Backward(f.upvals) {
 		if u.capFn == f {

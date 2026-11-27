@@ -323,6 +323,7 @@ type agent struct {
 	openUpvals []*storage.Upvalue
 
 	// sp is the first stack index that is not in use by the running function.
+	// The call-free interpreter loop synchronizes it before handing off to slow dispatch.
 	sp int
 
 	// stackHigh is the stack index below which values may remain from the calls since the

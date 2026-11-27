@@ -62,6 +62,7 @@ var fastPathCalls = map[string]bool{
 	"storage.Sub64":         true,
 	"bits.Mul64":            true,
 	"numconv.InInt64Range":  true,
+	"shortstrings.IsASCII":  true,
 	"ag.InterruptFlag.Load": true,
 	"t.Type.Size":           true,
 	"math.Float32frombits":  true,
@@ -80,6 +81,7 @@ var fastPathMethods = map[string]bool{
 	"IsNullish":    true,
 	"FirstCleared": true,
 	"IsHTMLDDA":    true,
+	"top":          true,
 
 	// The property storage of an object.
 	"Shape":         true,

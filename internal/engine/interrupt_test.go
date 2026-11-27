@@ -26,6 +26,36 @@ func TestInterruptWithoutCause(t *testing.T) {
 	}
 }
 
+func TestInterruptBetweenNumericStepAndLoopBackedge(t *testing.T) {
+	cx := newTestContext(t)
+	cause := errors.New("stop")
+	stop := cx.NewFunction("stop", func(cx *engine.ExecutionContext, _ storage.Value, _ []storage.Value) storage.Value {
+		cx.Interrupt(cause)
+		return storage.Undefined
+	})
+	if err := cx.HostSet(cx.GlobalObject(), cx.StringFromGo("stop"), stop); err != nil {
+		t.Fatal(err)
+	}
+	const src = `var visits = 0;
+		(function () {
+			let i = 0;
+			do {
+				visits++;
+				if (i === 0) stop();
+			} while (++i < 2);
+		})();`
+	if _, err := runScript(cx, "loop", src); !errors.Is(err, cause) {
+		t.Errorf("got %v, want %v", err, cause)
+	}
+	v, err := runScript(cx, "after interruption", "visits")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !v.IsNumber() || v.Number() != 1 {
+		t.Errorf("visits = %v, want 1", v)
+	}
+}
+
 // TestSearchPollsForLongPattern checks that preparing the search for a long pattern that could
 // match inside a surrogate pair polls.
 func TestSearchPollsForLongPattern(t *testing.T) {

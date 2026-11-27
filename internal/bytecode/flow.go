@@ -106,3 +106,24 @@ func (ops *Operands) count(in, x Instr) int {
 	}
 	return 0
 }
+
+// MarkFusions records which consecutive instructions can run together.
+func (f *Func) MarkFusions() {
+	for pc := range f.Code {
+		first := &f.Code[pc]
+		first.FuseNext = pc+1 < len(f.Code) && fusionPair(*first, f.Code[pc+1], pc)
+	}
+}
+
+func fusionPair(first, second Instr, pc int) bool {
+	switch first.Op {
+	case OpGetGlobal, OpGetGlobalStrict, OpGetGlobalOrUndef, OpGetGlobalOrUndefStrict,
+		OpGetProp, OpGetLength, OpGetArgsLength, OpGetIndex, OpGetIndexInt, OpGetArgsIndex, OpGetArgsIndexInt,
+		OpMul, OpMulAdd, OpMulK, OpIterNext:
+		return second.Op == OpAdd &&
+			(second.A == second.B && second.C == first.A || second.A == second.C && second.B == first.A)
+	case OpInc, OpDec, OpPostInc, OpPostDec, OpIncUpval, OpDecUpval, OpAddK, OpSubK:
+		return (second.Op == OpJump || second.Op >= OpLoopIf && second.Op <= OpLoopGeK) && int(second.A) <= pc
+	}
+	return false
+}

@@ -232,10 +232,16 @@ var fieldNames = [...]string{
 
 // instr validates the instruction in at pc.
 func (v *validator) instr(pc int, in Instr) error {
+	if in.FuseNext && (pc+1 >= len(v.f.Code) || !fusionPair(in, v.f.Code[pc+1], pc)) {
+		return v.errorf(pc, ErrSequence, "invalid instruction for fusion")
+	}
 	ops := &opcodes[in.Op].operands
 	var x Instr
 	if ops.Extra {
 		x = v.f.Code[pc+1]
+		if x.FuseNext {
+			return v.errorf(pc, ErrSequence, "extra word has a fusion hint")
+		}
 		if x.C != 0 {
 			return v.errorf(pc, ErrValue, "x.c is %d, not 0", x.C)
 		}

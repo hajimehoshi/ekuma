@@ -458,8 +458,11 @@ const (
 
 // Instr is one instruction.
 type Instr struct {
-	Op      Opcode
-	A, B, C int32
+	Op Opcode
+
+	// FuseNext allows the interpreter to consume the next instruction as part of this one.
+	FuseNext bool
+	A, B, C  int32
 }
 
 // Handler is a region of code whose exceptions are caught.

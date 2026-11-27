@@ -345,7 +345,8 @@ func (ag *agent) checkInstr(s *execStep, pc int, regs []storage.Value) {
 	}
 }
 
-// canFuse reports whether the interpreter can consume both instructions in one dispatch.
+// canFuse reports whether the interpreter can consume both instructions without checking their
+// intermediate state.
 func canFuse(first, second bytecode.Instr) bool {
 	switch first.Op {
 	case bytecode.OpCopyPropToGlobal, bytecode.OpResolveGlobal:
