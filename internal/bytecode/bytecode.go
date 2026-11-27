@@ -64,6 +64,8 @@ const (
 	OpGetGlobalOrUndefStrict // like [OpGetGlobalOrUndef], in strict code
 	OpSetGlobal              // the global variable Keys[b] = a, creating it when it does not exist; c is a global cache
 	OpSetGlobalStrict        // like [OpSetGlobal], but a ReferenceError when the global does not exist
+	OpPutGlobal              // like [OpSetGlobal] for a reference to Keys[b] that is resolved at the store
+	OpPutGlobalStrict        // like [OpPutGlobal], but a ReferenceError when the global does not exist
 	OpResolveGlobal          // a = undefined if the global variable Keys[b] exists, null otherwise; c is a global cache
 	OpCopyPropToGlobal       // a = resolution of the global store at c-1. Cached data slots copy the following named read of b through a+1 to the global and jump to c
 	OpDeleteName             // a = delete the global variable Keys[b]

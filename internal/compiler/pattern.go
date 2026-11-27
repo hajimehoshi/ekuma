@@ -312,7 +312,7 @@ func (f *fn) elementRef(e ast.Pattern, mode patMode) (ref elementRef, ok bool) {
 		ref.isMember = true
 		return ref, true
 	case *ast.Identifier:
-		ref.scope = f.assignmentScope(t, t.Name)
+		ref.scope = f.assignmentScope(t, t.Name, false)
 		if ref.scope < 0 {
 			return elementRef{}, false
 		}

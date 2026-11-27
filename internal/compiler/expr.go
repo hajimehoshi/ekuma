@@ -97,6 +97,28 @@ func (f *fn) pure(e ast.Expr) bool {
 	return false
 }
 
+// inert reports whether evaluating e can neither run other code nor throw, and gives a value
+// that other code cannot change.
+func (f *fn) inert(e ast.Expr) bool {
+	switch e := e.(type) {
+	case *ast.NumberLit, *ast.StringLit, *ast.BoolLit, *ast.NullLit, *ast.BigIntLit:
+		return true
+	case *ast.Identifier:
+		if e.Name == "undefined" && f.resolve(e.Name).kind == refGlobal && f.dynDepth(e.Name) == 0 {
+			// The global undefined cannot be changed.
+			return true
+		}
+		return f.localReg(e.Name) >= 0 && !f.otherCodeAssigns(e.Name)
+	case *ast.UnaryExpr:
+		if e.Op == ast.OpNot || e.Op == ast.OpVoid {
+			return f.inert(e.Arg)
+		}
+		_, ok := numberLit(e)
+		return ok
+	}
+	return false
+}
+
 // singleWrite reports whether compiling e into a register writes that register only
 // after everything e reads was read, so that the register may be one that e reads.
 func (f *fn) singleWrite(e ast.Expr) bool {
@@ -2097,7 +2119,7 @@ func (f *fn) assign(n *ast.AssignExpr, dst int32) {
 				f.result(dst, local)
 				return
 			}
-			scope := f.assignmentScope(target, name)
+			scope := f.assignmentScope(target, name, f.inert(n.Value))
 			t := dst
 			if t < 0 {
 				t = f.newReg()

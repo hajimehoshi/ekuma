@@ -520,8 +520,9 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 				regs[i.A] = *c.Ref
 				continue
 			}
-		case bytecode.OpSetGlobal, bytecode.OpSetGlobalStrict:
-			// Only setGlobal fills the cache of an assignment.
+		case bytecode.OpSetGlobal, bytecode.OpSetGlobalStrict, bytecode.OpPutGlobal, bytecode.OpPutGlobalStrict:
+			// Only setGlobal fills the cache of an assignment. A cached binding also resolves
+			// the reference of OpPutGlobal.
 			c := &fp.Globals[i.C]
 			if h := c.Holder; h != nil && h.Shape() == c.Shape {
 				if validateExec {
@@ -1893,7 +1894,7 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 
 		case bytecode.OpGetGlobal, bytecode.OpGetGlobalStrict, bytecode.OpGetGlobalOrUndef, bytecode.OpGetGlobalOrUndefStrict:
 			goto readProperty
-		case bytecode.OpSetGlobal, bytecode.OpSetGlobalStrict:
+		case bytecode.OpSetGlobal, bytecode.OpSetGlobalStrict, bytecode.OpPutGlobal, bytecode.OpPutGlobalStrict:
 			rhs = regs[i.A]
 			goto writeProperty
 		case bytecode.OpCopyPropToGlobal, bytecode.OpResolveGlobal:
@@ -3351,6 +3352,9 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 			case bytecode.OpSetGlobal, bytecode.OpSetGlobalStrict:
 				fr.pc = pc
 				ag.active.setGlobal(fp.Keys[i.B], rhs, &fp.Globals[i.C], i.Op == bytecode.OpSetGlobalStrict)
+			case bytecode.OpPutGlobal, bytecode.OpPutGlobalStrict:
+				fr.pc = pc
+				ag.active.putGlobal(fp.Keys[i.B], rhs, &fp.Globals[i.C], i.Op == bytecode.OpPutGlobalStrict)
 			case bytecode.OpSetIndex, bytecode.OpSetIndexStrict, bytecode.OpSetIndexInt, bytecode.OpSetIndexIntStrict:
 				fr.pc = pc
 				setter = ag.active.setValue(receiver, key, rhs, i.Op == bytecode.OpSetIndexStrict || i.Op == bytecode.OpSetIndexIntStrict)

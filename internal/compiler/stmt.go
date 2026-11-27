@@ -106,7 +106,7 @@ func (f *fn) varDecl(n *ast.VarDecl) {
 				f.assignLocal(d.Init, r, wtf8.String(id.Name))
 				break
 			}
-			scope := f.assignmentScope(id, id.Name)
+			scope := f.assignmentScope(id, id.Name, f.inert(d.Init))
 			t := f.newReg()
 			f.named(d.Init, t, wtf8.String(id.Name))
 			f.storeVarTo(d, id.Name, t, false, scope)

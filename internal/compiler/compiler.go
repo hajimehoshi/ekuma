@@ -1530,12 +1530,21 @@ func (f *fn) loadStatic(name string, r ref, dst int32, orUndef bool) {
 	}
 }
 
+// storeResolves is the scope of a global variable whose reference the store resolves.
+const storeResolves = -2
+
 // assignmentScope resolves the target before evaluation of the assigned value.
 // Even a var declaration can refer to a configurable global property.
-func (f *fn) assignmentScope(n ast.Node, name string) int32 {
+// When the store can resolve a global variable instead, it returns storeResolves. immediate
+// reports whether nothing that the resolution can affect, or that can affect it, runs before
+// the store.
+func (f *fn) assignmentScope(n ast.Node, name string, immediate bool) int32 {
 	scope := f.resolveName(name)
 	if f.resolve(name).kind != refGlobal || f.c.globalLexical(name) {
 		return scope
+	}
+	if scope < 0 && immediate && !f.c.conservativeAssignments {
+		return storeResolves
 	}
 	f.setPos(n.Start())
 	key := f.key(wtf8.String(name))
@@ -1564,7 +1573,7 @@ func (f *fn) storeVar(n ast.Node, name string, src int32, init bool) {
 	mark := f.top
 	scope := int32(-1)
 	if !init {
-		scope = f.assignmentScope(n, name)
+		scope = f.assignmentScope(n, name, true)
 	}
 	f.storeVarTo(n, name, src, init, scope)
 	f.free(mark)
@@ -1575,6 +1584,14 @@ func (f *fn) storeVarTo(n ast.Node, name string, src int32, init bool, scope int
 	r := f.resolve(name)
 	if !init {
 		f.setRefPos(n, name, r)
+	}
+	if scope == storeResolves {
+		op := bytecode.OpPutGlobal
+		if f.strict() {
+			op = bytecode.OpPutGlobalStrict
+		}
+		f.emit(op, src, f.key(wtf8.String(name)), f.globalCache())
+		return
 	}
 	end := -1
 	if scope >= 0 {

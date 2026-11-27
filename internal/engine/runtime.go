@@ -185,6 +185,17 @@ func (cx *ExecutionContext) setGlobal(key *storage.Object, val storage.Value, c 
 	}
 }
 
+// putGlobal resolves the global variable key and assigns val to it, as PutValue does
+// right after ResolveBinding.
+func (cx *ExecutionContext) putGlobal(key *storage.Object, val storage.Value, c *storage.GlobalCache, strict bool) {
+	// The resolution does not fill c, which holds the slot only for the store.
+	if cx.resolveGlobal(key, nil).O == storage.NullObject {
+		cx.setScoped(storage.NullObject, key, val, strict)
+		return
+	}
+	cx.setGlobal(key, val, c, strict)
+}
+
 // checkGlobalDecl throws when declaring key at the top level of a script would conflict
 // with an existing declaration. what is a bytecode Decl kind.
 func (cx *ExecutionContext) checkGlobalDecl(key *storage.Object, what int) {
