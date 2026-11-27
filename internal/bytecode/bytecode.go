@@ -79,6 +79,8 @@ const (
 	OpGetUpval        // a = upvalue b
 	OpGetUpvalChecked // a = upvalue b, throwing a ReferenceError naming Keys[c] if it is uninitialized
 	OpSetUpval        // upvalue b = a
+	OpIncUpval        // increment upvalue a, throwing a ReferenceError naming Keys[b] if it is uninitialized
+	OpDecUpval        // decrement upvalue a, throwing a ReferenceError naming Keys[b] if it is uninitialized
 	OpCloseUpvals     // detach the upvalues that refer to the registers from a on
 	OpClosure         // a = closure of Protos[b]
 

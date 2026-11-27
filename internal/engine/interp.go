@@ -542,6 +542,16 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 		case bytecode.OpSetUpval:
 			*ag.frames[len(ag.frames)-1].cl.Fn.Upvals[i.B].P = regs[i.A]
 			continue
+		case bytecode.OpIncUpval:
+			if p := ag.frames[len(ag.frames)-1].cl.Fn.Upvals[i.A].P; p.O == storage.NumberObject {
+				storage.SetNumber(p, p.N+1)
+				continue
+			}
+		case bytecode.OpDecUpval:
+			if p := ag.frames[len(ag.frames)-1].cl.Fn.Upvals[i.A].P; p.O == storage.NumberObject {
+				storage.SetNumber(p, p.N-1)
+				continue
+			}
 		case bytecode.OpCopyPropToGlobal:
 			g := &fp.Globals[fp.Code[i.C-1].C]
 			if h := g.Holder; h == nil || h.Shape() != g.Shape {
@@ -1910,6 +1920,22 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 				ag.active.throwTDZ(fp.Keys[i.C])
 			}
 			regs[i.A] = v
+		case bytecode.OpIncUpval, bytecode.OpDecUpval:
+			fr := &ag.frames[len(ag.frames)-1]
+			u := fr.cl.Fn.Upvals[i.A]
+			x := *u.P
+			fr.pc = pc
+			if x.O == tdzObject {
+				ag.active.throwTDZ(fp.Keys[i.B])
+			}
+			d := int64(1)
+			if i.Op == bytecode.OpDecUpval {
+				d = -1
+			}
+			v := ag.active.step(x, d)
+			regs = ag.reload(regs, ag.frameBase(), fp)
+			// Coercion can move the stack and repoint the upvalue.
+			*u.P = v
 		case bytecode.OpCheckTDZ:
 			if regs[i.A].O == tdzObject {
 				ag.frames[len(ag.frames)-1].pc = pc

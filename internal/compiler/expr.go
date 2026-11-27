@@ -949,6 +949,18 @@ func (f *fn) update(n *ast.UpdateExpr, dst int32) {
 			}
 			return
 		}
+		if dst < 0 && !f.c.conservativeAssignments && f.withsAround() == 0 && !f.c.evalCode {
+			if r := f.resolve(arg.Name); r.kind == refUpval && (r.b.kind == bindVar || r.b.kind == bindLet) {
+				upvalOp := bytecode.OpIncUpval
+				if op == bytecode.OpDec {
+					upvalOp = bytecode.OpDecUpval
+				}
+				// Reading and converting the old value use the current source position.
+				f.emit(upvalOp, r.index, f.key(wtf8.String(arg.Name)), 0)
+				f.setRefPos(n, arg.Name, r)
+				return
+			}
+		}
 		old := f.newReg()
 		scope := f.readAssignment(arg.Name, old)
 		res := f.newReg()

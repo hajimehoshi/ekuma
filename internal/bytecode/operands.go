@@ -627,6 +627,22 @@ var opcodes = [...]struct {
 		},
 		flow: FlowNext,
 	},
+	OpIncUpval: {
+		name: "OpIncUpval",
+		operands: Operands{
+			A: OperandUpval,
+			B: OperandKey,
+		},
+		flow: FlowNext,
+	},
+	OpDecUpval: {
+		name: "OpDecUpval",
+		operands: Operands{
+			A: OperandUpval,
+			B: OperandKey,
+		},
+		flow: FlowNext,
+	},
 	OpCloseUpvals: {
 		name: "OpCloseUpvals",
 		operands: Operands{
