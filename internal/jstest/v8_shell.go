@@ -144,11 +144,11 @@ func (s *v8Shell) install(ctx context.Context, host *V8, r *ekuma.Realm, scripts
 	if err != nil {
 		return err
 	}
-	nodes, err := installed.Get("domNodes")
+	nodes, err := installed.Get(ctx, "domNodes")
 	if err != nil {
 		return err
 	}
-	report, err := installed.Get("reportException")
+	report, err := installed.Get(ctx, "reportException")
 	if err != nil {
 		return err
 	}

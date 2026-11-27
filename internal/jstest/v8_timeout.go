@@ -27,7 +27,7 @@ type v8EventLoop struct {
 	pending       []v8Timeout
 }
 
-func (q *v8EventLoop) install(r *ekuma.Realm) error {
+func (q *v8EventLoop) install(ctx context.Context, r *ekuma.Realm) error {
 	setTimeout := r.FuncOf("setTimeout", func(this ekuma.Value, args []ekuma.Value) (any, error) {
 		if len(args) == 0 || args[0].Type() != ekuma.TypeFunction {
 			return 0, nil
@@ -39,7 +39,7 @@ func (q *v8EventLoop) install(r *ekuma.Realm) error {
 		})
 		return q.lastRemovedID + len(q.pending), nil
 	})
-	if err := r.Global().Set("setTimeout", setTimeout); err != nil {
+	if err := r.Global().Set(ctx, "setTimeout", setTimeout); err != nil {
 		return err
 	}
 	clearTimeout := r.FuncOf("clearTimeout", func(this ekuma.Value, args []ekuma.Value) (any, error) {
@@ -51,7 +51,7 @@ func (q *v8EventLoop) install(r *ekuma.Realm) error {
 		}
 		return ekuma.Undefined, nil
 	})
-	return r.Global().Set("clearTimeout", clearTimeout)
+	return r.Global().Set(ctx, "clearTimeout", clearTimeout)
 }
 
 func (q *v8EventLoop) scriptError(ctx context.Context, err error) suiteResult {

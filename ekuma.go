@@ -5,8 +5,8 @@
 //
 // The API follows [syscall/js] where possible. The differences come from JavaScript
 // running inside the process: there can be several VMs, an exception is returned as an error
-// and not thrown as a panic, and the methods that run a script or call a function take
-// a [context.Context] that stops them.
+// and not thrown as a panic, and the methods that execute JavaScript, including property
+// operations, take a [context.Context] for cancellation.
 //
 // A context stops everything that runs under it: when a [Func] reads a property or calls
 // a function, that is stopped by the context of the call that led to the [Func]. When
@@ -24,8 +24,6 @@
 // including property operations and calls that throw. Calls reentered from host callbacks
 // leave jobs to the outermost call. An interruption discards pending jobs and
 // closes generators whose execution it unwinds.
-// Operations without a context can run JavaScript and jobs without a cancellation limit,
-// unless reentered under a call with a context.
 // [VM.AwaitJobs] waits for asynchronous notifications and runs their jobs.
 //
 // A panic in a [Func], or in another host function called by JavaScript, passes

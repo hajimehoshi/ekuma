@@ -31,7 +31,7 @@ func setUpContinuationData(t *testing.T, vm *ekuma.VM) {
 		},
 	}
 	for name, f := range funcs {
-		if err := vm.Global().Set(name, vm.FuncOf(name, f)); err != nil {
+		if err := vm.Global().Set(t.Context(), name, vm.FuncOf(name, f)); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -117,7 +117,7 @@ func pendingReaction(t *testing.T, vm *ekuma.VM, handler string) ekuma.Value {
 var resolve;
 var p = new Promise(r => { resolve = r; });
 run("A", () => p.then(`+handler+`));`)
-	resolve, err := vm.Global().Get("resolve")
+	resolve, err := vm.Global().Get(t.Context(), "resolve")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -129,7 +129,7 @@ run("A", () => p.then(`+handler+`));`)
 func TestContinuationDataJobPanic(t *testing.T) {
 	var vm ekuma.VM
 	marker := new(int)
-	if err := vm.Global().Set("bad", vm.FuncOf("bad", func(ekuma.Value, []ekuma.Value) (any, error) {
+	if err := vm.Global().Set(t.Context(), "bad", vm.FuncOf("bad", func(ekuma.Value, []ekuma.Value) (any, error) {
 		panic(marker)
 	})); err != nil {
 		t.Fatal(err)

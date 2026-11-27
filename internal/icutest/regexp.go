@@ -15,7 +15,7 @@ import (
 
 func runCaseFoldingTest(t *testing.T, path string) {
 	var vm ekuma.VM
-	ctor, err := vm.Global().Get("RegExp")
+	ctor, err := vm.Global().Get(t.Context(), "RegExp")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -62,7 +62,7 @@ func runCaseFoldingTest(t *testing.T, path string) {
 
 func runEmojiTest(t *testing.T, path string) {
 	var vm ekuma.VM
-	ctor, err := vm.Global().Get("RegExp")
+	ctor, err := vm.Global().Get(t.Context(), "RegExp")
 	if err != nil {
 		t.Fatal(err)
 	}

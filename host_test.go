@@ -102,7 +102,7 @@ func TestDateTimeZoneAfterArgumentConversion(t *testing.T) {
 		vm.SetTimeZone(time.FixedZone("", 3600))
 		return nil, nil
 	})
-	if err := vm.Global().Set("changeTimeZone", changeTimeZone); err != nil {
+	if err := vm.Global().Set(t.Context(), "changeTimeZone", changeTimeZone); err != nil {
 		t.Fatal(err)
 	}
 	for _, src := range []string{

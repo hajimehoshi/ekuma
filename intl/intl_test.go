@@ -470,7 +470,7 @@ func TestCancelElementLookups(t *testing.T) {
 				var vm ekuma.VM
 				ctx, cancel := context.WithCancel(t.Context())
 				defer cancel()
-				if err := vm.Global().Set("cancel", vm.FuncOf("cancel", func(ekuma.Value, []ekuma.Value) (any, error) {
+				if err := vm.Global().Set(t.Context(), "cancel", vm.FuncOf("cancel", func(ekuma.Value, []ekuma.Value) (any, error) {
 					cancel()
 					// Wait until the VM has received the cancellation.
 					synctest.Wait()

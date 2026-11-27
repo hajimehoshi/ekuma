@@ -229,11 +229,10 @@ func (cx *ExecutionContext) HostReject(c *PromiseCapability, v storage.Value) er
 }
 
 // HostInstanceOf implements v instanceof t.
-func (cx *ExecutionContext) HostInstanceOf(v, t storage.Value) (bool, error) {
-	r, err := cx.enter(func() storage.Value {
+func (cx *ExecutionContext) HostInstanceOf(v, t storage.Value) (storage.Value, error) {
+	return cx.enter(func() storage.Value {
 		return storage.Bool(cx.instanceOf(v, t, nil))
 	})
-	return storage.ToBoolean(r), err
 }
 
 // ThrownMessage describes the thrown value v for a Go error, without running any JavaScript.

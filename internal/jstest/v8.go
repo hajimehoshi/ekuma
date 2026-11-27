@@ -752,7 +752,7 @@ func (v *v8Test) executeScripts(ctx context.Context, host *V8, checkout fs.FS, t
 		if _, err := realms.add(scripts.current, false); err != nil {
 			return suiteBroken.result(firstLine(err.Error())), ""
 		}
-	} else if err := vm.Global().Set("print", vm.FuncOf("print", recordPrint)); err != nil {
+	} else if err := vm.Global().Set(ctx, "print", vm.FuncOf("print", recordPrint)); err != nil {
 		return suiteBroken.result(firstLine(err.Error())), ""
 	}
 	// A later timer can attach a handler before d8 reports unhandled rejections.
@@ -929,11 +929,11 @@ func (s *v8Scripts) call(script *ekuma.Script) {
 
 func (s *v8Scripts) installLoader(ctx context.Context, realm *ekuma.Realm) error {
 	global := realm.Global()
-	errorCtor, err := global.Get("Error")
+	errorCtor, err := global.Get(ctx, "Error")
 	if err != nil {
 		return err
 	}
-	syntaxErrorCtor, err := global.Get("SyntaxError")
+	syntaxErrorCtor, err := global.Get(ctx, "SyntaxError")
 	if err != nil {
 		return err
 	}
@@ -977,7 +977,7 @@ func (s *v8Scripts) installLoader(ctx context.Context, realm *ekuma.Realm) error
 		}
 		return ekuma.Undefined, nil
 	}
-	if err := global.Set("load", realm.FuncOf("load", execute)); err != nil {
+	if err := global.Set(ctx, "load", realm.FuncOf("load", execute)); err != nil {
 		return err
 	}
 	exists := func(this ekuma.Value, args []ekuma.Value) (any, error) {
@@ -991,7 +991,7 @@ func (s *v8Scripts) installLoader(ctx context.Context, realm *ekuma.Realm) error
 		name, _, _ := strings.Cut(str.String(), "\x00")
 		return v8FileExists(s.checkout, name), nil
 	}
-	return global.Set("d8", realm.ValueOf(map[string]any{
+	return global.Set(ctx, "d8", realm.ValueOf(map[string]any{
 		"file": map[string]any{
 			"execute": realm.FuncOf("execute", execute),
 			"exists":  realm.FuncOf("exists", exists),

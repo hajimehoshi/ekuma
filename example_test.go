@@ -72,7 +72,7 @@ func Example_modules() {
 	if err != nil {
 		panic(err)
 	}
-	msg, err := ns.Get("message")
+	msg, err := ns.Get(context.Background(), "message")
 	if err != nil {
 		panic(err)
 	}
@@ -118,7 +118,7 @@ func ExampleVM_NewSyntheticModule() {
 	if err != nil {
 		panic(err)
 	}
-	message, err := ns.Get("message")
+	message, err := ns.Get(context.Background(), "message")
 	if err != nil {
 		panic(err)
 	}
@@ -152,7 +152,7 @@ func ExampleVM_ParseScript() {
 func ExampleVM_NewRealm() {
 	var vm ekuma.VM
 	r := vm.NewRealm()
-	if err := vm.Global().Set("other", r.Global()); err != nil {
+	if err := vm.Global().Set(context.Background(), "other", r.Global()); err != nil {
 		fmt.Println(err)
 		return
 	}
@@ -181,7 +181,7 @@ func Example_sharedArrayBuffer() {
 	done := make(chan error)
 	go func() {
 		var worker ekuma.VM
-		if err := worker.Global().Set("sab", <-blocks); err != nil {
+		if err := worker.Global().Set(ctx, "sab", <-blocks); err != nil {
 			done <- err
 			return
 		}
@@ -236,7 +236,7 @@ func ExampleVM_FuncOf() {
 		}
 		return strings.ToUpper(args[0].String()), nil
 	})
-	if err := vm.Global().Set("uppercase", uppercase); err != nil {
+	if err := vm.Global().Set(context.Background(), "uppercase", uppercase); err != nil {
 		panic(err)
 	}
 
@@ -284,7 +284,7 @@ func ExampleParseUnboundScript() {
 
 	for _, name := range []string{"Alice", "Bob"} {
 		var vm ekuma.VM
-		if err := vm.Global().Set("name", name); err != nil {
+		if err := vm.Global().Set(context.Background(), "name", name); err != nil {
 			panic(err)
 		}
 		v, err := vm.BindScript(s).Evaluate(context.Background())
@@ -307,7 +307,7 @@ func ExampleParseUnboundModule() {
 
 	for _, name := range []string{"Alice", "Bob"} {
 		var vm ekuma.VM
-		if err := vm.Global().Set("name", name); err != nil {
+		if err := vm.Global().Set(context.Background(), "name", name); err != nil {
 			panic(err)
 		}
 		m := vm.BindModule(u)
@@ -322,7 +322,7 @@ func ExampleParseUnboundModule() {
 		if err != nil {
 			panic(err)
 		}
-		greeting, err := ns.Get("greeting")
+		greeting, err := ns.Get(context.Background(), "greeting")
 		if err != nil {
 			panic(err)
 		}
@@ -338,7 +338,7 @@ func ExampleVM_NewPromise() {
 	ctx := context.Background()
 	var vm ekuma.VM
 	promise, resolver := vm.NewPromise()
-	if err := vm.Global().Set("message", promise); err != nil {
+	if err := vm.Global().Set(ctx, "message", promise); err != nil {
 		panic(err)
 	}
 	s, err := vm.ParseScript("greeting.js", `message.then((name) => "Hello, " + name)`)
@@ -366,7 +366,7 @@ func ExampleVM_NewPromise() {
 func ExampleVM_NewArrayBuffer() {
 	var vm ekuma.VM
 	pixels := []byte{10, 20, 30, 255}
-	if err := vm.Global().Set("pixels", vm.NewArrayBuffer(pixels)); err != nil {
+	if err := vm.Global().Set(context.Background(), "pixels", vm.NewArrayBuffer(pixels)); err != nil {
 		panic(err)
 	}
 	s, err := vm.ParseScript("invert.js", `
@@ -397,7 +397,7 @@ func ExampleScriptError() {
 	if !ok {
 		panic(fmt.Sprintf("expected a JavaScript exception, got %v", err))
 	}
-	code, err := exception.Value.Get("code")
+	code, err := exception.Value.Get(context.Background(), "code")
 	if err != nil {
 		panic(err)
 	}

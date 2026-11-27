@@ -85,8 +85,8 @@ those paired results. See the [benchmark method](_bench/README.md#method),
 ## Host API
 
 The API follows [`syscall/js`](https://pkg.go.dev/syscall/js) for working with values and
-functions. JavaScript exceptions return to Go as errors. Calls that execute scripts or invoke
-functions take a `context.Context` for cancellation. The [package documentation](https://pkg.go.dev/github.com/hajimehoshi/ekuma)
+functions. JavaScript exceptions return to Go as errors. Script evaluation, function calls, and
+property operations take a `context.Context` for cancellation. The [package documentation](https://pkg.go.dev/github.com/hajimehoshi/ekuma)
 describes cancellation, host panics, and pending jobs.
 
 ### Scripts
@@ -154,8 +154,8 @@ notified or time out. With no pending jobs or waiters, it returns immediately.
 
 Use a context with a deadline to cancel script execution and the promise jobs it runs.
 Property operations such as `Value.Get` and `Value.Set` can run JavaScript through getters,
-setters, or proxies. These operations inherit the current context inside a host callback
-and can run without a deadline when called directly from Go.
+setters, or proxies. Give these operations a deadline too when working with values from
+unreliable scripts. Calls made inside a host callback also inherit the outer call's context.
 
 Each VM runs in the host process. For untrusted scripts, run Ekuma in a separate process
 with operating-system resource limits. See [Missing](#missing) for the current gaps in

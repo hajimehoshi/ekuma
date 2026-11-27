@@ -70,12 +70,12 @@ func listDifference[T string | observedValue](name string, got, want []T, equal 
 }
 
 // recordAssertions makes the assertions of the harness record the values that they check.
-func (tv *testVM) recordAssertions() error {
-	assert, err := tv.vm.Global().Get("assert")
+func (tv *testVM) recordAssertions(ctx context.Context) error {
+	assert, err := tv.vm.Global().Get(ctx, "assert")
 	if err != nil {
 		return err
 	}
-	sameValue, err := assert.Get("sameValue")
+	sameValue, err := assert.Get(ctx, "sameValue")
 	if err != nil {
 		return err
 	}
@@ -91,7 +91,7 @@ func (tv *testVM) recordAssertions() error {
 		}
 		return sameValue.Invoke(context.Background(), rest...)
 	})
-	return assert.Set("sameValue", record)
+	return assert.Set(ctx, "sameValue", record)
 }
 
 // observedValue keeps strings and BigInts for exact comparison across VMs. Other values are
@@ -155,7 +155,7 @@ func (tv *testVM) evaluate(ctx context.Context, s *ekuma.Script) *observation {
 	if err == nil {
 		o.completion = observeValue(v)
 	} else {
-		o.completion.text = "throw " + errorName(err)
+		o.completion.text = "throw " + errorName(ctx, err)
 		if _, ok := errors.AsType[*ekuma.ScriptError](err); ok {
 			for line := range strings.SplitSeq(err.Error(), "\n") {
 				if strings.HasPrefix(line, "    at ") {
@@ -179,7 +179,7 @@ func (t *test262Test) observe(h *harness, src string, parse parseFunc, evaluatio
 		if err != nil {
 			observations = append(observations, &observation{
 				completion: observedValue{
-					text: "throw " + errorName(err),
+					text: "throw " + errorName(ctx, err),
 				},
 				result: tv.check(ctx, err),
 			})

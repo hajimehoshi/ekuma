@@ -207,7 +207,7 @@ func (h *harness) file(name string) (string, error) {
 }
 
 // errorName returns the name of the constructor of the thrown value of err, or of the kind of error.
-func errorName(err error) string {
+func errorName(ctx context.Context, err error) string {
 	if _, ok := errors.AsType[*ekuma.SyntaxError](err); ok {
 		return "SyntaxError"
 	}
@@ -215,11 +215,11 @@ func errorName(err error) string {
 	if !errors.As(err, &ex) {
 		return ""
 	}
-	c, cerr := ex.Value.Get("constructor")
+	c, cerr := ex.Value.Get(ctx, "constructor")
 	if cerr != nil {
 		return ""
 	}
-	n, cerr := c.Get("name")
+	n, cerr := c.Get(ctx, "name")
 	if cerr != nil || n.Type() != ekuma.TypeString {
 		return ""
 	}
@@ -227,7 +227,7 @@ func errorName(err error) string {
 }
 
 // checkError judges the result of the test body against its negative metadata.
-func (m metadata) checkError(phase string, err error) suiteResult {
+func (m metadata) checkError(ctx context.Context, phase string, err error) suiteResult {
 	if err == nil {
 		if m.negativePhase != "" {
 			return suiteFailed.result("expected " + m.negativeType + " but the test completed")
@@ -246,7 +246,11 @@ func (m metadata) checkError(phase string, err error) suiteResult {
 	if !phaseMatches {
 		return suiteFailed.result("expected the error in the " + m.negativePhase + " phase: " + result.reason)
 	}
-	if got := errorName(err); got != m.negativeType {
+	got := errorName(ctx, err)
+	if err := context.Cause(ctx); err != nil {
+		return scriptErrorResult(err)
+	}
+	if got != m.negativeType {
 		return suiteFailed.result("expected " + m.negativeType + " but got " + result.reason)
 	}
 	return suiteResult{}
@@ -319,7 +323,7 @@ func runInVM(h *harness, path string, m metadata, parse parseFunc, timeout time.
 		}
 		return ekuma.Undefined, nil
 	})
-	if err := vm.Global().Set("print", print); err != nil {
+	if err := vm.Global().Set(context.Background(), "print", print); err != nil {
 		return suiteBroken.result("harness: " + err.Error())
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
@@ -350,7 +354,7 @@ func runInVM(h *harness, path string, m metadata, parse parseFunc, timeout time.
 			}
 		}
 		if h.recordAssertions {
-			if err := tv.recordAssertions(); err != nil {
+			if err := tv.recordAssertions(ctx); err != nil {
 				return suiteBroken.result("harness: " + err.Error())
 			}
 		}
@@ -365,7 +369,7 @@ func (tv *testVM) check(ctx context.Context, err error) suiteResult {
 		if _, ok := errors.AsType[*ekuma.SyntaxError](err); ok {
 			phase = "parse"
 		}
-		return tv.m.checkError(phase, err)
+		return tv.m.checkError(ctx, phase, err)
 	}
 	if tv.m.flags["async"] {
 		return tv.awaitAgents(ctx)
@@ -473,12 +477,12 @@ func (tv *testVM) runModule(ctx context.Context, src string) suiteResult {
 	m := tv.m
 	mod, err := tv.loader.realm.ParseModule(tv.path, src)
 	if err != nil {
-		return m.checkError("parse", err)
+		return m.checkError(ctx, "parse", err)
 	}
 	tv.loader.modules[tv.path+"\x00"] = mod
 	p, err := mod.Evaluate(ctx)
 	if err != nil {
-		return m.checkError("resolution", err)
+		return m.checkError(ctx, "resolution", err)
 	}
 	for {
 		switch state, reason := p.PromiseState(); state {
@@ -486,9 +490,9 @@ func (tv *testVM) runModule(ctx context.Context, src string) suiteResult {
 			if m.flags["async"] && m.negativePhase == "" {
 				return tv.awaitAgents(ctx)
 			}
-			return m.checkError("runtime", nil)
+			return m.checkError(ctx, "runtime", nil)
 		case ekuma.PromiseRejected:
-			return m.checkError("runtime", &ekuma.ScriptError{
+			return m.checkError(ctx, "runtime", &ekuma.ScriptError{
 				Value: reason,
 			})
 		}
@@ -525,7 +529,7 @@ func (suite *Test262) define262(vm *ekuma.VM, agents *agentCluster, parse parseF
 	if err := agents.define(vm, o); err != nil {
 		return err
 	}
-	return vm.Global().Set("$262", o)
+	return vm.Global().Set(context.Background(), "$262", o)
 }
 
 // new262 returns the object $262 for the realm r of vm, without $262.agent.
@@ -545,15 +549,15 @@ func (suite *Test262) new262(vm *ekuma.VM, r *ekuma.Realm, parse parseFunc) (eku
 		if err != nil {
 			return nil, err
 		}
-		if err := nr.Global().Set("$262", o); err != nil {
+		if err := nr.Global().Set(ctx, "$262", o); err != nil {
 			return nil, err
 		}
 		return o, nil
 	})
-	if err := o.Set("createRealm", createRealm); err != nil {
+	if err := o.Set(ctx, "createRealm", createRealm); err != nil {
 		return ekuma.Undefined, err
 	}
-	if err := o.Set("AbstractModuleSource", suite.AbstractModuleSource(r)); err != nil {
+	if err := o.Set(ctx, "AbstractModuleSource", suite.AbstractModuleSource(r)); err != nil {
 		return ekuma.Undefined, err
 	}
 	detach := r.FuncOf("detachArrayBuffer", func(this ekuma.Value, args []ekuma.Value) (any, error) {
@@ -565,7 +569,7 @@ func (suite *Test262) new262(vm *ekuma.VM, r *ekuma.Realm, parse parseFunc) (eku
 			return ekuma.Undefined, nil
 		}
 		// DetachArrayBuffer throws a TypeError for a buffer that cannot be detached.
-		c, err := r.Global().Get("TypeError")
+		c, err := r.Global().Get(ctx, "TypeError")
 		if err != nil {
 			return nil, err
 		}
@@ -575,7 +579,7 @@ func (suite *Test262) new262(vm *ekuma.VM, r *ekuma.Realm, parse parseFunc) (eku
 		}
 		return nil, &ekuma.ScriptError{Value: e}
 	})
-	if err := o.Set("detachArrayBuffer", detach); err != nil {
+	if err := o.Set(ctx, "detachArrayBuffer", detach); err != nil {
 		return ekuma.Undefined, err
 	}
 	evalScript := r.FuncOf("evalScript", func(this ekuma.Value, args []ekuma.Value) (any, error) {
@@ -586,7 +590,7 @@ func (suite *Test262) new262(vm *ekuma.VM, r *ekuma.Realm, parse parseFunc) (eku
 		s, err := parse(r, "evalScript", src)
 		if se, ok := errors.AsType[*ekuma.SyntaxError](err); ok {
 			// An early error of the script is a SyntaxError thrown to the caller.
-			c, err := r.Global().Get("SyntaxError")
+			c, err := r.Global().Get(ctx, "SyntaxError")
 			if err != nil {
 				return nil, err
 			}
@@ -601,20 +605,20 @@ func (suite *Test262) new262(vm *ekuma.VM, r *ekuma.Realm, parse parseFunc) (eku
 		}
 		return s.Evaluate(ctx)
 	})
-	if err := o.Set("evalScript", evalScript); err != nil {
+	if err := o.Set(ctx, "evalScript", evalScript); err != nil {
 		return ekuma.Undefined, err
 	}
-	if err := o.Set("global", r.Global()); err != nil {
+	if err := o.Set(ctx, "global", r.Global()); err != nil {
 		return ekuma.Undefined, err
 	}
-	if err := o.Set("IsHTMLDDA", suite.NewHTMLDDA(r)); err != nil {
+	if err := o.Set(ctx, "IsHTMLDDA", suite.NewHTMLDDA(r)); err != nil {
 		return ekuma.Undefined, err
 	}
 	gc := r.FuncOf("gc", func(this ekuma.Value, args []ekuma.Value) (any, error) {
 		runtime.GC()
 		return ekuma.Undefined, nil
 	})
-	if err := o.Set("gc", gc); err != nil {
+	if err := o.Set(ctx, "gc", gc); err != nil {
 		return ekuma.Undefined, err
 	}
 	return o, nil
@@ -1059,7 +1063,7 @@ func (c *agentCluster) define(vm *ekuma.VM, o ekuma.Value) error {
 	if err != nil {
 		return err
 	}
-	return o.Set("agent", agent)
+	return o.Set(context.Background(), "agent", agent)
 }
 
 // run runs the agent a with the source src until the cluster ends.

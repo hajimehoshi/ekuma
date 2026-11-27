@@ -230,63 +230,84 @@ func (v Value) vm(method string) (*VM, error) {
 //
 // The error is a [*ValueError] when v is not an object, a function or a string,
 // and a [*ScriptError] when the operation throws a JavaScript exception.
-func (v Value) Get(name string) (Value, error) {
+// If ctx is already done or interrupts the operation or its jobs, the error is the cause of ctx.
+func (v Value) Get(ctx context.Context, name string) (Value, error) {
 	vm, err := v.vm("Value.Get")
 	if err != nil {
 		return Undefined, err
 	}
-	r, err := vm.hostContext().HostGet(v.value, vm.hostContext().StringFromGo(name))
-	return fromEngine(r), publicError(err)
+	return vm.run(ctx, func() (storage.Value, error) {
+		cx := vm.hostContext()
+		return cx.HostGet(v.value, cx.StringFromGo(name))
+	})
 }
 
 // GetWithValueKey is like [Value.Get], but key is converted to a property key the way the
 // expression v[key] converts it, and a conversion that throws is a [*ScriptError]. It panics if key
 // belongs to a different VM from v.
-func (v Value) GetWithValueKey(key Value) (Value, error) {
+func (v Value) GetWithValueKey(ctx context.Context, key Value) (Value, error) {
 	vm, err := v.vm("Value.GetWithValueKey")
 	if err != nil {
 		return Undefined, err
 	}
-	r, err := vm.hostContext().HostGet(v.value, vm.acceptValue(key))
-	return fromEngine(r), publicError(err)
+	k := vm.acceptValue(key)
+	return vm.run(ctx, func() (storage.Value, error) {
+		return vm.hostContext().HostGet(v.value, k)
+	})
 }
 
 // Set sets the property named name on v to [VM.ValueOf](x), as an assignment in strict
 // mode does. The errors are those of [Value.Get].
-func (v Value) Set(name string, x any) error {
+func (v Value) Set(ctx context.Context, name string, x any) error {
 	vm, err := v.vm("Value.Set")
 	if err != nil {
 		return err
 	}
-	return publicError(vm.hostContext().HostSet(v.value, vm.hostContext().StringFromGo(name), vm.valueOf(vm.initialRealm.cx, x)))
+	_, err = vm.run(ctx, func() (storage.Value, error) {
+		cx := vm.hostContext()
+		return storage.Undefined, cx.HostSet(v.value, cx.StringFromGo(name), vm.valueOf(vm.initialRealm.cx, x))
+	})
+	return err
 }
 
 // SetWithValueKey is like [Value.Set], but takes key as [Value.GetWithValueKey] does.
-func (v Value) SetWithValueKey(key Value, x any) error {
+func (v Value) SetWithValueKey(ctx context.Context, key Value, x any) error {
 	vm, err := v.vm("Value.SetWithValueKey")
 	if err != nil {
 		return err
 	}
-	return publicError(vm.hostContext().HostSet(v.value, vm.acceptValue(key), vm.valueOf(vm.initialRealm.cx, x)))
+	k := vm.acceptValue(key)
+	_, err = vm.run(ctx, func() (storage.Value, error) {
+		return storage.Undefined, vm.hostContext().HostSet(v.value, k, vm.valueOf(vm.initialRealm.cx, x))
+	})
+	return err
 }
 
 // Delete deletes the property named name from v, as the delete operator in strict mode does.
 // The errors are those of [Value.Get].
-func (v Value) Delete(name string) error {
+func (v Value) Delete(ctx context.Context, name string) error {
 	vm, err := v.vm("Value.Delete")
 	if err != nil {
 		return err
 	}
-	return publicError(vm.hostContext().HostDelete(v.value, vm.hostContext().StringFromGo(name)))
+	_, err = vm.run(ctx, func() (storage.Value, error) {
+		cx := vm.hostContext()
+		return storage.Undefined, cx.HostDelete(v.value, cx.StringFromGo(name))
+	})
+	return err
 }
 
 // DeleteWithValueKey is like [Value.Delete], but takes key as [Value.GetWithValueKey] does.
-func (v Value) DeleteWithValueKey(key Value) error {
+func (v Value) DeleteWithValueKey(ctx context.Context, key Value) error {
 	vm, err := v.vm("Value.DeleteWithValueKey")
 	if err != nil {
 		return err
 	}
-	return publicError(vm.hostContext().HostDelete(v.value, vm.acceptValue(key)))
+	k := vm.acceptValue(key)
+	_, err = vm.run(ctx, func() (storage.Value, error) {
+		return storage.Undefined, vm.hostContext().HostDelete(v.value, k)
+	})
+	return err
 }
 
 func (vm *VM) indexKey(i int) storage.Value {
@@ -298,23 +319,27 @@ func (vm *VM) indexKey(i int) storage.Value {
 
 // Index returns the property of v named by the decimal representation of i.
 // The errors are those of [Value.Get].
-func (v Value) Index(i int) (Value, error) {
+func (v Value) Index(ctx context.Context, i int) (Value, error) {
 	vm, err := v.vm("Value.Index")
 	if err != nil {
 		return Undefined, err
 	}
-	r, err := vm.hostContext().HostGet(v.value, vm.indexKey(i))
-	return fromEngine(r), publicError(err)
+	return vm.run(ctx, func() (storage.Value, error) {
+		return vm.hostContext().HostGet(v.value, vm.indexKey(i))
+	})
 }
 
 // SetIndex sets the property of v named by the decimal representation of i to [VM.ValueOf](x).
 // The errors are those of [Value.Get].
-func (v Value) SetIndex(i int, x any) error {
+func (v Value) SetIndex(ctx context.Context, i int, x any) error {
 	vm, err := v.vm("Value.SetIndex")
 	if err != nil {
 		return err
 	}
-	return publicError(vm.hostContext().HostSet(v.value, vm.indexKey(i), vm.valueOf(vm.initialRealm.cx, x)))
+	_, err = vm.run(ctx, func() (storage.Value, error) {
+		return storage.Undefined, vm.hostContext().HostSet(v.value, vm.indexKey(i), vm.valueOf(vm.initialRealm.cx, x))
+	})
+	return err
 }
 
 // Call calls the method named name on v with v as this. The arguments are converted with
@@ -387,13 +412,16 @@ func (v Value) invoke(ctx context.Context, method string, construct bool, args [
 // operator does.
 // The errors are those of [Value.Get], for t. It panics if v
 // belongs to a different VM from t.
-func (v Value) InstanceOf(t Value) (bool, error) {
+func (v Value) InstanceOf(ctx context.Context, t Value) (bool, error) {
 	vm, err := t.vm("Value.InstanceOf")
 	if err != nil {
 		return false, err
 	}
-	r, err := vm.hostContext().HostInstanceOf(vm.acceptValue(v), t.value)
-	return r, publicError(err)
+	value := vm.acceptValue(v)
+	r, err := vm.run(ctx, func() (storage.Value, error) {
+		return vm.hostContext().HostInstanceOf(value, t.value)
+	})
+	return r.Truthy(), err
 }
 
 // PromiseState is the state of a promise.

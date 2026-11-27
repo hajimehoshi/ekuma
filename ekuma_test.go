@@ -53,15 +53,15 @@ func TestForeignValueEntry(t *testing.T) {
 			case "Nested":
 				b.ValueOf([]any{map[string]any{"nested": foreign}})
 			case "Set":
-				_ = b.Global().Set("foreign", foreign)
+				_ = b.Global().Set(t.Context(), "foreign", foreign)
 			case "SetIndex":
-				_ = b.ValueOf([]any{}).SetIndex(0, foreign)
+				_ = b.ValueOf([]any{}).SetIndex(t.Context(), 0, foreign)
 			case "Invoke":
 				_, _ = f.Invoke(t.Context(), 1, foreign)
 			case "Call":
 				_, _ = b.ValueOf(map[string]any{"f": f}).Call(t.Context(), "f", foreign)
 			case "New":
-				ctor, err := b.Global().Get("Object")
+				ctor, err := b.Global().Get(t.Context(), "Object")
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -81,11 +81,11 @@ func TestForeignValueEntry(t *testing.T) {
 			case "DefaultExportSyntheticModule":
 				b.NewRealm().NewDefaultExportSyntheticModule("foreign", foreign)
 			case "InstanceOf":
-				ctor, err := b.Global().Get("Object")
+				ctor, err := b.Global().Get(t.Context(), "Object")
 				if err != nil {
 					t.Fatal(err)
 				}
-				_, _ = foreign.InstanceOf(ctor)
+				_, _ = foreign.InstanceOf(t.Context(), ctor)
 			case "LoaderException":
 				b.SetModuleLoader(func(req ekuma.ModuleRequest) (*ekuma.Module, error) {
 					return nil, &ekuma.ScriptError{Value: foreign}
@@ -105,11 +105,11 @@ func TestForeignValueEntry(t *testing.T) {
 				}
 				_, _ = m.Evaluate(t.Context())
 			case "GetWithValueKey":
-				_, _ = b.Global().GetWithValueKey(foreign)
+				_, _ = b.Global().GetWithValueKey(t.Context(), foreign)
 			case "SetWithValueKey":
-				_ = b.Global().SetWithValueKey(foreign, 1)
+				_ = b.Global().SetWithValueKey(t.Context(), foreign, 1)
 			case "DeleteWithValueKey":
-				_ = b.Global().DeleteWithValueKey(foreign)
+				_ = b.Global().DeleteWithValueKey(t.Context(), foreign)
 			case "CallWithValueKey":
 				_, _ = b.Global().CallWithValueKey(t.Context(), foreign)
 			}
@@ -146,11 +146,11 @@ func TestVMIndependentValues(t *testing.T) {
 		t.Fatal(err)
 	}
 	for i := range 6 {
-		v, err := values.Index(i)
+		v, err := values.Index(t.Context(), i)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err := b.Global().Set("value", v); err != nil {
+		if err := b.Global().Set(t.Context(), "value", v); err != nil {
 			t.Fatal(err)
 		}
 		got, err := runScript(t.Context(), &b, "", `({[value]: value})[value]`)
@@ -245,7 +245,7 @@ func TestZeroValue(t *testing.T) {
 		}
 		return args[0], nil
 	})
-	if err := vm.Global().Set("f", f); err != nil {
+	if err := vm.Global().Set(ctx, "f", f); err != nil {
 		t.Fatalf("Set: %v", err)
 	}
 	v, err := runScript(ctx, &vm, "zero", `[typeof f(), f(0) === 0, f(undefined) === undefined, f(null) === null, f("s"), f(1.5)].join()`)
@@ -317,21 +317,21 @@ func TestValues(t *testing.T) {
 		const lexical = 1;`); err != nil {
 		t.Fatalf("runScript: %v", err)
 	}
-	obj, err := global.Get("obj")
+	obj, err := global.Get(ctx, "obj")
 	if err != nil {
 		t.Fatalf("Get: %v", err)
 	}
-	if err := obj.Set("n", 5); err != nil {
+	if err := obj.Set(ctx, "n", 5); err != nil {
 		t.Errorf("Set: %v", err)
 	}
-	if v, err := obj.Get("twice"); err != nil || v.Int() != 10 {
+	if v, err := obj.Get(ctx, "twice"); err != nil || v.Int() != 10 {
 		t.Errorf("twice = %v, %v, want 10", v, err)
 	}
 	if v, err := obj.Call(ctx, "add", 1, 2); err != nil || v.Int() != 8 {
 		t.Errorf("add = %v, %v, want 8", v, err)
 	}
 
-	sum, err := global.Get("sum")
+	sum, err := global.Get(ctx, "sum")
 	if err != nil {
 		t.Fatalf("Get: %v", err)
 	}
@@ -339,7 +339,7 @@ func TestValues(t *testing.T) {
 		t.Errorf("sum = %v, %v, want 6.5", v, err)
 	}
 
-	point, err := global.Get("Point")
+	point, err := global.Get(ctx, "Point")
 	if err != nil {
 		t.Fatalf("Get: %v", err)
 	}
@@ -347,25 +347,25 @@ func TestValues(t *testing.T) {
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}
-	if v, err := p.Get("y"); err != nil || v.Int() != 4 {
+	if v, err := p.Get(ctx, "y"); err != nil || v.Int() != 4 {
 		t.Errorf("y = %v, %v, want 4", v, err)
 	}
-	if ok, err := p.InstanceOf(point); err != nil || !ok {
+	if ok, err := p.InstanceOf(ctx, point); err != nil || !ok {
 		t.Errorf("InstanceOf = %v, %v, want true", ok, err)
 	}
-	if err := p.Delete("y"); err != nil {
+	if err := p.Delete(ctx, "y"); err != nil {
 		t.Errorf("Delete: %v", err)
 	}
-	if v, err := p.Get("y"); err != nil || !v.IsUndefined() {
+	if v, err := p.Get(ctx, "y"); err != nil || !v.IsUndefined() {
 		t.Errorf("y after Delete = %v, %v, want undefined", v, err)
 	}
 
 	// Go values convert to JavaScript values, including nested ones.
 	arr := vm.ValueOf([]any{"a", nil, map[string]any{"k": true}})
-	if n, err := arr.Get("length"); err != nil || n.Int() != 3 {
+	if n, err := arr.Get(ctx, "length"); err != nil || n.Int() != 3 {
 		t.Errorf("length = %v, %v, want 3", n, err)
 	}
-	if err := arr.SetIndex(3, "z"); err != nil {
+	if err := arr.SetIndex(ctx, 3, "z"); err != nil {
 		t.Errorf("SetIndex: %v", err)
 	}
 	json, err := runScript(ctx, &vm, "describe", `(function(a) { return a.map(x => x === null ? "null" : typeof x === "object" ? "k=" + x.k : x).join(); })`)
@@ -375,12 +375,12 @@ func TestValues(t *testing.T) {
 	if v, err := json.Invoke(ctx, arr); err != nil || v.String() != "a,null,k=true,z" {
 		t.Errorf("describe = %v, %v, want a,null,k=true,z", v, err)
 	}
-	if v, err := arr.Index(0); err != nil || !v.Equal(vm.ValueOf("a")) {
+	if v, err := arr.Index(ctx, 0); err != nil || !v.Equal(vm.ValueOf("a")) {
 		t.Errorf("Index(0) = %v, %v, want a", v, err)
 	}
 
 	// A string has properties too, and its length counts UTF-16 code units.
-	if n, err := vm.ValueOf("h\u00e9\U0001F600").Get("length"); err != nil || n.Int() != 4 {
+	if n, err := vm.ValueOf("h\u00e9\U0001F600").Get(ctx, "length"); err != nil || n.Int() != 4 {
 		t.Errorf("length of a string = %v, %v, want 4", n, err)
 	}
 
@@ -393,14 +393,14 @@ func TestValues(t *testing.T) {
 	if _, err := obj.Invoke(ctx); !errors.As(err, &ve) {
 		t.Errorf("invoking an object: got %v, want *ekuma.ValueError", err)
 	}
-	if err := ekuma.Undefined.Set("x", 1); !errors.As(err, &ve) {
+	if err := ekuma.Undefined.Set(ctx, "x", 1); !errors.As(err, &ve) {
 		t.Errorf("setting a property of undefined: got %v, want *ekuma.ValueError", err)
 	}
-	if _, err := vm.ValueOf(1).Get("x"); !errors.As(err, &ve) {
+	if _, err := vm.ValueOf(1).Get(ctx, "x"); !errors.As(err, &ve) {
 		t.Errorf("getting a property of a number: got %v, want *ekuma.ValueError", err)
 	}
 	// A lexical declaration is not a property of the global object.
-	if v, err := global.Get("lexical"); err != nil || !v.IsUndefined() {
+	if v, err := global.Get(ctx, "lexical"); err != nil || !v.IsUndefined() {
 		t.Errorf("Get(lexical) = %v, %v, want undefined", v, err)
 	}
 }
@@ -416,13 +416,13 @@ func TestValueLargeIndex(t *testing.T) {
 	}
 	var vm ekuma.VM
 	obj := vm.ValueOf(map[string]any{key: "original"})
-	if got, err := obj.Index(index); err != nil || got.String() != "original" {
+	if got, err := obj.Index(t.Context(), index); err != nil || got.String() != "original" {
 		t.Errorf("Index(%d) = %v, %v, want original", index, got, err)
 	}
-	if err := obj.SetIndex(index, "updated"); err != nil {
+	if err := obj.SetIndex(t.Context(), index, "updated"); err != nil {
 		t.Errorf("SetIndex(%d): %v", index, err)
 	}
-	if got, err := obj.Get(key); err != nil || got.String() != "updated" {
+	if got, err := obj.Get(t.Context(), key); err != nil || got.String() != "updated" {
 		t.Errorf("Get(%q) = %v, %v, want updated", key, got, err)
 	}
 }
@@ -434,30 +434,30 @@ func TestValueKeys(t *testing.T) {
 	if err != nil {
 		t.Fatalf("runScript: %v", err)
 	}
-	sym, err := keys.Get("sym")
+	sym, err := keys.Get(ctx, "sym")
 	if err != nil {
 		t.Fatalf("Get: %v", err)
 	}
 	o := vm.ValueOf(map[string]any{"n": 1})
-	if err := o.SetWithValueKey(sym, 2); err != nil {
+	if err := o.SetWithValueKey(ctx, sym, 2); err != nil {
 		t.Errorf("SetWithValueKey: %v", err)
 	}
-	if v, err := o.GetWithValueKey(sym); err != nil || v.Int() != 2 {
+	if v, err := o.GetWithValueKey(ctx, sym); err != nil || v.Int() != 2 {
 		t.Errorf("o[sym] = %v, %v, want 2", v, err)
 	}
-	if err := o.DeleteWithValueKey(sym); err != nil {
+	if err := o.DeleteWithValueKey(ctx, sym); err != nil {
 		t.Errorf("DeleteWithValueKey: %v", err)
 	}
-	if v, err := o.GetWithValueKey(sym); err != nil || !v.IsUndefined() {
+	if v, err := o.GetWithValueKey(ctx, sym); err != nil || !v.IsUndefined() {
 		t.Errorf("o[sym] after DeleteWithValueKey = %v, %v, want undefined", v, err)
 	}
 
 	// An object key is converted the way o[key] converts it.
-	obj, err := keys.Get("obj")
+	obj, err := keys.Get(ctx, "obj")
 	if err != nil {
 		t.Fatalf("Get: %v", err)
 	}
-	if v, err := o.GetWithValueKey(obj); err != nil || v.Int() != 1 {
+	if v, err := o.GetWithValueKey(ctx, obj); err != nil || v.Int() != 1 {
 		t.Errorf("o[obj] = %v, %v, want 1", v, err)
 	}
 
@@ -466,23 +466,23 @@ func TestValueKeys(t *testing.T) {
 	if err != nil {
 		t.Fatalf("runScript: %v", err)
 	}
-	frozen, err := counted.Get("frozen")
+	frozen, err := counted.Get(ctx, "frozen")
 	if err != nil {
 		t.Fatalf("Get: %v", err)
 	}
-	key, err := counted.Get("key")
+	key, err := counted.Get(ctx, "key")
 	if err != nil {
 		t.Fatalf("Get: %v", err)
 	}
 	var serr *ekuma.ScriptError
-	if err := frozen.SetWithValueKey(key, 1); !errors.As(err, &serr) {
+	if err := frozen.SetWithValueKey(ctx, key, 1); !errors.As(err, &serr) {
 		t.Errorf("SetWithValueKey on a frozen object: got %v, want *ekuma.ScriptError", err)
 	}
 	if v, err := counted.Call(ctx, "count"); err != nil || v.Int() != 1 {
 		t.Errorf("key conversions = %v, %v, want 1", v, err)
 	}
 
-	iter, err := keys.Get("iter")
+	iter, err := keys.Get(ctx, "iter")
 	if err != nil {
 		t.Fatalf("Get: %v", err)
 	}
@@ -494,7 +494,7 @@ func TestValueKeys(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Call: %v", err)
 	}
-	if v, err := next.Get("value"); err != nil || v.String() != "a" {
+	if v, err := next.Get(ctx, "value"); err != nil || v.String() != "a" {
 		t.Errorf("first value = %v, %v, want a", v, err)
 	}
 }
@@ -525,7 +525,7 @@ func TestBigIntTooLarge(t *testing.T) {
 	if got := recoverHostPanic(func() { vm.ValueOf(tooLarge) }); got == nil {
 		t.Errorf("ValueOf of a BigInt of 2^30+1 bits did not panic")
 	}
-	if err := vm.Global().Set("tooLarge", vm.FuncOf("tooLarge", func(ekuma.Value, []ekuma.Value) (any, error) {
+	if err := vm.Global().Set(t.Context(), "tooLarge", vm.FuncOf("tooLarge", func(ekuma.Value, []ekuma.Value) (any, error) {
 		return tooLarge, nil
 	})); err != nil {
 		t.Fatal(err)
@@ -654,7 +654,7 @@ func TestCopyBytes(t *testing.T) {
 func TestNewArrayBuffer(t *testing.T) {
 	var vm ekuma.VM
 	b := []byte{1, 2, 3, 4, 5, 6, 7, 8}
-	if err := vm.Global().Set("buf", vm.NewArrayBuffer(b)); err != nil {
+	if err := vm.Global().Set(t.Context(), "buf", vm.NewArrayBuffer(b)); err != nil {
 		t.Fatalf("Set: %v", err)
 	}
 	// poke writes b while JavaScript runs, as WebAssembly code does.
@@ -662,7 +662,7 @@ func TestNewArrayBuffer(t *testing.T) {
 		b[args[0].Int()] = byte(args[1].Int())
 		return nil, nil
 	})
-	if err := vm.Global().Set("poke", poke); err != nil {
+	if err := vm.Global().Set(t.Context(), "poke", poke); err != nil {
 		t.Fatalf("Set: %v", err)
 	}
 	b[0] = 99
@@ -691,7 +691,7 @@ func TestNewArrayBuffer(t *testing.T) {
 
 func TestDataViewBounds(t *testing.T) {
 	var vm ekuma.VM
-	if err := vm.Global().Set("hostBuffer", vm.NewArrayBuffer(nil)); err != nil {
+	if err := vm.Global().Set(t.Context(), "hostBuffer", vm.NewArrayBuffer(nil)); err != nil {
 		t.Fatal(err)
 	}
 	run(t, &vm, `
@@ -735,14 +735,14 @@ func TestRealmNewArrayBuffer(t *testing.T) {
 	var vm ekuma.VM
 	r := vm.NewRealm()
 	buf := r.NewArrayBuffer(nil)
-	ctor, err := r.Global().Get("ArrayBuffer")
+	ctor, err := r.Global().Get(t.Context(), "ArrayBuffer")
 	if err != nil {
 		t.Fatalf("Get: %v", err)
 	}
-	if ok, err := buf.InstanceOf(ctor); err != nil || !ok {
+	if ok, err := buf.InstanceOf(t.Context(), ctor); err != nil || !ok {
 		t.Errorf("InstanceOf: got %v, %v, want true", ok, err)
 	}
-	if got, err := buf.Get("detached"); err != nil || got.Bool() {
+	if got, err := buf.Get(t.Context(), "detached"); err != nil || got.Bool() {
 		t.Errorf("detached: got %v, %v, want false", got, err)
 	}
 }
@@ -754,7 +754,7 @@ func TestDetachArrayBuffer(t *testing.T) {
 	var vm ekuma.VM
 	mem := []byte{1, 2, 3, 4}
 	buf := vm.NewArrayBuffer(mem)
-	if err := vm.Global().Set("buf", buf); err != nil {
+	if err := vm.Global().Set(t.Context(), "buf", buf); err != nil {
 		t.Fatalf("Set: %v", err)
 	}
 	grow := vm.FuncOf("grow", func(this ekuma.Value, args []ekuma.Value) (any, error) {
@@ -765,7 +765,7 @@ func TestDetachArrayBuffer(t *testing.T) {
 		buf = vm.NewArrayBuffer(mem)
 		return buf, nil
 	})
-	if err := vm.Global().Set("grow", grow); err != nil {
+	if err := vm.Global().Set(t.Context(), "grow", grow); err != nil {
 		t.Fatalf("Set: %v", err)
 	}
 	got := run(t, &vm, `
@@ -806,7 +806,7 @@ func TestDetachArrayBuffer(t *testing.T) {
 		}()
 		vm.DetachArrayBuffer(im)
 	}()
-	if got, err := im.Get("detached"); err != nil || got.Bool() {
+	if got, err := im.Get(t.Context(), "detached"); err != nil || got.Bool() {
 		t.Errorf("detached: got %v, %v, want false", got, err)
 	}
 }
@@ -823,7 +823,7 @@ func TestDetachArrayBufferCopiedVM(t *testing.T) {
 		}()
 		copied.DetachArrayBuffer(buf)
 	}()
-	if got, err := buf.Get("detached"); err != nil || got.Bool() {
+	if got, err := buf.Get(t.Context(), "detached"); err != nil || got.Bool() {
 		t.Errorf("detached after using the copy: got %v, %v, want false", got, err)
 	}
 }
@@ -833,7 +833,7 @@ func TestDetachArrayBufferCopiedVM(t *testing.T) {
 func TestNewArrayBufferTransfer(t *testing.T) {
 	var vm ekuma.VM
 	b := []byte{1, 2}
-	if err := vm.Global().Set("buf", vm.NewArrayBuffer(b)); err != nil {
+	if err := vm.Global().Set(t.Context(), "buf", vm.NewArrayBuffer(b)); err != nil {
 		t.Fatalf("Set: %v", err)
 	}
 	got := run(t, &vm, `
@@ -871,7 +871,7 @@ func TestFuncErrors(t *testing.T) {
 			return nil, errors.New("from Go")
 		},
 		"typeError": func(this ekuma.Value, args []ekuma.Value) (any, error) {
-			c, err := vm.Global().Get("TypeError")
+			c, err := vm.Global().Get(ctx, "TypeError")
 			if err != nil {
 				return nil, err
 			}
@@ -895,7 +895,7 @@ func TestFuncErrors(t *testing.T) {
 		},
 	}
 	for name, f := range funcs {
-		if err := vm.Global().Set(name, vm.FuncOf(name, f)); err != nil {
+		if err := vm.Global().Set(ctx, name, vm.FuncOf(name, f)); err != nil {
 			t.Fatalf("Set: %v", err)
 		}
 	}
@@ -935,7 +935,7 @@ func TestErrorUnwrap(t *testing.T) {
 	fail := vm.FuncOf("fail", func(this ekuma.Value, args []ekuma.Value) (any, error) {
 		return nil, fmt.Errorf("fail: %w", io.EOF)
 	})
-	if err := vm.Global().Set("fail", fail); err != nil {
+	if err := vm.Global().Set(ctx, "fail", fail); err != nil {
 		t.Fatalf("Set: %v", err)
 	}
 	for _, tc := range []struct {
@@ -1021,7 +1021,7 @@ func TestHostJobBoundary(t *testing.T) {
 			name: "getter",
 			src:  `({ get x() { queue(); return 1; } })`,
 			call: func(ctx context.Context, v ekuma.Value) error {
-				_, err := v.Get("x")
+				_, err := v.Get(ctx, "x")
 				return err
 			},
 		},
@@ -1029,21 +1029,21 @@ func TestHostJobBoundary(t *testing.T) {
 			name: "setter",
 			src:  `({ set x(v) { queue(); } })`,
 			call: func(ctx context.Context, v ekuma.Value) error {
-				return v.Set("x", 1)
+				return v.Set(ctx, "x", 1)
 			},
 		},
 		{
 			name: "delete trap",
 			src:  `new Proxy({}, { deleteProperty() { queue(); return true; } })`,
 			call: func(ctx context.Context, v ekuma.Value) error {
-				return v.Delete("x")
+				return v.Delete(ctx, "x")
 			},
 		},
 		{
 			name: "instanceof",
 			src:  `({ [Symbol.hasInstance]() { queue(); return true; } })`,
 			call: func(ctx context.Context, v ekuma.Value) error {
-				_, err := ekuma.Undefined.InstanceOf(v)
+				_, err := ekuma.Undefined.InstanceOf(ctx, v)
 				return err
 			},
 		},
@@ -1124,10 +1124,10 @@ func TestHostJobBoundary(t *testing.T) {
 func TestReentrantGetterJobs(t *testing.T) {
 	var vm ekuma.VM
 	read := vm.FuncOf("read", func(this ekuma.Value, args []ekuma.Value) (any, error) {
-		_, err := args[0].Get("x")
+		_, err := args[0].Get(t.Context(), "x")
 		return nil, err
 	})
-	if err := vm.Global().Set("read", read); err != nil {
+	if err := vm.Global().Set(t.Context(), "read", read); err != nil {
 		t.Fatal(err)
 	}
 	v, err := runScript(t.Context(), &vm, "nested", `
@@ -1146,7 +1146,7 @@ func TestReentrantGetterJobs(t *testing.T) {
 	if v.Truthy() {
 		t.Error("jobs ran during the reentrant getter")
 	}
-	v, err = vm.Global().Get("ran")
+	v, err = vm.Global().Get(t.Context(), "ran")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1155,11 +1155,54 @@ func TestReentrantGetterJobs(t *testing.T) {
 	}
 }
 
+func TestGetCancellation(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		body string
+	}{
+		{
+			name: "getter",
+			body: `stop(); for (let i = 0; i < 2; i++) {}`,
+		},
+		{
+			name: "promise job",
+			body: `Promise.resolve().then(() => { stop(); for (let i = 0; i < 2; i++) {} });`,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				var vm ekuma.VM
+				ctx, cancel := context.WithCancelCause(t.Context())
+				defer cancel(nil)
+				cause := errors.New("stop property read")
+				stop := vm.FuncOf("stop", func(ekuma.Value, []ekuma.Value) (any, error) {
+					cancel(cause)
+					synctest.Wait()
+					return nil, nil
+				})
+				if err := vm.Global().Set(t.Context(), "stop", stop); err != nil {
+					t.Fatal(err)
+				}
+				obj, err := runScript(t.Context(), &vm, "setup", `({ get result() { `+tc.body+` return 1; }, stable: 42 })`)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if _, err := obj.Get(ctx, "result"); !errors.Is(err, cause) {
+					t.Errorf("Get(result): got %v, want %v", err, cause)
+				}
+				if got, err := obj.Get(t.Context(), "stable"); err != nil || !got.Equal(vm.ValueOf(42)) {
+					t.Errorf("Get(stable) after cancellation: got %v, %v, want 42, nil", got, err)
+				}
+			})
+		})
+	}
+}
+
 func TestThrowingCallJobInterruption(t *testing.T) {
 	var vm ekuma.VM
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
-	if err := vm.Global().Set("cancel", vm.FuncOf("cancel", func(this ekuma.Value, args []ekuma.Value) (any, error) {
+	if err := vm.Global().Set(t.Context(), "cancel", vm.FuncOf("cancel", func(this ekuma.Value, args []ekuma.Value) (any, error) {
 		cancel()
 		return nil, nil
 	})); err != nil {
@@ -1224,7 +1267,7 @@ func TestJobOrder(t *testing.T) {
 		// The jobs do not run while the script that called this is still running.
 		return args[0].Invoke(context.Background())
 	})
-	if err := vm.Global().Set("call", call); err != nil {
+	if err := vm.Global().Set(t.Context(), "call", call); err != nil {
 		t.Fatalf("Set: %v", err)
 	}
 	_, err := runScript(t.Context(), &vm, "order", `
@@ -1268,7 +1311,7 @@ func TestCancel(t *testing.T) {
 	if _, err := runScript(done, &vm, "never", `globalThis.ran = true`); !errors.Is(err, context.Canceled) {
 		t.Errorf("got %v, want context.Canceled", err)
 	}
-	ran, err := vm.Global().Get("ran")
+	ran, err := vm.Global().Get(t.Context(), "ran")
 	if err != nil {
 		t.Fatalf("Get: %v", err)
 	}
@@ -1327,7 +1370,7 @@ func TestCancelBeforeCalls(t *testing.T) {
 					synctest.Wait()
 					return nil, nil
 				})
-				if err := vm.Global().Set("step", step); err != nil {
+				if err := vm.Global().Set(t.Context(), "step", step); err != nil {
 					t.Fatal(err)
 				}
 				// The fast paths take calls of functions that have run, when the VM has room for
@@ -1341,7 +1384,7 @@ func TestCancelBeforeCalls(t *testing.T) {
 				if steps != 1 {
 					t.Errorf("got %d calls of step, want 1", steps)
 				}
-				ran, err := vm.Global().Get("ran")
+				ran, err := vm.Global().Get(t.Context(), "ran")
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -1390,12 +1433,12 @@ func TestCancelNested(t *testing.T) {
 	global := vm.Global()
 	returned := false
 	read := vm.FuncOf("read", func(this ekuma.Value, args []ekuma.Value) (any, error) {
-		// The getter never returns, and this call has no context of its own.
-		v, err := args[0].Get("forever")
+		// The getter inherits the deadline of the outer call.
+		v, err := args[0].Get(context.Background(), "forever")
 		returned = true
 		return v, err
 	})
-	if err := global.Set("read", read); err != nil {
+	if err := global.Set(t.Context(), "read", read); err != nil {
 		t.Fatalf("Set: %v", err)
 	}
 	ctx, cancel := context.WithTimeout(t.Context(), 20*time.Millisecond)
@@ -1409,7 +1452,7 @@ func TestCancelNested(t *testing.T) {
 	if returned {
 		t.Errorf("the Func continued after the interruption")
 	}
-	if v, err := global.Get("caught"); err != nil || v.Truthy() {
+	if v, err := global.Get(t.Context(), "caught"); err != nil || v.Truthy() {
 		t.Errorf("caught = %v, %v: the script caught the interruption", v, err)
 	}
 	// The VM stays usable.
@@ -1443,7 +1486,7 @@ func TestArgumentStorageInterrupted(t *testing.T) {
 		returned = true
 		return v, err
 	})
-	if err := vm.Global().Set("outer", outer); err != nil {
+	if err := vm.Global().Set(t.Context(), "outer", outer); err != nil {
 		t.Fatal(err)
 	}
 	for range 3 {
@@ -1496,7 +1539,7 @@ func TestCanceledGeneratorRequests(t *testing.T) {
 	ctx, cancel := context.WithCancelCause(t.Context())
 	cause := errors.New("stop generator")
 	cancel(cause)
-	if err := vm.Global().Set("stop", vm.FuncOf("stop", func(_ ekuma.Value, args []ekuma.Value) (any, error) {
+	if err := vm.Global().Set(t.Context(), "stop", vm.FuncOf("stop", func(_ ekuma.Value, args []ekuma.Value) (any, error) {
 		return args[0].Invoke(ctx)
 	})); err != nil {
 		t.Fatal(err)
@@ -1512,7 +1555,7 @@ func TestCanceledGeneratorRequests(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, name := range []string{"sync", "async"} {
-		if _, err := obj.Get(name); err != cause {
+		if _, err := obj.Get(t.Context(), name); err != cause {
 			t.Errorf("Get(%q) returned %T %v, want the cancellation cause", name, err, err)
 		}
 	}
@@ -1538,7 +1581,7 @@ func TestCancelNestedContext(t *testing.T) {
 				returned = true
 				return v, err
 			})
-			if err := vm.Global().Set("invoke", invoke); err != nil {
+			if err := vm.Global().Set(t.Context(), "invoke", invoke); err != nil {
 				t.Fatalf("Set: %v", err)
 			}
 			_, err := runScript(context.Background(), &vm, "nested", `
@@ -1575,7 +1618,7 @@ func TestCancelNestedDoneContext(t *testing.T) {
 	} {
 		var vm ekuma.VM
 		var returned bool
-		if err := vm.Global().Set("h", vm.FuncOf("h", func(this ekuma.Value, args []ekuma.Value) (any, error) {
+		if err := vm.Global().Set(t.Context(), "h", vm.FuncOf("h", func(this ekuma.Value, args []ekuma.Value) (any, error) {
 			err := call(args[0])
 			returned = true
 			return nil, err
@@ -1615,14 +1658,14 @@ func TestCancelNestedUnobserved(t *testing.T) {
 		time.Sleep(50 * time.Millisecond)
 		return nil, nil
 	})
-	if err := global.Set("h", vm.FuncOf("h", func(this ekuma.Value, args []ekuma.Value) (any, error) {
+	if err := global.Set(t.Context(), "h", vm.FuncOf("h", func(this ekuma.Value, args []ekuma.Value) (any, error) {
 		return slow.Invoke(ctx)
 	})); err != nil {
 		t.Fatalf("Set: %v", err)
 	}
 	errTooLong := errors.New("the script was not stopped")
 	var ticks int
-	if err := global.Set("tick", vm.FuncOf("tick", func(this ekuma.Value, args []ekuma.Value) (any, error) {
+	if err := global.Set(t.Context(), "tick", vm.FuncOf("tick", func(this ekuma.Value, args []ekuma.Value) (any, error) {
 		ticks++
 		if ticks > 1_000_000 {
 			return nil, errTooLong
@@ -1645,7 +1688,7 @@ func TestCancelNestedUnobserved(t *testing.T) {
 func TestCancelNestedContextUnobserved(t *testing.T) {
 	var vm ekuma.VM
 	global := vm.Global()
-	if err := global.Set("h", vm.FuncOf("h", func(this ekuma.Value, args []ekuma.Value) (any, error) {
+	if err := global.Set(t.Context(), "h", vm.FuncOf("h", func(this ekuma.Value, args []ekuma.Value) (any, error) {
 		ctx, cancel := context.WithCancel(t.Context())
 		defer cancel()
 		slow := vm.FuncOf("slow", func(this ekuma.Value, args []ekuma.Value) (any, error) {
@@ -1723,7 +1766,7 @@ func TestCancelNestedRecovered(t *testing.T) {
 				}()
 				return loop.Invoke(tc.innerCtx(t))
 			})
-			if err := vm.Global().Set("invoke", invoke); err != nil {
+			if err := vm.Global().Set(t.Context(), "invoke", invoke); err != nil {
 				t.Fatal(err)
 			}
 			_, err = runScript(tc.outerCtx(t), &vm, "nested", `
@@ -1752,7 +1795,7 @@ func TestCancelFillGeneric(t *testing.T) {
 	var vm ekuma.VM
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
-	if err := vm.Global().Set("cancel", vm.FuncOf("cancel", func(ekuma.Value, []ekuma.Value) (any, error) {
+	if err := vm.Global().Set(t.Context(), "cancel", vm.FuncOf("cancel", func(ekuma.Value, []ekuma.Value) (any, error) {
 		cancel()
 		// The cancellation is requested on another goroutine.
 		time.Sleep(50 * time.Millisecond)
@@ -1771,7 +1814,7 @@ func TestCancelFillGeneric(t *testing.T) {
 	if !errors.Is(err, context.Canceled) {
 		t.Errorf("got %v, want context.Canceled", err)
 	}
-	if v, err := vm.Global().Get("after"); err != nil || v.Truthy() {
+	if v, err := vm.Global().Get(t.Context(), "after"); err != nil || v.Truthy() {
 		t.Errorf("after = %v, %v: the script continued after fill", v, err)
 	}
 }
@@ -1782,7 +1825,7 @@ func TestCancelSetMethod(t *testing.T) {
 	var vm ekuma.VM
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
-	if err := vm.Global().Set("cancel", vm.FuncOf("cancel", func(ekuma.Value, []ekuma.Value) (any, error) {
+	if err := vm.Global().Set(t.Context(), "cancel", vm.FuncOf("cancel", func(ekuma.Value, []ekuma.Value) (any, error) {
 		cancel()
 		// The cancellation is requested on another goroutine.
 		time.Sleep(50 * time.Millisecond)
@@ -1801,7 +1844,7 @@ func TestCancelSetMethod(t *testing.T) {
 	if !errors.Is(err, context.Canceled) {
 		t.Errorf("got %v, want context.Canceled", err)
 	}
-	if v, err := vm.Global().Get("after"); err != nil || v.Truthy() {
+	if v, err := vm.Global().Get(t.Context(), "after"); err != nil || v.Truthy() {
 		t.Errorf("after = %v, %v: the script continued after isSubsetOf", v, err)
 	}
 }
@@ -1884,7 +1927,7 @@ func TestCancelSearches(t *testing.T) {
 			ctx, cancel := context.WithCancel(t.Context())
 			defer cancel()
 			var canceled bool
-			if err := vm.Global().Set("cancel", vm.FuncOf("cancel", func(ekuma.Value, []ekuma.Value) (any, error) {
+			if err := vm.Global().Set(t.Context(), "cancel", vm.FuncOf("cancel", func(ekuma.Value, []ekuma.Value) (any, error) {
 				canceled = true
 				cancel()
 				// The cancellation is requested on another goroutine.
@@ -1900,7 +1943,7 @@ func TestCancelSearches(t *testing.T) {
 			if !errors.Is(err, context.Canceled) {
 				t.Errorf("got %v, want context.Canceled", err)
 			}
-			if v, err := vm.Global().Get("after"); err != nil || v.Truthy() {
+			if v, err := vm.Global().Get(t.Context(), "after"); err != nil || v.Truthy() {
 				t.Errorf("after = %v, %v: the script continued after the search", v, err)
 			}
 		})
@@ -2024,7 +2067,7 @@ func TestCancelScans(t *testing.T) {
 				var vm ekuma.VM
 				ctx, cancel := context.WithCancel(t.Context())
 				defer cancel()
-				if err := vm.Global().Set("cancel", vm.FuncOf("cancel", func(ekuma.Value, []ekuma.Value) (any, error) {
+				if err := vm.Global().Set(t.Context(), "cancel", vm.FuncOf("cancel", func(ekuma.Value, []ekuma.Value) (any, error) {
 					if ctx.Err() != nil {
 						t.Errorf("the scan continued after the cancellation")
 					}
@@ -2039,7 +2082,7 @@ func TestCancelScans(t *testing.T) {
 				if !errors.Is(err, context.Canceled) {
 					t.Errorf("got %v, want context.Canceled", err)
 				}
-				if v, err := vm.Global().Get("after"); err != nil || v.Truthy() {
+				if v, err := vm.Global().Get(t.Context(), "after"); err != nil || v.Truthy() {
 					t.Errorf("after = %v, %v: the script continued after the scan", v, err)
 				}
 			})
@@ -2050,7 +2093,7 @@ func TestCancelScans(t *testing.T) {
 func TestInternalError(t *testing.T) {
 	var vm ekuma.VM
 	cause := errors.New("broken data")
-	if err := vm.Global().Set("fail", ekuma.InternalFailureFunc(&vm, cause)); err != nil {
+	if err := vm.Global().Set(t.Context(), "fail", ekuma.InternalFailureFunc(&vm, cause)); err != nil {
 		t.Fatal(err)
 	}
 	_, err := runScript(t.Context(), &vm, "failure", `
@@ -2081,7 +2124,7 @@ func TestInternalErrorReentrant(t *testing.T) {
 	cause := errors.New("broken data")
 	fail := ekuma.InternalFailureFunc(&vm, cause)
 	var continued bool
-	if err := vm.Global().Set("host", vm.FuncOf("host", func(ekuma.Value, []ekuma.Value) (any, error) {
+	if err := vm.Global().Set(t.Context(), "host", vm.FuncOf("host", func(ekuma.Value, []ekuma.Value) (any, error) {
 		_, err := fail.Invoke(t.Context())
 		continued = true
 		return nil, err
@@ -2101,7 +2144,7 @@ func TestInternalErrorRecoveredByHost(t *testing.T) {
 	var vm ekuma.VM
 	cause := errors.New("broken data")
 	fail := ekuma.InternalFailureFunc(&vm, cause)
-	if err := vm.Global().Set("host", vm.FuncOf("host", func(ekuma.Value, []ekuma.Value) (any, error) {
+	if err := vm.Global().Set(t.Context(), "host", vm.FuncOf("host", func(ekuma.Value, []ekuma.Value) (any, error) {
 		recovered := recoverHostPanic(func() { _, _ = fail.Invoke(t.Context()) })
 		if recovered == nil {
 			t.Error("inner call did not unwind")
@@ -2130,7 +2173,7 @@ func TestInternalErrorRecoveredByHost(t *testing.T) {
 func TestInternalErrorModule(t *testing.T) {
 	var vm ekuma.VM
 	cause := errors.New("broken data")
-	if err := vm.Global().Set("fail", ekuma.InternalFailureFunc(&vm, cause)); err != nil {
+	if err := vm.Global().Set(t.Context(), "fail", ekuma.InternalFailureFunc(&vm, cause)); err != nil {
 		t.Fatal(err)
 	}
 	m, err := vm.ParseModule("failure", `fail();`)
@@ -2161,7 +2204,7 @@ func TestInternalErrorModule(t *testing.T) {
 func TestInternalErrorJob(t *testing.T) {
 	var vm ekuma.VM
 	cause := errors.New("broken data")
-	if err := vm.Global().Set("fail", ekuma.InternalFailureFunc(&vm, cause)); err != nil {
+	if err := vm.Global().Set(t.Context(), "fail", ekuma.InternalFailureFunc(&vm, cause)); err != nil {
 		t.Fatal(err)
 	}
 	_, err := runScript(t.Context(), &vm, "job", `Promise.resolve().then(fail);`)
@@ -2177,7 +2220,7 @@ func TestGoPanic(t *testing.T) {
 	foreign := foreignVM.Global()
 	global := vm.Global()
 	// Returning another VM's object raises an ownership panic.
-	if err := global.Set("bad", vm.FuncOf("bad", func(this ekuma.Value, args []ekuma.Value) (any, error) {
+	if err := global.Set(t.Context(), "bad", vm.FuncOf("bad", func(this ekuma.Value, args []ekuma.Value) (any, error) {
 		return foreign, nil
 	})); err != nil {
 		t.Fatalf("Set: %v", err)
@@ -2244,7 +2287,7 @@ func recoverHostPanic(f func()) (value any) {
 func TestHostPanicReentrantRecovery(t *testing.T) {
 	var vm ekuma.VM
 	marker := new(int)
-	if err := vm.Global().Set("bad", vm.FuncOf("bad", func(ekuma.Value, []ekuma.Value) (any, error) {
+	if err := vm.Global().Set(t.Context(), "bad", vm.FuncOf("bad", func(ekuma.Value, []ekuma.Value) (any, error) {
 		panic(marker)
 	})); err != nil {
 		t.Fatal(err)
@@ -2259,7 +2302,7 @@ func TestHostPanicReentrantRecovery(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := vm.Global().Set("recoverInner", vm.FuncOf("recoverInner", func(ekuma.Value, []ekuma.Value) (any, error) {
+	if err := vm.Global().Set(t.Context(), "recoverInner", vm.FuncOf("recoverInner", func(ekuma.Value, []ekuma.Value) (any, error) {
 		// Repeated failures exhaust the call limit if abandoned frames remain.
 		for range 400 {
 			if got := recoverHostPanic(func() { _, _ = inner.Evaluate(t.Context()) }); got != marker {
@@ -2285,7 +2328,7 @@ func TestHostPanicReentrantRecovery(t *testing.T) {
 func TestHostPanicGenerators(t *testing.T) {
 	var vm ekuma.VM
 	marker := new(int)
-	if err := vm.Global().Set("bad", vm.FuncOf("bad", func(ekuma.Value, []ekuma.Value) (any, error) {
+	if err := vm.Global().Set(t.Context(), "bad", vm.FuncOf("bad", func(ekuma.Value, []ekuma.Value) (any, error) {
 		panic(marker)
 	})); err != nil {
 		t.Fatal(err)
@@ -2315,7 +2358,7 @@ func TestHostPanicGenerators(t *testing.T) {
 func TestHostPanicReentrantModule(t *testing.T) {
 	var vm ekuma.VM
 	marker := errors.New("host panic")
-	if err := vm.Global().Set("bad", vm.FuncOf("bad", func(ekuma.Value, []ekuma.Value) (any, error) {
+	if err := vm.Global().Set(t.Context(), "bad", vm.FuncOf("bad", func(ekuma.Value, []ekuma.Value) (any, error) {
 		panic(marker)
 	})); err != nil {
 		t.Fatal(err)
@@ -2329,7 +2372,7 @@ func TestHostPanicReentrantModule(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := vm.Global().Set("recoverModule", vm.FuncOf("recoverModule", func(ekuma.Value, []ekuma.Value) (any, error) {
+	if err := vm.Global().Set(t.Context(), "recoverModule", vm.FuncOf("recoverModule", func(ekuma.Value, []ekuma.Value) (any, error) {
 		if got := recoverHostPanic(func() { _, _ = m.Evaluate(t.Context()) }); got != marker {
 			t.Errorf("panic = %v, want original marker", got)
 			return nil, nil
@@ -2361,7 +2404,7 @@ func TestHostPanicJobRecovery(t *testing.T) {
 		t.Run(fmt.Sprintf("reports=%t", reports), func(t *testing.T) {
 			var vm ekuma.VM
 			marker := new(int)
-			if err := vm.Global().Set("bad", vm.FuncOf("bad", func(ekuma.Value, []ekuma.Value) (any, error) {
+			if err := vm.Global().Set(t.Context(), "bad", vm.FuncOf("bad", func(ekuma.Value, []ekuma.Value) (any, error) {
 				panic(marker)
 			})); err != nil {
 				t.Fatal(err)
@@ -2386,7 +2429,7 @@ func TestHostPanicJobRecovery(t *testing.T) {
 					t.Errorf("reports = %d, want 1", notified)
 				}
 			} else {
-				if err := vm.Global().Set("recoverInner", vm.FuncOf("recoverInner", func(ekuma.Value, []ekuma.Value) (any, error) {
+				if err := vm.Global().Set(t.Context(), "recoverInner", vm.FuncOf("recoverInner", func(ekuma.Value, []ekuma.Value) (any, error) {
 					recoverInner()
 					return nil, nil
 				})); err != nil {
@@ -2413,7 +2456,7 @@ func TestHostPanicAsyncGeneratorStep(t *testing.T) {
 		t.Run(src, func(t *testing.T) {
 			var vm ekuma.VM
 			marker := new(int)
-			if err := vm.Global().Set("bad", vm.FuncOf("bad", func(ekuma.Value, []ekuma.Value) (any, error) {
+			if err := vm.Global().Set(t.Context(), "bad", vm.FuncOf("bad", func(ekuma.Value, []ekuma.Value) (any, error) {
 				panic(marker)
 			})); err != nil {
 				t.Fatal(err)
@@ -2581,7 +2624,7 @@ func TestCancelJobs(t *testing.T) {
 			var vm ekuma.VM
 			ctx, cancel := context.WithCancel(t.Context())
 			defer cancel()
-			if err := vm.Global().Set("cancel", vm.FuncOf("cancel", func(ekuma.Value, []ekuma.Value) (any, error) {
+			if err := vm.Global().Set(t.Context(), "cancel", vm.FuncOf("cancel", func(ekuma.Value, []ekuma.Value) (any, error) {
 				cancel()
 				return nil, nil
 			})); err != nil {
@@ -2682,7 +2725,7 @@ func TestRepeatedCopyInterrupt(t *testing.T) {
 			var vm ekuma.VM
 			cause := errors.New("interrupted")
 			withdraw := func() {}
-			if err := vm.Global().Set("stop", vm.FuncOf("stop", func(this ekuma.Value, args []ekuma.Value) (any, error) {
+			if err := vm.Global().Set(t.Context(), "stop", vm.FuncOf("stop", func(this ekuma.Value, args []ekuma.Value) (any, error) {
 				withdraw = ekuma.RequestInterrupt(vm.InitialRealm(), cause)
 				return nil, nil
 			})); err != nil {
@@ -2692,7 +2735,7 @@ func TestRepeatedCopyInterrupt(t *testing.T) {
 				t.Errorf("got %v, want %v", err, cause)
 			}
 			withdraw()
-			done, err := vm.Global().Get("done")
+			done, err := vm.Global().Get(t.Context(), "done")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -2963,7 +3006,7 @@ func TestUnhandledRejection(t *testing.T) {
 				args[0].PromiseState()
 				return nil, nil
 			})
-			if err := vm.Global().Set("inspect", inspect); err != nil {
+			if err := vm.Global().Set(t.Context(), "inspect", inspect); err != nil {
 				t.Fatal(err)
 			}
 			if _, err := runScript(t.Context(), &vm, tt.name, tt.src); err != nil {
@@ -2997,11 +3040,11 @@ func TestUnhandledRejection(t *testing.T) {
 // isInstance reports whether v is an instance of the global constructor name.
 func isInstance(t *testing.T, vm *ekuma.VM, v ekuma.Value, name string) bool {
 	t.Helper()
-	c, err := vm.Global().Get(name)
+	c, err := vm.Global().Get(t.Context(), name)
 	if err != nil {
 		t.Fatal(err)
 	}
-	ok, err := v.InstanceOf(c)
+	ok, err := v.InstanceOf(t.Context(), c)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -3025,7 +3068,7 @@ func TestModuleSteps(t *testing.T) {
 		t.Fatalf("Namespace: %v", err)
 	}
 	var ex *ekuma.ScriptError
-	if _, err := ns.Get("v"); !errors.As(err, &ex) || !isInstance(t, &vm, ex.Value, "ReferenceError") {
+	if _, err := ns.Get(t.Context(), "v"); !errors.As(err, &ex) || !isInstance(t, &vm, ex.Value, "ReferenceError") {
 		t.Errorf("reading an export before the evaluation: got %v, want a ReferenceError", err)
 	}
 	if err := m.LoadRequestedModules(); err != nil {
@@ -3058,7 +3101,7 @@ func TestModuleSteps(t *testing.T) {
 	if !ns2.Equal(ns) {
 		t.Errorf("a second Namespace returned another object")
 	}
-	if v, err := ns.Get("v"); err != nil || v.String() != "dep" {
+	if v, err := ns.Get(t.Context(), "v"); err != nil || v.String() != "dep" {
 		t.Errorf("got %v, %v, want dep", v, err)
 	}
 	if got := l.loads["dep"]; got != 1 {
@@ -3164,11 +3207,11 @@ func TestModuleLoaderErrors(t *testing.T) {
 				}
 				return
 			}
-			c, err := ex.Value.Get("constructor")
+			c, err := ex.Value.Get(t.Context(), "constructor")
 			if err != nil {
 				t.Fatal(err)
 			}
-			if n, err := c.Get("name"); err != nil || n.String() != tt.ctor {
+			if n, err := c.Get(t.Context(), "name"); err != nil || n.String() != tt.ctor {
 				t.Errorf("got an instance of %v, want %s", n, tt.ctor)
 			}
 		})
@@ -3188,7 +3231,7 @@ func TestModuleLoaderErrorRealm(t *testing.T) {
 		}
 		return nil, errors.New("missing module")
 	})
-	if err := vm.Global().Set("other", r.Global()); err != nil {
+	if err := vm.Global().Set(t.Context(), "other", r.Global()); err != nil {
 		t.Fatal(err)
 	}
 	run(t, &vm, `var reason; import("dep").catch(e => { reason = e; });`)
@@ -3304,7 +3347,7 @@ func TestSyntheticModules(t *testing.T) {
 	if _, err := m.Evaluate(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	v, err := vm.Global().Get("result")
+	v, err := vm.Global().Get(t.Context(), "result")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -3342,7 +3385,7 @@ func TestSyntheticModules(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	otherPromiseCtor, err := other.Global().Get("Promise")
+	otherPromiseCtor, err := other.Global().Get(t.Context(), "Promise")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -3360,7 +3403,7 @@ func TestSyntheticModules(t *testing.T) {
 		if st, _ := p.PromiseState(); st != ekuma.PromiseFulfilled {
 			t.Errorf("%s Evaluate state = %v, want fulfilled", tc.name, st)
 		}
-		if ok, err := p.InstanceOf(otherPromiseCtor); err != nil || !ok {
+		if ok, err := p.InstanceOf(t.Context(), otherPromiseCtor); err != nil || !ok {
 			t.Errorf("%s Evaluate promise instanceof other.Promise = %v, %v", tc.name, ok, err)
 		}
 	}
@@ -3422,7 +3465,7 @@ func TestSyntheticModuleNamedExports(t *testing.T) {
 		"same":      true,
 		"sameRealm": true,
 	} {
-		v, err := ns.Get(name)
+		v, err := ns.Get(t.Context(), name)
 		if err != nil {
 			t.Errorf("Get(%q): %v", name, err)
 			continue
@@ -3484,7 +3527,7 @@ func TestModuleLinkRealm(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Namespace: %v", err)
 		}
-		ok, err := ns.Get("ok")
+		ok, err := ns.Get(t.Context(), "ok")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -3516,7 +3559,7 @@ func TestModuleLinkRealm(t *testing.T) {
 		if _, err := mainMod.Evaluate(t.Context()); err != nil {
 			t.Fatalf("Evaluate: %v", err)
 		}
-		ok, err := vm.Global().Get("ok")
+		ok, err := vm.Global().Get(t.Context(), "ok")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -3541,7 +3584,7 @@ func TestModuleSource(t *testing.T) {
 	if _, err := m.Evaluate(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	v, err := vm.Global().Get("result")
+	v, err := vm.Global().Get(t.Context(), "result")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -3622,7 +3665,7 @@ func TestScriptRealm(t *testing.T) {
 		t.Fatalf("Evaluate: %v", err)
 	}
 	for i, name := range []string{"globalThis", "this"} {
-		got, err := v.Index(i)
+		got, err := v.Index(t.Context(), i)
 		if err != nil {
 			t.Fatalf("Index: %v", err)
 		}
@@ -3630,13 +3673,13 @@ func TestScriptRealm(t *testing.T) {
 			t.Errorf("%s is not the global object of the realm of the script", name)
 		}
 	}
-	if got, err := v.Index(2); err != nil || !got.Bool() {
+	if got, err := v.Index(t.Context(), 2); err != nil || !got.Bool() {
 		t.Errorf("an array literal does not get the Array.prototype of the realm of the script: %v, %v", got, err)
 	}
-	if got, err := other.Get("inOther"); err != nil || got.Int() != 1 {
+	if got, err := other.Get(t.Context(), "inOther"); err != nil || got.Int() != 1 {
 		t.Errorf("inOther in the realm of the script: got %v, %v, want 1", got, err)
 	}
-	if got, err := vm.Global().Get("inOther"); err != nil || !got.IsUndefined() {
+	if got, err := vm.Global().Get(t.Context(), "inOther"); err != nil || !got.IsUndefined() {
 		t.Errorf("inOther in the realm of the VM: got %v, %v, want undefined", got, err)
 	}
 }
@@ -3646,15 +3689,15 @@ func TestRealmValues(t *testing.T) {
 	var vm ekuma.VM
 	r := vm.NewRealm()
 	g := vm.Global()
-	if err := g.Set("other", r.Global()); err != nil {
+	if err := g.Set(t.Context(), "other", r.Global()); err != nil {
 		t.Fatalf("Set: %v", err)
 	}
 	inner := r.FuncOf("inner", func(this ekuma.Value, args []ekuma.Value) (any, error) {
 		// The methods of the VM work in the initial realm even in a function of another realm.
-		if err := g.Set("fromVM", vm.ValueOf([]any{})); err != nil {
+		if err := g.Set(t.Context(), "fromVM", vm.ValueOf([]any{})); err != nil {
 			return nil, err
 		}
-		if err := g.Set("fromSet", []any{}); err != nil {
+		if err := g.Set(t.Context(), "fromSet", []any{}); err != nil {
 			return nil, err
 		}
 		return nil, errors.New("thrown")
@@ -3671,7 +3714,7 @@ func TestRealmValues(t *testing.T) {
 		}),
 	}
 	for name, v := range values {
-		if err := g.Set(name, v); err != nil {
+		if err := g.Set(t.Context(), name, v); err != nil {
 			t.Fatalf("Set: %v", err)
 		}
 	}
@@ -3708,7 +3751,7 @@ func TestValueOfMapOwnProperties(t *testing.T) {
 				r = vm.NewRealm()
 				valueOf = r.ValueOf
 			}
-			if err := vm.Global().Set("target", r.Global()); err != nil {
+			if err := vm.Global().Set(t.Context(), "target", r.Global()); err != nil {
 				t.Fatal(err)
 			}
 			run(t, &vm, `
@@ -3724,7 +3767,7 @@ func TestValueOfMapOwnProperties(t *testing.T) {
 					"injected": true,
 				},
 			})
-			if err := vm.Global().Set("converted", v); err != nil {
+			if err := vm.Global().Set(t.Context(), "converted", v); err != nil {
 				t.Fatal(err)
 			}
 			for _, tc := range []struct {
@@ -3776,7 +3819,7 @@ func TestValueOfUnnamedFunc(t *testing.T) {
 	v := vm.ValueOf([]any{func(this ekuma.Value, args []ekuma.Value) (any, error) {
 		return 7, nil
 	}})
-	f, err := v.Get("0")
+	f, err := v.Get(t.Context(), "0")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -3829,7 +3872,7 @@ func TestValueOfCycles(t *testing.T) {
 		"b":      shared,
 		"prefix": prefix,
 	})
-	if err := vm.Global().Set("converted", v); err != nil {
+	if err := vm.Global().Set(t.Context(), "converted", v); err != nil {
 		t.Fatal(err)
 	}
 	for _, tc := range []struct {
@@ -3879,7 +3922,7 @@ func TestRealmModules(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Namespace: %v", err)
 	}
-	if ok, err := ns.Get("ok"); err != nil || !ok.Bool() {
+	if ok, err := ns.Get(t.Context(), "ok"); err != nil || !ok.Bool() {
 		t.Errorf("the imports of a module of a realm do not belong to the realm: %v, %v", ok, err)
 	}
 	if _, err := runScript(t.Context(), &vm, "script", `import("fromDefault")`); err != nil {
@@ -3901,7 +3944,7 @@ func TestRealmModules(t *testing.T) {
 // realm throws or is interrupted.
 func TestRealmRestored(t *testing.T) {
 	var vm ekuma.VM
-	if err := vm.Global().Set("other", vm.NewRealm().Global()); err != nil {
+	if err := vm.Global().Set(t.Context(), "other", vm.NewRealm().Global()); err != nil {
 		t.Fatalf("Set: %v", err)
 	}
 	if _, err := runScript(t.Context(), &vm, "setup", `var mark = 1;
@@ -3935,7 +3978,7 @@ func TestRealmRestored(t *testing.T) {
 // an exception that passed through a native function.
 func TestRealmCatch(t *testing.T) {
 	var vm ekuma.VM
-	if err := vm.Global().Set("other", vm.NewRealm().Global()); err != nil {
+	if err := vm.Global().Set(t.Context(), "other", vm.NewRealm().Global()); err != nil {
 		t.Fatalf("Set: %v", err)
 	}
 	v, err := runScript(t.Context(), &vm, "catch", `

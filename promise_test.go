@@ -34,7 +34,7 @@ func TestNewPromiseAsyncFunction(t *testing.T) {
 		}()
 		return p, nil
 	})
-	if err := vm.Global().Set("fetch", fetch); err != nil {
+	if err := vm.Global().Set(t.Context(), "fetch", fetch); err != nil {
 		t.Fatal(err)
 	}
 	run(t, &vm, `
@@ -56,7 +56,7 @@ run("A", async () => {
 func TestPromiseResolverReject(t *testing.T) {
 	var vm ekuma.VM
 	p, res := vm.NewPromise()
-	if err := vm.Global().Set("p", p); err != nil {
+	if err := vm.Global().Set(t.Context(), "p", p); err != nil {
 		t.Fatal(err)
 	}
 	run(t, &vm, `
@@ -69,7 +69,7 @@ var caught;
 		caught = e;
 	}
 })();`)
-	reason, err := vm.Global().Get("reason")
+	reason, err := vm.Global().Get(t.Context(), "reason")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -87,7 +87,7 @@ func TestPromiseResolverThenable(t *testing.T) {
 	var vm ekuma.VM
 	p, res := vm.NewPromise()
 	run(t, &vm, `var settle; var thenable = { then(f) { settle = f; } };`)
-	thenable, err := vm.Global().Get("thenable")
+	thenable, err := vm.Global().Get(t.Context(), "thenable")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -132,11 +132,11 @@ func TestRealmNewPromise(t *testing.T) {
 			name: "TypeError",
 		},
 	} {
-		ctor, err := r.Global().Get(c.name)
+		ctor, err := r.Global().Get(t.Context(), c.name)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if ok, err := c.v.InstanceOf(ctor); err != nil || !ok {
+		if ok, err := c.v.InstanceOf(t.Context(), ctor); err != nil || !ok {
 			t.Errorf("%v instanceof %s of the realm: got %v, %v, want true", c.v, c.name, ok, err)
 		}
 	}
@@ -156,11 +156,11 @@ func TestPromiseResolverInterrupt(t *testing.T) {
 			cancel(errStop)
 			return nil, nil
 		})
-		if err := vm.Global().Set("stop", stop); err != nil {
+		if err := vm.Global().Set(t.Context(), "stop", stop); err != nil {
 			t.Fatal(err)
 		}
 		p, res := vm.NewPromise()
-		if err := vm.Global().Set("p", p); err != nil {
+		if err := vm.Global().Set(t.Context(), "p", p); err != nil {
 			t.Fatal(err)
 		}
 		return vm, ctx, p, res
@@ -238,13 +238,13 @@ func TestPromiseResolverUnhandledRejection(t *testing.T) {
 	// A handler added by a job before the reports is in time.
 	got = nil
 	p, res = vm.NewPromise()
-	if err := vm.Global().Set("p", p); err != nil {
+	if err := vm.Global().Set(t.Context(), "p", p); err != nil {
 		t.Fatal(err)
 	}
 	reject := vm.FuncOf("reject", func(this ekuma.Value, args []ekuma.Value) (any, error) {
 		return nil, res.Reject(context.Background(), args[0])
 	})
-	if err := vm.Global().Set("reject", reject); err != nil {
+	if err := vm.Global().Set(t.Context(), "reject", reject); err != nil {
 		t.Fatal(err)
 	}
 	run(t, &vm, `(async () => { reject("b"); await 0; p.catch(() => {}); })();`)
@@ -263,7 +263,7 @@ func TestPromiseJobCreatesSecondRealm(t *testing.T) {
 			return nil, nil
 		}), nil
 	})
-	if err := vm.Global().Set("newHandler", newHandler); err != nil {
+	if err := vm.Global().Set(t.Context(), "newHandler", newHandler); err != nil {
 		t.Fatal(err)
 	}
 	run(t, &vm, `Promise.resolve().then(() => { Promise.resolve().then(newHandler()); })`)
@@ -366,7 +366,7 @@ func TestUnhandledRejectionInterrupted(t *testing.T) {
 			cancel()
 			return nil, nil
 		})
-		if err := vm.Global().Set("stop", stop); err != nil {
+		if err := vm.Global().Set(t.Context(), "stop", stop); err != nil {
 			t.Fatal(err)
 		}
 		if _, err := runScript(ctx, &vm, "test", `Promise.reject("discarded"); stop(); for (;;) {}`); !errors.Is(err, context.Canceled) {

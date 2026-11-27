@@ -19,7 +19,7 @@ func runIdentifierBoundaries(t *testing.T, path string) {
 		0x3134f, 0x31350, 0x33479, 0x3347a, // CJK Extensions H and J form one ID range.
 	}
 	var vm ekuma.VM
-	ctor, err := vm.Global().Get("RegExp")
+	ctor, err := vm.Global().Get(t.Context(), "RegExp")
 	if err != nil {
 		t.Fatal(err)
 	}

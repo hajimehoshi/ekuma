@@ -60,7 +60,7 @@ func (h *v8Realms) newEntry(index int, r, previous *ekuma.Realm, shareAccess boo
 	if err != nil {
 		return nil, err
 	}
-	if err := h.loop.install(r); err != nil {
+	if err := h.loop.install(h.ctx, r); err != nil {
 		return nil, err
 	}
 	create := r.FuncOf("create", func(this ekuma.Value, args []ekuma.Value) (any, error) {

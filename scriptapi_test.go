@@ -388,7 +388,7 @@ func runIn(t *testing.T, v ekuma.Value, src string) string {
 	var wg sync.WaitGroup
 	wg.Go(func() {
 		var vm ekuma.VM
-		if err = vm.Global().Set("sab", blk); err != nil {
+		if err = vm.Global().Set(t.Context(), "sab", blk); err != nil {
 			return
 		}
 		var r ekuma.Value
@@ -424,7 +424,7 @@ func TestSharedArrayBufferSliceSameDataBlock(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := vm.Global().Set("alias", source.SharedDataBlock()); err != nil {
+	if err := vm.Global().Set(t.Context(), "alias", source.SharedDataBlock()); err != nil {
 		t.Fatal(err)
 	}
 	_, err = source.Call(t.Context(), "slice", 1, 3)
@@ -488,7 +488,7 @@ sab`)
 	if err != nil || !ok {
 		t.Fatalf("AwaitJobs: got %t, %v, want true, nil", ok, err)
 	}
-	result, err := vm.Global().Get("result")
+	result, err := vm.Global().Get(t.Context(), "result")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -508,7 +508,7 @@ func TestHostFunctionRecursion(t *testing.T) {
 	invoke := vm.FuncOf("invoke", func(this ekuma.Value, args []ekuma.Value) (any, error) {
 		return args[0].Invoke(t.Context(), args[0])
 	})
-	if err := vm.Global().Set("invoke", invoke); err != nil {
+	if err := vm.Global().Set(t.Context(), "invoke", invoke); err != nil {
 		t.Fatal(err)
 	}
 	_, err := runScript(t.Context(), &vm, "recursion", `invoke(invoke)`)
@@ -529,7 +529,7 @@ func TestAtomicsWaitAsyncDroppedVM(t *testing.T) {
 	blk := sab.SharedDataBlock()
 	dropped := func() weak.Pointer[ekuma.VM] {
 		vm := new(ekuma.VM)
-		if err := vm.Global().Set("sab", blk); err != nil {
+		if err := vm.Global().Set(t.Context(), "sab", blk); err != nil {
 			t.Fatal(err)
 		}
 		run(t, vm, `Atomics.waitAsync(new Int32Array(sab), 0, 0).value.then(() => {});`)
@@ -603,7 +603,7 @@ func TestAwaitJobsWhileRunning(t *testing.T) {
 		_, awaitErr = vm.AwaitJobs(t.Context())
 		return nil, nil
 	})
-	if err := vm.Global().Set("awaitJobs", f); err != nil {
+	if err := vm.Global().Set(t.Context(), "awaitJobs", f); err != nil {
 		t.Fatal(err)
 	}
 	run(t, &vm, `awaitJobs();`)
@@ -634,7 +634,7 @@ registry.register({}, "cleaned");`)
 		}
 		time.Sleep(time.Millisecond)
 	}
-	held, err := vm.Global().Get("held")
+	held, err := vm.Global().Get(t.Context(), "held")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -692,11 +692,11 @@ for (let i = 0; i < ` + strconv.Itoa(n) + `; i++) {
 	for id := range agents {
 		wg.Go(func() {
 			var avm ekuma.VM
-			if err := avm.Global().Set("sab", blk); err != nil {
+			if err := avm.Global().Set(t.Context(), "sab", blk); err != nil {
 				errs[id] = err
 				return
 			}
-			if err := avm.Global().Set("id", id); err != nil {
+			if err := avm.Global().Set(t.Context(), "id", id); err != nil {
 				errs[id] = err
 				return
 			}
@@ -970,7 +970,7 @@ func (l *memoryModules) run(t *testing.T, name string) ekuma.Value {
 	if st, r := p.PromiseState(); st != ekuma.PromiseFulfilled {
 		t.Fatalf("the evaluation is %v: %v", st, r)
 	}
-	v, err := l.vm.Global().Get("result")
+	v, err := l.vm.Global().Get(t.Context(), "result")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1196,7 +1196,7 @@ func TestDynamicImportLoadError(t *testing.T) {
 		calls++
 		return nil, &ekuma.ScriptError{Value: thrown}
 	})
-	if err := vm.Global().Set("thrown", thrown); err != nil {
+	if err := vm.Global().Set(t.Context(), "thrown", thrown); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := runScript(t.Context(), &vm, "main", `
@@ -1404,7 +1404,7 @@ func TestLongImportChain(t *testing.T) {
 	if _, err := m.Evaluate(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	v, err := vm.Global().Get("result")
+	v, err := vm.Global().Get(t.Context(), "result")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1708,7 +1708,7 @@ func TestUnboundModule(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				message, err := ns.Get("message")
+				message, err := ns.Get(t.Context(), "message")
 				if err != nil {
 					t.Fatal(err)
 				}

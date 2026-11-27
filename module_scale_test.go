@@ -120,7 +120,7 @@ func TestLargeModuleGraphs(t *testing.T) {
 			if state, reason := p.PromiseState(); state != ekuma.PromiseFulfilled {
 				t.Fatalf("Evaluate: promise %v: %v", state, reason)
 			}
-			got, err := vm.Global().Get("result")
+			got, err := vm.Global().Get(t.Context(), "result")
 			if err != nil {
 				t.Fatal(err)
 			}

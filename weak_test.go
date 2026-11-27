@@ -418,7 +418,7 @@ func TestWeakRefTargetKeptDuringJob(t *testing.T) {
 		runtime.GC()
 		return nil, nil
 	})
-	if err := vm.Global().Set("gc", gc); err != nil {
+	if err := vm.Global().Set(t.Context(), "gc", gc); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := runScript(t.Context(), &vm, "setup", `
@@ -562,7 +562,7 @@ func TestFinalizationRegistryMicrotasksAndThrow(t *testing.T) {
 			if v.Int() != 2 {
 				t.Fatalf("got %d, want 2", v.Int())
 			}
-			done, err := vm.Global().Get("secondRan")
+			done, err := vm.Global().Get(t.Context(), "secondRan")
 			if err != nil {
 				t.Fatal(err)
 			}

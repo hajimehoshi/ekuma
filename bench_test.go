@@ -124,7 +124,7 @@ func BenchmarkJSON(b *testing.B) {
 	text := gameDataJSON(3000)
 	ctx := b.Context()
 	var vm ekuma.VM
-	if err := vm.Global().Set("text", text); err != nil {
+	if err := vm.Global().Set(ctx, "text", text); err != nil {
 		b.Fatal(err)
 	}
 	if _, err := runScript(ctx, &vm, "setup", `
@@ -387,7 +387,7 @@ func BenchmarkOpenUpvalues(b *testing.B) {
 					}
 					return nil, nil
 				})
-				if err := vm.Global().Set("timeCaptures", timeCaptures); err != nil {
+				if err := vm.Global().Set(b.Context(), "timeCaptures", timeCaptures); err != nil {
 					b.Fatal(err)
 				}
 
