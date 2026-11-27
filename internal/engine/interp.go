@@ -2073,6 +2073,18 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 						}
 					}
 				}
+				// A store to the length of a plain array of a number that is a length no
+				// greater than the current one runs no code, but a long truncation polls.
+				// The kind turns most other receivers away with one load.
+				if o.Kind == storage.KindArray && o.Shape() == ag.active.realm.Shapes.Array && fp.Keys[i.B] == ag.Key(storage.KeyLength) {
+					// NaN fails the comparison.
+					if k := regs[i.C]; k.O == storage.NumberObject && k.N >= 0 && k.N <= float64(o.Length()) && float64(uint32(k.N)) == k.N {
+						ag.frames[len(ag.frames)-1].pc = pc
+						if ag.active.truncateArray(o, uint32(k.N)) {
+							continue
+						}
+					}
+				}
 			}
 			receiver, name, rhs, site = v, fp.Keys[i.B], regs[i.C], c
 			goto writeProperty

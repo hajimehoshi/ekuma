@@ -92,3 +92,25 @@ func TestLongPassesPoll(t *testing.T) {
 		})
 	}
 }
+
+// TestArrayTruncationPolls checks that a store to the length of an array that removes many
+// elements stops when an interruption is pending.
+func TestArrayTruncationPolls(t *testing.T) {
+	cx := newTestContext(t)
+	cause := errors.New("stop")
+	stop := cx.NewFunction("stop", func(cx *engine.ExecutionContext, _ storage.Value, _ []storage.Value) storage.Value {
+		cx.Interrupt(cause)
+		return storage.Undefined
+	})
+	if err := cx.HostSet(cx.GlobalObject(), cx.StringFromGo("stop"), stop); err != nil {
+		t.Fatal(err)
+	}
+	// The elements that remain keep the storage, so that the removed ones are cleared.
+	const src = `var done = false, a = new Array(3 << 20).fill(0); stop(); a.length = 1 << 20; done = true;`
+	if _, err := runScript(cx, "truncation", src); !errors.Is(err, cause) {
+		t.Errorf("got %v, want %v", err, cause)
+	}
+	if done, err := runScript(cx, "done", `done`); err != nil || storage.ToBoolean(done) {
+		t.Errorf("the truncation was not interrupted (err: %v)", err)
+	}
+}

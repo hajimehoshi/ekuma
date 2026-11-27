@@ -87,6 +87,7 @@ var unguardedUses = map[string]map[string]int{
 	},
 	"Poller.TruncateElements": {
 		"ExecutionContext.setArrayLength": 1,
+		"ExecutionContext.truncateArray":  1,
 	},
 	"PropCache.RememberAbsent": {
 		"ExecutionContext.getNamed": 1,

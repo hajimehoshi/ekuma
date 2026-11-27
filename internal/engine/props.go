@@ -591,6 +591,17 @@ func (cx *ExecutionContext) setArrayLength(o *storage.Object, n uint32) bool {
 	return ok
 }
 
+// truncateArray sets the length of the array o to n, which is no greater than its length, when
+// that only removes elements: the length is writable and every index property is an element. It
+// reports whether it set the length.
+func (cx *ExecutionContext) truncateArray(o *storage.Object, n uint32) bool {
+	if o.Flags()&(storage.ObjFrozenLength|storage.ObjSparse) != 0 {
+		return false
+	}
+	cx.TruncateElements(o, n)
+	return true
+}
+
 // setNamed stores val as the named property key of v. When the property has a setter, setNamed returns it
 // and the caller has to call it with v as this. ok is false when the store was refused,
 // which is a TypeError in strict code.
