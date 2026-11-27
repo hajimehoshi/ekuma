@@ -115,9 +115,7 @@ var fastPathMethods = map[string]bool{
 	"Share": true,
 }
 
-// TestExecFastPathsCallNothing tests that the head of the interpreter loop and its first switch
-// call no function and allocate nothing. Any call there makes the compiler keep the values that
-// the loop carries on the stack for every instruction.
+// TestExecFastPathsCallNothing tests that the fast interpreter calls no function and allocates nothing.
 func TestExecFastPathsCallNothing(t *testing.T) {
 	fset := token.NewFileSet()
 	f, err := parser.ParseFile(fset, "interp.go", interpSource, 0)
@@ -126,7 +124,7 @@ func TestExecFastPathsCallNothing(t *testing.T) {
 	}
 	fast := fastPath(f)
 	if fast == nil {
-		t.Fatal("no switch on i.Op at the start of the loop of (*agent).exec")
+		t.Fatal("no body of (*agent).execFast")
 	}
 	t.Run("source", func(t *testing.T) {
 		for _, s := range fast {
@@ -134,9 +132,7 @@ func TestExecFastPathsCallNothing(t *testing.T) {
 		}
 	})
 	t.Run("compiled", func(t *testing.T) {
-		first := fset.Position(fast[0].Pos()).Line
-		last := fset.Position(fast[len(fast)-1].End()).Line
-		testFastPathCode(t, first, last)
+		testFastPathCode(t)
 	})
 }
 
@@ -197,10 +193,8 @@ func testFastPathSource(t *testing.T, fset *token.FileSet, s ast.Stmt) {
 	})
 }
 
-// testFastPathCode tests that the machine code of the lines first to last of interp.go in
-// (*agent).exec calls nothing but write barriers and panics, in a test binary of this package built
-// with the default settings for the architecture that runs the test.
-func testFastPathCode(t *testing.T, first, last int) {
+// testFastPathCode checks the fast interpreter in a test binary built with default settings.
+func testFastPathCode(t *testing.T) {
 	// On 386, the fast paths call runtime functions that convert between floats and integers, and
 	// on 386 and wasm their interrupt check is a call.
 	if runtime.GOARCH != "amd64" && runtime.GOARCH != "arm64" {
@@ -219,7 +213,7 @@ func testFastPathCode(t *testing.T, first, last int) {
 		t.Fatalf("go test -c: %v\n%s", err, out)
 	}
 
-	execName := reflect.TypeFor[engine.ExecutionContext]().PkgPath() + ".(*agent).exec"
+	execName := reflect.TypeFor[engine.ExecutionContext]().PkgPath() + ".(*agent).execFast"
 	objdump := exec.Command(gocmd, "tool", "objdump", "-s", "^"+regexp.QuoteMeta(execName)+"$", bin)
 	// The tool is for the host, whatever the target of the test is.
 	objdump.Env = slices.DeleteFunc(os.Environ(), func(kv string) bool {
@@ -252,20 +246,12 @@ func testFastPathCode(t *testing.T, first, last int) {
 		t.Fatalf("the debugging information has no function inlined into %s", execName)
 	}
 
-	var lines, calls int
 	reported := map[string]bool{}
 	for _, in := range code {
-		if in.op == "CALL" {
-			calls++
-		}
-		line := execLine(inlined, in)
-		if line < first || line > last {
-			continue
-		}
-		lines++
 		if in.op != "CALL" || keepsRegisters(in.args) {
 			continue
 		}
+		line := execLine(inlined, in)
 		msg := fmt.Sprintf("interp.go:%d: call of %s", line, in.args)
 		if in.pos != "interp.go:"+strconv.Itoa(line) {
 			msg += " at " + in.pos
@@ -275,18 +261,13 @@ func testFastPathCode(t *testing.T, first, last int) {
 			t.Error(msg)
 		}
 	}
-	if calls == 0 {
-		t.Fatalf("go tool objdump listed no call in %s", execName)
-	}
-	if lines == 0 {
-		t.Fatalf("no instruction of %s is at lines %d to %d of interp.go", execName, first, last)
-	}
 }
 
-// keepsRegisters reports whether a call of target leaves the values in registers: a write barrier
-// saves the registers that it uses, and a panic does not return.
+// keepsRegisters allows write barriers, panics and entry stubs for growing the Go stack.
 func keepsRegisters(target string) bool {
-	return strings.HasPrefix(target, "runtime.gcWriteBarrier") || strings.HasPrefix(target, "runtime.panic")
+	return strings.HasPrefix(target, "runtime.gcWriteBarrier") ||
+		strings.HasPrefix(target, "runtime.panic") ||
+		strings.HasPrefix(target, "runtime.morestack")
 }
 
 // objdumpInstruction is an instruction that go tool objdump lists.
@@ -431,24 +412,11 @@ func execLine(inlined []inlinedCall, in objdumpInstruction) int {
 	return n
 }
 
-// fastPath returns the statements of the loop of (*agent).exec up to its first switch on i.Op, or
-// nil.
+// fastPath returns the body of (*agent).execFast.
 func fastPath(f *ast.File) []ast.Stmt {
 	for _, d := range f.Decls {
-		fn, ok := d.(*ast.FuncDecl)
-		if !ok || fn.Name.Name != "exec" || fn.Recv == nil {
-			continue
-		}
-		for _, s := range fn.Body.List {
-			loop, ok := s.(*ast.ForStmt)
-			if !ok {
-				continue
-			}
-			for i, s := range loop.Body.List {
-				if sw, ok := s.(*ast.SwitchStmt); ok && types.ExprString(sw.Tag) == "i.Op" {
-					return loop.Body.List[:i+1]
-				}
-			}
+		if fn, ok := d.(*ast.FuncDecl); ok && fn.Name.Name == "execFast" && fn.Recv != nil {
+			return fn.Body.List
 		}
 	}
 	return nil

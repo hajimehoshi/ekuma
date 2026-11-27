@@ -33,7 +33,8 @@ ExecutionContext.toWellFormedShort Value.N:lit shapeTable.ShortStrings:ref
 ExecutionContext.trimShortString Value.N:lit shapeTable.ShortStrings:ref space.strings:ref
 ExecutionContext.writeASCIIPrefix ReversedBuilder.Sb:ref*2
 NewExecutionContext Shape.Small:lit Shape.Space:lit space.strings:ref*3
-agent.exec CacheEntry.Holder:write CacheEntry.Next:write GlobalCache.Ref:write*2 Object.Class:write*2 Object.Kind:write*3 PropCache.CacheEntry:ref*10 PropCache.Second:ref*6 PropKey.Key:lit*2 Value.N:write*2 Value.accessor:read shape.lookup:read
+agent.exec CacheEntry.Holder:write CacheEntry.Next:write Object.Class:write*2 Object.Kind:write*3 PropCache.CacheEntry:ref*2 PropKey.Key:lit*2 Value.N:write Value.accessor:read shape.lookup:read
+agent.execFast GlobalCache.Ref:write*2 PropCache.CacheEntry:ref*8 PropCache.Second:ref*6 Value.N:write*2
 
 # Read properties without the guards of the property operations.
 [reads]

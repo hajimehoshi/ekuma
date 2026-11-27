@@ -186,9 +186,8 @@ func (ag *agent) appendFrame() *frame {
 // pushFrame starts the activation of the closure f, whose argc arguments are already at base.
 // It returns the stack index of register 0 of the new frame.
 func (ag *agent) pushFrame(f *storage.Object, this storage.Value, base, argc int, ret int32, isNew bool, newTarget *storage.Object) int {
-	// exec builds the same frame inline for OpCall and OpCallCall in its fast switch, and for
-	// OpApplyFwd in the switch after it, when the callee needs no surplus arguments; a change
-	// here belongs there too.
+	// execFast and the OpApplyFwd case in exec build the same frame inline when the callee
+	// needs no surplus arguments.
 	fp := f.Fn.Code
 	fp.Prepare()
 	extraBase := -1
@@ -447,42 +446,16 @@ func (cx *ExecutionContext) restArray(fr *frame, start int) *storage.Object {
 	return cx.NewArray(args)
 }
 
-// exec is the interpreter loop. See run.
-func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
-	defer func() {
-		if r := recover(); r != nil {
-			if r != any(errThrow) {
-				panic(r)
-			}
-			ag.sp = ag.frames[len(ag.frames)-1].top()
-			status = execPanic
-		}
-	}()
-
-	// The closure of the running function is read from its frame where it is needed, so that
-	// the loop does not carry it from one instruction to the next.
-	fr := &ag.frames[len(ag.frames)-1]
-	fp := fr.fp
-	pc := fr.pc
-	// The active context is that of the running frame wherever exec reads it. runFrame installs it.
-	if validateExec {
-		ag.enterChecks()
-	}
-	// The capacity of regs is never read: it is sliced and passed on only through slices.Clip,
-	// so that the loop does not carry it from one instruction to the next.
-	regs := fr.registers(ag.stack)
-
+// execFast returns the pending instruction, the PC after it, and the state of its frame.
+//
+//go:noinline
+func (ag *agent) execFast(stop int, fp *storage.FuncProto, pc int, regs []storage.Value) (*storage.FuncProto, int, []storage.Value, *bytecode.Instr) {
 	for {
 		if validateExec {
 			ag.checkStep(fp, pc, slices.Clip(regs))
 		}
 		i := &fp.Code[pc]
 		pc++
-		// The fast paths of the common instructions. Nothing in this switch calls a function
-		// (TestExecFastPathsCallNothing checks it), so the values that the loop carries need
-		// no stack copies on these paths. An instruction that leaves it runs in the switch
-		// below, which handles every case of it. Undefined is written as Value{}, which needs
-		// no load.
 		switch i.Op {
 		case bytecode.OpLoadK:
 			regs[i.A] = fp.Consts[i.B]
@@ -1569,7 +1542,7 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 			if i.Op == bytecode.OpGetMethod {
 				// A data property read through the cache, as in OpGetProp's case. An immediately
 				// following OpCall on the same register runs here too.
-				// The this value goes in place first, as the case below does too, so that it
+				// The this value goes in place first, as the case in exec does too, so that it
 				// does not stay in registers across the tests of the cache.
 				a := i.A
 				v := regs[i.B]
@@ -1580,7 +1553,13 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 				}
 				c := &fp.Caches[i.C]
 				e := &c.CacheEntry
-				if o.Shape() != e.Shape {
+				if o == storage.NumberObject {
+					// A number's own method cache uses Number.prototype and keeps the primitive receiver.
+					o = ag.active.realm.Intrinsics[storage.IntrinsicNumberPrototype]
+					if e.Kind != storage.CacheOwn || o.Shape() != e.Shape {
+						break
+					}
+				} else if o.Shape() != e.Shape {
 					e = &c.Second
 					if o.Shape() != e.Shape {
 						break
@@ -1643,9 +1622,7 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 							}
 						}
 						// Reuse the available stack and frame storage for a prepared call. This builds
-						// the frame that pushFrame would, without calling it, as nothing in this
-						// switch may call; OpApplyFwd's case in the switch below builds it the same
-						// way, and a change to one of the three belongs in the others.
+						// the same frame as pushFrame and the OpApplyFwd case in exec.
 						ag.frames[n-1].pc = pc
 						ag.stackHigh = max(ag.stackHigh, end)
 						if from, to := c.FirstCleared(argc), c.Nclear; from < to {
@@ -1683,7 +1660,7 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 				}
 			}
 		case bytecode.OpReturn, bytecode.OpReturnUndef:
-			// The frame is popped as in the OpReturn case below, which handles generators,
+			// The frame is popped as in the OpReturn case in exec, which handles generators,
 			// upvalues to close, the return out of the loop and a change of realm; a change to
 			// the popping belongs in both. The open upvalues are sorted by stack index, so
 			// none refers to the registers of the frame when the last one lies below them.
@@ -1701,8 +1678,7 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 				ret := done.ret
 				ag.frames = ag.frames[:n]
 				fr := &ag.frames[n-1]
-				fp = fr.fp
-				pc = fr.pc
+				fp, pc = fr.fp, fr.pc
 				if fp.HeapRegs {
 					regs = fr.gen.regs
 					ag.sp = fr.base
@@ -1712,6 +1688,23 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 				}
 				regs[ret] = r
 				continue
+			}
+		case bytecode.OpIterNext:
+			if idx := regs[i.B]; idx.O == storage.NumberObject {
+				o := regs[i.B+1].O
+				if j := uint32(idx.N); j < o.Length() {
+					if uint(j) < uint(o.Raw().ElemCount()) {
+						if e := o.Raw().Elem(int(j)); e.O != storage.HoleObject {
+							regs[i.B].N = idx.N + 1
+							regs[i.A] = e
+							continue
+						}
+					} else if nums := o.Raw().Nums(); uint(j) < uint(len(nums)) {
+						regs[i.B].N = idx.N + 1
+						storage.SetNumber(&regs[i.A], nums[j])
+						continue
+					}
+				}
 			}
 		case bytecode.OpGetArgsIndex:
 			// An argument, while the arguments object is not materialized, where the call left
@@ -1864,7 +1857,7 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 				}
 			}
 		case bytecode.OpLoopIf:
-			// The ToBoolean of OpJumpIf. A pending interruption takes the switch below.
+			// The ToBoolean of OpJumpIf. A pending interruption is handled by exec.
 			v := regs[i.B]
 			t, known := false, true
 			if o := v.O; o == storage.NumberObject {
@@ -2003,16 +1996,46 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 				continue
 			}
 		}
+		return fp, pc, regs[:len(regs):len(regs)], i
+	}
+}
+
+// exec is the interpreter loop. See run.
+func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
+	defer func() {
+		if r := recover(); r != nil {
+			if r != any(errThrow) {
+				panic(r)
+			}
+			ag.sp = ag.frames[len(ag.frames)-1].top()
+			status = execPanic
+		}
+	}()
+
+	fr := &ag.frames[len(ag.frames)-1]
+	fp := fr.fp
+	pc := fr.pc
+	// The active context is that of the running frame wherever exec reads it. runFrame installs it.
+	if validateExec {
+		ag.enterChecks()
+	}
+	regs := fr.registers(ag.stack)
+
+	for {
+		var i *bytecode.Instr
+		fp, pc, regs, i = ag.execFast(stop, fp, pc, regs)
+
 		// The state of a call in preparation, shared by every instruction that ends in a call.
 		var (
-			f           *storage.Object
-			callThis    storage.Value
-			firstArgReg int
-			argBase     int
-			argc        int
-			ret         int32
-			isNew       bool
-			newTarget   *storage.Object
+			f              *storage.Object
+			callThis       storage.Value
+			firstArgReg    int
+			argBase        int
+			argc           int
+			ret            int32
+			isNew          bool
+			newTarget      *storage.Object
+			methodDeclined bool
 		)
 
 		// Slow property operations take their operands by value across reentry.
@@ -2798,6 +2821,19 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 			// Calls of ordinary functions that fit take the inline frame of the fast path above.
 			b := int(i.B)
 			f, callThis, firstArgReg, argc, ret, isNew, newTarget = regs[b].O, regs[b+1], b+2, int(i.C), i.A, false, nil
+			// Short method kernels can read arguments in place without recording a call frame.
+			if argc <= 1 && callThis.IsNumber() && f != nil && f.Fn != nil && !ag.InterruptFlag.Load() {
+				if info := f.Fn.Info; info != nil && info.Realm == ag.active.realmPart && info.Native.HasFast() {
+					k := nativeFastOf(info.Native)
+					if k.contract.Frame == FrameUnobservable && k.contract.Pace == PaceShort && (argc == 0 || k.number1 == nil) {
+						if v, ok := k.callMethod(info.Realm, callThis, slices.Clip(regs)[firstArgReg:firstArgReg+argc]); ok {
+							regs[ret] = v
+							continue
+						}
+						methodDeclined = true
+					}
+				}
+			}
 			goto callRegs
 		case bytecode.OpCallCall:
 			b := int(i.B)
@@ -3298,16 +3334,6 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 					pc = int(i.C)
 					continue
 				}
-				regs[i.B].N = idx.N + 1
-				if uint(j) < uint(o.Raw().ElemCount()) {
-					if e := o.Raw().Elem(int(j)); e.O != storage.HoleObject {
-						regs[i.A] = e
-						continue
-					}
-				} else if nums := o.Raw().Nums(); uint(j) < uint(len(nums)) {
-					storage.SetNumber(&regs[i.A], nums[j])
-					continue
-				}
 				ag.frames[len(ag.frames)-1].pc = pc
 				// A getter that throws finishes the iterator.
 				regs[i.B] = storage.Undefined
@@ -3753,7 +3779,7 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 					}
 					// Numeric kernels cannot observe the frame. Record the call for the other paths.
 					ag.frames[len(ag.frames)-1].pc = pc
-					if info.Realm == ag.active.realmPart {
+					if !methodDeclined && info.Realm == ag.active.realmPart {
 						if v, ok := k.callMethod(info.Realm, callThis, ag.stack[argBase:argBase+argc:argBase+argc]); ok {
 							regs = ag.reload(regs, ag.frameBase(), fp)
 							regs[ret] = v

@@ -11,21 +11,20 @@ import (
 	"testing"
 )
 
-// rawStoreCalls are the methods of storage.Raw that store, or that return what can be stored to, with
-// the number of calls in agent.exec.
-var rawStoreCalls = map[string]int{
-	"ExtendElems": 6,
-	"ExtendNums":  4,
-	"SetNum":      5,
-	"ExtendSlots": 2,
-	"SetElem":     8,
-	"SetFlags":    1,
-	"SetLength":   8,
-	"SetShape":    8,
-	"SetSlot":     3,
-	"Elems":       3,
-	"Nums":        5,
-	"SlotRef":     0,
+// rawStoreCalls lists the interpreter's raw writes and accesses to writable storage.
+var rawStoreCalls = map[string]map[string]int{
+	"ExtendElems": {"agent.execFast": 6},
+	"ExtendNums":  {"agent.execFast": 4},
+	"ExtendSlots": {"agent.execFast": 2},
+	"SetElem":     {"agent.execFast": 8},
+	"SetNum":      {"agent.execFast": 5},
+	"SetFlags":    {"agent.exec": 1},
+	"SetLength":   {"agent.exec": 1, "agent.execFast": 7},
+	"SetShape":    {"agent.exec": 6, "agent.execFast": 2},
+	"SetSlot":     {"agent.execFast": 3},
+	"Elems":       {"agent.exec": 3},
+	"Nums":        {"agent.execFast": 5},
+	"SlotRef":     nil,
 }
 
 // rawLoadMethods are the other methods.
@@ -136,25 +135,22 @@ func TestUnguardedOperations(t *testing.T) {
 	}
 }
 
-// TestRawAccess tests that only agent.exec uses storage.Raw, apart from the files that check the
+// TestRawAccess tests that only the interpreter uses storage.Raw, apart from the files that check the
 // others in the ekumavalidate build, and how often it stores through it.
 func TestRawAccess(t *testing.T) {
 	prog := checkProgram(t, "../../...")
 	prog.checkUses(t, useRule{
 		what:         "raw access to an object",
 		objs:         prog.function(t, "Object.Raw"),
-		owners:       []string{"agent.exec"},
+		owners:       []string{"agent.exec", "agent.execFast"},
 		skipValidate: true,
 	})
 	methods := map[string]bool{}
 	for m := range prog.typ(t, "Raw").Methods() {
 		methods[m.Name()] = true
 	}
-	for name, n := range rawStoreCalls {
-		want := useCounts{}
-		if n > 0 {
-			want["adds within the capacity and creates objects; calls in exec cost more than inlined stores"] = map[string]int{"agent.exec": n}
-		}
+	for name, owners := range rawStoreCalls {
+		want := useCounts{"fast or slow interpreter": owners}
 		prog.checkUseCounts(t, "call of Raw."+name, prog.function(t, "Raw."+name), want, nil)
 		delete(methods, name)
 	}

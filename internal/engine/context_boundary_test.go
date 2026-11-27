@@ -30,7 +30,7 @@ func TestExecutionContextBoundary(t *testing.T) {
 			objs: []types.Object{prog.field(t, "agent", "active")},
 			owners: []string{
 				"ExecutionContext.activate", "Host.ActiveContext", "ExecutionContext.runFrame", "ExecutionContext.protect",
-				"agent.exec", "agent.checkActive", "agent.install",
+				"agent.exec", "agent.execFast", "agent.checkActive", "agent.install",
 			},
 		},
 		useRule{
@@ -115,7 +115,7 @@ func TestFrameRegisterBoundary(t *testing.T) {
 			objs: []types.Object{prog.field(t, "agent", "stack")},
 			owners: []string{
 				"agent.frameRegs", "agent.placeCallArgs", "agent.extraArgs", "agent.reload", "agent.findUpval",
-				"NewExecutionContext", "agent.ensureStack", "agent.releaseStack", "agent.clearStale", "agent.pushFrame", "agent.exec",
+				"NewExecutionContext", "agent.ensureStack", "agent.releaseStack", "agent.clearStale", "agent.pushFrame", "agent.exec", "agent.execFast",
 				"ExecutionContext.callOnStack", "ExecutionContext.callSlow", "ExecutionContext.callBound",
 				"ExecutionContext.replaceFrame", "ExecutionContext.unbind",
 				"agent.checkStep", "agent.moveStack", "agent.stackUsed", "agent.abandonStack", "agent.holdArgs", "agent.checkIdleStack",
@@ -125,7 +125,7 @@ func TestFrameRegisterBoundary(t *testing.T) {
 			what: "direct regs access",
 			objs: []types.Object{prog.field(t, "generator", "regs")},
 			owners: []string{
-				"frame.registers", "agent.placeCallArgs", "agent.exec", "agent.checkStep",
+				"frame.registers", "agent.placeCallArgs", "agent.exec", "agent.execFast", "agent.checkStep",
 				"newGenerator", "generator.findUpval", "ExecutionContext.resume",
 			},
 		},
@@ -204,7 +204,8 @@ func checkActiveReads(t *testing.T, prog *program) {
 	for _, p := range prog.pkgs {
 		for _, file := range p.files {
 			for _, decl := range file.Decls {
-				if prog.owner(&p, decl, []string{"agent.exec"}) != "agent.exec" {
+				owner := prog.owner(&p, decl, []string{"agent.exec", "agent.execFast"})
+				if owner != "agent.exec" && owner != "agent.execFast" {
 					continue
 				}
 				var stack []ast.Node
