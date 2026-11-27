@@ -32,18 +32,22 @@ The zero value of `ekuma.VM` is ready to use. A `VM` must not be copied after fi
 
 ## Differences from other engines for Go
 
-| Engine | Latest release | Implementation | Execution strategy | Pure Go | ECMAScript | Modules | `Intl` | `Temporal` |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Ekuma | v0.1.0 (2026-11-26) | Written in Go | Bytecode interpreter | ✅ | ES2026 | ✅ | ✅ | ✅ |
-| [goja](https://github.com/dop251/goja) | None | Written in Go | Bytecode interpreter | ✅ | ES5.1, and much of ES2015 and later | ❌ | ❌ | ❌ |
-| [Sobek](https://github.com/grafana/sobek) | None | Written in Go | Bytecode interpreter | ✅ | ES5.1, and much of ES2015 and later | ⚠️ Experimental | ❌ | ❌ |
-| [moejs](https://github.com/MoeForge/moejs) | v0.1.1 (2026-11-15) | Written in Go | Bytecode interpreter | ✅ | Much of modern ECMAScript | ✅ | ⚠️ Partial | ❌ |
-| [otto](https://github.com/robertkrimen/otto) | v0.5.1 (2024-11-05) | Written in Go | AST interpreter | ✅ | ES5 | ❌ | ❌ | ❌ |
-| [modernc.org/jit/js](https://pkg.go.dev/modernc.org/jit/js) | v0.5.0 (2026-11-22) | QuickJS, translated from C to Go | Bytecode interpreter with a JIT on Linux amd64 | ✅ | ES2023 | ✅ | ⚠️ `DateTimeFormat` and `NumberFormat` in en-US | ❌ |
-| [modernc.org/quickjs](https://pkg.go.dev/modernc.org/quickjs) | v0.27.0 (2026-10-24) | QuickJS, translated from C to Go | Bytecode interpreter | ✅ | ES2023 | ✅ | ⚠️ `DateTimeFormat` and `NumberFormat` in en-US | ❌ |
-| [BeastJS](https://github.com/liustack/beastjs) | v0.33.2 (2026-11-27) | QuickJS, compiled to Go assembly | Bytecode interpreter | ✅ | ES2023 | ✅ | ✅ Opt-in | ✅ Opt-in |
-| [QJS](https://github.com/fastschema/qjs) | v0.0.6 (2025-10-28) | QuickJS-ng, compiled to WebAssembly and run by wazero | Bytecode interpreter, compiled to machine code by wazero's AOT compiler on amd64 and arm64 | ✅ | ES2023 | ✅ | ❌ | ❌ |
-| [v8go](https://github.com/tommie/v8go) | v0.44.0 (2026-11-12) | Bindings to V8 | JIT compiler, or bytecode interpreter with `--jitless` | ❌ | ES2025 | ❌ | ✅ | ❌ |
+| Engine | Latest release | Implementation | Execution strategy | Pure Go | Host platforms | ECMAScript | Modules | `Intl` | `Temporal` |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Ekuma | v0.1.0 (2026-11-26) | Written in Go | Bytecode interpreter | ✅ | Go targets | ES2026 | ✅ | ✅ | ✅ |
+| [goja](https://github.com/dop251/goja) | None | Written in Go | Bytecode interpreter | ✅ | Go targets | ES5.1, and much of ES2015 and later | ❌ | ❌ | ❌ |
+| [Sobek](https://github.com/grafana/sobek) | None | Written in Go | Bytecode interpreter | ✅ | Go targets | ES5.1, and much of ES2015 and later | ⚠️ Experimental | ❌ | ❌ |
+| [moejs](https://github.com/MoeForge/moejs) | v0.1.1 (2026-11-15) | Written in Go | Bytecode interpreter | ✅ | Go targets | Much of modern ECMAScript | ✅ | ⚠️ Partial | ❌ |
+| [otto](https://github.com/robertkrimen/otto) | v0.5.1 (2024-11-05) | Written in Go | AST interpreter | ✅ | Go targets | ES5 | ❌ | ❌ | ❌ |
+| [modernc.org/jit/js](https://pkg.go.dev/modernc.org/jit/js) | v0.5.0 (2026-11-22) | QuickJS, translated from C to Go | Bytecode interpreter with a JIT | ✅ | `linux/amd64` | ES2023 | ✅ | ⚠️ `DateTimeFormat` and `NumberFormat` in en-US | ❌ |
+| [modernc.org/quickjs](https://pkg.go.dev/modernc.org/quickjs) | v0.27.0 (2026-10-24) | QuickJS, translated from C to Go | Bytecode interpreter | ✅ | macOS, FreeBSD, Windows (`amd64`, `arm64`)<br>Linux (`386`, `amd64`, `arm`, `arm64`, `loong64`, `ppc64le`, `riscv64`, `s390x`) | ES2023 | ✅ | ⚠️ `DateTimeFormat` and `NumberFormat` in en-US | ❌ |
+| [BeastJS](https://github.com/liustack/beastjs) | v0.33.2 (2026-11-27) | QuickJS, compiled to Go assembly | Bytecode interpreter | ✅ | Linux, macOS, Windows (`amd64`, `arm64`) | ES2023 | ✅ | ✅ Opt-in | ✅ Opt-in |
+| [QJS](https://github.com/fastschema/qjs) | v0.0.6 (2025-10-28) | QuickJS-ng, compiled to WebAssembly and run by wazero | Bytecode interpreter, with wazero AOT where available | ✅ | [wazero targets](https://github.com/wazero/wazero/blob/v1.9.0/README.md#platform) | ES2023 | ✅ | ❌ | ❌ |
+| [v8go](https://github.com/tommie/v8go) | v0.44.0 (2026-11-12) | Bindings to V8 | JIT compiler, or bytecode interpreter with `--jitless` | ❌ | Android, Linux, macOS (`amd64`, `arm64`)<br>Windows (`amd64`) | ES2025 | ❌ | ✅ | ❌ |
+
+“Go targets” indicates that the core engine has no explicit OS or architecture allowlist.
+Ekuma's [CI](.github/workflows/test.yml) covers Linux, macOS, Windows, `386` on Linux and Windows,
+and browser WebAssembly (`js/wasm`).
 
 goja and Sobek were compared at their latest commits as of 2026-11-16.
 
