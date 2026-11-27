@@ -287,17 +287,22 @@ func (r *RealmPart) PrependElements(o *Object, vals []Value) (uint32, bool) {
 // RemoveLastElement removes the last element of the array o and returns it.
 // It reports false and does nothing when o is empty or needs the generic algorithm.
 func (o *Object) RemoveLastElement() (Value, bool) {
-	if !o.ElemsResizable() || len(o.elems) == 0 {
+	elems := o.elems
+	if !o.ElemsResizable() || len(elems) == 0 {
 		return Value{}, false
 	}
 	// Holes before the last element stay holes after it is removed.
-	n := len(o.elems) - 1
-	v := o.elems[n]
+	n := len(elems) - 1
+	v := elems[n]
 	if v.IsHole() {
 		return Value{}, false
 	}
-	o.ownElems()
-	o.removeLastElem()
+	if o.Pinned&SharedElems != 0 {
+		// The call removes the last of the copied elements, which are the array's own.
+		o.copySharedElems()
+		return o.RemoveLastElement()
+	}
+	o.removeLastElem(elems)
 	o.length = uint32(n)
 	if o.elemsOversized() {
 		o.shape.Space.reallocElems(o)
@@ -535,8 +540,12 @@ func (r *RealmPart) SpliceElements(o *Object, length, start, del int64, items []
 	elems = elems[:max(n, newLen)]
 	copy(elems[int(start)+k:], elems[start+del:n])
 	copy(elems[start:], items)
-	// The removed elements stay out of reach in the storage that the elements keep.
-	clear(elems[newLen:])
+	// The storage that the elements keep still holds the values past the new length.
+	if tail := elems[newLen:]; len(tail) == 1 {
+		clearLeft(&tail[0])
+	} else {
+		clear(tail)
+	}
 	o.elems = elems[:newLen]
 	o.length = uint32(newLen)
 	if o.elemsOversized() {
@@ -715,6 +724,8 @@ func (p *Poller) TruncateElements(o *Object, n uint32) {
 		if oversized {
 			// The tail goes away with the storage.
 			p.reallocElems(o)
+		} else if len(tail) == 1 {
+			clearLeft(&tail[0])
 		} else {
 			clearPolled(p, tail)
 		}

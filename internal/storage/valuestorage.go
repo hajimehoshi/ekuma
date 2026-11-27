@@ -206,6 +206,15 @@ func (o *Object) replaceElems(elems []Value) {
 	}
 }
 
+// clearLeft clears *v, a value that the storage of the elements keeps after a removal, unless *v
+// is a number.
+func clearLeft(v *Value) {
+	// A number left in the storage keeps nothing alive.
+	if v.O != NumberObject {
+		*v = Value{}
+	}
+}
+
 // shiftElem removes the first element without moving the others. The storage keeps its size: see
 // elemsOversized.
 func (o *Object) shiftElem() {
@@ -243,9 +252,14 @@ func (o *Object) pushElem(v Value) {
 	o.elems[n] = v
 }
 
-// removeLastElem removes the last element. The storage keeps its size: see elemsOversized.
-func (o *Object) removeLastElem() {
-	n := len(o.elems) - 1
-	o.elems[n] = Value{}
+// removeLastElem removes the last of elems, the elements of o, which are its own. The storage
+// keeps its size: see elemsOversized.
+func (o *Object) removeLastElem(elems []Value) {
+	if ValidateExec && (len(elems) != len(o.elems) || &elems[0] != &o.elems[0] || o.Pinned&SharedElems != 0) {
+		panic("storage: removeLastElem with elements that are not the object's own")
+	}
+	n := len(elems) - 1
+	clearLeft(&elems[n])
+	// Reslicing the field itself stores only the length.
 	o.elems = o.elems[:n]
 }

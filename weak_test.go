@@ -170,6 +170,68 @@ func TestMovedStorageReleasesValues(t *testing.T) {
 	}
 }
 
+// TestRemovedElementsReleaseValues checks that the storage that the elements of an array keep
+// after a removal does not keep a removed object alive.
+func TestRemovedElementsReleaseValues(t *testing.T) {
+	// Each case keeps the array a and removes from it the object that wr refers to, which nothing
+	// else refers to.
+	for _, tc := range []struct {
+		name   string
+		remove string
+	}{
+		{
+			name:   "pop",
+			remove: `a = [0, 1, make()]; a.pop();`,
+		},
+		{
+			name:   "length",
+			remove: `a = [0, 1, make()]; a.length = 2;`,
+		},
+		{
+			name:   "length removing two",
+			remove: `a = [0, 1, make()]; a.length = 1;`,
+		},
+		{
+			name:   "splice",
+			remove: `a = [0, 1, make()]; a.splice(2, 1);`,
+		},
+		{
+			name:   "splice removing two",
+			remove: `a = [0, 1, make()]; a.splice(1, 2);`,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var vm ekuma.VM
+			if _, err := runScript(t.Context(), &vm, "remove", `
+				var a, wr;
+				function make() {
+					const o = {};
+					wr = new WeakRef(o);
+					return o;
+				}
+				(function () { `+tc.remove+` })();
+			`); err != nil {
+				t.Fatal(err)
+			}
+			live := true
+			for range 10 {
+				runtime.GC()
+				v, err := runScript(t.Context(), &vm, "check", `wr.deref() !== undefined`)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if live = v.Bool(); !live {
+					break
+				}
+				time.Sleep(time.Millisecond)
+			}
+			if live {
+				t.Error("the removed object is still reachable")
+			}
+		})
+	}
+}
+
 // TestLeftWithScopeReleasesObject checks that a suspended generator does not keep the object of
 // a with statement that it left alive.
 func TestLeftWithScopeReleasesObject(t *testing.T) {

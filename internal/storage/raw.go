@@ -46,7 +46,7 @@ func (r Raw) SetElem(i int, v Value) {
 }
 
 // ExtendElems makes the first n values of the storage of the elements the elements. The storage
-// must have room for them.
+// must have room for them, and the caller must store each new element before reading it.
 func (r Raw) ExtendElems(n int) {
 	r.o.elems = r.o.elems[:n]
 }
