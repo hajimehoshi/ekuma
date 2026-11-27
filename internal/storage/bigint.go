@@ -7,6 +7,7 @@ import (
 	"math"
 	"math/big"
 	"math/bits"
+	"slices"
 	"unsafe"
 
 	"github.com/hajimehoshi/ekuma/internal/bytecode"
@@ -47,12 +48,26 @@ func (v Value) BigInt() *big.Int {
 	return v.O.heapBigInt()
 }
 
+// maxSpareBigIntWords is the number of unused words of storage that NewBigInt keeps with a
+// magnitude however short it is.
+const maxSpareBigIntWords = 8
+
 // NewBigInt returns the BigInt i, which must not be modified afterward.
 func NewBigInt(i *big.Int) Value {
 	if i.IsInt64() {
 		return BigIntFromInt64(i.Int64())
 	}
-	return (&bigIntObject{}).init(i.Bits(), i.Sign() < 0)
+	words, negative := i.Bits(), i.Sign() < 0
+	// math/big gives a result a few spare words, and sizes the storage of some results, such as
+	// the difference of two close integers, for their operands. A magnitude that uses less than
+	// a quarter of its storage is copied, so that it does not keep the storage alive.
+	if unused := cap(words) - len(words); unused > max(3*len(words), maxSpareBigIntWords) {
+		if len(words) <= BigIntInlineWords+1 {
+			return NewBigIntFromWords(words, negative)
+		}
+		words = slices.Clone(words)
+	}
+	return (&bigIntObject{}).init(words, negative)
 }
 
 // BigIntInlineWords is the word count up to which arithmetic uses a bounded scratch buffer.

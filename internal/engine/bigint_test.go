@@ -6,6 +6,7 @@ package engine_test
 import (
 	"errors"
 	"fmt"
+	"math/big"
 	"slices"
 	"strings"
 	"testing"
@@ -69,6 +70,40 @@ func TestBigIntArithmeticSizeLimit(t *testing.T) {
 			t.Errorf("%s: %v", expr, err)
 		} else if !storage.ToBoolean(got) {
 			t.Errorf("%s is false", expr)
+		}
+	}
+}
+
+func TestBigIntResultStorageSize(t *testing.T) {
+	cx := newTestContext(t)
+	if _, err := runScript(cx, "setup", `var x = 1n << 65536n;`); err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		expr string
+		want *big.Int
+	}{
+		{
+			expr: `(x + (1n << 64n) + 5n) - x`,
+			want: new(big.Int).Add(new(big.Int).Lsh(big.NewInt(1), 64), big.NewInt(5)),
+		},
+		{
+			expr: `x - (x + (1n << 1280n))`,
+			want: new(big.Int).Neg(new(big.Int).Lsh(big.NewInt(1), 1280)),
+		},
+	} {
+		got, err := runScript(cx, "difference", tc.expr)
+		if err != nil {
+			t.Errorf("%s: %v", tc.expr, err)
+			continue
+		}
+		i := got.BigInt()
+		if i.Cmp(tc.want) != 0 {
+			t.Errorf("%s = %v, want %v", tc.expr, i, tc.want)
+		}
+		// The difference must not keep storage sized for its operands.
+		if words := i.Bits(); cap(words) > 4*len(words) {
+			t.Errorf("%s: a magnitude of %d words has a capacity of %d words", tc.expr, len(words), cap(words))
 		}
 	}
 }
