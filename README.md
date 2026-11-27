@@ -34,7 +34,7 @@ The zero value of `ekuma.VM` is ready to use. A `VM` must not be copied after fi
 
 | Engine | Latest release | Implementation | Execution strategy | Pure Go | Host platforms | ECMAScript | Modules | `Intl` | `Temporal` |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Ekuma | v0.1.0 (2026-11-26) | Written in Go | Bytecode interpreter | ✅ | Go targets | ES2026 | ✅ | ✅ | ✅ |
+| Ekuma | v0.2.0 (2026-11-28) | Written in Go | Bytecode interpreter | ✅ | Go targets | ES2026 | ✅ | ✅ | ✅ |
 | [goja](https://github.com/dop251/goja) | None | Written in Go | Bytecode interpreter | ✅ | Go targets | ES5.1, and much of ES2015 and later | ❌ | ❌ | ❌ |
 | [Sobek](https://github.com/grafana/sobek) | None | Written in Go | Bytecode interpreter | ✅ | Go targets | ES5.1, and much of ES2015 and later | ⚠️ Experimental | ❌ | ❌ |
 | [moejs](https://github.com/MoeForge/moejs) | v0.1.1 (2026-11-15) | Written in Go | Bytecode interpreter | ✅ | Go targets | Much of modern ECMAScript | ✅ | ⚠️ Partial | ❌ |
