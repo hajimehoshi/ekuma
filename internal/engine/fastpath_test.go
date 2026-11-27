@@ -94,6 +94,9 @@ var fastPathMethods = map[string]bool{
 
 	// The text of a string, in the words of its slots.
 	"Text": true,
+
+	// The flag of a string that an append can grow in place.
+	"Share": true,
 }
 
 // TestExecFastPathsCallNothing tests that the head of the interpreter loop and its first switch

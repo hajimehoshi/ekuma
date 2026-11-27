@@ -84,6 +84,39 @@ func HeadBuilder(o *Object) *ReversedBuilder {
 	return nil
 }
 
+// MarkExclusive marks the string o, a new tail that only the register of a variable refers to,
+// [ObjExclusive].
+func (o *Object) MarkExclusive() {
+	o.flags |= ObjExclusive
+}
+
+// Share clears [ObjExclusive] of the string o.
+func (o *Object) Share() {
+	o.flags &^= ObjExclusive
+}
+
+// ExtendExclusive makes the string o, which is marked [ObjExclusive] and was the tail of sb, hold
+// the contents of sb after strings were appended to them. ascii reports whether the appended
+// strings are ASCII.
+func (o *Object) ExtendExclusive(sb *strings.Builder, ascii bool) {
+	if ValidateExec && (o.flags&(ObjExclusive|ObjInterned|ObjReversed|ObjASCIIKnown) != ObjExclusive|ObjASCIIKnown || o.length != 0 || o.stringBuilder() != unsafe.Pointer(sb)) {
+		panic("storage: ExtendExclusive of a string that is not an exclusive tail")
+	}
+	n := len(o.Text())
+	s := wtf8.String(sb.String())
+	o.SetText(s)
+	if o.flags&ObjASCII != 0 {
+		if !ascii {
+			o.flags &^= ObjASCII
+		}
+		return
+	}
+	// The UTF-16 view of o stays valid for its prefix.
+	if m := o.Meta(); m != nil && m.Length != 0 {
+		m.Length += int32(wtf8.Len(s[n:]))
+	}
+}
+
 // Unreverse makes the reversed string o hold its contents in order.
 func (o *Object) Unreverse() {
 	var sb strings.Builder

@@ -45,11 +45,24 @@ func CanContinueAt(code []Instr, pc, to int) bool {
 	return false
 }
 
+// MayRead reports whether the instruction at pc of code, which must be valid, may read the
+// register r as [Operands.Reads] describes.
+func MayRead(code []Instr, pc, r int) bool {
+	in, x, ops := instrAt(code, pc)
+	return ops.covers(in, x, ops.Reads, r)
+}
+
 // MayWrite reports whether the instruction at pc of code, which must be valid, may write the
 // register r as [Operands.Writes] describes.
 func MayWrite(code []Instr, pc, r int) bool {
 	in, x, ops := instrAt(code, pc)
-	for _, w := range ops.Writes {
+	return ops.covers(in, x, ops.Writes, r)
+}
+
+// covers reports whether one of the runs of registers rs of the instruction in, followed by x,
+// holds the register r.
+func (ops *Operands) covers(in, x Instr, rs []Regs, r int) bool {
+	for _, w := range rs {
 		start := operand(in, x, w.At)
 		if start < 0 {
 			continue

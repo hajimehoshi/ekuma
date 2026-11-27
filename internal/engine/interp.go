@@ -507,6 +507,11 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 		case bytecode.OpMove:
 			regs[i.A] = regs[i.B]
 			continue
+		case bytecode.OpSeal:
+			if o := regs[i.A].O; o != nil && o.Kind == storage.KindString && o.Flags()&storage.ObjExclusive != 0 {
+				o.Share()
+			}
+			continue
 		case bytecode.OpRequireCoercible:
 			if !regs[i.A].IsNullish() {
 				continue
@@ -2226,6 +2231,16 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 			ag.frames[len(ag.frames)-1].pc = pc
 			if x.O != nil && y.O != nil && x.O.Kind == storage.KindString && y.O.Kind == storage.KindString {
 				regs[i.A] = ag.active.Concat(x, y)
+				continue
+			}
+			v := ag.active.addValues(x, y)
+			regs = ag.reload(regs, ag.frameBase(), fp)
+			regs[i.A] = v
+		case bytecode.OpAppend:
+			x, y := regs[i.A], regs[i.B]
+			ag.frames[len(ag.frames)-1].pc = pc
+			if x.O != nil && y.O != nil && x.O.Kind == storage.KindString && y.O.Kind == storage.KindString {
+				regs[i.A] = ag.active.Append(x, y)
 				continue
 			}
 			v := ag.active.addValues(x, y)

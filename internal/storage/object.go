@@ -44,6 +44,11 @@ const (
 // contents themselves needs [Object.Str].
 const ObjReversed = ObjFrozenLength
 
+// ObjExclusive marks a string that is the tail of its builder and that nothing refers to but the
+// register of the variable whose append made it, so that the next append to the variable can
+// extend it in place. Its bit is that of ObjSparse, which only objects use.
+const ObjExclusive = ObjSparse
+
 // objKept marks an interned string that the agent keeps alive for as long as it lives. Its bit is
 // that of ObjIsProto, which strings never use.
 const objKept = ObjIsProto

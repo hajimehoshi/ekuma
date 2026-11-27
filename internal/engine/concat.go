@@ -459,3 +459,64 @@ func (cx *ExecutionContext) extendHead(b *storage.Object, rb *storage.ReversedBu
 	}
 	return cx.NewBufferedString(s, flags, rb, meta)
 }
+
+// Append returns the concatenation of the strings a and b for an append to a variable that
+// holds a and receives the result. A string marked [storage.ObjExclusive] grows in place, and a
+// result that is a new tail is marked so.
+func (cx *ExecutionContext) Append(a, b storage.Value) storage.Value {
+	if a.O.Flags()&storage.ObjExclusive != 0 {
+		if sb := storage.TailBuilder(a.O); sb != nil && cx.appendInPlace(a, b, sb) {
+			return a
+		}
+	}
+	v := cx.Concat(a, b)
+	if v.O != a.O && v.O != b.O && storage.TailBuilder(v.O) != nil {
+		v.O.MarkExclusive()
+	}
+	return v
+}
+
+// appendInPlace appends the string b to the string a, which is marked [storage.ObjExclusive]
+// and is the tail of sb, and reports whether it did. It does not when b is reversed or when the
+// strings form a surrogate pair where they meet.
+func (cx *ExecutionContext) appendInPlace(a, b storage.Value, sb *strings.Builder) bool {
+	x := a.O.Text()
+	// An ASCII suffix cannot join a surrogate pair.
+	if b.O.Flags()&(storage.ObjASCIIKnown|storage.ObjASCII|storage.ObjReversed) == storage.ObjASCIIKnown|storage.ObjASCII {
+		y := b.O.Text()
+		if len(y) > storage.MaxStringLength-len(x) {
+			cx.ThrowRangeError("invalid string length")
+			return false
+		}
+		sb.WriteString(string(y))
+		a.O.ExtendExclusive(sb, true)
+		return true
+	}
+	// A string of at most shortstrings.MaxBytes bytes holds them in b.N.
+	if data := math.Float64bits(b.N); shortstrings.IsASCII(data) {
+		if n := b.StringByteLength(); n <= shortstrings.MaxBytes {
+			if n > storage.MaxStringLength-len(x) {
+				cx.ThrowRangeError("invalid string length")
+				return false
+			}
+			bytes := shortstrings.Bytes(data)
+			sb.Write(bytes[:n])
+			a.O.ExtendExclusive(sb, true)
+			return true
+		}
+	}
+	if b.O.Flags()&storage.ObjReversed != 0 {
+		return false
+	}
+	y := b.RawString()
+	if len(y) >= 3 && len(x) >= 3 && wtf8.JoinsPair(x, y) {
+		return false
+	}
+	if len(y) > storage.MaxStringLength-len(x) {
+		cx.ThrowRangeError("invalid string length")
+		return false
+	}
+	sb.WriteString(string(y))
+	a.O.ExtendExclusive(sb, storage.IsASCII(b, y))
+	return true
+}

@@ -1023,6 +1023,13 @@ func TestStringLengthLimits(t *testing.T) {
 			name: "built-in results longer than the string length limit",
 			src: `var s = "x".repeat(` + strconv.Itoa(ekuma.MaxStringLength) + `);
 				var r = [];
+				// The short appends make t the tail of a builder, which the last one would extend
+				// in place.
+				function append() {
+					var t = "0123456789";
+					for (var i = 0; i < 4; i++) t += "0123456789";
+					try { t += s; } catch (e) { if (t.length !== 50) throw new Error("changed"); throw e; }
+				}
 				for (var f of [
 					() => s.replace(/x/, "xx$'"),
 					() => s.replace("x", () => "xx"),
@@ -1034,6 +1041,7 @@ func TestStringLengthLimits(t *testing.T) {
 					() => Object.prototype.toString.call({get [Symbol.toStringTag]() { return s; }}),
 					() => Function("x", s, ""),
 					() => ({[Symbol(s)]: function () {}}),
+					append,
 				]) {
 					try { f(); r.push("no error"); } catch (e) { r.push(e instanceof RangeError); }
 				}
@@ -1041,7 +1049,7 @@ func TestStringLengthLimits(t *testing.T) {
 				var re = /x/g;
 				try { "axbx".replace(re, s); } catch (e) { r.push(e instanceof RangeError, re.lastIndex, RegExp.leftContext); }
 				r.join()`,
-			want: "true,true,true,true,true,true,true,true,true,true,true,0,axb",
+			want: "true,true,true,true,true,true,true,true,true,true,true,true,0,axb",
 		},
 		{
 			name: "BigInt strings longer than the string length limit",

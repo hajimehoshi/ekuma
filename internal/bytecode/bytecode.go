@@ -166,6 +166,8 @@ const (
 	OpPostIncGetIndex // like [OpPostInc], followed by an [OpGetIndex] with the key a, which it may run too
 	OpToString        // a = b converted to a string
 	OpConcat          // a = the concatenation of the c strings from b on
+	OpAppend          // a = a + b. The next OpAppend to a may extend the string that it leaves there in place, so any other read of a must follow an [OpSeal] of a
+	OpSeal            // make the string in a one that an [OpAppend] does not change
 
 	// Comparisons.
 	OpLt       // a = b < c

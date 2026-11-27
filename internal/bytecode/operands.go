@@ -1083,6 +1083,24 @@ var opcodes = [...]struct {
 		},
 		flow: FlowNext,
 	},
+	OpAppend: {
+		name: "OpAppend",
+		operands: Operands{
+			A:      OperandReg,
+			B:      OperandReg,
+			Reads:  regAB,
+			Writes: regA,
+		},
+		flow: FlowNext,
+	},
+	OpSeal: {
+		name: "OpSeal",
+		operands: Operands{
+			A:     OperandReg,
+			Reads: regA,
+		},
+		flow: FlowNext,
+	},
 
 	OpLt: {
 		name:     "OpLt",

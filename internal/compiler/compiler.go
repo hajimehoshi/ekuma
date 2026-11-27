@@ -84,6 +84,10 @@ type binding struct {
 	// initialized is set once the code compiled from then on always runs after the binding
 	// got its first value.
 	initialized bool
+
+	// appended is set once an OpAppend to the binding was compiled. Every other read of its
+	// register compiled from then on follows an OpSeal of it.
+	appended bool
 }
 
 // symbol is a variable name of the program being compiled.
@@ -313,6 +317,9 @@ type fn struct {
 
 	// tails are the calls in tail position of the expression being compiled.
 	tails []ast.Expr
+
+	// appendRegs holds the registers of the bindings that have appended set.
+	appendRegs []int32
 }
 
 type compiler struct {
@@ -730,6 +737,7 @@ func (f *fn) finish() *bytecode.Func {
 	b.Keys = releaseBuf(&sc.keyBufs, b.Keys)
 	b.Consts = releaseBuf(&sc.constBufs, b.Consts)
 	f.promoteCopies()
+	f.settleAppends()
 
 	// Give the upvalues of the bindings of outer functions back to those functions.
 	for i, u := range slices.Backward(f.upvals) {
@@ -1508,6 +1516,7 @@ func (f *fn) loadStatic(name string, r ref, dst int32, orUndef bool) {
 			f.emit(bytecode.OpCheckTDZ, r.b.reg, f.key(wtf8.String(name)), 0)
 		}
 		if r.b.reg != dst {
+			f.seal(r.b)
 			f.emit(bytecode.OpMove, dst, r.b.reg, 0)
 		}
 	case refUpval:
@@ -1699,6 +1708,15 @@ func (c *compiler) globalLexical(name string) bool {
 // read without a check, and -1 otherwise.
 func (f *fn) localReg(name string) int32 {
 	if b := f.uncheckedLocal(name); b != nil {
+		return b.reg
+	}
+	return -1
+}
+
+// readReg is localReg for an instruction that reads the register right away.
+func (f *fn) readReg(name string) int32 {
+	if b := f.uncheckedLocal(name); b != nil {
+		f.seal(b)
 		return b.reg
 	}
 	return -1

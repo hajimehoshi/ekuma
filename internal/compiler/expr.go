@@ -185,7 +185,7 @@ func (f *fn) bindingOperand(e ast.Expr) (reg int32, name string) {
 		// localReg excludes the uninitialized this of a derived constructor.
 		return f.localReg("this"), ""
 	case *ast.Identifier:
-		return f.localReg(e.Name), e.Name
+		return f.readReg(e.Name), e.Name
 	case *ast.AssignExpr:
 		if id, ok := e.Target.(*ast.Identifier); ok {
 			if r := f.assignableReg(id.Name); r >= 0 {
@@ -514,7 +514,7 @@ func (f *fn) stringChainParts(e ast.Expr, empty int32) {
 	r := int32(-1)
 	switch e := e.(type) {
 	case *ast.Identifier:
-		r = f.localReg(e.Name)
+		r = f.readReg(e.Name)
 	case *ast.ThisExpr:
 		r = f.localReg("this")
 	}
@@ -1442,6 +1442,9 @@ func (f *fn) methodReference(c *ast.MemberExpr, base int32) {
 	}
 	if p, ok := c.Property.(*ast.Identifier); ok && !c.Computed {
 		if obj := f.localReceiver(c.Object); obj >= 0 {
+			if id, ok := c.Object.(*ast.Identifier); ok {
+				f.sealLocal(id.Name)
+			}
 			f.chainCheck(c.Optional, obj)
 			f.setPos(p.Start())
 			f.emit(bytecode.OpGetMethod, base, obj, f.site(wtf8.String(p.Name)))
@@ -2109,6 +2112,12 @@ func (f *fn) assign(n *ast.AssignExpr, dst int32) {
 		switch {
 		case n.Op == ast.OpNone:
 			if local >= 0 {
+				if v, ok := n.Value.(*ast.BinaryExpr); ok && v.Op == ast.OpAdd {
+					if id, ok := v.Left.(*ast.Identifier); ok && id.Name == name && !f.clobbers(name, v.Right) && f.appends(name, local, v.Right) {
+						f.emitAppend(local, v.Right, dst)
+						return
+					}
+				}
 				if f.chainedStore(n.Value, name, local) {
 					if dst >= 0 && dst != local {
 						f.emit(bytecode.OpMove, dst, local, 0)
@@ -2123,7 +2132,7 @@ func (f *fn) assign(n *ast.AssignExpr, dst int32) {
 			if id, ok := n.Value.(*ast.Identifier); ok && scope == storeResolves && dst < 0 {
 				// An inert local variable keeps its value until the store, which can read
 				// its register.
-				if r := f.localReg(id.Name); r >= 0 {
+				if r := f.readReg(id.Name); r >= 0 {
 					f.storeVarTo(n, name, r, false, scope)
 					return
 				}
@@ -2146,6 +2155,11 @@ func (f *fn) assign(n *ast.AssignExpr, dst int32) {
 			f.patch(skip)
 		default:
 			if local >= 0 && !f.clobbers(name, n.Value) {
+				if n.Op == ast.OpAdd && f.appends(name, local, n.Value) {
+					f.emitAppend(local, n.Value, dst)
+					return
+				}
+				f.sealLocal(name)
 				if k, ok := numberLit(n.Value); ok {
 					if op, ok := constOps[n.Op]; ok {
 						f.emit(op, local, local, f.constNum(constOperand(op, k)))
