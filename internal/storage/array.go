@@ -4,6 +4,8 @@
 package storage
 
 import (
+	"encoding/binary"
+	"math"
 	"slices"
 	"strings"
 
@@ -449,39 +451,119 @@ func (r *RealmPart) JoinStrings(o *Object, length int64, sep wtf8.String) (Value
 	}
 	elems := o.elems
 	n := int64(len(sep)) * int64(max(len(elems)-1, 0))
+	var short bool
 	for i, e := range elems {
-		if e.O == nil || e.O.Kind != KindString || !e.IsASCII() {
+		if e.O == nil || e.O.Kind != KindString {
 			return Value{}, false
 		}
-		if n += int64(len(e.O.Text())); n > MaxStringLength {
+		// The bits of a short string that is not interned tell whether it is ASCII.
+		m := len(e.O.Text())
+		short = short || m <= shortstrings.MaxBytes
+		if m <= shortstrings.MaxBytes && e.O.flags&ObjInterned == 0 {
+			if !shortstrings.IsASCII(math.Float64bits(e.N)) {
+				return Value{}, false
+			}
+		} else if !e.IsASCII() {
+			return Value{}, false
+		}
+		if n += int64(m); n > MaxStringLength {
 			return Value{}, false
 		}
 		if i&(PollInterval-1) == PollInterval-1 {
 			r.Poll()
 		}
 	}
+	if short {
+		return r.joinShort(elems, sep, n), true
+	}
 	var b strings.Builder
 	b.Grow(int(n))
-	var buf [shortstrings.MaxBytes]byte
 	for i, e := range elems {
 		if i > 0 {
 			b.WriteString(string(sep))
 		}
-		if e.IsShortString() {
-			b.Write(e.AppendStringBytes(buf[:0]))
+		b.WriteString(string(e.O.Str()))
+		if i&(PollInterval-1) == PollInterval-1 {
+			r.Poll()
+		}
+	}
+	return r.newJoined(b.String()), true
+}
+
+// joinShort is JoinStrings for elements some of which are short strings. n is the byte length
+// of the result.
+func (r *RealmPart) joinShort(elems []Value, sep wtf8.String, n int64) Value {
+	var w joinWriter
+	w.sb.Grow(int(n))
+	var sepData uint64
+	if len(sep) <= shortstrings.MaxBytes {
+		sepData = shortstrings.Pack(sep)
+	}
+	for i, e := range elems {
+		if i > 0 && len(sep) > 0 {
+			if len(sep) <= shortstrings.MaxBytes {
+				w.writePacked(sepData, len(sep))
+			} else {
+				if w.k > 0 {
+					w.flush()
+				}
+				w.sb.WriteString(string(sep))
+			}
+		}
+		if m := len(e.O.Text()); m <= shortstrings.MaxBytes {
+			w.writePacked(math.Float64bits(e.N), m)
 		} else {
-			b.WriteString(string(e.O.Str()))
+			if w.k > 0 {
+				w.flush()
+			}
+			w.sb.WriteString(string(e.O.Str()))
 		}
 		if i&(PollInterval-1) == PollInterval-1 {
 			r.Poll()
 		}
 	}
-	v := r.NewString(wtf8.String(b.String()))
+	w.flush()
+	return r.newJoined(w.sb.String())
+}
+
+// newJoined returns the ASCII string s that JoinStrings joined.
+func (r *RealmPart) newJoined(s string) Value {
+	v := r.NewString(wtf8.String(s))
 	if !v.IsShortString() {
 		// A string longer than a short one is a new object.
 		v.O.flags |= ObjASCIIKnown | ObjASCII
 	}
-	return v, true
+	return v
+}
+
+// joinChunk is the number of bytes of packed strings that a joinWriter collects before it
+// writes them to its builder.
+const joinChunk = 128
+
+// joinWriter writes the parts of a join to sb, collecting packed strings in chunk. A longer part
+// goes to sb after a flush of chunk.
+type joinWriter struct {
+	sb strings.Builder
+
+	// k is the number of bytes in chunk. It stays below joinChunk between writes, so that a
+	// packed string's eight bytes always fit.
+	k     int
+	chunk [joinChunk + shortstrings.MaxBytes]byte
+}
+
+// writePacked writes the packed string data whose byte length is n.
+func (w *joinWriter) writePacked(data uint64, n int) {
+	binary.LittleEndian.PutUint64(w.chunk[w.k:], data)
+	w.k += n
+	if w.k >= joinChunk {
+		w.flush()
+	}
+}
+
+// flush writes the collected bytes to sb.
+func (w *joinWriter) flush() {
+	w.sb.Write(w.chunk[:w.k])
+	w.k = 0
 }
 
 // ReverseElements is quiet.Context.ReverseElements.
