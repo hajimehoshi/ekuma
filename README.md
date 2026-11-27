@@ -49,8 +49,6 @@ The zero value of `ekuma.VM` is ready to use. A `VM` must not be copied after fi
 Ekuma's [CI](.github/workflows/test.yml) covers Linux, macOS, Windows, `386` on Linux and Windows,
 and browser WebAssembly (`js/wasm`).
 
-goja and Sobek were compared at their latest commits as of 2026-11-16.
-
 Ekuma uses a register-based interpreter, hidden classes, inline property caches, and dense
 array storage. JavaScript calls reuse interpreter stack space, including proper tail calls.
 On 64-bit platforms, a value occupies two words and can hold a number, a signed 64-bit BigInt,
@@ -67,19 +65,20 @@ the suite. Lower is faster.
 ```
                      V8 benchmark    QuickJS
                      suite v7        microbench     Version
-Ekuma                 1.00           1.00           v0.0.0-20261126103810-5acd587489b5
-goja                  7.55           5.75           v0.0.0-20261118204651-8dfece3d1e1d
-Sobek                 7.43           5.77           v0.0.0-20261119094010-6eceb967bb5b
-moejs                 0.975          1.21           v0.1.1
-otto                 35.7    (9/10)   n/a           v0.5.1
-modernc.org/quickjs   5.07           3.88           v0.27.0
-QJS                   6.76   (6/10)  6.17  (69/74)  v0.0.6
-QuickJS (C)           1.58           1.05           v0.0.0-20260604125329-3d5e064e9dd6
-v8go --jitless        0.862          0.702          v0.44.0
-v8go                  0.0426         0.137          v0.44.0
+Ekuma                 1.00           1.00           v0.2.0-alpha.0.20261127071217-256de7e5b42d
+goja                  8.06           5.92           v0.0.0-20261118204651-8dfece3d1e1d
+Sobek                 8.12           5.87           v0.0.0-20261119094010-6eceb967bb5b
+moejs                 1.04           1.23           v0.1.1
+otto                 41.6    (9/10)   n/a           v0.5.1
+modernc.org/quickjs   5.56           4.01           v0.27.0
+BeastJS               0.950          0.711          v0.33.2
+QJS                   7.25   (6/10)  6.27  (69/74)  v0.0.6
+QuickJS (C)           1.70           1.07           v0.0.0-20260604125329-3d5e064e9dd6
+v8go --jitless        0.935          0.715          v0.44.0
+v8go                  0.0527         0.136          v0.44.0
 ```
 
-Measured on 2026-11-26: Apple M3 Pro, macOS 27.2, go1.27.4.
+Measured on 2026-11-27: Apple M3 Pro, macOS 27.2, go1.27.4.
 
 <!-- END jsbench summary -->
 
