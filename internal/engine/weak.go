@@ -20,25 +20,9 @@ func (cx *ExecutionContext) NewWeakMapObject(proto *storage.Object) *storage.Obj
 	return storage.NewObjectWithState(cx.ShapeFor(proto), storage.ClassWeakMap, storage.NewWeakTable())
 }
 
-// WeakMapData returns the [[WeakMapData]] of the WeakMap object v, or nil when v is not a WeakMap object.
-func WeakMapData(v storage.Value) *storage.WeakTable {
-	if v.IsObject() && v.O.Class == storage.ClassWeakMap {
-		return v.O.ExtState().(*storage.WeakTable)
-	}
-	return nil
-}
-
 // NewWeakSetObject returns a WeakSet object without entries with the prototype proto.
 func (cx *ExecutionContext) NewWeakSetObject(proto *storage.Object) *storage.Object {
 	return storage.NewObjectWithState(cx.ShapeFor(proto), storage.ClassWeakSet, storage.NewWeakTable())
-}
-
-// WeakSetData returns the [[WeakSetData]] of the WeakSet object v, or nil when v is not a WeakSet object.
-func WeakSetData(v storage.Value) *storage.WeakTable {
-	if v.IsObject() && v.O.Class == storage.ClassWeakSet {
-		return v.O.ExtState().(*storage.WeakTable)
-	}
-	return nil
 }
 
 // NewWeakRefObject returns a WeakRef object with the prototype proto whose target is v,

@@ -95,6 +95,10 @@ var objectStorageExceptions = map[string]storageException{
 		count:  1,
 		reason: "gives the object a tail of its own",
 	},
+	"Object.ensureWeak": {
+		count:  1,
+		reason: "gives the object a tail of its own with inline weak entries",
+	},
 	"Object.text": {
 		count:  1,
 		reason: "the text of a string or a symbol, which has no slots, is in their words",

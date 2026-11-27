@@ -5,6 +5,7 @@ package builtin
 
 import (
 	"github.com/hajimehoshi/ekuma/internal/engine"
+	"github.com/hajimehoshi/ekuma/internal/quiet"
 	"github.com/hajimehoshi/ekuma/internal/storage"
 )
 
@@ -23,7 +24,7 @@ func requireHoldable(cx *engine.ExecutionContext, v storage.Value, what string) 
 }
 
 func thisWeakMap(cx *engine.ExecutionContext, this storage.Value, name string) *storage.WeakTable {
-	t := engine.WeakMapData(this)
+	t := quiet.WeakMapData(this)
 	if t == nil {
 		cx.ThrowTypeError("WeakMap.prototype." + name + " called on incompatible receiver " + cx.DisplayString(this))
 	}
@@ -31,11 +32,23 @@ func thisWeakMap(cx *engine.ExecutionContext, this storage.Value, name string) *
 }
 
 var (
-	nativeWeakMapConstructor         = engine.RegisterNative(weakMapConstructor)
-	nativeWeakMapDelete              = engine.RegisterNative(weakMapDelete)
-	nativeWeakMapGet                 = engine.RegisterNative(weakMapGet)
-	nativeWeakMapHas                 = engine.RegisterNative(weakMapHas)
-	nativeWeakMapSet                 = engine.RegisterNative(weakMapSet)
+	nativeWeakMapConstructor = engine.RegisterNative(weakMapConstructor)
+	nativeWeakMapDelete      = engine.RegisterNativeWithKernels(weakMapDelete, engine.Kernels{
+		Method1:  quiet.WeakMapDeleteKernel,
+		Contract: shortContract,
+	})
+	nativeWeakMapGet = engine.RegisterNativeWithKernels(weakMapGet, engine.Kernels{
+		Method1:  quiet.WeakMapGetKernel,
+		Contract: shortContract,
+	})
+	nativeWeakMapHas = engine.RegisterNativeWithKernels(weakMapHas, engine.Kernels{
+		Method1:  quiet.WeakMapHasKernel,
+		Contract: shortContract,
+	})
+	nativeWeakMapSet = engine.RegisterNativeWithKernels(weakMapSet, engine.Kernels{
+		Method2:  quiet.WeakMapSetKernel,
+		Contract: shortContract,
+	})
 	nativeWeakMapGetOrInsert         = engine.RegisterNative(weakMapGetOrInsert)
 	nativeWeakMapGetOrInsertComputed = engine.RegisterNative(weakMapGetOrInsertComputed)
 )
@@ -68,7 +81,7 @@ func weakMapConstructor(cx *engine.ExecutionContext, this storage.Value, args []
 	adder := adderOf(cx, m, cx.Key(storage.KeySet))
 	var fast func(k, v storage.Value)
 	if adder == cx.Intrinsic(storage.IntrinsicWeakMapPrototypeSet) {
-		t := engine.WeakMapData(storage.ObjectValue(m))
+		t := quiet.WeakMapData(storage.ObjectValue(m))
 		fast = func(k, v storage.Value) {
 			if !cx.CanBeHeldWeakly(k) {
 				// The TypeError belongs to the native set call.
@@ -139,7 +152,7 @@ func weakMapGetOrInsertComputed(cx *engine.ExecutionContext, this storage.Value,
 }
 
 func thisWeakSet(cx *engine.ExecutionContext, this storage.Value, name string) *storage.WeakTable {
-	t := engine.WeakSetData(this)
+	t := quiet.WeakSetData(this)
 	if t == nil {
 		cx.ThrowTypeError("WeakSet.prototype." + name + " called on incompatible receiver " + cx.DisplayString(this))
 	}
@@ -148,9 +161,18 @@ func thisWeakSet(cx *engine.ExecutionContext, this storage.Value, name string) *
 
 var (
 	nativeWeakSetConstructor = engine.RegisterNative(weakSetConstructor)
-	nativeWeakSetAdd         = engine.RegisterNative(weakSetAdd)
-	nativeWeakSetDelete      = engine.RegisterNative(weakSetDelete)
-	nativeWeakSetHas         = engine.RegisterNative(weakSetHas)
+	nativeWeakSetAdd         = engine.RegisterNativeWithKernels(weakSetAdd, engine.Kernels{
+		Method1:  quiet.WeakSetAddKernel,
+		Contract: shortContract,
+	})
+	nativeWeakSetDelete = engine.RegisterNativeWithKernels(weakSetDelete, engine.Kernels{
+		Method1:  quiet.WeakSetDeleteKernel,
+		Contract: shortContract,
+	})
+	nativeWeakSetHas = engine.RegisterNativeWithKernels(weakSetHas, engine.Kernels{
+		Method1:  quiet.WeakSetHasKernel,
+		Contract: shortContract,
+	})
 )
 
 func initWeakSet(cx *engine.ExecutionContext) {
@@ -177,7 +199,7 @@ func weakSetConstructor(cx *engine.ExecutionContext, this storage.Value, args []
 	}
 	adder := adderOf(cx, s, cx.Key(storage.KeyAdd))
 	original := adder == cx.Intrinsic(storage.IntrinsicWeakSetPrototypeAdd)
-	t := engine.WeakSetData(storage.ObjectValue(s))
+	t := quiet.WeakSetData(storage.ObjectValue(s))
 	cx.Iterate(iterable, func(e storage.Value) bool {
 		if original && cx.CanBeHeldWeakly(e) {
 			t.Set(e, storage.True)

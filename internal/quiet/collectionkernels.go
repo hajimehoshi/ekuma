@@ -229,3 +229,75 @@ func SetIteratorPairStep(state any) (storage.Value, storage.Value, PairStep) {
 	}
 	return k, k, PairYielded
 }
+
+// WeakMapData returns the [[WeakMapData]] of this, or nil when this is not a WeakMap object.
+func WeakMapData(this storage.Value) *storage.WeakTable {
+	if this.IsObject() && this.O.Class == storage.ClassWeakMap {
+		return this.O.ExtState().(*storage.WeakTable)
+	}
+	return nil
+}
+
+// WeakSetData returns the [[WeakSetData]] of this, or nil when this is not a WeakSet object.
+func WeakSetData(this storage.Value) *storage.WeakTable {
+	if this.IsObject() && this.O.Class == storage.ClassWeakSet {
+		return this.O.ExtState().(*storage.WeakTable)
+	}
+	return nil
+}
+
+func WeakMapDeleteKernel(q Context, this, k storage.Value) (storage.Value, bool) {
+	if t := WeakMapData(this); t != nil {
+		return storage.Bool(q.Realm.CanBeHeldWeakly(k) && t.Delete(k)), true
+	}
+	return storage.Undefined, false
+}
+
+func WeakMapGetKernel(q Context, this, k storage.Value) (storage.Value, bool) {
+	t := WeakMapData(this)
+	if t == nil {
+		return storage.Undefined, false
+	}
+	if !q.Realm.CanBeHeldWeakly(k) {
+		return storage.Undefined, true
+	}
+	v, _ := t.Get(k)
+	return v, true
+}
+
+func WeakMapHasKernel(q Context, this, k storage.Value) (storage.Value, bool) {
+	if t := WeakMapData(this); t != nil {
+		return storage.Bool(q.Realm.CanBeHeldWeakly(k) && t.Has(k)), true
+	}
+	return storage.Undefined, false
+}
+
+func WeakMapSetKernel(q Context, this, k, v storage.Value) (storage.Value, bool) {
+	if t := WeakMapData(this); t != nil && q.Realm.CanBeHeldWeakly(k) {
+		t.Set(k, v)
+		return this, true
+	}
+	return storage.Undefined, false
+}
+
+func WeakSetAddKernel(q Context, this, k storage.Value) (storage.Value, bool) {
+	if t := WeakSetData(this); t != nil && q.Realm.CanBeHeldWeakly(k) {
+		t.Set(k, storage.True)
+		return this, true
+	}
+	return storage.Undefined, false
+}
+
+func WeakSetDeleteKernel(q Context, this, k storage.Value) (storage.Value, bool) {
+	if t := WeakSetData(this); t != nil {
+		return storage.Bool(q.Realm.CanBeHeldWeakly(k) && t.Delete(k)), true
+	}
+	return storage.Undefined, false
+}
+
+func WeakSetHasKernel(q Context, this, k storage.Value) (storage.Value, bool) {
+	if t := WeakSetData(this); t != nil {
+		return storage.Bool(q.Realm.CanBeHeldWeakly(k) && t.Has(k)), true
+	}
+	return storage.Undefined, false
+}

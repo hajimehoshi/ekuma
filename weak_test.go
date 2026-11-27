@@ -452,25 +452,94 @@ func TestCompletedGeneratorReleasesTemplateSite(t *testing.T) {
 	}
 }
 
-func TestWeakMapValueReferencesKey(t *testing.T) {
+func TestWeakMapEntryTransitions(t *testing.T) {
+	var vm ekuma.VM
+	v, err := runScript(t.Context(), &vm, "entries", `
+		const map = new WeakMap();
+		const keys = Array.from({length: 40}, () => ({}));
+		const anchor = new WeakSet(keys);
+		keys.forEach((key, i) => map.set(key, i));
+		const key = keys[0], value = {};
+		const child = Object.create(key);
+		map.set(key, value);
+		const replaced = map.get(key) === value;
+		map.set(key, undefined);
+		const storedUndefined = map.has(key) && map.get(key) === undefined;
+		const minBigInt = -(1n << 63n);
+		map.set(key, minBigInt);
+		const storedBigInt = map.get(key) === minBigInt;
+		anchor.delete(key);
+		map.set(key, 42n);
+		const moved = map.get(key) === 42n && Object.getPrototypeOf(child) === key;
+		const deleted = map.delete(key) && !map.has(key);
+		map.set(keys[1], {});
+		const deletedHeapValue = map.delete(keys[1]) && !map.has(keys[1]);
+		const neighbors = keys.slice(2).every((k, i) => map.get(k) === i + 2);
+		map.set(keys[1], -1);
+		[replaced, storedUndefined, storedBigInt, moved, deleted, deletedHeapValue, neighbors, map.get(keys[1])].join();
+	`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := v.String(), "true,true,true,true,true,true,true,-1"; got != want {
+		t.Errorf("replaced, stored undefined, stored BigInt, moved, deleted, deleted heap value, neighbors, reinserted: got %s, want %s", got, want)
+	}
+}
+
+func TestWeakMapCompactsCollectedEntries(t *testing.T) {
 	var vm ekuma.VM
 	if _, err := runScript(t.Context(), &vm, "setup", `
-		var m = new WeakMap();
-		var ref = (() => {
-			let k = {};
-			m.set(k, {key: k});
-			return new WeakRef(k);
+		const anchor = new WeakSet(), map = new WeakMap(), kept = [];
+		let dropped;
+		(() => {
+			for (let i = 0; i < 44; i++) {
+				const key = {};
+				anchor.add(key);
+				map.set(key, i);
+				if (i % 7 === 0) kept.push(key);
+				if (i === 43) dropped = new WeakRef(key);
+			}
 		})();
 	`); err != nil {
 		t.Fatal(err)
 	}
 	runtime.GC()
-	v, err := runScript(t.Context(), &vm, "key", `ref.deref() === undefined`)
+	v, err := runScript(t.Context(), &vm, "compact", `
+		const key = {};
+		anchor.add(key);
+		map.set(key, 44);
+		[dropped.deref() === undefined, kept.every((k, i) => map.get(k) === i * 7), map.get(key)].join();
+	`)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !v.Bool() {
-		t.Error("the value kept its WeakMap key alive")
+	if got, want := v.String(), "true,true,44"; got != want {
+		t.Errorf("collected key, surviving entries, new entry: got %s, want %s", got, want)
+	}
+}
+
+func TestWeakMapValueReferencesKey(t *testing.T) {
+	var vm ekuma.VM
+	if _, err := runScript(t.Context(), &vm, "setup", `
+		var m = new WeakMap(), anchor = new WeakSet();
+		var refs = (() => {
+			const inline = {}, secondary = {}, primitive = Symbol();
+			anchor.add(secondary).add(primitive);
+			m.set(inline, {key: inline});
+			m.set(secondary, {key: secondary});
+			m.set(primitive, 1);
+			return [inline, secondary, primitive].map(key => new WeakRef(key));
+		})();
+	`); err != nil {
+		t.Fatal(err)
+	}
+	runtime.GC()
+	v, err := runScript(t.Context(), &vm, "keys", `refs.map(ref => ref.deref() === undefined).join()`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := v.String(), "true,true,true"; got != want {
+		t.Errorf("collected keys (inline heap value, secondary heap value, secondary primitive): got %s, want %s", got, want)
 	}
 }
 

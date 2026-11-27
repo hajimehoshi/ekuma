@@ -233,8 +233,8 @@ type objectTail struct {
 	// For a string that is not interned it is the interned string with the same content,
 	// once that was looked up, or the builder that the string is the tail or the head of (see
 	// concat.go).
-	// When the object has side data, Ext is its *ObjectMeta, which holds the internal state
-	// instead. See [Object.ExtState] and [Object.Meta].
+	// Side data can occupy Ext as *ObjectMeta or *weakEntries. ObjectMeta also holds any
+	// internal state. See [Object.ExtState] and [Object.Meta].
 	Ext any
 }
 
@@ -278,6 +278,12 @@ func (o *plainObject) Init() *Object {
 	return &o.Object
 }
 
+// weakTail gives an object its own tail and entry store in one allocation.
+type weakTail struct {
+	objectTail
+	entries weakEntries
+}
+
 // ObjectMeta is the side data that few objects need: what indexing a non-ASCII string needs,
 // the entries in weak collections of an object or a symbol, the empty shapes of the objects
 // whose prototype is this object, and the room that removing the first elements of an array left.
@@ -315,16 +321,29 @@ type ObjectMeta struct {
 
 // ExtState returns the internal state of o.
 func (o *Object) ExtState() any {
-	if m, ok := o.Ext.(*ObjectMeta); ok {
-		return m.Ext
+	switch ext := o.Ext.(type) {
+	case *ObjectMeta:
+		return ext.Ext
+	case *weakEntries:
+		return nil
+	default:
+		return ext
 	}
-	return o.Ext
 }
 
 // SetExtState sets the internal state of o to v.
 func (o *Object) SetExtState(v any) {
-	if m, ok := o.Ext.(*ObjectMeta); ok {
-		m.Ext = v
+	switch ext := o.Ext.(type) {
+	case *ObjectMeta:
+		ext.Ext = v
+		return
+	case *weakEntries:
+		if v != nil {
+			o.ownTail().Ext = &ObjectMeta{
+				weak: ext,
+				Ext:  v,
+			}
+		}
 		return
 	}
 	if v == nil && o.objectTail == &zeroTail {
@@ -362,9 +381,48 @@ func (o *Object) ensureMeta() *ObjectMeta {
 		return m
 	}
 	t := o.ownTail()
-	m := &ObjectMeta{Ext: t.Ext}
+	m := &ObjectMeta{}
+	if w, ok := t.Ext.(*weakEntries); ok {
+		m.weak = w
+	} else {
+		m.Ext = t.Ext
+	}
 	t.Ext = m
 	return m
+}
+
+func (o *Object) weak() *weakEntries {
+	switch ext := o.Ext.(type) {
+	case *weakEntries:
+		return ext
+	case *ObjectMeta:
+		return ext.weak
+	default:
+		return nil
+	}
+}
+
+func (o *Object) ensureWeak() *weakEntries {
+	switch ext := o.Ext.(type) {
+	case *weakEntries:
+		return ext
+	case nil:
+		if o.objectTail == &zeroTail {
+			t := &weakTail{}
+			t.Ext = &t.entries
+			o.objectTail = &t.objectTail
+			return &t.entries
+		}
+		w := &weakEntries{}
+		o.ownTail().Ext = w
+		return w
+	default:
+		m := o.ensureMeta()
+		if m.weak == nil {
+			m.weak = &weakEntries{}
+		}
+		return m.weak
+	}
 }
 
 // DelegatesPropertyAccess reports whether a lookup must use the object's property operations
