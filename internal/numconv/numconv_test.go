@@ -41,6 +41,17 @@ func TestNumberToString(t *testing.T) {
 	}
 }
 
+func TestAppendPrecision(t *testing.T) {
+	const prefix = "value="
+	// The initial capacity fits exponential notation, while fixed notation needs more space.
+	b := make([]byte, len(prefix), len(prefix)+26)
+	copy(b, prefix)
+	const want = prefix + "-0.0000011000000000000000561"
+	if got := string(numconv.AppendPrecision(b, -0.0000011, 20)); got != want {
+		t.Errorf("AppendPrecision = %q, want %q", got, want)
+	}
+}
+
 func TestStringToNumber(t *testing.T) {
 	nan := math.NaN()
 	tests := []struct {

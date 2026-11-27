@@ -39,6 +39,11 @@ func (q Context) NewString(s wtf8.String) storage.Value {
 	return q.Realm.NewString(s)
 }
 
+// NewASCIIStringBytes is [storage.RealmPart.NewASCIIStringBytes].
+func (q Context) NewASCIIStringBytes(b []byte) storage.Value {
+	return q.Realm.NewASCIIStringBytes(b)
+}
+
 // UnitString is [storage.RealmPart.UnitString].
 func (q Context) UnitString(u uint16) storage.Value {
 	return q.Realm.UnitString(u)

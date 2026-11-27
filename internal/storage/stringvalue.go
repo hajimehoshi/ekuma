@@ -4,6 +4,7 @@
 package storage
 
 import (
+	"encoding/binary"
 	"math"
 	"strings"
 	"unicode/utf8"
@@ -114,17 +115,52 @@ func (r *RealmPart) builtString(b *shortstrings.Builder) Value {
 	}
 }
 
+// NewASCIIStringBytes returns the string value for the ASCII bytes b.
+func (r *RealmPart) NewASCIIStringBytes(b []byte) Value {
+	switch len(b) {
+	case 0:
+		return r.Strings.Empty
+	case 1:
+		return r.Strings.Character(b[0])
+	}
+	if len(b) <= shortstrings.MaxBytes {
+		return r.shortStringBytes(b)
+	}
+	return r.newLongASCIIString(b)
+}
+
+func (r *RealmPart) shortStringBytes(b []byte) Value {
+	var data [shortstrings.MaxBytes]byte
+	copy(data[:], b)
+	return Value{
+		N: math.Float64frombits(binary.LittleEndian.Uint64(data[:])),
+		O: &r.Shapes.ShortStrings[len(b)],
+	}
+}
+
+func (r *RealmPart) newLongASCIIString(b []byte) Value {
+	return Value{
+		O: newText(&textObject{
+			Kind:       KindString,
+			flags:      ObjASCIIKnown | ObjASCII,
+			shape:      r.Shapes.String,
+			text:       wtf8.String(b),
+			objectTail: &zeroTail,
+		}),
+	}
+}
+
 // NumberToString is quiet.Context.NumberToString.
 func (r *RealmPart) NumberToString(n float64) Value {
 	var buf [32]byte
-	text := numconv.AppendNumber(buf[:0], n)
-	if len(text) == 1 {
-		return r.Strings.Character(text[0])
+	b := numconv.AppendNumber(buf[:0], n)
+	if len(b) == 1 {
+		return r.Strings.Character(b[0])
 	}
-	if len(text) <= shortstrings.MaxBytes {
-		return r.ShortString(wtf8.String(text))
+	if len(b) <= shortstrings.MaxBytes {
+		return r.shortStringBytes(b)
 	}
-	return r.NewString(wtf8.String(text))
+	return r.newLongASCIIString(b)
 }
 
 func (v Value) ShortText() wtf8.String {
