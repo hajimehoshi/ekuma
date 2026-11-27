@@ -34,17 +34,37 @@ const _ uint = 1<<storage.PrependShift - 1 - uint(storage.BufferAfter)
 
 // Concat returns the concatenation of the strings a and b.
 func (cx *ExecutionContext) Concat(a, b storage.Value) storage.Value {
-	if sb := storage.TailBuilder(a.O); sb != nil && b.O.Flags()&(storage.ObjASCIIKnown|storage.ObjASCII|storage.ObjReversed) == storage.ObjASCIIKnown|storage.ObjASCII {
-		y := b.O.Text()
-		if y == "" {
-			return a
-		}
-		if len(y) > storage.MaxStringLength-len(a.O.Text()) {
-			cx.ThrowRangeError("invalid string length")
-		}
+	if sb := storage.TailBuilder(a.O); sb != nil {
 		// An ASCII suffix cannot join a surrogate pair.
-		sb.WriteString(string(y))
-		return cx.extendTail(a.O, sb, true)
+		if b.O.Flags()&(storage.ObjASCIIKnown|storage.ObjASCII|storage.ObjReversed) == storage.ObjASCIIKnown|storage.ObjASCII {
+			y := b.O.Text()
+			if y == "" {
+				return a
+			}
+			if len(y) > storage.MaxStringLength-len(a.O.Text()) {
+				cx.ThrowRangeError("invalid string length")
+			}
+			sb.WriteString(string(y))
+			return cx.extendTail(a.O, sb, true)
+		}
+		// A string of at most shortstrings.MaxBytes bytes holds them in b.N, and its object need not
+		// know that they are ASCII.
+		if data := math.Float64bits(b.N); shortstrings.IsASCII(data) {
+			if n := b.StringByteLength(); n <= shortstrings.MaxBytes {
+				if n == 0 {
+					return a
+				}
+				if n > storage.MaxStringLength-len(a.O.Text()) {
+					cx.ThrowRangeError("invalid string length")
+					// ThrowRangeError does not return. Returning keeps b.N out of what
+					// Concat saves on entry.
+					return storage.Undefined
+				}
+				bytes := shortstrings.Bytes(data)
+				sb.Write(bytes[:n])
+				return cx.extendTail(a.O, sb, true)
+			}
+		}
 	}
 	if b.O.Flags()&storage.ObjReversed != 0 && a.O.Flags()&(storage.ObjASCIIKnown|storage.ObjASCII|storage.ObjReversed) == storage.ObjASCIIKnown|storage.ObjASCII {
 		if rb := storage.HeadBuilder(b.O); rb != nil {
