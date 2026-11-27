@@ -1035,6 +1035,12 @@ func TestStringLengthLimits(t *testing.T) {
 					for (var i = 0; i < 4; i++) t += "0123456789";
 					try { t += s; } catch (e) { if (t.length !== 50) throw new Error("changed"); throw e; }
 				}
+				// The same for prepends, which make u the head of a builder.
+				function prepend() {
+					var u = "0123456789";
+					for (var i = 0; i < 4; i++) u = "0123456789" + u;
+					try { u = s + u; } catch (e) { if (u.length !== 50) throw new Error("changed"); throw e; }
+				}
 				for (var f of [
 					() => s.replace(/x/, "xx$'"),
 					() => s.replace("x", () => "xx"),
@@ -1047,6 +1053,7 @@ func TestStringLengthLimits(t *testing.T) {
 					() => Function("x", s, ""),
 					() => ({[Symbol(s)]: function () {}}),
 					append,
+					prepend,
 				]) {
 					try { f(); r.push("no error"); } catch (e) { r.push(e instanceof RangeError); }
 				}
@@ -1054,7 +1061,7 @@ func TestStringLengthLimits(t *testing.T) {
 				var re = /x/g;
 				try { "axbx".replace(re, s); } catch (e) { r.push(e instanceof RangeError, re.lastIndex, RegExp.leftContext); }
 				r.join()`,
-			want: "true,true,true,true,true,true,true,true,true,true,true,true,0,axb",
+			want: "true,true,true,true,true,true,true,true,true,true,true,true,true,0,axb",
 		},
 		{
 			name: "BigInt strings longer than the string length limit",
