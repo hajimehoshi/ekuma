@@ -59,6 +59,36 @@ for (var i = 0; i < 40; i++) {
 	assert.sameValue(kept[2 * i + 1], i % 3 ? 0x78 : 0x65e5, "last unit " + i);
 }
 
+// Lengths read between appends that extend the strings in place.
+function lengthsOnly(start, part) {
+	var r = start, kept = [];
+	for (var i = 0; i < 40; i++) {
+		r += "" + part;
+		kept.push(r.length);
+	}
+	kept.push(r);
+	return kept;
+}
+// The last case forms a surrogate pair at each append.
+var cases = [[long, "x"], ["é" + long, "x"], [long, "日"], ["é" + long, "\u{1f600}"], [long + "\ud83d", "\ude00\ud83d"]];
+for (var c = 0; c < cases.length; c++) {
+	var got = lengthsOnly(cases[c][0], cases[c][1]);
+	for (var i = 0; i < 40; i++) {
+		assert.sameValue(got[i], cases[c][0].length + (i + 1) * cases[c][1].length, "length " + i + " of case " + c);
+	}
+	assert.sameValue(got[40], cases[c][0] + cases[c][1].repeat(40), "string of case " + c);
+}
+
+// A padding loop whose condition reads the length.
+function pad(s, n) {
+	var r = s;
+	while (r.length < n) {
+		r += "-";
+	}
+	return r;
+}
+assert.sameValue(pad("é" + long, 80), "é" + long + "-".repeat(80 - long.length - 1));
+
 // The length of a string that is not ASCII, read before appends and after them.
 function lengthAround(n) {
 	var r = "é" + long;

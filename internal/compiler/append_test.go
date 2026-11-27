@@ -128,6 +128,11 @@ func TestAppend(t *testing.T) {
 			concats: 1,
 		},
 		{
+			name:    "read after a write before the append in a loop",
+			src:     `function f(n) { var r, s; for (var i = 0; i < n; i++) { r = "<"; s = r; r += "x"; } return s; }`,
+			appends: 1,
+		},
+		{
 			name:    "read in a handler before the append",
 			src:     `function f(n) { var r = "", s; for (var i = 0; i < n; i++) { try { h(); } catch (e) { s = r; } r += "x"; } return s; }`,
 			concats: 1,
@@ -226,5 +231,26 @@ func TestAppendSeals(t *testing.T) {
 	// h(r) and return r.
 	if reads != 2 {
 		t.Errorf("reads of r%d: got %d, want 2", r, reads)
+	}
+}
+
+// TestAppendLengthReads tests that a read of the length of a variable with appends needs no seal
+// of its register.
+func TestAppendLengthReads(t *testing.T) {
+	const src = `function f(n) { var r = "", m = 0; for (var i = 0; i < n; i++) { r += "x"; m += r.length; } return m; }`
+	prog, err := parser.ParseScript(wtf8.String(src), parser.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	s, err := compiler.CompileScript(prog, "test.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	f := findFunc(s, "f")
+	if got := countOps(f, bytecode.OpAppendK); got != 1 {
+		t.Errorf("OpAppendK instructions: got %d, want 1", got)
+	}
+	if got := countOps(f, bytecode.OpSeal); got != 0 {
+		t.Errorf("OpSeal instructions: got %d, want 0", got)
 	}
 }

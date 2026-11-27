@@ -12,7 +12,8 @@ import (
 
 // An OpAppend or OpAppendK to a variable may leave in its register a string that the next one
 // extends in place. This is right only while nothing else refers to the string, so every
-// other read of the register is preceded by an OpSeal, which makes the string an ordinary one.
+// other read of the register is preceded by an OpSeal, which makes the string an ordinary one. A
+// read of the length of the string needs no seal, since it keeps no reference to the string.
 // The compiler emits the seals once it has compiled an OpAppend to the variable, and settleAppends
 // checks the finished code: when a read can see the register as an OpAppend left it, or when code
 // can read the register without an instruction that names it, the appends to the variable become
@@ -34,17 +35,14 @@ func (f *fn) sealLocal(name string) {
 	}
 }
 
-// appends reports whether an assignment of local + value to the local variable name in the
-// register local can be an OpAppend, and prepares for it. The assignment must be one that
-// reads the variable after evaluating value.
-func (f *fn) appends(name string, local int32, value ast.Expr) bool {
-	b := f.uncheckedLocal(name)
-	if b == nil || b.reg != local {
-		return false
-	}
+// appends reports whether an assignment of local + value to the local variable b, whose
+// assignments are register writes, can be an append, and prepares for it. The assignment must
+// be one that reads the variable after evaluating value.
+func (f *fn) appends(b *binding, value ast.Expr) bool {
 	if b.appended {
 		return true
 	}
+	name := b.name
 	if f.node == nil || f.eval != nil || f.anyMutated || f.withsAround() > 0 || name == "arguments" {
 		return false
 	}
@@ -64,6 +62,22 @@ func (f *fn) appends(name string, local int32, value ast.Expr) bool {
 	b.appended = true
 	f.appendRegs = append(f.appendRegs, b.reg)
 	return true
+}
+
+// lengthOf returns the local variable with appends whose length n reads without an optional
+// chain, or nil.
+func (f *fn) lengthOf(n *ast.MemberExpr) *binding {
+	if len(f.appendRegs) == 0 {
+		return nil
+	}
+	id, ok := n.Object.(*ast.Identifier)
+	if !ok || n.Computed || n.Optional || n.Property.(*ast.Identifier).Name != "length" {
+		return nil
+	}
+	if b := f.uncheckedLocal(id.Name); b != nil && b.appended {
+		return b
+	}
+	return nil
 }
 
 // emitAppend compiles the assignment local = local + value of the local variable that appends
@@ -127,8 +141,8 @@ func (f *fn) nestedMentions(name string) bool {
 }
 
 // settleAppends turns the OpAppends and OpAppendKs to a variable back into OpAdds and OpConcatKs
-// unless the code of f, which must be complete, reads the register of the variable only where no
-// string that an append may extend can be in it.
+// unless the code of f, which must be complete, reads the register of the variable, other than for
+// its length, only where no string that an append may extend can be in it.
 func (f *fn) settleAppends() {
 	if len(f.appendRegs) == 0 {
 		return
@@ -224,7 +238,8 @@ func (f *fn) hiddenReads(regs []int32) uint64 {
 }
 
 // unsealedReads returns the set of the indices in regs of the registers that an instruction other
-// than an append to the register can read while it may hold a string that an append left.
+// than an append to the register or a read of its length can read while it may hold a string that
+// an append left.
 func (f *fn) unsealedReads(regs []int32) uint64 {
 	code := f.f.Code
 	handlers := f.f.Handlers
@@ -269,9 +284,9 @@ func (f *fn) unsealedReads(regs []int32) uint64 {
 				after |= bit
 				continue
 			}
-			// An OpCloseUpvals reads only the registers that upvalues refer to, which
-			// hiddenReads refuses.
-			if before&bit != 0 && (inst.Op != bytecode.OpCloseUpvals && bytecode.MayRead(code, pc, int(r)) || inst.Op == bytecode.OpRestArgs && int(r) < f.f.NumParams) {
+			// An OpGetLength of a string keeps no reference to it, and an OpCloseUpvals reads
+			// only the registers that upvalues refer to, which hiddenReads refuses.
+			if before&bit != 0 && (inst.Op != bytecode.OpGetLength && inst.Op != bytecode.OpCloseUpvals && bytecode.MayRead(code, pc, int(r)) || inst.Op == bytecode.OpRestArgs && int(r) < f.f.NumParams) {
 				refused |= bit
 			}
 			if definitelyWrites(code, pc, fl, r) {

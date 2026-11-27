@@ -1212,9 +1212,15 @@ func (f *fn) member(n *ast.MemberExpr, dst int32) {
 		}
 	}
 	if !n.Computed {
-		obj := f.immediateOperand(n.Object)
-		f.chainCheck(n.Optional, obj)
 		name := n.Property.(*ast.Identifier).Name
+		var obj int32
+		if b := f.lengthOf(n); b != nil {
+			// Reading the length of a string keeps no reference to it, so the read needs no seal.
+			obj = b.reg
+		} else {
+			obj = f.immediateOperand(n.Object)
+		}
+		f.chainCheck(n.Optional, obj)
 		f.setPos(n.Property.Start())
 		if name == "length" {
 			f.emit(bytecode.OpGetLength, dst, obj, f.site(wtf8.String(name)))
@@ -2108,13 +2114,17 @@ func (f *fn) assign(n *ast.AssignExpr, dst int32) {
 		if !target.Parenthesized {
 			inferred = name
 		}
-		local := f.assignableReg(name)
+		lb := f.assignableLocal(name)
+		local := int32(-1)
+		if lb != nil {
+			local = lb.reg
+		}
 		switch {
 		case n.Op == ast.OpNone:
 			if local >= 0 {
 				if v, ok := n.Value.(*ast.BinaryExpr); ok && v.Op == ast.OpAdd {
 					if id, ok := v.Left.(*ast.Identifier); ok && id.Name == name && !f.clobbers(name, v.Right) {
-						if f.appends(name, local, v.Right) {
+						if f.appends(lb, v.Right) {
 							f.emitAppend(local, v.Right, dst)
 							return
 						}
@@ -2161,7 +2171,7 @@ func (f *fn) assign(n *ast.AssignExpr, dst int32) {
 			f.patch(skip)
 		default:
 			if local >= 0 && !f.clobbers(name, n.Value) {
-				if n.Op == ast.OpAdd && f.appends(name, local, n.Value) {
+				if n.Op == ast.OpAdd && f.appends(lb, n.Value) {
 					f.emitAppend(local, n.Value, dst)
 					return
 				}
@@ -2169,7 +2179,7 @@ func (f *fn) assign(n *ast.AssignExpr, dst int32) {
 					f.emitConcatK(local, s, dst)
 					return
 				}
-				f.sealLocal(name)
+				f.seal(lb)
 				if k, ok := numberLit(n.Value); ok {
 					if op, ok := constOps[n.Op]; ok {
 						f.emit(op, local, local, f.constNum(constOperand(op, k)))
