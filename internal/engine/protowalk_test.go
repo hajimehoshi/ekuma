@@ -46,8 +46,8 @@ var protoReads = useCounts{
 		"ExecutionContext.SetPrototypeOf": 3,
 		"defaultHasInstanceCall.run":      1,
 	},
-	"instanceof stops at proxies, and two appends read the prototype of %Array.prototype%": {
-		"agent.exec": 3,
+	"instanceof stops at proxies, and indexed appends check the intrinsic prototypes": {
+		"agent.exec": 5,
 	},
 	protoKnown: {
 		"ExecutionContext.getNamedAtSite": 1,

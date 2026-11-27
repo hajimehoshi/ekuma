@@ -14,9 +14,9 @@ import (
 // rawStoreCalls are the methods of storage.Raw that store, or that return what can be stored to, with
 // the number of calls in agent.exec.
 var rawStoreCalls = map[string]int{
-	"ExtendElems": 3,
+	"ExtendElems": 5,
 	"ExtendSlots": 2,
-	"SetElem":     5,
+	"SetElem":     7,
 	"SetFlags":    1,
 	"SetLength":   4,
 	"SetShape":    8,

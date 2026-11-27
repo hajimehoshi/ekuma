@@ -10,6 +10,7 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/ast"
 	"github.com/hajimehoshi/ekuma/internal/bytecode"
 	"github.com/hajimehoshi/ekuma/internal/numconv"
+	"github.com/hajimehoshi/ekuma/internal/storage"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
@@ -1993,7 +1994,11 @@ func (f *fn) objectLit(n *ast.ObjectLit, dst int32) {
 func (f *fn) objectLitIn(n *ast.ObjectLit, obj int32) {
 	mark := f.top
 	defer f.free(mark)
-	f.emit(bytecode.OpNewObject, obj, 0, int32(namedProperties(n)))
+	slots := int32(namedProperties(n))
+	pc := f.emit(bytecode.OpNewObject, obj, 0, slots)
+	if slots == 0 && f.firstEmptyObject == 0 {
+		f.firstEmptyObject = int32(pc) + 1
+	}
 	for i := range n.Properties {
 		p := &n.Properties[i]
 		m := f.top
@@ -2042,6 +2047,53 @@ func namedProperties(n *ast.ObjectLit) int {
 		}
 	}
 	return c
+}
+
+// presizeNewObjects gives empty object literals room for the named stores that follow them.
+func (f *fn) presizeNewObjects() {
+	code := f.f.Code
+	for pc := int(f.firstEmptyObject) - 1; pc < len(code); pc++ {
+		in := &code[pc]
+		if in.Op != bytecode.OpNewObject || in.C != 0 {
+			continue
+		}
+		reg, next := in.A, pc+1
+		if next < len(code) && code[next].Op == bytecode.OpMove && code[next].B == reg {
+			reg = code[next].A
+			next++
+		}
+
+		// The operand is only a capacity hint. Each store has its own cache site, so compare
+		// the names at those sites to count repeated stores to the same property once.
+		var seen [storage.MaxInlineObjectValues]int32
+		var count int
+	scan:
+		for ; next < len(code) && count < len(seen); next++ {
+			store := code[next]
+			switch store.Op {
+			case bytecode.OpSetProp, bytecode.OpSetPropStrict:
+				if store.A != reg {
+					break scan
+				}
+				name := f.f.Keys[store.B]
+				for _, site := range seen[:count] {
+					if f.f.Keys[site] == name {
+						continue scan
+					}
+				}
+				seen[count] = store.B
+				count++
+			case bytecode.OpLoadK, bytecode.OpLoadInt, bytecode.OpLoadTrue, bytecode.OpLoadFalse,
+				bytecode.OpLoadNull, bytecode.OpLoadUndef, bytecode.OpMove, bytecode.OpGetUpval:
+				if store.A == reg {
+					break scan
+				}
+			default:
+				break scan
+			}
+		}
+		in.C = int32(count)
+	}
 }
 
 // method defines the method, getter or setter fnNode on the object in the register obj.

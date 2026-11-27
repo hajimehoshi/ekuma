@@ -231,6 +231,9 @@ type fn struct {
 	// top is the first register that is not in use.
 	top int32
 
+	// firstEmptyObject is the instruction index plus one of the first object literal with no slot hint.
+	firstEmptyObject int32
+
 	upvals []*binding
 
 	// upvalSaves holds, for every binding in upvals, its capFn and capIndex before f captured it.
@@ -738,6 +741,9 @@ func (f *fn) finish() *bytecode.Func {
 	b.Consts = releaseBuf(&sc.constBufs, b.Consts)
 	f.promoteCopies()
 	f.settleAppends()
+	if f.firstEmptyObject != 0 {
+		f.presizeNewObjects()
+	}
 
 	// Give the upvalues of the bindings of outer functions back to those functions.
 	for i, u := range slices.Backward(f.upvals) {

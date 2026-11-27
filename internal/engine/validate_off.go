@@ -84,4 +84,6 @@ func (cx *ExecutionContext) checkReturnedProperty(*storage.FuncProto, storage.Va
 
 func (cx *ExecutionContext) checkAppend(*storage.Object) {}
 
+func (cx *ExecutionContext) checkObjectAppend(*storage.Object) {}
+
 const validateExec = storage.ValidateExec

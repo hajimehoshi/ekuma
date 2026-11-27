@@ -433,6 +433,13 @@ func (cx *ExecutionContext) checkAppend(o *storage.Object) {
 	}
 }
 
+// checkObjectAppend checks the property and storage conditions for a dense append.
+func (cx *ExecutionContext) checkObjectAppend(o *storage.Object) {
+	if o.Flags()&storage.ObjNotExtensible != 0 || o.Pinned&storage.SharedElems != 0 || !o.IndicesInElements() || !o.InheritsNoIndex() {
+		panic("engine: the interpreter loop appends to an object that is not plain")
+	}
+}
+
 // sameBits reports whether a and b are the same bits.
 func sameBits(a, b storage.Value) bool {
 	return a.O == b.O && math.Float64bits(a.N) == math.Float64bits(b.N)

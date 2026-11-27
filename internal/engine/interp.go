@@ -958,21 +958,34 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 					// The append below does not apply to a typed array.
 					break
 				}
-				// An append to a plain array that has room for it, as in the switch below, with the
-				// conditions of ElemsResizable and NewElementsPlain written out.
-				if j := int(k.N); j == o.Raw().ElemCount() && j < o.Raw().ElemRoom() &&
-					o.Kind == storage.KindArray && uint32(j) == o.Length() && o.Flags() == 0 && float64(j) == k.N && o.Shape() == ag.active.realm.Shapes.Array {
-					if a := ag.active.realm.Intrinsics[storage.IntrinsicArrayPrototype]; a.Raw().ElemCount() == 0 && a.Flags()&storage.ObjSparse == 0 {
-						if p := a.Shape().Proto; p == ag.active.realm.Intrinsics[storage.IntrinsicObjectPrototype] && p.Raw().ElemCount() == 0 && p.Flags()&storage.ObjSparse == 0 {
-							if validateExec {
-								ag.active.checkAppend(o)
+				// A dense append in place requires an extensible receiver with no indexed
+				// properties stored in its shape or inherited from its prototypes.
+				if j := int(k.N); j == o.Raw().ElemCount() && j < o.Raw().ElemRoom() && o.Flags() == 0 && float64(j) == k.N {
+					switch {
+					case o.Kind == storage.KindArray && uint32(j) == o.Length() && o.Shape() == ag.active.realm.Shapes.Array:
+						if a := ag.active.realm.Intrinsics[storage.IntrinsicArrayPrototype]; a.Raw().ElemCount() == 0 && a.Flags()&storage.ObjSparse == 0 {
+							if p := a.Shape().Proto; p == ag.active.realm.Intrinsics[storage.IntrinsicObjectPrototype] && p.Raw().ElemCount() == 0 && p.Flags()&storage.ObjSparse == 0 {
+								if validateExec {
+									ag.active.checkAppend(o)
+								}
+								// Reading x first keeps i.C from being read again after the
+								// store to the length.
+								x := regs[i.C]
+								o.Raw().ExtendElems(j + 1)
+								o.Raw().SetElem(j, x)
+								o.Raw().SetLength(o.Length() + 1)
+								continue
 							}
-							// Reading x first keeps i.C from being read again after the
-							// store to the length.
+						}
+					case o.Kind == storage.KindObject && o.Class == storage.ClassObject && uint(j) < math.MaxUint32:
+						// %Object.prototype% is an ordinary object with an immutable nil prototype.
+						if p := o.Shape().Proto; p == ag.active.realm.Intrinsics[storage.IntrinsicObjectPrototype] && p.Raw().ElemCount() == 0 && p.Flags()&storage.ObjSparse == 0 {
+							if validateExec {
+								ag.active.checkObjectAppend(o)
+							}
 							x := regs[i.C]
 							o.Raw().ExtendElems(j + 1)
 							o.Raw().SetElem(j, x)
-							o.Raw().SetLength(o.Length() + 1)
 							continue
 						}
 					}
@@ -1703,16 +1716,29 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 					}
 					break
 				}
-				if j == o.Raw().ElemCount() && j < o.Raw().ElemRoom() && o.Kind == storage.KindArray && uint32(j) == o.Length() && o.Flags() == 0 && o.Shape() == ag.active.realm.Shapes.Array {
-					if a := ag.active.realm.Intrinsics[storage.IntrinsicArrayPrototype]; a.Raw().ElemCount() == 0 && a.Flags()&storage.ObjSparse == 0 {
-						if p := a.Shape().Proto; p == ag.active.realm.Intrinsics[storage.IntrinsicObjectPrototype] && p.Raw().ElemCount() == 0 && p.Flags()&storage.ObjSparse == 0 {
+				if j == o.Raw().ElemCount() && j < o.Raw().ElemRoom() && o.Flags() == 0 {
+					switch {
+					case o.Kind == storage.KindArray && uint32(j) == o.Length() && o.Shape() == ag.active.realm.Shapes.Array:
+						if a := ag.active.realm.Intrinsics[storage.IntrinsicArrayPrototype]; a.Raw().ElemCount() == 0 && a.Flags()&storage.ObjSparse == 0 {
+							if p := a.Shape().Proto; p == ag.active.realm.Intrinsics[storage.IntrinsicObjectPrototype] && p.Raw().ElemCount() == 0 && p.Flags()&storage.ObjSparse == 0 {
+								if validateExec {
+									ag.active.checkAppend(o)
+								}
+								x := regs[i.C]
+								o.Raw().ExtendElems(j + 1)
+								o.Raw().SetElem(j, x)
+								o.Raw().SetLength(o.Length() + 1)
+								continue
+							}
+						}
+					case o.Kind == storage.KindObject && o.Class == storage.ClassObject:
+						if p := o.Shape().Proto; p == ag.active.realm.Intrinsics[storage.IntrinsicObjectPrototype] && p.Raw().ElemCount() == 0 && p.Flags()&storage.ObjSparse == 0 {
 							if validateExec {
-								ag.active.checkAppend(o)
+								ag.active.checkObjectAppend(o)
 							}
 							x := regs[i.C]
 							o.Raw().ExtendElems(j + 1)
 							o.Raw().SetElem(j, x)
-							o.Raw().SetLength(o.Length() + 1)
 							continue
 						}
 					}
