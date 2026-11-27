@@ -215,6 +215,7 @@ func (cx *ExecutionContext) pushEvalScope() {
 	o := storage.NewObjectWithState(cx.ShapeFor(nil), storage.ClassEvalScope, nil)
 	cur := &cx.frames[len(cx.frames)-1]
 	cur.scopes = append(cur.scopes, o)
+	cur.plainReturn = false
 }
 
 // scopeThis returns the this value of a call of a function found in the dynamic scope s.
