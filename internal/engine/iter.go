@@ -527,7 +527,7 @@ func (cx *ExecutionContext) spreadArgs(v storage.Value) *storage.Object {
 // appendIterable appends the values that iterating v yields to the array o.
 func (cx *ExecutionContext) appendIterable(o *storage.Object, v storage.Value) {
 	if s := v.O; s != nil && s.Kind == storage.KindArray {
-		o.ReserveElems(s.ElemCount())
+		cx.ReserveElementsForIteration(o, s)
 	}
 	cx.Iterate(v, func(e storage.Value) bool {
 		o.PushElement(e)

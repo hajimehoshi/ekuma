@@ -15,6 +15,8 @@ type RealmPart struct {
 
 	ArrayIter arrayIterCache
 
+	arrayCtor arrayCtorCache
+
 	regExpOriginals regExpOriginals
 
 	Global *Object

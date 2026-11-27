@@ -96,13 +96,13 @@ func (sp *Space) setFlags(o *Object, key *Object, p Prop, flags uint8) {
 func (r *RealmPart) ReplaceOwn(o *Object, k PropKey, val Value, flags uint8) {
 	name := k.Key
 	if name == nil {
-		if int64(k.Idx) < int64(len(o.elems)) && !o.elems[k.Idx].IsHole() {
-			o.ownElems()
+		if o.HasElementAt(k.Idx) {
 			if flags == FlagsData {
-				o.elems[k.Idx] = val
+				o.storeElem(k.Idx, val)
 				return
 			}
 			// The property no longer fits in elems.
+			o.ownElems()
 			o.elems[k.Idx] = Hole
 			o.flags |= ObjSparse
 			r.Add(o, r.IndexName(k.Idx), val, flags)
@@ -461,12 +461,12 @@ func (r *RealmPart) HasOwnPropertyPlain(o *Object, k Value) (has, ok bool) {
 	}
 	if key.Key == nil {
 		if o.IndicesInElements() {
-			return int64(key.Idx) < int64(len(o.elems)) && !o.elems[key.Idx].IsHole(), true
+			return o.HasElementAt(key.Idx), true
 		}
 		if o.DelegatesPropertyAccess() {
 			return false, false
 		}
-		if int64(key.Idx) < int64(len(o.elems)) && !o.elems[key.Idx].IsHole() {
+		if o.HasElementAt(key.Idx) {
 			return true, true
 		}
 		switch o.Class {

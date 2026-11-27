@@ -700,6 +700,36 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 				if o.Shape() != e.Shape {
 					e = &c.Second
 					if o.Shape() != e.Shape {
+						if o.Kind == storage.KindArray && o.Flags() == 0 && fp.Keys[i.B] == ag.Key(storage.KeyLength) {
+							if v := regs[i.C]; v.O == storage.NumberObject {
+								if n := uint32(v.N); float64(n) == v.N && n <= o.Length() {
+									if room := o.Raw().ElemRoom(); room != 0 {
+										count := o.Raw().ElemCount()
+										if uint(n) >= uint(count) {
+											o.Raw().SetLength(n)
+											continue
+										}
+										if int(n) == count-1 && o.Ext == nil && !o.Raw().ElemsShared() &&
+											!storage.ElemsStorageOversized(int(n), room) {
+											if e := o.Raw().Elem(int(n)); e.O != storage.NumberObject && e.O != storage.HoleObject {
+												o.Raw().SetElem(int(n), storage.Value{})
+											}
+											o.Raw().ExtendElems(int(n))
+											o.Raw().SetLength(n)
+											continue
+										}
+									} else if room := o.Raw().NumRoom(); room != 0 && !o.Raw().HasNumSideData() {
+										count := o.Raw().NumCount()
+										if uint(n) <= uint(count) && count-int(n) < storage.PollChunk &&
+											!storage.ElemsStorageOversized(int(n), room) {
+											o.Raw().ExtendNums(int(n))
+											o.Raw().SetLength(n)
+											continue
+										}
+									}
+								}
+							}
+						}
 						break
 					}
 				}
@@ -787,9 +817,14 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 		case bytecode.OpGetIndex:
 			v, k := regs[i.B], regs[i.C]
 			if o := v.O; o != nil && k.O == storage.NumberObject {
-				if j := int(k.N); float64(j) == k.N && uint(j) < uint(o.Raw().ElemCount()) {
-					if e := o.Raw().Elem(j); e.O != storage.HoleObject {
-						regs[i.A] = e
+				if j := int(k.N); float64(j) == k.N {
+					if uint(j) < uint(o.Raw().ElemCount()) {
+						if e := o.Raw().Elem(j); e.O != storage.HoleObject {
+							regs[i.A] = e
+							continue
+						}
+					} else if nums := o.Raw().Nums(); uint(j) < uint(len(nums)) {
+						storage.SetNumber(&regs[i.A], nums[j])
 						continue
 					}
 				}
@@ -847,14 +882,18 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 				}
 			}
 		case bytecode.OpGetIndexInt:
-			if o := regs[i.B].O; o != nil && uint(i.C) < uint(o.Raw().ElemCount()) {
-				if e := o.Raw().Elem(int(i.C)); e.O != storage.HoleObject {
-					regs[i.A] = e
+			if o := regs[i.B].O; o != nil {
+				j := int(i.C)
+				if uint(j) < uint(o.Raw().ElemCount()) {
+					if e := o.Raw().Elem(j); e.O != storage.HoleObject {
+						regs[i.A] = e
+						continue
+					}
+				} else if nums := o.Raw().Nums(); uint(j) < uint(len(nums)) {
+					storage.SetNumber(&regs[i.A], nums[j])
 					continue
 				}
-			}
-			// The same as OpGetIndex for a typed array.
-			if o := regs[i.B].O; o != nil {
+				// The same as OpGetIndex for typed arrays.
 				if t, ok := o.Ext.(*storage.TypedArray); ok && t.Type < element.BigInt64 && t.Type != element.Float16 && !t.Tracking && uint(i.C) < uint(t.FixedLength) {
 					if j, r, s := int(i.C), &regs[i.A], t.Type.Size(); t.Offset+t.FixedLength*s <= len(t.Data.Data) {
 						b := t.Data.Data[t.Offset+j*s:]
@@ -909,6 +948,13 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 						continue
 					}
 					// A store into a hole or into shared elements takes the switch below.
+					break
+				}
+				if j := int(k.N); o.Raw().ElemRoom() == 0 && float64(j) == k.N && uint(j) < uint(o.Raw().NumCount()) {
+					if v := regs[i.C]; v.O == storage.NumberObject {
+						o.Raw().SetNum(j, v.N)
+						continue
+					}
 					break
 				}
 				// The stores of a number into a typed array of numbers other than Float16, as in
@@ -971,7 +1017,9 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 				}
 				// A dense append in place requires an extensible receiver with no indexed
 				// properties stored in its shape or inherited from its prototypes.
-				if j := int(k.N); j == o.Raw().ElemCount() && j < o.Raw().ElemRoom() && o.Flags() == 0 && float64(j) == k.N {
+				j, room := int(k.N), o.Raw().ElemRoom()
+				if (j == o.Raw().ElemCount() && j < room ||
+					room == 0 && j == o.Raw().NumCount() && j < o.Raw().NumRoom()) && o.Flags() == 0 && float64(j) == k.N {
 					switch {
 					case o.Kind == storage.KindArray && uint32(j) == o.Length() && o.Shape() == ag.active.realm.Shapes.Array:
 						if a := ag.active.realm.Intrinsics[storage.IntrinsicArrayPrototype]; a.Raw().ElemCount() == 0 && a.Flags()&storage.ObjSparse == 0 {
@@ -979,11 +1027,17 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 								if validateExec {
 									ag.active.checkAppend(o)
 								}
-								// Reading x first keeps i.C from being read again after the
-								// store to the length.
 								x := regs[i.C]
-								o.Raw().ExtendElems(j + 1)
-								o.Raw().SetElem(j, x)
+								if room == 0 {
+									if x.O != storage.NumberObject {
+										break
+									}
+									o.Raw().ExtendNums(j + 1)
+									o.Raw().SetNum(j, x.N)
+								} else {
+									o.Raw().ExtendElems(j + 1)
+									o.Raw().SetElem(j, x)
+								}
 								o.Raw().SetLength(o.Length() + 1)
 								continue
 							}
@@ -1165,9 +1219,14 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 				// reads an element, as in its own fast path, and runs on its own otherwise.
 				n := &fp.Code[pc]
 				if o := regs[n.B].O; o != nil {
-					if j := int(k); float64(j) == k && uint(j) < uint(o.Raw().ElemCount()) {
-						if e := o.Raw().Elem(j); e.O != storage.HoleObject {
-							regs[n.A] = e
+					if j := int(k); float64(j) == k {
+						if uint(j) < uint(o.Raw().ElemCount()) {
+							if e := o.Raw().Elem(j); e.O != storage.HoleObject {
+								regs[n.A] = e
+								pc++
+							}
+						} else if nums := o.Raw().Nums(); uint(j) < uint(len(nums)) {
+							storage.SetNumber(&regs[n.A], nums[j])
 							pc++
 						}
 					}
@@ -1184,9 +1243,14 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 					storage.SetNumber(&regs[i.B], k+1)
 					// As in OpIncGetIndex.
 					n := &fp.Code[pc]
-					if o := regs[n.B].O; o != nil && uint(j) < uint(o.Raw().ElemCount()) {
-						if e := o.Raw().Elem(j); e.O != storage.HoleObject {
-							regs[n.A] = e
+					if o := regs[n.B].O; o != nil {
+						if uint(j) < uint(o.Raw().ElemCount()) {
+							if e := o.Raw().Elem(j); e.O != storage.HoleObject {
+								regs[n.A] = e
+								pc++
+							}
+						} else if nums := o.Raw().Nums(); uint(j) < uint(len(nums)) {
+							storage.SetNumber(&regs[n.A], nums[j])
 							pc++
 						}
 					}
@@ -1480,6 +1544,14 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 				o.Raw().SetLength(uint32(n + 1))
 				continue
 			}
+			if o, v := regs[i.A].O, regs[i.B]; v.O == storage.NumberObject {
+				if n := o.Raw().NumCount(); n < o.Raw().NumRoom() {
+					o.Raw().ExtendNums(n + 1)
+					o.Raw().SetNum(n, v.N)
+					o.Raw().SetLength(uint32(n + 1))
+					continue
+				}
+			}
 		case bytecode.OpDefineFieldK:
 			o := regs[i.A].O
 			if c := &fp.Caches[i.B]; o.Shape() == c.Shape && c.Kind == storage.CacheAdd {
@@ -1693,6 +1765,13 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 					}
 					break
 				}
+				if o.Raw().ElemRoom() == 0 && uint(j) < uint(o.Raw().NumCount()) {
+					if v := regs[i.C]; v.O == storage.NumberObject {
+						o.Raw().SetNum(j, v.N)
+						continue
+					}
+					break
+				}
 				if t, ok := o.Ext.(*storage.TypedArray); ok && t.NumberStore && t.Type != element.Float16 {
 					if x := regs[i.C]; x.O == storage.NumberObject && !t.Tracking && uint(j) < uint(t.FixedLength) && numconv.InInt64Range(x.N) {
 						if s := t.Type.Size(); t.Offset+t.FixedLength*s <= len(t.Data.Data) {
@@ -1746,7 +1825,9 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 					}
 					break
 				}
-				if j == o.Raw().ElemCount() && j < o.Raw().ElemRoom() && o.Flags() == 0 {
+				room := o.Raw().ElemRoom()
+				if (j == o.Raw().ElemCount() && j < room ||
+					room == 0 && j == o.Raw().NumCount() && j < o.Raw().NumRoom()) && o.Flags() == 0 {
 					switch {
 					case o.Kind == storage.KindArray && uint32(j) == o.Length() && o.Shape() == ag.active.realm.Shapes.Array:
 						if a := ag.active.realm.Intrinsics[storage.IntrinsicArrayPrototype]; a.Raw().ElemCount() == 0 && a.Flags()&storage.ObjSparse == 0 {
@@ -1755,8 +1836,16 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 									ag.active.checkAppend(o)
 								}
 								x := regs[i.C]
-								o.Raw().ExtendElems(j + 1)
-								o.Raw().SetElem(j, x)
+								if room == 0 {
+									if x.O != storage.NumberObject {
+										break
+									}
+									o.Raw().ExtendNums(j + 1)
+									o.Raw().SetNum(j, x.N)
+								} else {
+									o.Raw().ExtendElems(j + 1)
+									o.Raw().SetElem(j, x)
+								}
 								o.Raw().SetLength(o.Length() + 1)
 								continue
 							}
@@ -2191,11 +2280,12 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 				k = storage.Number(float64(i.B))
 			}
 			if o := v.O; o != nil && k.O == storage.NumberObject {
-				if j := int(k.N); j == o.Raw().ElemCount() && o.Kind == storage.KindArray && uint32(j) == o.Length() && o.Flags() == 0 && float64(j) == k.N && o.Shape() == ag.active.realm.Shapes.Array && ag.active.ArrayProtoPlain() {
+				if j := int(k.N); j == o.ElemCount() && o.Kind == storage.KindArray && uint32(j) == o.Length() && o.Flags() == 0 && float64(j) == k.N && o.Shape() == ag.active.realm.Shapes.Array && ag.active.ArrayProtoPlain() {
 					// Appending to a plain array, as in the first switch.
 					if validateExec {
 						ag.active.checkAppend(o)
 					}
+					ag.frames[len(ag.frames)-1].pc = pc
 					o.AppendElem(regs[i.C])
 					o.Raw().SetLength(o.Length() + 1)
 					continue
@@ -3043,9 +3133,11 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 		case bytecode.OpNewArrayK:
 			regs[i.A] = storage.Value{O: ag.active.NewArrayOfConstants(fp.Consts[i.B : i.B+i.C])}
 		case bytecode.OpArrayPush:
+			ag.frames[len(ag.frames)-1].pc = pc
 			o := regs[i.A].O
 			o.PushElement(regs[i.B])
 		case bytecode.OpArrayHole:
+			ag.frames[len(ag.frames)-1].pc = pc
 			o := regs[i.A].O
 			o.PushElement(storage.Hole)
 		case bytecode.OpArraySpread:
@@ -3207,8 +3299,13 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 					continue
 				}
 				regs[i.B].N = idx.N + 1
-				if uint(j) < uint(o.Raw().ElemCount()) && o.Raw().Elem(int(j)).O != storage.HoleObject {
-					regs[i.A] = o.Raw().Elem(int(j))
+				if uint(j) < uint(o.Raw().ElemCount()) {
+					if e := o.Raw().Elem(int(j)); e.O != storage.HoleObject {
+						regs[i.A] = e
+						continue
+					}
+				} else if nums := o.Raw().Nums(); uint(j) < uint(len(nums)) {
+					storage.SetNumber(&regs[i.A], nums[j])
 					continue
 				}
 				ag.frames[len(ag.frames)-1].pc = pc

@@ -16,6 +16,7 @@ func (o *Object) Raw() Raw {
 
 // Elems returns the elements, which the caller must not change.
 func (r Raw) Elems() []Value {
+	r.o.ensureUnpacked()
 	return r.o.elems
 }
 
@@ -25,12 +26,12 @@ func (r Raw) ElemsShared() bool {
 	return r.o.Pinned&SharedElems != 0
 }
 
-// ElemCount returns the number of elements, which is 0 for a primitive value.
+// ElemCount returns the number of boxed elements.
 func (r Raw) ElemCount() int {
 	return len(r.o.elems)
 }
 
-// ElemRoom returns how many elements the storage of the elements has room for.
+// ElemRoom returns the capacity of the boxed elements.
 func (r Raw) ElemRoom() int {
 	return cap(r.o.elems)
 }
@@ -48,7 +49,50 @@ func (r Raw) SetElem(i int, v Value) {
 // ExtendElems makes the first n values of the storage of the elements the elements. The storage
 // must have room for them, and the caller must store each new element before reading it.
 func (r Raw) ExtendElems(n int) {
+	if ValidateExec && r.o.packedNums() != nil {
+		panic("storage: extending boxed storage on a packed array")
+	}
 	r.o.elems = r.o.elems[:n]
+}
+
+// NumCount returns the number of packed numeric elements.
+func (r Raw) NumCount() int {
+	if p, ok := r.o.Ext.(*packedNumElems); ok {
+		return len(p.values)
+	}
+	return 0
+}
+
+// NumRoom returns the capacity of the packed numeric elements.
+func (r Raw) NumRoom() int {
+	if p, ok := r.o.Ext.(*packedNumElems); ok {
+		return cap(p.values)
+	}
+	return 0
+}
+
+// Nums returns the packed numeric elements, which the caller must not change.
+func (r Raw) Nums() []float64 {
+	if p, ok := r.o.Ext.(*packedNumElems); ok {
+		return p.values
+	}
+	return nil
+}
+
+// SetNum sets the packed numeric element at i.
+func (r Raw) SetNum(i int, n float64) {
+	r.o.Ext.(*packedNumElems).values[i] = n
+}
+
+// ExtendNums sets the number of packed elements within their existing capacity.
+func (r Raw) ExtendNums(n int) {
+	p := r.o.Ext.(*packedNumElems)
+	p.values = p.values[:n]
+}
+
+// HasNumSideData reports whether the packed array keeps state beside its elements.
+func (r Raw) HasNumSideData() bool {
+	return r.o.Ext.(*packedNumElems).ext != nil
 }
 
 // SlotCount returns the number of slots.

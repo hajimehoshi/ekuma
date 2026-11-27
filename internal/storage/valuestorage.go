@@ -76,6 +76,7 @@ func (o *Object) leaveElems(old []Value) {
 // ownElems gives o elements of its own in place of shared ones, so that they can be changed in
 // place.
 func (o *Object) ownElems() {
+	o.ensureUnpacked()
 	if o.Pinned&SharedElems != 0 {
 		o.copySharedElems()
 	}
@@ -118,6 +119,48 @@ func (o *Object) removeSlot(i int) {
 	o.slots = o.slots[:n]
 }
 
+// packedNumElems holds a hole-free numeric prefix and the array's other state.
+type packedNumElems struct {
+	values []float64
+	ext    any
+}
+
+const (
+	packElemsThreshold = MaxInlineObjectValues
+
+	// Limit the number of buffer allocations when growing to MaxPresizedElems.
+	packedGrowthThreshold = 256
+)
+
+type packedNumBlock struct {
+	packedNumElems
+	storage [2 * packElemsThreshold]float64
+}
+
+func newPackedNumBlock(n, room int) *packedNumElems {
+	p := &packedNumBlock{}
+	p.values = p.storage[:n:room]
+	return &p.packedNumElems
+}
+
+func (o *Object) packedNums() *packedNumElems {
+	p, _ := o.Ext.(*packedNumElems)
+	return p
+}
+
+func (o *Object) numericElements() []float64 {
+	if p := o.packedNums(); p != nil {
+		return p.values
+	}
+	return nil
+}
+
+func (o *Object) packElems(p *packedNumElems) {
+	o.replaceElems(nil)
+	p.ext = o.Ext
+	o.ownTail().Ext = p
+}
+
 // setElems makes elems the elements of o, which may not have a tail of its own yet.
 func (o *Object) setElems(elems []Value) {
 	o.ownTail().elems = elems
@@ -125,7 +168,7 @@ func (o *Object) setElems(elems []Value) {
 
 // InitElems makes storage the elements of an object that has none.
 func (o *Object) InitElems(storage []Value) {
-	if ValidateExec && len(o.elems) != 0 {
+	if ValidateExec && (len(o.elems) != 0 || o.packedNums() != nil) {
 		panic("storage: InitElems on an object with elements")
 	}
 	o.setElems(storage)
@@ -133,6 +176,9 @@ func (o *Object) InitElems(storage []Value) {
 
 // ReserveElems gives the elements of o room for n more elements.
 func (o *Object) ReserveElems(n int) {
+	if p := o.packedNums(); p != nil {
+		o.unpackNums(p, n)
+	}
 	if cap(o.elems)-len(o.elems) < n {
 		o.moveElems(n)
 	}
@@ -156,6 +202,20 @@ func (o *Object) moveElems(n int) {
 func (o *Object) AppendElem(v Value) {
 	elems := o.elems
 	if cap(elems) == 0 {
+		if p := o.packedNums(); p != nil {
+			if v.O == NumberObject {
+				o.appendNum(p, v.N)
+				return
+			}
+			o.unpackNums(p, 1)
+			elems = o.elems
+		}
+	}
+	// Keep small arrays in their inline storage until they need a new allocation.
+	if len(elems) == cap(elems) && len(elems) == packElemsThreshold && v.O == NumberObject && o.tryPackNums(v.N) {
+		return
+	}
+	if cap(elems) == 0 {
 		// An object without elements may not have a tail of its own.
 		o.setElems(make([]Value, 0, MinElems))
 		elems = o.elems
@@ -166,10 +226,75 @@ func (o *Object) AppendElem(v Value) {
 	}
 }
 
+func (o *Object) appendNum(p *packedNumElems, v float64) {
+	n := len(p.values)
+	if n == cap(p.values) {
+		switch {
+		case n >= PollChunk:
+			p.values = appendPolled(&o.shape.Space.Poller, p.values, []float64{v})
+			return
+		case n >= packedGrowthThreshold && n < MaxPresizedElems:
+			values := make([]float64, n, min(2*n, MaxPresizedElems))
+			copy(values, p.values)
+			p.values = values
+		}
+	}
+	p.values = append(p.values, v)
+}
+
+// tryPackNums replaces a full buffer with room for one more numeric element.
+func (o *Object) tryPackNums(v float64) bool {
+	elems := o.elems
+	n := len(elems)
+	if o.Kind != KindArray || o.flags != 0 || o.Pinned&SharedElems != 0 || n != packElemsThreshold {
+		return false
+	}
+	for _, e := range elems {
+		if e.O != NumberObject {
+			return false
+		}
+	}
+	p := newPackedNumBlock(n+1, 2*n)
+	for i, e := range elems {
+		p.values[i] = e.N
+	}
+	p.values[n] = v
+	o.packElems(p)
+	return true
+}
+
+func (o *Object) ensureUnpacked() {
+	if p := o.packedNums(); p != nil {
+		o.unpackNums(p, 0)
+	}
+}
+
+//go:noinline
+func (o *Object) unpackNums(p *packedNumElems, extra int) {
+	n := len(p.values)
+	room := max(cap(p.values), MinElems)
+	if room-n < extra {
+		room = max(n+extra, room+room/4)
+	}
+	elems := make([]Value, n, room)
+	boxNums(&o.shape.Space.Poller, elems, p.values)
+	o.ownTail().Ext = p.ext
+	o.replaceElems(elems)
+}
+
+func boxNums(p *Poller, dst []Value, nums []float64) {
+	for i, n := range nums {
+		if i > 0 && i%PollInterval == 0 {
+			p.Poll()
+		}
+		dst[i] = Number(n)
+	}
+}
+
 // ElemsStorage returns the number of values that the storage of the elements of o has room
 // for, counting those before the elements that removing the first elements left unused.
 func (o *Object) ElemsStorage() int {
-	n := cap(o.elems)
+	n := o.ElemRoom()
 	if m := o.Meta(); m != nil && m.shiftedCap == n {
 		n += m.shiftedElems
 	}
@@ -179,12 +304,24 @@ func (o *Object) ElemsStorage() int {
 // elemsOversized reports whether the elements of o use less than a quarter of their storage
 // and the storage is larger than minShrinkElems.
 func (o *Object) elemsOversized() bool {
-	n := o.ElemsStorage()
-	return n > minShrinkElems && len(o.elems) < n/4
+	return ElemsStorageOversized(o.ElemCount(), o.ElemsStorage())
+}
+
+// ElemsStorageOversized reports whether count elements leave too much storage unused.
+func ElemsStorageOversized(count, room int) bool {
+	return room > minShrinkElems && count < room/4
 }
 
 // reallocElems moves the elements of o to new storage with room for as many elements again.
 func (p *Poller) reallocElems(o *Object) {
+	if packed := o.packedNums(); packed != nil {
+		n := len(packed.values)
+		nums := make([]float64, n, max(2*n, MinElems))
+		CopyPolled(p, nums, packed.values)
+		packed.values = nums
+		o.clearShiftedElems()
+		return
+	}
 	elems := make([]Value, len(o.elems), max(2*len(o.elems), MinElems))
 	CopyPolled(p, elems, o.elems)
 	o.replaceElems(elems)
@@ -192,6 +329,13 @@ func (p *Poller) reallocElems(o *Object) {
 
 // MoveElemsTo moves the elements of o to new storage with room for room elements in all.
 func (o *Object) MoveElemsTo(room int) {
+	if packed := o.packedNums(); packed != nil {
+		nums := make([]float64, len(packed.values), room)
+		copy(nums, packed.values)
+		packed.values = nums
+		o.clearShiftedElems()
+		return
+	}
 	elems := make([]Value, len(o.elems), room)
 	copy(elems, o.elems)
 	o.replaceElems(elems)
@@ -201,6 +345,10 @@ func (o *Object) MoveElemsTo(room int) {
 func (o *Object) replaceElems(elems []Value) {
 	o.leaveElems(o.elems)
 	o.setElems(elems)
+	o.clearShiftedElems()
+}
+
+func (o *Object) clearShiftedElems() {
 	if m := o.Meta(); m != nil {
 		m.shiftedElems, m.shiftedCap = 0, 0
 	}
@@ -218,20 +366,26 @@ func clearLeft(v *Value) {
 // shiftElem removes the first element without moving the others. The storage keeps its size: see
 // elemsOversized.
 func (o *Object) shiftElem() {
-	m, elems := o.ensureMeta(), o.elems
-	if m.shiftedCap != cap(elems) {
+	o.recordShift(cap(o.elems))
+	o.elems[0] = Value{}
+	o.elems = o.elems[1:]
+}
+
+func (o *Object) recordShift(room int) {
+	m := o.ensureMeta()
+	if m.shiftedCap != room {
 		m.shiftedElems = 0
 	}
 	m.shiftedElems++
-	m.shiftedCap = cap(elems) - 1
-	elems[0] = Value{}
-	o.elems = elems[1:]
+	m.shiftedCap = room - 1
 }
 
 // clipElems keeps the storage after the elements out of reach of later growth.
 func (o *Object) clipElems() {
-	old := cap(o.elems)
-	if old != 0 {
+	old := o.ElemRoom()
+	if packed := o.packedNums(); packed != nil {
+		packed.values = slices.Clip(packed.values)
+	} else if old != 0 {
 		// An object without elements may share zeroTail.
 		o.elems = slices.Clip(o.elems)
 	}
@@ -239,7 +393,7 @@ func (o *Object) clipElems() {
 	switch {
 	case m == nil:
 	case m.shiftedCap == old:
-		m.shiftedCap = cap(o.elems)
+		m.shiftedCap = o.ElemRoom()
 	default:
 		m.shiftedElems, m.shiftedCap = 0, 0
 	}

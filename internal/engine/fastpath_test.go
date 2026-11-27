@@ -68,6 +68,10 @@ var fastPathCalls = map[string]bool{
 	"math.Float32bits":      true,
 	"math.Float64frombits":  true,
 	"math.Float64bits":      true,
+
+	// Packed numeric array truncation.
+	"ag.Key":                        true,
+	"storage.ElemsStorageOversized": true,
 }
 
 // fastPathMethods are the methods that the fast paths may call on a value of any name.
@@ -95,6 +99,14 @@ var fastPathMethods = map[string]bool{
 	"SlotRoom":      true,
 	"Slot":          true,
 	"SetSlot":       true,
+
+	// Packed numeric array storage.
+	"NumCount":       true,
+	"NumRoom":        true,
+	"Nums":           true,
+	"SetNum":         true,
+	"HasNumSideData": true,
+	"ExtendNums":     true,
 
 	// The text of a string, in the words of its slots.
 	"Text": true,

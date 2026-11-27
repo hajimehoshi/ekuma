@@ -45,6 +45,23 @@ func NewArray(s *Shape, elems []Value) *Object {
 	}).Init()
 }
 
+type packedNumArray struct {
+	PropertyObject
+	packedNumElems
+}
+
+func (r *RealmPart) newPackedNumArray(nums []float64) *Object {
+	a := &packedNumArray{}
+	a.packedNumElems.values = nums
+	a.PropertyObject.objectTail.Ext = &a.packedNumElems
+	o := a.PropertyObject.Init()
+	o.Kind = KindArray
+	o.Class = ClassArray
+	o.shape = r.Shapes.Array
+	o.length = uint32(len(nums))
+	return o
+}
+
 // ArrayCreate implements ArrayCreate.
 func (r *RealmPart) ArrayCreate(length uint32, proto *Object) *Object {
 	var a *Object
@@ -99,6 +116,7 @@ func (r *RealmPart) NewTemplateArray(vals []Value) *Object {
 
 // FreezeLength makes the length of the array o read-only.
 func (o *Object) FreezeLength() {
+	o.ensureUnpacked()
 	o.flags |= ObjFrozenLength
 }
 
@@ -106,7 +124,7 @@ func (o *Object) FreezeLength() {
 // looking for one runs no JavaScript. It says nothing about o itself.
 func (o *Object) InheritsNoIndex() bool {
 	for h := o.shape.Proto; h != nil; h = h.shape.Proto {
-		if len(h.elems) != 0 || h.flags&(ObjSparse|ObjExotic) != 0 || h.Class != ClassObject && h.Class != ClassArray && h.Class != ClassFunction {
+		if h.ElemCount() != 0 || h.flags&(ObjSparse|ObjExotic) != 0 || h.Class != ClassObject && h.Class != ClassArray && h.Class != ClassFunction {
 			return false
 		}
 	}
@@ -128,6 +146,7 @@ func (o *Object) HolesAreAbsent() bool {
 func (r *RealmPart) ArrayProtoPlain() bool {
 	a := r.Intrinsic(IntrinsicArrayPrototype)
 	o := r.Intrinsic(IntrinsicObjectPrototype)
+	// %Array.prototype% is marked as a prototype at initialization, so its elements stay boxed.
 	plain := len(a.elems) == 0 && len(o.elems) == 0 && (a.flags|o.flags)&ObjSparse == 0 && a.shape.Proto == o
 	if ValidateExec && plain {
 		r.checkArrayProtoPlain()
@@ -144,7 +163,7 @@ func (r *RealmPart) NewElementsPlain(o *Object) bool {
 // elemsComplete reports whether o is an array whose index properties are exactly those in elems
 // and whose length is that of elems. There can be holes. It permits reading only.
 func (o *Object) elemsComplete() bool {
-	return o.Kind == KindArray && int(o.length) == len(o.elems) && o.flags&ObjSparse == 0
+	return o.Kind == KindArray && int(o.length) == o.ElemCount() && o.flags&ObjSparse == 0
 }
 
 // elemsChangeable reports whether o is an array whose index properties are exactly those in elems
@@ -155,7 +174,14 @@ func (o *Object) elemsChangeable() bool {
 
 // ElemsResizable is elemsComplete and elemsChangeable.
 func (o *Object) ElemsResizable() bool {
-	return o.Kind == KindArray && int(o.length) == len(o.elems) && o.flags&(ObjSparse|ObjNotExtensible|ObjFrozenLength) == 0
+	if o.Kind != KindArray || o.flags&(ObjSparse|ObjNotExtensible|ObjFrozenLength) != 0 {
+		return false
+	}
+	if int(o.length) == len(o.elems) {
+		return true
+	}
+	p, ok := o.Ext.(*packedNumElems)
+	return ok && int(o.length) == len(p.values)
 }
 
 // PlainElems returns the elements of o, which the caller must not modify, when o is an array
@@ -164,6 +190,7 @@ func (o *Object) PlainElems() ([]Value, bool) {
 	if o == nil || !o.elemsComplete() || containsHole(o.elems) {
 		return nil, false
 	}
+	o.ensureUnpacked()
 	return o.elems, true
 }
 
@@ -198,6 +225,9 @@ func Element(o *Object, i int64) (Value, bool) {
 			return e, true
 		}
 	}
+	if nums := o.numericElements(); uint64(i) < uint64(len(nums)) {
+		return Number(nums[i]), true
+	}
 	if o.Class == ClassTypedArray && i >= 0 && i <= MaxArrayIndex {
 		t := o.ExtState().(*TypedArray)
 		if b, ok := t.ElementBytes(uint32(i)); ok {
@@ -211,6 +241,10 @@ func Element(o *Object, i int64) (Value, bool) {
 // Element returns that property, o is not a typed array and its elements are not shared
 // (see [SharedElems]), and reports whether it did.
 func (o *Object) SetElement(i int64, v Value) bool {
+	if uint64(i) < uint64(len(o.numericElements())) {
+		o.storeElem(uint32(i), v)
+		return true
+	}
 	if i >= 0 && i < int64(len(o.elems)) && !o.elems[i].IsHole() && o.Pinned&SharedElems == 0 {
 		o.elems[i] = v
 		return true
@@ -224,17 +258,26 @@ func ElementCount(v Value) int {
 	if v.O == nil || v.O.Kind != KindArray {
 		return 0
 	}
-	return len(v.O.elems)
+	return v.O.ElemCount()
 }
 
 // ElementList returns a copy of the elements of the array o
 // when reading them cannot run any JavaScript.
 func (o *Object) ElementList() ([]Value, bool) {
-	elems, ok := o.PlainElems()
-	if !ok {
+	if o == nil || !o.elemsComplete() || containsHole(o.elems) {
 		return nil, false
 	}
-	return append([]Value(nil), elems...), true
+	if o.packedNums() != nil {
+		return o.shape.Space.CopyDenseElements(o)
+	}
+	return append([]Value(nil), o.elems...), true
+}
+
+type arrayCtorCache struct {
+	protoShape  *Shape
+	ctorShape   *Shape
+	ctorSlot    int32
+	speciesSlot int32
 }
 
 // ArrayCtorPlain reports whether creating the result of a method for the array o
@@ -243,13 +286,30 @@ func (r *RealmPart) ArrayCtorPlain(o *Object) bool {
 	if o.shape != r.Shapes.Array {
 		return false
 	}
+	proto := r.Intrinsic(IntrinsicArrayPrototype)
 	ctor := r.Intrinsic(IntrinsicArray)
-	c := r.LookupDataSlot(r.Intrinsic(IntrinsicArrayPrototype), r.Key(KeyConstructor))
+	if c := &r.arrayCtor; c.protoShape == proto.shape && c.ctorShape == ctor.shape {
+		// Values can change without changing either shape.
+		return proto.slots[c.ctorSlot].O == ctor &&
+			ctor.slots[c.speciesSlot].Accessor().Getter == r.Intrinsic(IntrinsicArraySpeciesGetter)
+	}
+	c := r.LookupDataSlot(proto, r.Key(KeyConstructor))
 	if c.Holder == nil || c.Value().O != ctor {
 		return false
 	}
 	p, found := ctor.getOwn(r.WellKnownSymbol(SymbolSpecies))
-	return found && p.Flags&FlagAccessor != 0 && ctor.slots[p.Slot].Accessor().Getter == r.Intrinsic(IntrinsicArraySpeciesGetter)
+	if !found || p.Flags&FlagAccessor == 0 || ctor.slots[p.Slot].Accessor().Getter != r.Intrinsic(IntrinsicArraySpeciesGetter) {
+		return false
+	}
+	if c.Holder == proto {
+		r.arrayCtor = arrayCtorCache{
+			protoShape:  proto.shape,
+			ctorShape:   ctor.shape,
+			ctorSlot:    c.slot,
+			speciesSlot: p.Slot,
+		}
+	}
+	return true
 }
 
 // AppendElements is quiet.Context.AppendElements.
@@ -257,9 +317,19 @@ func (r *RealmPart) AppendElements(o *Object, vals []Value) (uint32, bool) {
 	if !o.ElemsResizable() || !r.NewElementsPlain(o) {
 		return 0, false
 	}
-	o.ReserveElems(len(vals))
-	o.elems = append(o.elems, vals...)
-	o.length = uint32(len(o.elems))
+	n := len(vals)
+	if n == 0 {
+		return o.length, true
+	}
+	if n == 1 && len(o.elems) == cap(o.elems) {
+		o.AppendElem(vals[0])
+	} else {
+		if cap(o.elems)-len(o.elems) < n {
+			o.ReserveElems(n)
+		}
+		o.elems = append(o.elems, vals...)
+	}
+	o.length += uint32(n)
 	return o.length, true
 }
 
@@ -268,6 +338,7 @@ func (r *RealmPart) PrependElements(o *Object, vals []Value) (uint32, bool) {
 	if !o.elemsMovable() || !r.NewElementsPlain(o) {
 		return 0, false
 	}
+	o.ensureUnpacked()
 	n, k := len(o.elems), len(vals)
 	if n > PollChunk {
 		r.Poll()
@@ -289,10 +360,20 @@ func (r *RealmPart) PrependElements(o *Object, vals []Value) (uint32, bool) {
 // RemoveLastElement removes the last element of the array o and returns it.
 // It reports false and does nothing when o is empty or needs the generic algorithm.
 func (o *Object) RemoveLastElement() (Value, bool) {
-	elems := o.elems
-	if !o.ElemsResizable() || len(elems) == 0 {
+	if !o.ElemsResizable() || o.ElemCount() == 0 {
 		return Value{}, false
 	}
+	if p := o.packedNums(); p != nil {
+		n := len(p.values) - 1
+		v := Number(p.values[n])
+		p.values = p.values[:n]
+		o.length = uint32(n)
+		if o.elemsOversized() {
+			o.shape.Space.reallocElems(o)
+		}
+		return v, true
+	}
+	elems := o.elems
 	// Holes before the last element stay holes after it is removed.
 	n := len(elems) - 1
 	v := elems[n]
@@ -315,8 +396,24 @@ func (o *Object) RemoveLastElement() (Value, bool) {
 // RemoveFirstElement removes the first element of the array o and returns it.
 // It reports false and does nothing when o is empty or needs the generic algorithm.
 func (o *Object) RemoveFirstElement() (Value, bool) {
-	if !o.ElemsResizable() || len(o.elems) == 0 {
+	if !o.ElemsResizable() || o.ElemCount() == 0 {
 		return Value{}, false
+	}
+	if p := o.packedNums(); p != nil {
+		n := len(p.values) - 1
+		v := Number(p.values[0])
+		if n < shiftCopyElems {
+			copy(p.values, p.values[1:])
+			p.values = p.values[:n]
+		} else {
+			o.recordShift(cap(p.values))
+			p.values = p.values[1:]
+		}
+		o.length = uint32(n)
+		if o.elemsOversized() {
+			o.shape.Space.reallocElems(o)
+		}
+		return v, true
 	}
 	v := o.elems[0]
 	if v.IsHole() {
@@ -349,16 +446,23 @@ func (r *RealmPart) FillElements(o *Object, n, start, end int64, v Value) bool {
 		return false
 	}
 	// Storing past the stored elements must not skip an index.
-	if start < 0 || start > int64(len(o.elems)) || end > n || !o.HolesAreAbsent() {
+	if start < 0 || start > int64(o.ElemCount()) || end > n || !o.HolesAreAbsent() {
 		return false
 	}
-	o.ownElems()
+	if start >= end {
+		return true
+	}
+	if o.packedNums() == nil || v.O != NumberObject {
+		o.ownElems()
+	}
 	for i := start; i < end; i++ {
 		if r.InterruptFlag.Load() {
 			r.Poll()
 		}
 		if i < int64(len(o.elems)) {
 			o.elems[i] = v
+		} else if nums := o.numericElements(); i < int64(len(nums)) {
+			nums[i] = v.N
 		} else {
 			o.AppendElem(v)
 		}
@@ -368,6 +472,9 @@ func (r *RealmPart) FillElements(o *Object, n, start, end int64, v Value) bool {
 
 // SearchElements is quiet.Context.SearchElements.
 func (r *RealmPart) SearchElements(o *Object, i, end int64, target Value, sameValueZero bool) (found, next int64) {
+	if nums := o.numericElements(); nums != nil {
+		return r.searchNums(nums, i, end, target, sameValueZero)
+	}
 	// Only strings and BigInts can take long to compare.
 	if t := target.O; t != nil && t.Kind < KindFirstObject && (len(t.Text()) > maxQuickCompare || t.Kind == KindBigInt) {
 		return r.searchElementsSlow(o, i, end, target)
@@ -409,6 +516,25 @@ func (r *RealmPart) SearchElements(o *Object, i, end int64, target Value, sameVa
 			}
 		}
 		if i < end && i&(PollInterval-1) == 0 {
+			r.Poll()
+		}
+	}
+	return -1, i
+}
+
+func (r *RealmPart) searchNums(nums []float64, i, end int64, target Value, sameValueZero bool) (int64, int64) {
+	step := int64(1)
+	if end < i {
+		step = -1
+	}
+	isNumber := target.O == NumberObject
+	isNaN := sameValueZero && math.IsNaN(target.N)
+	for ; i != end && uint64(i) < uint64(len(nums)); i += step {
+		n := nums[i]
+		if isNumber && (n == target.N || isNaN && math.IsNaN(n)) {
+			return i, i
+		}
+		if (i+step)&(PollInterval-1) == 0 {
 			r.Poll()
 		}
 	}
@@ -571,6 +697,13 @@ func (r *RealmPart) ReverseElements(o *Object) bool {
 	if !o.isDense() {
 		return false
 	}
+	if nums := o.numericElements(); nums != nil {
+		for i, j := 0, len(nums)-1; i < j; i, j = i+1, j-1 {
+			r.PollAtIndex(int64(i))
+			nums[i], nums[j] = nums[j], nums[i]
+		}
+		return true
+	}
 	o.ownElems()
 	for i, j := 0, len(o.elems)-1; i < j; i, j = i+1, j-1 {
 		r.PollAtIndex(int64(i))
@@ -584,8 +717,17 @@ func (r *RealmPart) CopyElementRange(o *Object, start, end int64) (*Object, bool
 	if !o.elemsComplete() {
 		return nil, false
 	}
-	if start < 0 || end > int64(len(o.elems)) {
+	if start < 0 || end > int64(o.ElemCount()) {
 		return nil, false
+	}
+	if nums := o.numericElements(); nums != nil {
+		if !r.ArrayCtorPlain(o) {
+			return nil, false
+		}
+		if start >= end {
+			return r.NewArray(nil), true
+		}
+		return r.newPackedNumArray(appendPolled(&r.Poller, nil, nums[start:end])), true
 	}
 	var elems []Value
 	if start < end {
@@ -599,12 +741,13 @@ func (r *RealmPart) CopyElementRange(o *Object, start, end int64) (*Object, bool
 
 // SpliceElements is quiet.Context.SpliceElements.
 func (r *RealmPart) SpliceElements(o *Object, length, start, del int64, items []Value) (*Object, bool) {
-	if length != int64(len(o.elems)) || start < 0 || start > length || del < 0 || del > length-start {
+	if length != int64(o.ElemCount()) || start < 0 || start > length || del < 0 || del > length-start {
 		return nil, false
 	}
 	if !o.elemsMovable() || !r.ArrayCtorPlain(o) || !r.ArrayProtoPlain() {
 		return nil, false
 	}
+	o.ensureUnpacked()
 	removed := appendPolled(&r.Poller, nil, o.elems[start:start+del])
 	n, k := int(length), len(items)
 	newLen := n - int(del) + k
@@ -636,15 +779,47 @@ func (r *RealmPart) SpliceElements(o *Object, length, start, del int64, items []
 	return r.NewArray(removed), true
 }
 
+// ReserveElementsForIteration gives dst room to collect the elements of src.
+func (r *RealmPart) ReserveElementsForIteration(dst, src *Object) {
+	n := src.ElemCount()
+	if dst.packedNums() != nil {
+		// Appending grows the numeric storage or unpacks it according to the values read.
+		return
+	}
+	if n == 2*packElemsThreshold && n > dst.ElemRoom() && dst.ElemCount() == 0 && dst.flags == 0 &&
+		dst.Kind == KindArray && src.packedNums() != nil && src.elemsComplete() && r.ArrayIterationPlain(src) {
+		dst.packElems(newPackedNumBlock(0, n))
+		return
+	}
+	dst.ReserveElems(n)
+}
+
 // AppendElementsOf is quiet.Context.AppendElementsOf.
 func (r *RealmPart) AppendElementsOf(dst *Object, n int64, src *Object) bool {
 	if !dst.ElemsResizable() || int64(dst.length) != n || dst.shape != r.Shapes.Array {
 		return false
 	}
+	if nums := src.numericElements(); nums != nil && src.elemsComplete() {
+		if dstPacked := dst.packedNums(); dstPacked != nil {
+			dstPacked.values = appendPolled(&r.Poller, dstPacked.values, nums)
+			dst.length = uint32(len(dstPacked.values))
+			return true
+		}
+		if n == 0 && dst.flags == 0 {
+			if len(nums) != 0 {
+				dst.packElems(&packedNumElems{
+					values: appendPolled(&r.Poller, nil, nums),
+				})
+				dst.length = uint32(len(nums))
+			}
+			return true
+		}
+	}
 	elems, ok := src.PlainElems()
 	if !ok {
 		return false
 	}
+	dst.ensureUnpacked()
 	old := dst.elems
 	dst.elems = appendPolled(&r.Poller, old, elems)
 	if cap(dst.elems) != cap(old) {
@@ -657,7 +832,7 @@ func (r *RealmPart) AppendElementsOf(dst *Object, n int64, src *Object) bool {
 // SkipHoles is quiet.Context.SkipHoles.
 func (r *RealmPart) SkipHoles(o *Object, i, end int64) int64 {
 	elems := o.elems
-	if i < 0 || i >= end || i < int64(len(elems)) && !elems[i].IsHole() {
+	if i < 0 || i >= end || i < int64(len(elems)) && !elems[i].IsHole() || i < int64(len(o.numericElements())) {
 		return i
 	}
 	// The callers check for an interruption only at some of the elements, which holes may separate,
@@ -692,7 +867,7 @@ func (r *RealmPart) SkipHoles(o *Object, i, end int64) int64 {
 // SkipHolesBackward is quiet.Context.SkipHolesBackward.
 func (r *RealmPart) SkipHolesBackward(o *Object, i, end int64) int64 {
 	elems := o.elems
-	if i <= end || i < 0 || i > MaxArrayIndex || i < int64(len(elems)) && !elems[i].IsHole() {
+	if i <= end || i < 0 || i > MaxArrayIndex || i < int64(len(elems)) && !elems[i].IsHole() || i < int64(len(o.numericElements())) {
 		return i
 	}
 	// See [RealmPart.SkipHoles].
@@ -713,6 +888,9 @@ func (r *RealmPart) SkipHolesBackward(o *Object, i, end int64) int64 {
 			end = max(end, int64(idxs[p-1]))
 		}
 	}
+	if nums := o.numericElements(); nums != nil {
+		return max(end, int64(len(nums))-1)
+	}
 	k := min(i, int64(len(elems))-1)
 	j := max(end, k-PollInterval, -1)
 	for ; k > j; k-- {
@@ -725,12 +903,24 @@ func (r *RealmPart) SkipHolesBackward(o *Object, i, end int64) int64 {
 
 // ElemCount returns how many elements o holds in memory, holes included.
 func (o *Object) ElemCount() int {
-	return len(o.elems)
+	if n := len(o.elems); n != 0 {
+		return n
+	}
+	if p, ok := o.Ext.(*packedNumElems); ok {
+		return len(p.values)
+	}
+	return 0
 }
 
 // ElemRoom returns how many elements the storage of the elements of o has room for.
 func (o *Object) ElemRoom() int {
-	return cap(o.elems)
+	if room := cap(o.elems); room != 0 {
+		return room
+	}
+	if p, ok := o.Ext.(*packedNumElems); ok {
+		return cap(p.values)
+	}
+	return 0
 }
 
 // ElementAt returns the element i of o, and reports whether o holds it.
@@ -740,12 +930,15 @@ func (o *Object) ElementAt(i uint32) (Value, bool) {
 			return e, true
 		}
 	}
+	if nums := o.numericElements(); uint(i) < uint(len(nums)) {
+		return Number(nums[i]), true
+	}
 	return Value{}, false
 }
 
 // HasElementAt reports whether o, which must have property storage, holds the element i.
 func (o *Object) HasElementAt(i uint32) bool {
-	return int64(i) < int64(len(o.elems)) && !o.elems[i].IsHole()
+	return int64(i) < int64(len(o.elems)) && !o.elems[i].IsHole() || uint(i) < uint(len(o.numericElements()))
 }
 
 // StoreElement stores v, which can be a hole, as the element i of o. HasElementAt must report true
@@ -754,6 +947,14 @@ func (o *Object) StoreElement(i uint32, v Value) {
 	if ValidateExec && !o.HasElementAt(i) {
 		panic("storage: StoreElement of an element that does not exist")
 	}
+	o.storeElem(i, v)
+}
+
+func (o *Object) storeElem(i uint32, v Value) {
+	if p := o.packedNums(); p != nil && v.O == NumberObject {
+		p.values[i] = v.N
+		return
+	}
 	o.ownElems()
 	o.elems[i] = v
 }
@@ -761,6 +962,9 @@ func (o *Object) StoreElement(i uint32, v Value) {
 // HasElement reports whether o holds an element, checking for an interruption while it looks at
 // many.
 func (o *Object) HasElement() bool {
+	if len(o.numericElements()) != 0 {
+		return true
+	}
 	for i, e := range o.elems {
 		if !e.IsHole() {
 			return true
@@ -780,11 +984,16 @@ func (o *Object) HasHole() bool {
 // PushElement appends v to the elements of the array o and sets its length.
 func (o *Object) PushElement(v Value) {
 	o.AppendElem(v)
-	o.length = uint32(len(o.elems))
+	o.length = uint32(o.ElemCount())
 }
 
 // CopyDenseElements returns a copy of the elements of the array o when none of them is missing.
 func (p *Poller) CopyDenseElements(o *Object) ([]Value, bool) {
+	if nums := o.numericElements(); nums != nil && uint64(o.length) <= uint64(len(nums)) {
+		elems := make([]Value, o.length)
+		boxNums(p, elems, nums[:o.length])
+		return elems, true
+	}
 	if n := o.length; uint64(n) <= uint64(len(o.elems)) && !containsHole(o.elems[:n]) {
 		return appendPolled(p, nil, o.elems[:n]), true
 	}
@@ -793,6 +1002,23 @@ func (p *Poller) CopyDenseElements(o *Object) ([]Value, bool) {
 
 // TruncateElements removes the elements of the array o from n on and sets its length to n.
 func (p *Poller) TruncateElements(o *Object, n uint32) {
+	if packed := o.packedNums(); packed != nil {
+		if uint64(n) < uint64(len(packed.values)) {
+			removed := len(packed.values) - int(n)
+			if removed >= PollChunk {
+				p.Poll()
+			}
+			packed.values = packed.values[:n]
+			o.length = n
+			if o.elemsOversized() {
+				p.reallocElems(o)
+			} else if removed > PollChunk {
+				o.clipElems()
+			}
+		}
+		o.length = n
+		return
+	}
 	if int64(n) < int64(len(o.elems)) {
 		o.ownElems()
 		tail := o.elems[n:]

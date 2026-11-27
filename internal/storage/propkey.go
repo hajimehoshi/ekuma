@@ -169,6 +169,9 @@ func AppendIndexRun(keys []PropKey, i, j int) []PropKey {
 
 // AppendElemRun appends the keys of the elements of o from start to end to keys.
 func AppendElemRun(keys []PropKey, o *Object, start, end int) []PropKey {
+	if o.packedNums() != nil {
+		return AppendIndexRun(keys, start, end)
+	}
 	for i, e := range o.elems[start:end] {
 		if !e.IsHole() {
 			keys = append(keys, IndexKey(uint32(start+i)))

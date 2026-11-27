@@ -127,7 +127,7 @@ type Object struct {
 	// which has neither, holds its [ConcatCount] there instead.
 	Pinned uint8
 
-	// length is the length of an array, which is at least len(elems). For a string it is 0,
+	// length is the length of an array, which is at least its element count. For a string it is 0,
 	// or the array index that the string stands for plus one. See [Object.ArrayIndex].
 	length uint32
 
@@ -233,8 +233,8 @@ type objectTail struct {
 	// For a string that is not interned it is the interned string with the same content,
 	// once that was looked up, or the builder that the string is the tail or the head of (see
 	// concat.go).
-	// Side data can occupy Ext as *ObjectMeta or *weakEntries. ObjectMeta also holds any
-	// internal state. See [Object.ExtState] and [Object.Meta].
+	// For packed numeric arrays, Ext holds the element storage as well as any other state.
+	// See [Object.ExtState] and [Object.Meta].
 	Ext any
 }
 
@@ -319,9 +319,26 @@ type ObjectMeta struct {
 	Ext any
 }
 
+func (o *Object) auxiliaryState() any {
+	if p := o.packedNums(); p != nil {
+		return p.ext
+	}
+	return o.Ext
+}
+
+func (o *Object) setAuxiliaryState(v any) {
+	if p := o.packedNums(); p != nil {
+		p.ext = v
+		return
+	}
+	if v != nil || o.objectTail != &zeroTail {
+		o.ownTail().Ext = v
+	}
+}
+
 // ExtState returns the internal state of o.
 func (o *Object) ExtState() any {
-	switch ext := o.Ext.(type) {
+	switch ext := o.auxiliaryState().(type) {
 	case *ObjectMeta:
 		return ext.Ext
 	case *weakEntries:
@@ -333,23 +350,20 @@ func (o *Object) ExtState() any {
 
 // SetExtState sets the internal state of o to v.
 func (o *Object) SetExtState(v any) {
-	switch ext := o.Ext.(type) {
+	switch ext := o.auxiliaryState().(type) {
 	case *ObjectMeta:
 		ext.Ext = v
 		return
 	case *weakEntries:
 		if v != nil {
-			o.ownTail().Ext = &ObjectMeta{
+			o.setAuxiliaryState(&ObjectMeta{
 				weak: ext,
 				Ext:  v,
-			}
+			})
 		}
 		return
 	}
-	if v == nil && o.objectTail == &zeroTail {
-		return
-	}
-	o.ownTail().Ext = v
+	o.setAuxiliaryState(v)
 }
 
 // ExtConcatCount returns the concatenation count of the string o, or 0.
@@ -359,10 +373,11 @@ func (o *Object) ExtConcatCount() ConcatCount {
 
 // ExtObject returns the object in the internal state of o, and reports whether there is one.
 func (o *Object) ExtObject() (*Object, bool) {
-	if k, ok := o.Ext.(*Object); ok {
+	ext := o.auxiliaryState()
+	if k, ok := ext.(*Object); ok {
 		return k, true
 	}
-	if m, ok := o.Ext.(*ObjectMeta); ok {
+	if m, ok := ext.(*ObjectMeta); ok {
 		k, ok := m.Ext.(*Object)
 		return k, ok
 	}
@@ -371,7 +386,7 @@ func (o *Object) ExtObject() (*Object, bool) {
 
 // Meta returns the side data of o, or nil when it has none.
 func (o *Object) Meta() *ObjectMeta {
-	m, _ := o.Ext.(*ObjectMeta)
+	m, _ := o.auxiliaryState().(*ObjectMeta)
 	return m
 }
 
@@ -380,19 +395,19 @@ func (o *Object) ensureMeta() *ObjectMeta {
 	if m := o.Meta(); m != nil {
 		return m
 	}
-	t := o.ownTail()
+	ext := o.auxiliaryState()
 	m := &ObjectMeta{}
-	if w, ok := t.Ext.(*weakEntries); ok {
+	if w, ok := ext.(*weakEntries); ok {
 		m.weak = w
 	} else {
-		m.Ext = t.Ext
+		m.Ext = ext
 	}
-	t.Ext = m
+	o.setAuxiliaryState(m)
 	return m
 }
 
 func (o *Object) weak() *weakEntries {
-	switch ext := o.Ext.(type) {
+	switch ext := o.auxiliaryState().(type) {
 	case *weakEntries:
 		return ext
 	case *ObjectMeta:
@@ -403,7 +418,7 @@ func (o *Object) weak() *weakEntries {
 }
 
 func (o *Object) ensureWeak() *weakEntries {
-	switch ext := o.Ext.(type) {
+	switch ext := o.auxiliaryState().(type) {
 	case *weakEntries:
 		return ext
 	case nil:
@@ -414,7 +429,7 @@ func (o *Object) ensureWeak() *weakEntries {
 			return &t.entries
 		}
 		w := &weakEntries{}
-		o.ownTail().Ext = w
+		o.setAuxiliaryState(w)
 		return w
 	default:
 		m := o.ensureMeta()
@@ -647,6 +662,7 @@ func (sp *Space) SetProto(o *Object, proto *Object) {
 
 // MakeNonExtensible makes o refuse new properties.
 func (o *Object) MakeNonExtensible() {
+	o.ensureUnpacked()
 	o.flags |= ObjNotExtensible
 	// The inline caches that add properties are keyed by shared shapes.
 	o.MakePrivate()

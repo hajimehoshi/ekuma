@@ -80,6 +80,11 @@ func TestAllocationsPerOperation(t *testing.T) {
 			want: 3,
 		},
 		{
+			name: "mixed array after its first growth",
+			body: `var a = []; for (var j = 0; j < 5; j++) a[j] = j; a[5] = "x";`,
+			want: 2,
+		},
+		{
 			name:  "concatenation of two long strings",
 			setup: `var a = "a".repeat(40), b = "b".repeat(40);`,
 			body:  `a + b;`,

@@ -300,7 +300,7 @@ var (
 	nativeArrayFrom = engine.RegisterNative(arrayFrom)
 	nativeArrayPush = engine.RegisterNativeWithKernels(arrayPush, engine.Kernels{
 		Method1:  arrayPushKernel,
-		Contract: shortContract,
+		Contract: polledContract,
 	})
 	nativeArrayPop = engine.RegisterNativeWithKernels(arrayPop, engine.Kernels{
 		Method0:  quiet.ArrayPopKernel,

@@ -14,19 +14,22 @@ import (
 // rawStoreCalls are the methods of storage.Raw that store, or that return what can be stored to, with
 // the number of calls in agent.exec.
 var rawStoreCalls = map[string]int{
-	"ExtendElems": 5,
+	"ExtendElems": 6,
+	"ExtendNums":  4,
+	"SetNum":      5,
 	"ExtendSlots": 2,
-	"SetElem":     7,
+	"SetElem":     8,
 	"SetFlags":    1,
-	"SetLength":   4,
+	"SetLength":   8,
 	"SetShape":    8,
 	"SetSlot":     3,
 	"Elems":       3,
+	"Nums":        5,
 	"SlotRef":     0,
 }
 
 // rawLoadMethods are the other methods.
-var rawLoadMethods = []string{"Elem", "ElemCount", "ElemRoom", "ElemsShared", "Slot", "SlotCount", "SlotRoom"}
+var rawLoadMethods = []string{"Elem", "ElemCount", "ElemRoom", "ElemsShared", "NumCount", "NumRoom", "HasNumSideData", "Slot", "SlotCount", "SlotRoom"}
 
 // unguardedUses are the operations of storage that skip the checks of the property operations,
 // with the functions outside storage that use them and how often they do.

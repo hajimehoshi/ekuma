@@ -134,6 +134,18 @@ func (r *RealmPart) AddIndex(o *Object, i uint32, val Value, flags uint8) bool {
 	if o.flags&ObjNotExtensible != 0 {
 		return false
 	}
+	if p := o.packedNums(); p != nil {
+		var extra int
+		if flags == FlagsData && uint(i) == uint(len(p.values)) {
+			if val.O == NumberObject {
+				o.appendNum(p, val.N)
+				o.length = max(o.length, i+1)
+				return true
+			}
+			extra = 1
+		}
+		o.unpackNums(p, extra)
+	}
 	if o.Kind == KindArray && i >= o.length {
 		if o.flags&ObjFrozenLength != 0 {
 			return false
@@ -144,6 +156,9 @@ func (r *RealmPart) AddIndex(o *Object, i uint32, val Value, flags uint8) bool {
 	if flags == FlagsData {
 		if uint(i) < uint(n) {
 			o.elems[i] = val
+			return true
+		}
+		if n == packElemsThreshold && uint(i) == uint(n) && n == cap(o.elems) && val.O == NumberObject && o.tryPackNums(val.N) {
 			return true
 		}
 		if growElems(o.elems, i) {
