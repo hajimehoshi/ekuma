@@ -1,4 +1,4 @@
-Ekuma: f130b4d6c37d
+Ekuma: 5a36a064fec5
 OS: macOS 27.2, darwin/arm64
 CPU: Apple M3 Pro
 Go: go1.27.4
@@ -7,24 +7,24 @@ Scope: whole test process, separate from comparison measurements
 
 File: ekuma-v8-profile.test
 Type: cpu
-Time: 2026-11-21 01:19:56 JST
-Duration: 14.58s, Total samples = 14.63s (100.36%)
-Showing nodes accounting for 12.50s, 85.44% of 14.63s total
-Dropped 209 nodes (cum <= 0.07s)
-Showing top 15 nodes out of 107
+Time: 2026-11-28 00:11:41 JST
+Duration: 13.32s, Total samples = 13.39s (100.53%)
+Showing nodes accounting for 11.01s, 82.23% of 13.39s total
+Dropped 192 nodes (cum <= 0.07s)
+Showing top 15 nodes out of 135
       flat  flat%   sum%        cum   cum%
-     6.83s 46.68% 46.68%      9.36s 63.98%  github.com/hajimehoshi/ekuma/internal/engine.(*VM).exec
-     1.61s 11.00% 57.69%      1.61s 11.00%  runtime.madvise
-     1.19s  8.13% 65.82%      1.19s  8.13%  runtime.kevent
-     0.94s  6.43% 72.25%      0.94s  6.43%  runtime.pthread_kill
-     0.48s  3.28% 75.53%      0.61s  4.17%  runtime.tryDeferToSpanScan
-     0.31s  2.12% 77.65%      0.31s  2.12%  runtime.usleep
-     0.22s  1.50% 79.15%      0.57s  3.90%  runtime.scanObjectsSmall
-     0.19s  1.30% 80.45%      0.21s  1.44%  github.com/hajimehoshi/ekuma/internal/engine.setNumber (inline)
-     0.14s  0.96% 81.41%      0.14s  0.96%  runtime.asyncPreempt
-     0.14s  0.96% 82.37%      0.14s  0.96%  runtime.memclrNoHeapPointers
-     0.10s  0.68% 83.05%      0.49s  3.35%  runtime.mallocgcSmallScanNoHeader
-     0.09s  0.62% 83.66%      0.09s  0.62%  runtime.procyieldAsm
-     0.09s  0.62% 84.28%      0.09s  0.62%  runtime.pthread_cond_wait
-     0.09s  0.62% 84.89%      0.35s  2.39%  runtime.wbBufFlush1
-     0.08s  0.55% 85.44%      0.16s  1.09%  github.com/hajimehoshi/ekuma/internal/regexp.(*Matcher).run
+     6.53s 48.77% 48.77%      9.91s 74.01%  github.com/hajimehoshi/ekuma/internal/engine.(*agent).exec
+     0.83s  6.20% 54.97%      0.83s  6.20%  runtime.madvise
+     0.78s  5.83% 60.79%      0.78s  5.83%  runtime.kevent
+     0.61s  4.56% 65.35%      0.61s  4.56%  runtime.pthread_kill
+     0.51s  3.81% 69.16%      0.65s  4.85%  runtime.tryDeferToSpanScan
+     0.28s  2.09% 71.25%      0.28s  2.09%  github.com/hajimehoshi/ekuma/internal/storage.Raw.Slot (inline)
+     0.22s  1.64% 72.89%      0.24s  1.79%  github.com/hajimehoshi/ekuma/internal/storage.SetNumber (inline)
+     0.22s  1.64% 74.53%      0.22s  1.64%  runtime.usleep
+     0.21s  1.57% 76.10%      0.21s  1.57%  github.com/hajimehoshi/ekuma/internal/storage.Raw.ElemCount (inline)
+     0.21s  1.57% 77.67%      0.36s  2.69%  runtime.mallocgcSmallScanNoHeaderSC7
+     0.16s  1.19% 78.86%      0.50s  3.73%  runtime.scanObjectsSmall
+     0.13s  0.97% 79.84%      0.13s  0.97%  runtime.memclrNoHeapPointers
+     0.12s   0.9% 80.73%      0.12s   0.9%  runtime.asyncPreempt
+     0.10s  0.75% 81.48%      0.10s  0.75%  internal/runtime/atomic.(*UnsafePointer).Load (inline)
+     0.10s  0.75% 82.23%      0.44s  3.29%  runtime.mallocgcSmallScanNoHeader
