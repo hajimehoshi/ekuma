@@ -2437,16 +2437,12 @@ func TestCancelJSON(t *testing.T) {
 // TestCancelBuiltins checks that a long call of a built-in function that runs no script code
 // stops soon after its context is done.
 func TestCancelBuiltins(t *testing.T) {
+	t.Run("bulk copy", testCancelBulkCopy)
 	for _, tc := range []struct {
 		name  string
 		setup string
 		src   string
 	}{
-		{
-			name:  "bulk copy",
-			setup: `var a = new Array(1 << 22).fill(0);`,
-			src:   `a.concat(a, a, a)`,
-		},
 		{
 			name:  "sort",
 			setup: `var a = []; for (let i = 0; i < 1 << 20; i++) a.push(Math.random());`,
@@ -2496,6 +2492,36 @@ func TestCancelBuiltins(t *testing.T) {
 			}
 		})
 	}
+}
+
+func testCancelBulkCopy(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		var vm ekuma.VM
+		ctx, cancel := context.WithCancel(t.Context())
+		defer cancel()
+		getter := vm.FuncOf("spreadable", func(ekuma.Value, []ekuma.Value) (any, error) {
+			cancel()
+			// Wait until the VM has received the cancellation.
+			synctest.Wait()
+			return true, nil
+		})
+		if err := vm.Global().Set(t.Context(), "spreadable", getter); err != nil {
+			t.Fatal(err)
+		}
+		// The final operand's getter cancels after concat has copied the receiver.
+		// The combined length crosses the bulk append's polling threshold.
+		src := fmt.Sprintf(`
+			var a = new Array(%d).fill(0), b = new Array(a.length + 1).fill(0);
+			Object.defineProperty(b, Symbol.isConcatSpreadable, { get: spreadable });
+			var result = a.concat(b);
+		`, storage.PollChunk/2)
+		if _, err := runScript(ctx, &vm, "concat", src); !errors.Is(err, context.Canceled) {
+			t.Errorf("got %v, want context.Canceled", err)
+		}
+		if v, err := vm.Global().Get(t.Context(), "result"); err != nil || !v.IsUndefined() {
+			t.Errorf("result = %v, %v, want undefined after interruption", v, err)
+		}
+	})
 }
 
 // TestCancelJobs checks that a context stops a script whose jobs never run out, and that
