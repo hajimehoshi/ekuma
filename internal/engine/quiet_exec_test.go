@@ -60,6 +60,52 @@ func TestQuietNumericConcatenation(t *testing.T) {
 	}
 }
 
+func TestQuietNumberFormattingPrecision(t *testing.T) {
+	cx := newTestContext(t)
+	v, err := runScript(cx, "quiet-number-format.js", `
+		function fixed(n, digits) { return n.toFixed(digits); }
+		function precise(n, digits) { return n.toPrecision(digits); }
+		let rejected = false;
+		try { precise(1, 0.5); } catch (e) { rejected = e instanceof RangeError; }
+		[
+			fixed(2.5, -0.5), fixed(2.5, NaN), fixed(0, 100.9).length,
+			precise(2.5, 1.9), precise(Infinity, 0.5), precise(0, 100.9).length, rejected,
+		].join("|");
+	`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	const want = "3|3|102|3|Infinity|101|true"
+	if got := cx.ToString(v); got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+func TestQuietConstantPrepend(t *testing.T) {
+	cx := newTestContext(t)
+	v, err := runScript(cx, "quiet-prepend.js", `
+		function prepend(text) {
+			for (let i = 0; i < 40; i++) text = "abcdef" + text;
+			return text;
+		}
+		let calls = 0;
+		const tail = {
+			[Symbol.toPrimitive](hint) {
+				calls++;
+				return hint === "default" ? "tail" : hint;
+			}
+		};
+		const expected = "abcdef".repeat(40) + "tail";
+		prepend("tail") === expected && prepend(tail) === expected && calls === 1;
+	`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !storage.IsStrictlyEqual(v, storage.True) {
+		t.Errorf("got %s, want true", cx.DisplayString(v))
+	}
+}
+
 func TestQuietCallResumesAfterMethodRead(t *testing.T) {
 	cx := newTestContext(t)
 	v, err := runScript(cx, "quiet.js", `

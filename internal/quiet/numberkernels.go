@@ -42,18 +42,22 @@ func NumberToFixedKernel0(q Context, this storage.Value) (storage.Value, bool) {
 }
 
 func NumberToFixedKernel1(q Context, this, arg storage.Value) (storage.Value, bool) {
-	if arg.IsUndefined() {
-		return NumberToFixedKernel0(q, this)
-	}
-	if !this.IsNumber() || !arg.IsNumber() {
+	if !this.IsNumber() {
 		return storage.Value{}, false
 	}
-	digits := numconv.ToIntegerOrInfinity(arg.Number())
-	// toFixed checks the range even for a non-finite receiver.
-	if digits < 0 || digits > 100 {
+	var digits int
+	if arg.IsNumber() {
+		n := arg.Number()
+		// Conversion to int truncates toward zero. NaN uses the default precision.
+		if -1 < n && n < 101 {
+			digits = int(n)
+		} else if n == n {
+			return storage.Value{}, false
+		}
+	} else if !arg.IsUndefined() {
 		return storage.Value{}, false
 	}
-	return numberToFixed(q, this.Number(), int(digits)), true
+	return numberToFixed(q, this.Number(), digits), true
 }
 
 func numberToFixed(q Context, n float64, digits int) storage.Value {
@@ -72,15 +76,14 @@ func NumberToPrecisionKernel1(q Context, this, arg storage.Value) (storage.Value
 		return storage.Value{}, false
 	}
 	n := this.Number()
-	if math.IsNaN(n) || math.IsInf(n, 0) {
+	if !(math.Abs(n) <= math.MaxFloat64) {
 		return q.NumberToString(n), true
 	}
-	precision := numconv.ToIntegerOrInfinity(arg.Number())
-	if precision < 1 || precision > 100 {
-		return storage.Value{}, false
+	if p := arg.Number(); 1 <= p && p < 101 {
+		var buf [numconv.NumberFormatBufSize]byte
+		return q.NewASCIIStringBytes(numconv.AppendPrecision(buf[:0], n, int(p))), true
 	}
-	var buf [numconv.NumberFormatBufSize]byte
-	return q.NewASCIIStringBytes(numconv.AppendPrecision(buf[:0], n, int(precision))), true
+	return storage.Value{}, false
 }
 
 func NumberToExponentialKernel0(q Context, this storage.Value) (storage.Value, bool) {

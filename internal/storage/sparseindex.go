@@ -134,6 +134,7 @@ func (r *RealmPart) AddIndex(o *Object, i uint32, val Value, flags uint8) bool {
 	if o.flags&ObjNotExtensible != 0 {
 		return false
 	}
+	o.touchProtoElems()
 	if p := o.packedNums(); p != nil {
 		var extra int
 		if flags == FlagsData && uint(i) == uint(len(p.values)) {

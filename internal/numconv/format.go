@@ -20,13 +20,16 @@ func AppendFixed(b []byte, n float64, digits int) []byte {
 	if n == 0 {
 		n = 0
 	}
+	if r, ok := appendHalfUpFixed(b, n, digits); ok {
+		return r
+	}
 	return appendHalfUp(b, n, 'f', digits)
 }
 
 // AppendPrecision appends the result of toPrecision for finite n and 1 <= precision <= 100.
 func AppendPrecision(b []byte, n float64, precision int) []byte {
 	if n == 0 {
-		return appendHalfUp(b, 0, 'f', precision-1)
+		return AppendFixed(b, 0, precision-1)
 	}
 	if s, ok := appendPrecisionFast(b, n, precision); ok {
 		return s
@@ -62,11 +65,6 @@ func AppendExponential(b []byte, n float64, digits int) []byte {
 // appendHalfUp appends n formatted like [strconv.AppendFloat] with the format fmt ('e' or 'f') and
 // the precision prec (non-negative), except that an exact tie rounds away from zero.
 func appendHalfUp(b []byte, n float64, fmt byte, prec int) []byte {
-	if fmt == 'f' {
-		if r, ok := appendHalfUpFixed(b, n, prec); ok {
-			return r
-		}
-	}
 	if !isTie(n, fmt, prec) {
 		return strconv.AppendFloat(b, n, fmt, prec, 64)
 	}
@@ -147,7 +145,11 @@ func appendHalfUpFixed(b []byte, n float64, prec int) ([]byte, bool) {
 	if math.Signbit(n) {
 		b = append(b, '-')
 	}
-	b = strconv.AppendUint(b, i, 10)
+	if i < 10 {
+		b = append(b, byte('0'+i))
+	} else {
+		b = appendDigits(b, i, decimalDigits(i))
+	}
 	if prec > 0 {
 		b = append(b, '.')
 		b = appendDigits(b, d, prec)
@@ -283,11 +285,7 @@ func roundSignificant(i, f uint64, s uint, p int) (d uint64, e int, ok bool) {
 	var up bool
 	switch {
 	case i > 0:
-		// i has n digits.
-		n := bits.Len64(i) * 1233 >> 12
-		if i >= uint64Pow10[n] {
-			n++
-		}
+		n := decimalDigits(i)
 		e = n - 1
 		switch {
 		case n == p:
@@ -328,6 +326,15 @@ func roundSignificant(i, f uint64, s uint, p int) (d uint64, e int, ok bool) {
 		}
 	}
 	return d, e, true
+}
+
+// decimalDigits returns how many digits a positive integer has in base ten.
+func decimalDigits(i uint64) int {
+	n := bits.Len64(i) * 1233 >> 12
+	if i >= uint64Pow10[n] {
+		n++
+	}
+	return n
 }
 
 // digitPairs holds the two decimal digits of each number from 0 to 99.

@@ -175,6 +175,15 @@ func (ag *agent) execQuiet(cx *ExecutionContext, fp *storage.FuncProto, pc int, 
 				continue
 			}
 			goto retry
+		case bytecode.OpPrependK:
+			x := regs[i.A]
+			if i.C != 0 || !x.IsString() || x.O.Flags()&storage.ObjExclusive == 0 {
+				goto retry
+			}
+			ag.frames[len(ag.frames)-1].pc = pc
+			if !cx.prependInPlace(x, fp.Consts[i.B]) {
+				goto retry
+			}
 		case bytecode.OpConcatK:
 			x, suffix := regs[i.B], fp.Consts[i.C]
 			if x.IsString() {

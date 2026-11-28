@@ -119,7 +119,7 @@ func fusionPair(first, second Instr, pc int) bool {
 	switch first.Op {
 	case OpGetGlobal, OpGetGlobalStrict, OpGetGlobalOrUndef, OpGetGlobalOrUndefStrict,
 		OpGetProp, OpGetLength, OpGetArgsLength, OpGetIndex, OpGetIndexInt, OpGetArgsIndex, OpGetArgsIndexInt,
-		OpMul, OpMulAdd, OpMulK, OpIterNext:
+		OpMul, OpMulAdd, OpMulK, OpIterNext, OpCallUndef:
 		return second.Op == OpAdd &&
 			(second.A == second.B && second.C == first.A || second.A == second.C && second.B == first.A)
 	case OpInc, OpDec, OpPostInc, OpPostDec, OpIncUpval, OpDecUpval, OpAddK, OpSubK:
