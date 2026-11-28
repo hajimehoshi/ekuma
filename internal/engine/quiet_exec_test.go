@@ -81,6 +81,26 @@ func TestQuietNumberFormattingPrecision(t *testing.T) {
 	}
 }
 
+func TestQuietRemainderAboveInt64Range(t *testing.T) {
+	cx := newTestContext(t)
+	// 2**63 is the smallest integer above the int64 range. The concatenation enters execQuiet.
+	v, err := runScript(cx, "quiet-remainder.js", `
+		function remainders(x, d) {
+			const text = "" + x;
+			const byConstant = x % 10, byRegister = x % d;
+			return byConstant + "," + byRegister;
+		}
+		remainders(2 ** 63, 1000);
+	`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	const want = "8,808"
+	if got := cx.ToString(v); got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
 func TestQuietCallResumesAfterMethodRead(t *testing.T) {
 	cx := newTestContext(t)
 	v, err := runScript(cx, "quiet.js", `

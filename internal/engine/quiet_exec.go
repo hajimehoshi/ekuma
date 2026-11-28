@@ -224,7 +224,7 @@ func (ag *agent) execQuiet(cx *ExecutionContext, fp *storage.FuncProto, pc int, 
 			case bytecode.OpDiv, bytecode.OpDivK:
 				result = x.N / y
 			default:
-				if a, b := int64(x.N), int64(y); a > 0 && b > 0 && float64(a) == x.N && float64(b) == y {
+				if a, b := int64(x.N), int64(y); a > 0 && b > 0 && numconv.InInt64Range(x.N) && numconv.InInt64Range(y) && float64(a) == x.N && float64(b) == y {
 					result = float64(a % b)
 				} else {
 					result = math.Mod(x.N, y)
