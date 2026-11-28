@@ -140,6 +140,85 @@ var operands = {
   "revoked proxy": () => revoked([]),
 };
 
+// numbers returns an array of the first n natural numbers, which it stores packed from 17 on.
+function numbers(n) {
+  var a = [];
+  for (var i = 0; i < n; i++) a[i] = i;
+  return a;
+}
+
+// withRoom returns an array of two elements with room for a third.
+function withRoom() {
+  var a = ["a", "b", shared];
+  a.length = 2;
+  return a;
+}
+
+// shifted returns the array a after removing its first n elements, which leave their storage unused.
+function shifted(a, n) {
+  for (var i = 0; i < n; i++) a.shift();
+  return a;
+}
+
+// The index of the accessors that prototypes get, beyond the arrays of the probes themselves.
+var accessorIndex = 150;
+
+// accessor gives o an accessor at accessorIndex that logs its calls, and returns o.
+function accessor(o) {
+  return Object.defineProperty(o, accessorIndex, {get: hook("get", "inherited"), set: hook("set"), configurable: true});
+}
+
+// upToAccessor returns an array of the length accessorIndex with room for more elements.
+function upToAccessor() {
+  var a = new Array(accessorIndex + 10).fill("x");
+  a.length = accessorIndex;
+  return a;
+}
+
+// otherRealmArray returns upToAccessor() of another realm, whose Array.prototype has an accessor.
+// The test sets it.
+var otherRealmArray;
+
+// The receivers of the calls of push and pop that the interpreter runs itself: values that it
+// leaves to the functions, and arrays in each state of their elements that it tells apart. A
+// receiver with the name of an operand is that operand.
+var receivers = {
+  "undefined": operands.undefined,
+  "arguments": operands.arguments,
+  "empty array": operands["empty array"],
+  "array up to the accessor": upToAccessor,
+  "array beyond its elements": () => { var a = ["a", "b", shared, 1, 2]; a.length = 1; a.length = 3; return a; },
+  "numbers": () => numbers(17),
+  "numbers beyond their elements": () => { var a = numbers(17); a.length = 18; return a; },
+  "array of a read-only length": () => Object.defineProperty(withRoom(), "length", {writable: false}),
+  "array with an inherited accessor": operands["array with an inherited accessor"],
+  "array with a named property": () => Object.assign(withRoom(), {named: 1}),
+  "array of another realm": () => otherRealmArray(),
+  "array of the largest length": operands["array of the largest length"],
+  "array that pop shrinks": () => { var a = new Array(1000).fill("x"); a.length = 250; return a; },
+  "array with shifted storage": () => shifted(new Array(400).fill(shared), 300),
+  "numbers with shifted storage": () => shifted(numbers(512), 384),
+};
+
+// The changes of the prototypes of arrays that make the interpreter leave the calls of push for
+// upToAccessor() to the function. Each spoils its realm.
+var prototypeChanges = {
+  "accessor of Array.prototype": () => accessor(Array.prototype),
+  "accessor of Object.prototype": () => accessor(Object.prototype),
+  "prototype of Array.prototype": () => Object.setPrototypeOf(Array.prototype, Object.create(accessor({}))),
+};
+
+// operand returns a new value of the operand or receiver key.
+function operand(key) {
+  return (operands[key] || receivers[key])();
+}
+
+// hasMethod reports whether the receiver key has the function f as its property name.
+function hasMethod(key, f, name) {
+  var t = operand(key);
+  return Object(t) === t && t[name] === f;
+}
+
 // The operands that a built-in function may take long to work through.
 var largeOperands = {
   "string": () => "a".repeat(1.2e6),
@@ -251,11 +330,14 @@ function contents(v, named) {
   return "{" + out.join() + "}";
 }
 
+// lastOperands holds the operands of the last probe.
+var lastOperands;
+
 // probe calls f at site with the operands keys, the first of which is the this value. It returns
 // the number of hooks that ran and a description of what happened.
 function probe(site, f, keys) {
   shared = {name: "shared"};
-  var named = keys.map(function (k) { return operands[k](); });
+  var named = lastOperands = keys.map(operand);
   log = [];
   running = site;
   var out;
