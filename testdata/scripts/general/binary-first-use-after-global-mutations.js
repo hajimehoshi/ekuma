@@ -3,6 +3,8 @@
 
 /*---
 description: "binary initialization preserves global mutations and the original Array method alias"
+flags: [noRepeat]
+noRepeatReason: "the next evaluation reads the throwing Array.prototype.toString getter left by the first"
 ---*/
 
 const originalToString = Array.prototype.toString;
