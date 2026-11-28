@@ -394,6 +394,14 @@ func RelativeIndex(f float64, length int) int {
 	return int(f)
 }
 
+// ClampRelativeIndex resolves an integer or infinite relative index against a length.
+func ClampRelativeIndex(f float64, length int64) int64 {
+	if f < 0 {
+		return int64(math.Max(f+float64(length), 0))
+	}
+	return int64(math.Min(f, float64(length)))
+}
+
 // ToLength implements ToLength for a number.
 func ToLength(f float64) int64 {
 	f = ToIntegerOrInfinity(f)

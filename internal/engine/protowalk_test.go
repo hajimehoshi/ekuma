@@ -61,6 +61,7 @@ var protoReads = useCounts{
 	protoCopies: {
 		"ExecutionContext.protoStart": 1,
 		"realmPart.materialize":       1,
+		"realmPart.dateShape":         1,
 		"realmPart.regExpShape":       1,
 		"realmPart.densify":           1,
 		"space.endLazy":               1,

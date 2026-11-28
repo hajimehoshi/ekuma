@@ -51,17 +51,36 @@ func TimeWithinDay(t float64) float64 {
 	return modulo(t, MsPerDay)
 }
 
+// clockFields returns the time of day for a finite time value.
+func clockFields(t float64) (hour, minute, second int, millisecond float64) {
+	if -maxExactInt <= t && t <= maxExactInt && t == math.Trunc(t) {
+		ms := millisecondsSinceMidnight(int64(t))
+		return int(ms / msPerHour), int(ms / msPerMinute % 60), int(ms / msPerSecond % 60), float64(ms % msPerSecond)
+	}
+	return int(HourFromTime(t)), int(MinFromTime(t)), int(SecFromTime(t)), MsFromTime(t)
+}
+
+func millisecondsSinceMidnight(t int64) int64 {
+	ms := t % MsPerDay
+	if ms < 0 {
+		ms += MsPerDay
+	}
+	return ms
+}
+
 // DaysInYear returns the number of days (365 or 366) in the Gregorian calendar year y.
 func DaysInYear(y float64) float64 {
-	switch {
-	case modulo(y, 4) != 0:
-		return 365
-	case modulo(y, 100) != 0:
-		return 366
-	case modulo(y, 400) != 0:
+	if -maxExactInt <= y && y <= maxExactInt && y == math.Trunc(y) {
+		year := int64(y)
+		if year%4 == 0 && (year%100 != 0 || year%400 == 0) {
+			return 366
+		}
 		return 365
 	}
-	return 366
+	if modulo(y, 4) == 0 && (modulo(y, 100) != 0 || modulo(y, 400) == 0) {
+		return 366
+	}
+	return 365
 }
 
 // DayFromYear returns the day number of January 1 of year y.
@@ -140,21 +159,38 @@ func DateFromTime(t float64) float64 {
 
 // WeekDay returns the weekday of the time value t, from 0 (Sunday) to 6 (Saturday).
 func WeekDay(t float64) float64 {
-	return modulo(Day(t)+4, 7)
+	d := Day(t) + 4
+	if -maxExactInt <= d && d <= maxExactInt {
+		w := int64(d) % 7
+		if w < 0 {
+			w += 7
+		}
+		return float64(w)
+	}
+	return modulo(d, 7)
 }
 
 // HourFromTime returns the hour of the day (0 to 23) for the time value t.
 func HourFromTime(t float64) float64 {
+	if -maxExactInt <= t && t <= maxExactInt && t == math.Trunc(t) {
+		return float64(millisecondsSinceMidnight(int64(t)) / msPerHour)
+	}
 	return modulo(math.Floor(t/msPerHour), 24)
 }
 
 // MinFromTime returns the minute within the hour (0 to 59) for the time value t.
 func MinFromTime(t float64) float64 {
+	if -maxExactInt <= t && t <= maxExactInt && t == math.Trunc(t) {
+		return float64(millisecondsSinceMidnight(int64(t)) / msPerMinute % 60)
+	}
 	return modulo(math.Floor(t/msPerMinute), 60)
 }
 
 // SecFromTime returns the second within the minute (0 to 59) for the time value t.
 func SecFromTime(t float64) float64 {
+	if -maxExactInt <= t && t <= maxExactInt && t == math.Trunc(t) {
+		return float64(millisecondsSinceMidnight(int64(t)) / msPerSecond % 60)
+	}
 	return modulo(math.Floor(t/msPerSecond), 60)
 }
 
@@ -199,12 +235,15 @@ func MakeDay(year, month, date float64) float64 {
 		return math.NaN()
 	}
 	y, m, dt := toInteger(year), toInteger(month), toInteger(date)
-	ym := y + math.Floor(m/12)
+	ym := y
+	if m < 0 || m >= 12 {
+		ym += math.Floor(m / 12)
+		m = modulo(m, 12)
+	}
 	if math.Abs(ym) > maxYear {
 		return math.NaN()
 	}
-	mn := int(modulo(m, 12))
-	day := DayFromYear(ym) + daysBeforeMonth(mn, DaysInYear(ym) == 366)
+	day := DayFromYear(ym) + daysBeforeMonth(int(m), DaysInYear(ym) == 366)
 	return day + dt - 1
 }
 

@@ -16,6 +16,10 @@ type RegExpState struct {
 	Source  wtf8.String
 	Flags   wtf8.String
 	Legacy  bool
+
+	Literal      wtf8.String
+	LiteralValue Value
+
 	// Lent marks the state of a RegExp object that ExecutionContext.LendRegExpLiterals lends.
 	Lent bool
 
@@ -53,6 +57,12 @@ func (o *Object) RegExpMatcher() *regexp.Regexp {
 func (o *Object) RegExpOriginal() (source, flags wtf8.String) {
 	st := o.ExtState().(*RegExpState)
 	return st.Source, st.Flags
+}
+
+// RegExpLiteral returns the text and string value of the whole literal pattern of o, if any.
+func (o *Object) RegExpLiteral() (wtf8.String, Value, bool) {
+	st := o.ExtState().(*RegExpState)
+	return st.Literal, st.LiteralValue, st.Literal != ""
 }
 
 // RegExpLegacyFeaturesEnabled implements the [[LegacyFeaturesEnabled]] slot of the RegExp

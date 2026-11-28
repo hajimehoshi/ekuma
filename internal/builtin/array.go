@@ -306,9 +306,14 @@ var (
 		Method0:  quiet.ArrayPopKernel,
 		Contract: shortContract,
 	})
-	nativeArrayShift     = engine.RegisterNative(arrayShift)
-	nativeArrayUnshift   = engine.RegisterNative(arrayUnshift)
-	nativeArraySlice     = engine.RegisterNative(arraySlice)
+	nativeArrayShift   = engine.RegisterNative(arrayShift)
+	nativeArrayUnshift = engine.RegisterNative(arrayUnshift)
+	nativeArraySlice   = engine.RegisterNativeWithKernels(arraySlice, engine.Kernels{
+		Method0:  quiet.ArraySliceKernel0,
+		Method1:  quiet.ArraySliceKernel1,
+		Method2:  quiet.ArraySliceKernel2,
+		Contract: shortContract,
+	})
 	nativeArraySplice    = engine.RegisterNative(arraySplice)
 	nativeArrayConcat    = engine.RegisterNative(arrayConcat)
 	nativeArrayJoin      = engine.RegisterNative(arrayJoin)
@@ -1352,10 +1357,7 @@ func arrayWith(cx *engine.ExecutionContext, this storage.Value, args []storage.V
 
 // relIndex resolves a relative index against a length, clamping to the range from 0 to n.
 func relIndex(f float64, n int64) int64 {
-	if f < 0 {
-		return int64(math.Max(f+float64(n), 0))
-	}
-	return int64(math.Min(f, float64(n)))
+	return numconv.ClampRelativeIndex(f, n)
 }
 
 // sortValues sorts vals with the comparison function cmp, or as strings when cmp is undefined.

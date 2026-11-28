@@ -68,6 +68,7 @@ Object.IsASCII
 Object.IsRawJSON
 Object.IsRegExpObject
 Object.RegExpLegacyFeaturesEnabled
+Object.RegExpLiteral
 Object.RegExpMatcher
 Object.RegExpOriginal
 Object.RemoveFirstElement
@@ -111,6 +112,7 @@ RealmPart.NewDataViewObject
 RealmPart.NewEmptyArrayWithRoom
 RealmPart.NewHostArrayBufferObject
 RealmPart.NewImmutableArrayBufferFromBytes
+RealmPart.NewLiteralMatchResult
 RealmPart.NewObject
 RealmPart.NewObjectFromProperties
 RealmPart.NewSharedArrayBufferObject

@@ -640,7 +640,10 @@ func stringSplit(cx *engine.ExecutionContext, this storage.Value, args []storage
 }
 
 var (
-	nativeStringReplace    = engine.RegisterNative(stringReplaceNative("replace", false))
+	nativeStringReplace = engine.RegisterNativeWithKernels(stringReplaceNative("replace", false), engine.Kernels{
+		Method2:  quiet.StringReplaceKernel,
+		Contract: shortContract,
+	})
 	nativeStringReplaceAll = engine.RegisterNative(stringReplaceNative("replaceAll", true))
 )
 

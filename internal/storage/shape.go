@@ -453,6 +453,17 @@ func (s *Shape) handOver() *Shape {
 	return t
 }
 
+// DateShape returns the shape of a new Date with %Date.prototype% as its prototype.
+func (r *RealmPart) DateShape() *Shape {
+	proto := r.Intrinsic(IntrinsicDatePrototype)
+	if s := r.Shapes.date; s != nil && s.Proto == proto {
+		return s
+	}
+	s := r.ShapeFor(proto)
+	r.Shapes.date = s
+	return s
+}
+
 // shapeTable holds the shapes that new objects start with.
 type shapeTable struct {
 	// ShortStrings are immutable sentinels. Per-string caches belong to materialized objects.
@@ -465,6 +476,7 @@ type shapeTable struct {
 	String               *Shape
 	IterResult           *Shape
 	Arguments            *Shape
+	date                 *Shape
 
 	// regExp is the shape of a new RegExp object whose prototype is %RegExp.prototype%,
 	// once one was made.

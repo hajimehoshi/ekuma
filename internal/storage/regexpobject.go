@@ -228,6 +228,19 @@ func (r *RealmPart) matchResultShapesFor(array *Shape) *matchResultShapes {
 	return m
 }
 
+// NewLiteralMatchResult creates a match array for a result with no captures or indices.
+func (r *RealmPart) NewLiteralMatchResult(matched, index, input Value) *Object {
+	a, values := NewTailObjectWithStorage(4)
+	a.Kind = KindArray
+	a.Class = ClassArray
+	a.shape = r.matchResultShapesFor(r.Shapes.Array).plain
+	a.length = 1
+	values[0], values[1], values[2] = matched, index, input
+	a.InitElems(values[:1:1])
+	a.InitSlots(values[1:4:4])
+	return a
+}
+
 // DefineMatchResultProperties creates the data properties index, input and groups of a match
 // result on a, in that order, as CreateDataPropertyOrThrow does. a must be an array from
 // [RealmPart.NewArrayWithRoom] that has no named properties.

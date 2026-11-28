@@ -105,6 +105,9 @@ type program struct {
 
 	// whole is set when the pattern is prefix alone, without groups.
 	whole bool
+
+	// straightLine is set for small programs with no branches or variable-length instructions.
+	straightLine bool
 }
 
 type compiler struct {
@@ -547,6 +550,17 @@ func (c *compiler) analyze(root *node) {
 			c.prog.whole = i.str == c.prog.prefix
 		case iChar:
 			c.prog.whole = wtf8.String(wtf8.AppendRune(nil, i.r)) == c.prog.prefix
+		}
+	}
+	if len(c.prog.insts) <= 32 {
+		c.prog.straightLine = true
+		for _, i := range c.prog.insts {
+			switch i.op {
+			case iMatch, iChar, iSet, iStr, iSave, iLineStart, iLineEnd, iWordB:
+				continue
+			}
+			c.prog.straightLine = false
+			break
 		}
 	}
 }

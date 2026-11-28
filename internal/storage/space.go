@@ -65,6 +65,9 @@ type Space struct {
 	// HasHostClock is set if a host function gives the current time.
 	HasHostClock bool
 
+	// HasHostTimeZone is set if the host configured the local time zone.
+	HasHostTimeZone bool
+
 	// RegExpMatcher matches regular expressions. Nothing that a match runs starts another one.
 	RegExpMatcher regexp.Matcher
 

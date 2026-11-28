@@ -62,6 +62,7 @@ var dateTimeZoneName func(cx *engine.ExecutionContext, tz datetime.TimeZone, t, 
 // must be called before any VM is created, typically from an init function.
 func SetDateTimeZoneName(name func(cx *engine.ExecutionContext, tz datetime.TimeZone, t, offset int64) string) {
 	dateTimeZoneName = name
+	quiet.SetDateTimeZoneNameHook(name != nil)
 }
 
 // dateStringOffset returns the local UTC offset and the display name for Date strings.
@@ -104,7 +105,10 @@ var (
 		Method0:  quiet.DateNowKernel,
 		Contract: shortContract,
 	})
-	nativeDateParse             = engine.RegisterNative(dateParse)
+	nativeDateParse = engine.RegisterNativeWithKernels(dateParse, engine.Kernels{
+		Method1:  quiet.DateParseKernel,
+		Contract: shortContract,
+	})
 	nativeDateUTC               = engine.RegisterNative(dateUTC)
 	nativeDateGetDay            = engine.RegisterNative(dateGetDay)
 	nativeDateGetUTCDay         = engine.RegisterNative(dateGetUTCDay)
@@ -114,9 +118,12 @@ var (
 	nativeDateGetYear           = engine.RegisterNative(dateGetYear)
 	nativeDateSetTime           = engine.RegisterNative(dateSetTime)
 	nativeDateSetYear           = engine.RegisterNative(dateSetYear)
-	nativeDateToISOString       = engine.RegisterNative(dateToISOString)
-	nativeDateToJSON            = engine.RegisterNative(dateToJSON)
-	nativeDateToPrimitive       = engine.RegisterNative(dateToPrimitive)
+	nativeDateToISOString       = engine.RegisterNativeWithKernels(dateToISOString, engine.Kernels{
+		Method0:  quiet.DateToISOStringKernel,
+		Contract: shortContract,
+	})
+	nativeDateToJSON      = engine.RegisterNative(dateToJSON)
+	nativeDateToPrimitive = engine.RegisterNative(dateToPrimitive)
 )
 
 func initDate(cx *engine.ExecutionContext) {
@@ -197,7 +204,7 @@ func dateConstructor(cx *engine.ExecutionContext, this storage.Value, args []sto
 		}
 		v := cx.ToPrimitive(args[0], engine.HintDefault)
 		if v.IsString() {
-			tv = datetime.ParsePolled(string(cx.ToString(v)), cx.DefaultTimeZone(), cx.Poll)
+			tv = datetime.ParsePolled(string(v.Str()), cx.DefaultTimeZone(), cx)
 		} else {
 			tv = datetime.TimeClip(cx.ToNumber(v))
 		}
@@ -217,7 +224,7 @@ func dateNow(cx *engine.ExecutionContext, this storage.Value, args []storage.Val
 }
 
 func dateParse(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
-	return storage.Number(datetime.ParsePolled(string(cx.ToString(arg(args, 0))), cx.DefaultTimeZone(), cx.Poll))
+	return storage.Number(datetime.ParsePolled(string(cx.ToString(arg(args, 0))), cx.DefaultTimeZone(), cx))
 }
 
 func dateUTC(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
@@ -378,10 +385,16 @@ func dateSetYear(cx *engine.ExecutionContext, this storage.Value, args []storage
 }
 
 var (
-	nativeDateToString           = engine.RegisterNative(dateStringNative("toString"))
-	nativeDateToDateString       = engine.RegisterNative(dateStringNative("toDateString"))
-	nativeDateToTimeString       = engine.RegisterNative(dateStringNative("toTimeString"))
-	nativeDateToUTCString        = engine.RegisterNative(dateStringNative("toUTCString"))
+	nativeDateToString = engine.RegisterNativeWithKernels(dateStringNative("toString"), engine.Kernels{
+		Method0:  quiet.DateToStringKernel,
+		Contract: shortContract,
+	})
+	nativeDateToDateString = engine.RegisterNative(dateStringNative("toDateString"))
+	nativeDateToTimeString = engine.RegisterNative(dateStringNative("toTimeString"))
+	nativeDateToUTCString  = engine.RegisterNativeWithKernels(dateStringNative("toUTCString"), engine.Kernels{
+		Method0:  quiet.DateToUTCStringKernel,
+		Contract: shortContract,
+	})
 	nativeDateToLocaleString     = engine.RegisterNative(dateStringNative("toLocaleString"))
 	nativeDateToLocaleDateString = engine.RegisterNative(dateStringNative("toLocaleDateString"))
 	nativeDateToLocaleTimeString = engine.RegisterNative(dateStringNative("toLocaleTimeString"))

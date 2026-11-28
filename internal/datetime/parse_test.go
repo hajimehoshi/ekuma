@@ -144,6 +144,12 @@ func TestParseSpaceSeparated(t *testing.T) {
 	}
 }
 
+type pollCounter int
+
+func (p *pollCounter) Poll() {
+	*p++
+}
+
 func TestParsePolled(t *testing.T) {
 	// Each of the formats polls over a long run that it reads, and the long run does not
 	// change the result.
@@ -180,8 +186,8 @@ func TestParsePolled(t *testing.T) {
 			want:  1577836800000,
 		},
 	} {
-		var polls int
-		if got := datetime.ParsePolled(tc.input, zone, func() { polls++ }); got != tc.want {
+		var polls pollCounter
+		if got := datetime.ParsePolled(tc.input, zone, &polls); got != tc.want {
 			t.Errorf("%s: got %v, want %v", tc.name, got, tc.want)
 		}
 		if polls < 8 {

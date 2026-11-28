@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/hajimehoshi/ekuma/internal/builtin"
+	"github.com/hajimehoshi/ekuma/internal/datetime"
 	"github.com/hajimehoshi/ekuma/internal/engine"
 	"github.com/hajimehoshi/ekuma/internal/storage"
 )
@@ -263,6 +264,32 @@ func TestKernels(t *testing.T) {
 				}
 			})
 		})
+	}
+}
+
+func TestDateNameHookPreservesNativeFrame(t *testing.T) {
+	var hook storage.Value
+	builtin.SetDateTimeZoneName(func(cx *engine.ExecutionContext, _ datetime.TimeZone, _, _ int64) string {
+		return string(cx.Call(hook.Object(), storage.Undefined).Str())
+	})
+	t.Cleanup(func() {
+		builtin.SetDateTimeZoneName(nil)
+	})
+
+	cx := newTestContext(t)
+	var err error
+	hook, err = runScript(cx, "date-hook.js", `(function name() {
+		return name.caller === null ? "native caller" : "JavaScript caller";
+	})`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	v, err := runScript(cx, "date-hook.js", `(function site() { return new Date(0).toString(); })()`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := string(v.Str()); !strings.HasSuffix(got, " (native caller)") {
+		t.Errorf("toString returned %q, want a name from a hook called in the native frame", got)
 	}
 }
 

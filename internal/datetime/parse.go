@@ -10,14 +10,18 @@ import (
 
 // Parse returns the time value that the string s represents, or NaN. It accepts the
 // date time string format of ECMAScript, the formats of [String] and [UTCString], and some
-// common legacy formats. A time without an offset is a local time of tz.
+// common legacy formats. A time without an offset is local to tz and requires a non-nil tz.
 func Parse(s string, tz TimeZone) float64 {
 	return ParsePolled(s, tz, nil)
 }
 
-// ParsePolled is like [Parse]. poll, which may be nil, is called now and then over a long s and
-// may stop the parsing by panicking.
-func ParsePolled(s string, tz TimeZone, poll func()) float64 {
+// Poller checks whether a long parse should stop.
+type Poller interface {
+	Poll()
+}
+
+// ParsePolled is like [Parse] and checks poll, if non-nil, while parsing a long string.
+func ParsePolled(s string, tz TimeZone, poll Poller) float64 {
 	if f, ok := parseDateTime(s, tz, poll); ok {
 		return f
 	}
@@ -46,6 +50,9 @@ func (f *fields) timeValue(tz TimeZone) float64 {
 	if f.hasOffset {
 		t -= f.offset
 	} else {
+		if tz == nil {
+			return math.NaN()
+		}
 		t = UTC(t, tz)
 	}
 	return TimeClip(t)
@@ -68,7 +75,7 @@ type scanner struct {
 	pos int
 
 	// poll, which may be nil, is called every pollSteps steps.
-	poll  func()
+	poll  Poller
 	steps int
 }
 
@@ -78,7 +85,7 @@ func (sc *scanner) step() {
 	if sc.steps == pollSteps {
 		sc.steps = 0
 		if sc.poll != nil {
-			sc.poll()
+			sc.poll.Poll()
 		}
 	}
 }
@@ -108,9 +115,26 @@ func (sc *scanner) fixed(n int) (float64, bool) {
 	if sc.pos+n > len(sc.s) {
 		return 0, false
 	}
+	s := sc.s[sc.pos : sc.pos+n]
+	switch n {
+	case 2:
+		a, b := s[0]-'0', s[1]-'0'
+		if a > 9 || b > 9 {
+			return 0, false
+		}
+		sc.pos += 2
+		return float64(10*a + b), true
+	case 4:
+		a, b, c, d := s[0]-'0', s[1]-'0', s[2]-'0', s[3]-'0'
+		if a > 9 || b > 9 || c > 9 || d > 9 {
+			return 0, false
+		}
+		sc.pos += 4
+		return float64(1000*int(a) + 100*int(b) + 10*int(c) + int(d)), true
+	}
 	var v float64
-	for i := range n {
-		c := sc.s[sc.pos+i]
+	for i := range len(s) {
+		c := s[i]
 		if !isDigit(c) {
 			return 0, false
 		}
@@ -176,7 +200,7 @@ func (f *fields) validTime() bool {
 }
 
 // parseDateTime parses ISO and space-separated date-time strings.
-func parseDateTime(s string, tz TimeZone, poll func()) (float64, bool) {
+func parseDateTime(s string, tz TimeZone, poll Poller) (float64, bool) {
 	sc := scanner{
 		s:    s,
 		poll: poll,
@@ -288,12 +312,14 @@ func parseDateTime(s string, tz TimeZone, poll func()) (float64, bool) {
 }
 
 // parseFormatted parses the formats of String and UTCString.
-func parseFormatted(s string, tz TimeZone, poll func()) (float64, bool) {
+func parseFormatted(s string, tz TimeZone, poll Poller) (float64, bool) {
 	if len(s) < 29 {
 		return 0, false
 	}
 	// Only exact abbreviations enter this path.
-	if matchName(s[:3], weekdayNames[:]) < 0 {
+	switch s[:3] {
+	case "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat":
+	default:
 		return 0, false
 	}
 	var f fields
@@ -326,7 +352,7 @@ func parseFormatted(s string, tz TimeZone, poll func()) (float64, bool) {
 			return 0, false
 		}
 	}
-	m := matchName(month, monthNames[:])
+	m := matchMonth3(month)
 	// A leading number above 31 can be a year in the legacy grammar.
 	if m < 0 || f.day > 31 || !sc.accept(' ') {
 		return 0, false
@@ -394,6 +420,36 @@ func parseFormatted(s string, tz TimeZone, poll func()) (float64, bool) {
 		return math.NaN(), true
 	}
 	return f.timeValue(tz), true
+}
+
+func matchMonth3(s string) int {
+	switch s {
+	case "Jan":
+		return 0
+	case "Feb":
+		return 1
+	case "Mar":
+		return 2
+	case "Apr":
+		return 3
+	case "May":
+		return 4
+	case "Jun":
+		return 5
+	case "Jul":
+		return 6
+	case "Aug":
+		return 7
+	case "Sep":
+		return 8
+	case "Oct":
+		return 9
+	case "Nov":
+		return 10
+	case "Dec":
+		return 11
+	}
+	return -1
 }
 
 var fullMonthNames = [12]string{"january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"}
@@ -474,7 +530,7 @@ func (sc *scanner) legacyTime(f *fields) bool {
 }
 
 // parseLegacy parses the formats of [String] and [UTCString] and some common legacy formats.
-func parseLegacy(s string, tz TimeZone, poll func()) float64 {
+func parseLegacy(s string, tz TimeZone, poll Poller) float64 {
 	nan := math.NaN()
 	sc := scanner{
 		s:    s,

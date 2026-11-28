@@ -122,21 +122,20 @@ func builtinExec(cx *engine.ExecutionContext, r *storage.Object, s storage.Value
 	}
 	re := r.RegExpMatcher()
 	n := re.GroupCount()
+	index := storage.Number(float64(caps[0]))
 	nprops := 3
 	if re.Flags()&regexp.FlagHasIndices != 0 {
 		nprops = 4
+	} else if n == 0 {
+		_, matched, literal := r.RegExpLiteral()
+		if !literal {
+			matched = cx.Quiet().MatchCapture(s, caps, 0)
+		}
+		return storage.ObjectValue(cx.NewLiteralMatchResult(matched, index, s))
 	}
 	a := cx.NewArrayWithRoom(n+1, nprops)
-	// The matcher still holds the match, whose positions in a string that is not ASCII spare a
-	// search for the code units of the captures.
-	ascii := s.IsASCII()
 	for i := 0; i <= n; i++ {
-		if ascii || caps[2*i] < 0 {
-			a.SetElement(int64(i), quiet.Capture(cx.Quiet(), s, caps, i))
-			continue
-		}
-		start, end := cx.Quiet().RegExpMatchSpan(i)
-		a.SetElement(int64(i), cx.SubstringBetween(s, start, end))
+		a.SetElement(int64(i), cx.Quiet().MatchCapture(s, caps, i))
 	}
 	var pairs []storage.Value
 	if re.Flags()&regexp.FlagHasIndices != 0 {
@@ -150,7 +149,6 @@ func builtinExec(cx *engine.ExecutionContext, r *storage.Object, s storage.Value
 			}
 		}
 	}
-	index := storage.Number(float64(caps[0]))
 	groups := groupsObject(cx, re, func(i int) storage.Value {
 		v, _ := storage.Element(a, int64(i))
 		return v
@@ -427,8 +425,11 @@ func thisRegExp(cx *engine.ExecutionContext, this storage.Value, what string) *s
 }
 
 var (
-	nativeRegExpConstructor   = engine.RegisterNative(regExpConstructor)
-	nativeRegExpExecMethod    = engine.RegisterNative(regExpExecMethod)
+	nativeRegExpConstructor = engine.RegisterNative(regExpConstructor)
+	nativeRegExpExecMethod  = engine.RegisterNativeWithKernels(regExpExecMethod, engine.Kernels{
+		Method1:  quiet.RegExpExecKernel,
+		Contract: shortContract,
+	})
 	nativeRegExpTest          = engine.RegisterNative(regExpTest)
 	nativeRegExpToString      = engine.RegisterNative(regExpToString)
 	nativeRegExpCompile       = engine.RegisterNative(regExpCompile)

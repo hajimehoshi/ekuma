@@ -65,7 +65,12 @@ type dateObject struct {
 
 // NewDateObject returns a Date object with the prototype proto whose [[DateValue]] is tv.
 func (cx *ExecutionContext) NewDateObject(proto *storage.Object, tv float64) *storage.Object {
-	s := cx.ShapeFor(proto)
+	var s *storage.Shape
+	if proto == cx.Intrinsic(storage.IntrinsicDatePrototype) {
+		s = cx.DateShape()
+	} else {
+		s = cx.ShapeFor(proto)
+	}
 	d := &dateObject{tv: tv}
 	return d.InitWithState(s, storage.ClassDate, &d.tv)
 }

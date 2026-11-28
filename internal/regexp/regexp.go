@@ -11,6 +11,7 @@ package regexp
 import (
 	"errors"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
@@ -129,6 +130,20 @@ func Validate(pattern, flags wtf8.String, poller Poller) error {
 // Flags returns the flags that re was compiled with.
 func (re *Regexp) Flags() Flags {
 	return re.flags
+}
+
+// WholeLiteral returns the nonempty text of an unanchored literal pattern with no lone surrogates.
+func (re *Regexp) WholeLiteral() (wtf8.String, bool) {
+	p := re.prog
+	if !p.whole || p.anchored || !utf8.ValidString(string(p.prefix)) {
+		return "", false
+	}
+	return p.prefix, true
+}
+
+// CanMatchShort reports whether re can match s in a bounded amount of work without polling.
+func (re *Regexp) CanMatchShort(s wtf8.String) bool {
+	return len(s) <= 256 && re.prog.straightLine
 }
 
 // GroupCount returns the number of capturing groups of re, not counting the whole match.

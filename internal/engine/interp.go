@@ -3507,8 +3507,17 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 			ag.active.lendRegExpLiteral(slices.Clip(regs), i.A, i.C, &fp.RegExps[i.B])
 		case bytecode.OpRegExpMethod:
 			ag.frames[len(ag.frames)-1].pc = pc
-			m, this := ag.active.regExpLiteralMethod(&fp.RegExps[i.B], fp.Keys[i.C], &fp.Caches[i.C])
-			regs = ag.reload(regs, ag.frameBase(), fp)
+			site := &fp.RegExps[i.B]
+			key := fp.Keys[i.C]
+			compiled := site.State != nil
+			m, this, ok := ag.active.regExpLiteralMethodFast(site, key, &fp.Caches[i.C])
+			if !ok {
+				this = ag.active.newRegExpLiteral(site)
+				m = ag.active.GetV(storage.Value{O: this}, key)
+			}
+			if !compiled || !ok {
+				regs = ag.reload(regs, ag.frameBase(), fp)
+			}
 			regs[i.A], regs[i.A+1] = m, storage.Value{O: this}
 		case bytecode.OpTemplate:
 			regs[i.A] = storage.Value{O: ag.active.templateObject(&fp.Templates[i.B])}

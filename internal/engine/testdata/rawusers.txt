@@ -25,7 +25,7 @@ ExecutionContext.padShort Value.N:lit shapeTable.ShortStrings:ref space.strings:
 ExecutionContext.prependInPlace ReversedBuilder.Sb:ref*2
 ExecutionContext.prependStrings ReversedBuilder.Sb:ref
 ExecutionContext.propKey PropKey.Key:lit
-ExecutionContext.regExpLiteralMethod PropCache.CacheEntry:ref PropCache.Second:ref
+ExecutionContext.regExpLiteralMethodFast PropCache.CacheEntry:ref PropCache.Second:ref
 ExecutionContext.repeatShort Value.N:lit shapeTable.ShortStrings:ref
 ExecutionContext.resolveGlobal GlobalCache.Holder:write GlobalCache.Shape:write shape.lookup:read
 ExecutionContext.setNamed CacheEntry.Epoch:write CacheEntry.Holder:write CacheEntry.Kind:write*2 CacheEntry.Next:write CacheEntry.Shape:write*2 CacheEntry.Slot:write Value.accessor:read

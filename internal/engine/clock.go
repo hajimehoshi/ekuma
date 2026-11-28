@@ -24,6 +24,7 @@ func (ag *agent) DefaultTimeZone() datetime.TimeZone {
 // zone of the host.
 func (ag *agent) SetDefaultTimeZone(tz datetime.TimeZone) {
 	ag.timeZone = tz
+	ag.HasHostTimeZone = tz != nil
 }
 
 // SetClock sets now as the clock of [agent.Now]. A nil now restores [time.Now].

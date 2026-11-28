@@ -43,16 +43,26 @@ func (cx *ExecutionContext) RegExpInitialize(o *storage.Object, pattern, flags s
 	if !flags.IsUndefined() {
 		r.Flags = cx.ToString(flags)
 	}
+	st := o.ExtState().(*storage.RegExpState)
+	o.SetExtState(cx.newRegExpState(r, st.Legacy, st.Realm))
+	cx.Set(o, storage.NamedKey(cx.Key(storage.KeyLastIndex)), storage.Number(0))
+	return o
+}
+
+func (cx *ExecutionContext) newRegExpState(r bytecode.RegExp, legacy bool, realm *storage.RealmPart) *storage.RegExpState {
 	re := cx.compileRegExp(r)
-	o.SetExtState(&storage.RegExpState{
+	st := &storage.RegExpState{
 		Matcher: re,
 		Source:  r.Pattern,
 		Flags:   r.Flags,
-		Legacy:  o.ExtState().(*storage.RegExpState).Legacy,
-		Realm:   o.ExtState().(*storage.RegExpState).Realm,
-	})
-	cx.Set(o, storage.NamedKey(cx.Key(storage.KeyLastIndex)), storage.Number(0))
-	return o
+		Legacy:  legacy,
+		Realm:   realm,
+	}
+	if literal, ok := re.WholeLiteral(); ok {
+		st.Literal = literal
+		st.LiteralValue = cx.NewString(literal)
+	}
+	return st
 }
 
 // compileRegExp compiles r or throws a SyntaxError.
@@ -83,13 +93,7 @@ func (cx *ExecutionContext) newRegExpLiteral(site *storage.RegExpSite) *storage.
 // regExpLiteralState returns the state that the RegExp objects of the literal site share.
 func (cx *ExecutionContext) regExpLiteralState(site *storage.RegExpSite) *storage.RegExpState {
 	if site.State == nil {
-		site.State = &storage.RegExpState{
-			Matcher: cx.compileRegExp(site.Literal),
-			Source:  site.Literal.Pattern,
-			Flags:   site.Literal.Flags,
-			Legacy:  true,
-			Realm:   cx.realmPart,
-		}
+		site.State = cx.newRegExpState(site.Literal, true, cx.realmPart)
 	}
 	return site.State
 }
@@ -111,7 +115,7 @@ func (cx *ExecutionContext) LendRegExpLiteralReceivers(f *storage.Object) {
 
 // lendRegExpLiteral evaluates the regular expression literal site into the register dst of
 // regs for the call of the callee in the register callee: dst is the first argument, or the
-// this value, which it sets only when [ExecutionContext.regExpLiteralMethod] left the lent object there.
+// this value, which it sets only when [ExecutionContext.regExpLiteralMethodFast] left the lent object there.
 func (cx *ExecutionContext) lendRegExpLiteral(regs []storage.Value, dst, callee int32, site *storage.RegExpSite) {
 	f := regs[callee].O
 	if dst == callee+2 {
@@ -154,10 +158,8 @@ func (cx *ExecutionContext) resetLentRegExp(site *storage.RegExpSite) *storage.O
 	return o
 }
 
-// regExpLiteralMethod reads the method key of a RegExp object for the literal site, using the
-// cache c, and returns it with the object to call it on. When reading it runs no code, that
-// object is the lent object of the literal, which [ExecutionContext.lendRegExpLiteral] replaces before the call.
-func (cx *ExecutionContext) regExpLiteralMethod(site *storage.RegExpSite, key *storage.Object, c *storage.PropCache) (method storage.Value, this *storage.Object) {
+// regExpLiteralMethodFast looks up a literal's method without running JavaScript.
+func (cx *ExecutionContext) regExpLiteralMethodFast(site *storage.RegExpSite, key *storage.Object, c *storage.PropCache) (storage.Value, *storage.Object, bool) {
 	o := cx.resetLentRegExp(site)
 	e := &c.CacheEntry
 	if o.Shape() != e.Shape {
@@ -167,13 +169,12 @@ func (cx *ExecutionContext) regExpLiteralMethod(site *storage.RegExpSite, key *s
 		if validateExec {
 			cx.checkEntryRead(nil, 0, storage.Value{O: o}, o, key, e)
 		}
-		return *e.Ref, o
+		return *e.Ref, o, true
 	}
 	if v, ok := cx.GetVWithoutCall(storage.Value{O: o}, key, c); ok {
-		return v, o
+		return v, o, true
 	}
-	o = cx.newRegExpLiteral(site)
-	return cx.GetV(storage.Value{O: o}, key), o
+	return storage.Undefined, nil, false
 }
 
 // OwnRegExp returns v, or a new RegExp object for the same literal when v is a RegExp object

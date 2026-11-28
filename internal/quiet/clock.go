@@ -4,7 +4,10 @@
 package quiet
 
 import (
+	"runtime"
 	"time"
+
+	"github.com/hajimehoshi/ekuma/internal/datetime"
 )
 
 var maxSystemTime = time.Unix(8.64e12, 0)
@@ -29,6 +32,14 @@ func (q Context) SystemUTCEpochMilliseconds() (float64, bool) {
 		return 0, false
 	}
 	return EpochMilliseconds(ClampSystemTime(time.Now())), true
+}
+
+// DefaultTimeZone returns the local time zone when it can be used without running host code.
+func (q Context) DefaultTimeZone() (datetime.TimeZone, bool) {
+	if runtime.GOOS == "js" || q.Realm.HasHostTimeZone {
+		return nil, false
+	}
+	return datetime.Local(), true
 }
 
 func EpochMilliseconds(t time.Time) float64 {

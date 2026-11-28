@@ -12,20 +12,6 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/xstrings"
 )
 
-// SubstringBetween is like [storage.RealmPart.Substring] for the positions start and end in the
-// text of s, which must be in order.
-func (cx *ExecutionContext) SubstringBetween(s storage.Value, start, end wtf8.Pos) storage.Value {
-	if s.IsShortString() {
-		// The packed text gives the code units without a search.
-		return cx.Substring(s, start.Unit, end.Unit)
-	}
-	text := s.O.Str()
-	if start.Byte == 0 && !start.Low && end.Byte == len(text) && !end.Low {
-		return s
-	}
-	return cx.NewString(wtf8.Slice(text, start, end))
-}
-
 // ToWellFormed returns s with lone surrogates replaced by U+FFFD.
 func (cx *ExecutionContext) ToWellFormed(s storage.Value) storage.Value {
 	if s.IsShortString() {

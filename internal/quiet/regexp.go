@@ -4,6 +4,8 @@
 package quiet
 
 import (
+	"math"
+
 	"github.com/hajimehoshi/ekuma/internal/regexp"
 	"github.com/hajimehoshi/ekuma/internal/storage"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
@@ -34,6 +36,22 @@ func (q Context) RegExpMatchSpan(i int) (start, end wtf8.Pos) {
 	return q.Realm.RegExpMatcher.Span(i)
 }
 
+// MatchCapture returns capture i of the match the matcher still holds, or undefined.
+func (q Context) MatchCapture(s storage.Value, caps []int, i int) storage.Value {
+	if caps[2*i] < 0 {
+		return storage.Undefined
+	}
+	if s.IsASCII() || s.IsShortString() {
+		return Capture(q, s, caps, i)
+	}
+	start, end := q.RegExpMatchSpan(i)
+	text := s.O.Str()
+	if start.Byte == 0 && !start.Low && end.Byte == len(text) && !end.Low {
+		return s
+	}
+	return q.NewString(wtf8.Slice(text, start, end))
+}
+
 // RecordRegExpMatch updates the legacy static properties of %RegExp% after a match of the RegExp
 // object r against s with the capture indices caps. It does nothing when the [[Realm]] of r is not
 // the current realm.
@@ -57,8 +75,12 @@ func (q Context) RecordRegExpMatch(r *storage.Object, s storage.Value, caps []in
 // after a match against s with the capture indices caps.
 func (q Context) UpdateLegacyRegExpStaticProperties(s storage.Value, caps []int) {
 	l := &q.Realm.LegacyRegExp
-	l.Input = s
-	l.Str = s
+	if l.Input.O != s.O || math.Float64bits(l.Input.N) != math.Float64bits(s.N) {
+		l.Input = s
+	}
+	if l.Str.O != s.O || math.Float64bits(l.Str.N) != math.Float64bits(s.N) {
+		l.Str = s
+	}
 	l.Caps = append(l.Caps[:0], caps...)
 }
 
