@@ -32,10 +32,6 @@ type Space struct {
 	// or its slots move.
 	ProtoEpoch uint32
 
-	// ProtoElemsDirty is set if a prototype may have had a stored index or changed its own
-	// prototype.
-	ProtoElemsDirty bool
-
 	lastReadShapeID uint32
 
 	sparseIndices sparseIndexCache

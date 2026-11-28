@@ -47,12 +47,12 @@ var protoReads = useCounts{
 		"defaultHasInstanceCall.run":      1,
 	},
 	"instanceof stops at proxies, and indexed appends check the intrinsic prototypes": {
-		"agent.execFast": 5,
+		"agent.execFast": 6,
 	},
 	protoKnown: {
 		"ExecutionContext.getNamedAtSite": 1,
 		"propCache.rememberRead":          1,
-		"realmPart.arrayProtoPlain":       2,
+		"realmPart.arrayProtoPlain":       1,
 		"realmPart.newElementsPlain":      1,
 	},
 	protoRaw: {

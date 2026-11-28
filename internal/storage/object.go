@@ -642,26 +642,11 @@ type tailObjectWith[S any] struct {
 //
 // A change of elements, of the length of an array or of the value of a data property does not need
 // it. The caches of property lookups and the records of original built-in properties hold named
-// properties in slots only.
+// properties in slots only. The operations in array.go that depend on the elements of prototypes
+// read them each time.
 func (sp *Space) TouchProto(o *Object) {
 	if o.flags&ObjIsProto != 0 {
 		sp.ProtoEpoch++
-	}
-}
-
-func (sp *Space) markPrototype(o *Object) {
-	if o.flags&ObjIsProto != 0 {
-		return
-	}
-	o.flags |= ObjIsProto
-	if len(o.elems) != 0 || o.flags&ObjSparse != 0 || len(o.numericElements()) != 0 {
-		sp.ProtoElemsDirty = true
-	}
-}
-
-func (o *Object) touchProtoElems() {
-	if o.flags&ObjIsProto != 0 {
-		o.shape.Space.ProtoElemsDirty = true
 	}
 }
 
@@ -672,7 +657,6 @@ func (sp *Space) SetProto(o *Object, proto *Object) {
 	if o.shape.Proto != proto {
 		sp.rebuildShape(o, proto, o.shape.Family)
 		sp.ProtoEpoch++
-		o.touchProtoElems()
 	}
 }
 

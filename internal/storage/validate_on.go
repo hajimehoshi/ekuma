@@ -42,9 +42,7 @@ func CheckValue(v Value) {
 // code.
 func (r *RealmPart) checkArrayProtoPlain() {
 	a := r.Intrinsic(IntrinsicArrayPrototype)
-	o := r.Intrinsic(IntrinsicObjectPrototype)
-	if a.Kind != KindArray || a.flags&(ObjExotic|ObjSparse) != 0 || a.ElemCount() != 0 ||
-		a.shape.Proto != o || o.shape.Proto != nil || !a.InheritsNoIndex() {
+	if a.Kind != KindArray || a.flags&ObjExotic != 0 || a.packedNums() != nil || len(a.elems) != 0 || !a.InheritsNoIndex() {
 		panic("storage: the prototypes of plain arrays are not plain")
 	}
 }

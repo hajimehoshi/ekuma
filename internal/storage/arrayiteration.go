@@ -61,7 +61,7 @@ func (sp *Space) ArrayIterationUnmodified(r *RealmPart) bool {
 func (sp *Space) NoArrayIteratorReturn(proto *Object) bool {
 	key := sp.Key(KeyReturn)
 	for p := proto; p != nil; p = p.shape.Proto {
-		sp.markPrototype(p)
+		p.flags |= ObjIsProto
 		if _, ok := p.getOwn(key); ok || p.flags&ObjExotic != 0 {
 			return false
 		}
