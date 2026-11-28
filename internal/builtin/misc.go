@@ -347,8 +347,11 @@ var (
 )
 
 func initMath(cx *engine.ExecutionContext) {
-	m := cx.NewOrdinaryObject()
+	m := cx.NewLazyObject(cx.Intrinsic(storage.IntrinsicObjectPrototype), initMathProperties)
 	cx.Define(cx.GlobalObject().Object(), cx.Intern("Math"), storage.ObjectValue(m), storage.FlagsHidden)
+}
+
+func initMathProperties(cx *engine.ExecutionContext, m *storage.Object) {
 	cx.Define(m, cx.WellKnownSymbol(storage.SymbolToStringTag), cx.SharedString("Math"), storage.FlagConfigurable)
 	for _, c := range []struct {
 		name  string

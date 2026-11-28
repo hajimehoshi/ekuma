@@ -49,8 +49,11 @@ var (
 )
 
 func initReflect(cx *engine.ExecutionContext) {
-	r := cx.NewOrdinaryObject()
+	r := cx.NewLazyObject(cx.Intrinsic(storage.IntrinsicObjectPrototype), initReflectProperties)
 	cx.Define(cx.GlobalObject().Object(), cx.Intern("Reflect"), storage.ObjectValue(r), storage.FlagsHidden)
+}
+
+func initReflectProperties(cx *engine.ExecutionContext, r *storage.Object) {
 	cx.Define(r, cx.WellKnownSymbol(storage.SymbolToStringTag), cx.SharedString("Reflect"), storage.FlagConfigurable)
 
 	// Reflect.apply and Reflect.construct show no frame, as Function.prototype.call and apply.

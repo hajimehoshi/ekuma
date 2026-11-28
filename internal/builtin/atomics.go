@@ -111,8 +111,11 @@ var (
 )
 
 func initAtomics(cx *engine.ExecutionContext) {
-	atomics := cx.NewOrdinaryObject()
+	atomics := cx.NewLazyObject(cx.Intrinsic(storage.IntrinsicObjectPrototype), initAtomicsProperties)
 	cx.Define(cx.GlobalObject().Object(), cx.Intern("Atomics"), storage.ObjectValue(atomics), storage.FlagsHidden)
+}
+
+func initAtomicsProperties(cx *engine.ExecutionContext, atomics *storage.Object) {
 	cx.Define(atomics, cx.WellKnownSymbol(storage.SymbolToStringTag), cx.SharedString("Atomics"), storage.FlagConfigurable)
 
 	method(cx, atomics, "add", 3, nativeAtomicsAdd)
