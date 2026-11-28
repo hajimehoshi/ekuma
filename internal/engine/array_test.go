@@ -56,6 +56,32 @@ func TestPushCapacityAfterLongRuns(t *testing.T) {
 	}
 }
 
+// TestPushCapacityOfInPlacePushes tests that the pushes that the interpreter runs in place leave the
+// hints for the capacity of later arrays that the generic calls leave.
+func TestPushCapacityOfInPlacePushes(t *testing.T) {
+	var capacities []int
+	for _, push := range []string{"a.push(a.length)", "Reflect.apply(Array.prototype.push, a, [a.length])"} {
+		cx := newTestContext(t)
+		v, err := runScript(cx, "build", `
+			function build(n) {
+				var a = [];
+				while (a.length < n) `+push+`;
+				return a;
+			}
+			build(40);
+			build(40);
+			build(8);
+		`)
+		if err != nil {
+			t.Fatal(err)
+		}
+		capacities = append(capacities, engine.ElementStorage(v))
+	}
+	if capacities[0] != capacities[1] {
+		t.Errorf("capacity after the pushes in place: got %d, want %d after the generic calls", capacities[0], capacities[1])
+	}
+}
+
 func TestNumericArrayOperationsKeepPackedStorage(t *testing.T) {
 	const setup = `
 		function numbers() {
