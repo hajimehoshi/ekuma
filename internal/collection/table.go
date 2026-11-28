@@ -238,7 +238,7 @@ func (t *Table) find(k storage.Value) int {
 		i, _ := t.probeNumber(n, hashNumber(n))
 		return i
 	case hashed(k):
-		i, _ := t.probe(k, hashKey(k))
+		_, i, _ := t.locate(k)
 		return i
 	}
 	var i int32
@@ -260,6 +260,16 @@ func (t *Table) locate(k storage.Value) (h uint32, i int, s uint32) {
 		n := numberKey(k.Number())
 		h = hashNumber(n)
 		i, s = t.probeNumber(n, h)
+		return h, i, s
+	}
+	if data, n, ok := k.PackedShortString(); ok {
+		h = hashShortString(data, n)
+		i, s = t.probeShortString(data, n, h)
+		return h, i, s
+	}
+	if x, ok := k.BigInt64(); ok {
+		h = hashBigInt64(x)
+		i, s = t.probeBigInt64(x, h)
 		return h, i, s
 	}
 	h = hashKey(k)
@@ -307,6 +317,14 @@ func hashNumber(n uint64) uint32 {
 	return uint32(mix(n^seed0, seed1))
 }
 
+func hashShortString(data uint64, n int) uint32 {
+	return uint32(mix(data^seed0, seed1^uint64(n)))
+}
+
+func hashBigInt64(n int64) uint32 {
+	return uint32(mix(uint64(n)^seed1, seed0))
+}
+
 // hashKey returns the hash of the key k, which the slots locate. Keys that are the same for
 // SameValueZero have the same hash.
 func hashKey(k storage.Value) uint32 {
@@ -314,6 +332,9 @@ func hashKey(k storage.Value) uint32 {
 	case k.IsNumber():
 		return hashNumber(numberKey(k.Number()))
 	case k.IsString():
+		if data, n, ok := k.PackedShortString(); ok {
+			return hashShortString(data, n)
+		}
 		n := k.StringByteLength()
 		// The bytes after the string stay zero, and the length tells the strings apart that
 		// differ only in trailing zero bytes.
@@ -323,7 +344,7 @@ func hashKey(k storage.Value) uint32 {
 		return uint32(mix(a^seed0, b^seed1^uint64(n)))
 	default:
 		if n, ok := k.BigInt64(); ok {
-			return uint32(mix(uint64(n)^seed1, seed0))
+			return hashBigInt64(n)
 		}
 		var buf [64]byte
 		return uint32(maphash.Bytes(seed, bigKey(buf[:0], k.BigInt())))
@@ -351,37 +372,11 @@ func (t *Table) probeNumber(n uint64, h uint32) (int, uint32) {
 	}
 }
 
-// probe is probeNumber for the key k, which is a string or a BigInt that the slots locate.
-func (t *Table) probe(k storage.Value, h uint32) (int, uint32) {
+// probeShortString is probeNumber for the short string with packed bytes data and length n.
+func (t *Table) probeShortString(data uint64, n int, h uint32) (int, uint32) {
 	slots, small, blocks := t.slots, t.small, t.blocks
 	mask := uint32(len(slots) - 1)
-	s := h & mask
-	if k.IsString() {
-		for ; ; s = (s + 1) & mask {
-			sl := slots[s]
-			if sl.index < 0 {
-				return -1, s
-			}
-			if sl.hash == h && storage.IsStrictlyEqual(entryAt(small, blocks, int(sl.index)).key, k) {
-				return int(sl.index), 0
-			}
-		}
-	}
-	if x, ok := k.BigInt64(); ok {
-		for ; ; s = (s + 1) & mask {
-			sl := slots[s]
-			if sl.index < 0 {
-				return -1, s
-			}
-			if sl.hash != h {
-				continue
-			}
-			if y, ok := entryAt(small, blocks, int(sl.index)).key.BigInt64(); ok && y == x {
-				return int(sl.index), 0
-			}
-		}
-	}
-	for ; ; s = (s + 1) & mask {
+	for s := h & mask; ; s = (s + 1) & mask {
 		sl := slots[s]
 		if sl.index < 0 {
 			return -1, s
@@ -389,7 +384,43 @@ func (t *Table) probe(k storage.Value, h uint32) (int, uint32) {
 		if sl.hash != h {
 			continue
 		}
-		if a := entryAt(small, blocks, int(sl.index)).key; a.IsBigInt() && storage.SameValueZero(a, k) {
+		if b, length, ok := entryAt(small, blocks, int(sl.index)).key.PackedShortString(); ok && b == data && length == n {
+			return int(sl.index), 0
+		}
+	}
+}
+
+// probeBigInt64 is probeNumber for the inline BigInt x.
+func (t *Table) probeBigInt64(x int64, h uint32) (int, uint32) {
+	slots, small, blocks := t.slots, t.small, t.blocks
+	mask := uint32(len(slots) - 1)
+	for s := h & mask; ; s = (s + 1) & mask {
+		sl := slots[s]
+		if sl.index < 0 {
+			return -1, s
+		}
+		if sl.hash != h {
+			continue
+		}
+		if y, ok := entryAt(small, blocks, int(sl.index)).key.BigInt64(); ok && y == x {
+			return int(sl.index), 0
+		}
+	}
+}
+
+// probe is probeNumber for the other strings and BigInts that the slots locate.
+func (t *Table) probe(k storage.Value, h uint32) (int, uint32) {
+	slots, small, blocks := t.slots, t.small, t.blocks
+	mask := uint32(len(slots) - 1)
+	for s := h & mask; ; s = (s + 1) & mask {
+		sl := slots[s]
+		if sl.index < 0 {
+			return -1, s
+		}
+		if sl.hash != h {
+			continue
+		}
+		if storage.IsStrictlyEqual(entryAt(small, blocks, int(sl.index)).key, k) {
 			return int(sl.index), 0
 		}
 	}
@@ -567,7 +598,7 @@ func (t *Table) appendHashed(k, v storage.Value, h, s uint32) {
 		// probeNumber compares the stored bits.
 		k = storage.Number(math.Float64frombits(numberKey(k.Number())))
 	}
-	if t.makeRoom() {
+	if t.n == t.capacity() && t.makeRoom() {
 		_, _, s = t.locate(k)
 	}
 	*t.at(t.n) = entry{

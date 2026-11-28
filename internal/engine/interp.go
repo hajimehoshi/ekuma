@@ -609,6 +609,9 @@ func (ag *agent) execFast(stop int, fp *storage.FuncProto, pc int, regs []storag
 			// The destination is read first, so that the instruction need not stay in
 			// registers across the tests of the cache.
 			if a, o := i.A, regs[i.B].O; o != nil {
+				if o == storage.NumberObject {
+					o = ag.active.realm.Intrinsics[storage.IntrinsicNumberPrototype]
+				}
 				c := &fp.Caches[i.C]
 				e := &c.CacheEntry
 				if o.Shape() != e.Shape {
@@ -635,6 +638,9 @@ func (ag *agent) execFast(stop int, fp *storage.FuncProto, pc int, regs []storag
 			}
 		case bytecode.OpGetPropChain:
 			if a, o := i.A, regs[i.B].O; o != nil {
+				if o == storage.NumberObject {
+					o = ag.active.realm.Intrinsics[storage.IntrinsicNumberPrototype]
+				}
 				c := &fp.Caches[i.C]
 				e := &c.CacheEntry
 				if o.Shape() != e.Shape {
@@ -658,6 +664,9 @@ func (ag *agent) execFast(stop int, fp *storage.FuncProto, pc int, regs []storag
 				regs[a] = w
 				// Consume the next named read of w if its cache supplies a data property.
 				if o := w.O; o != nil {
+					if o == storage.NumberObject {
+						o = ag.active.realm.Intrinsics[storage.IntrinsicNumberPrototype]
+					}
 					n := &fp.Code[pc]
 					c := &fp.Caches[n.C]
 					e := &c.CacheEntry
@@ -1063,6 +1072,73 @@ func (ag *agent) execFast(stop int, fp *storage.FuncProto, pc int, regs []storag
 					continue
 				}
 			}
+		case bytecode.OpConcatK:
+			x := regs[i.B]
+			if x.O == storage.NumberObject && fp.Consts[i.C].O == ag.active.realm.Strings.Empty.O {
+				if n := uint64(x.N); n < 1000 && float64(n) == x.N {
+					r := ag.active.realm
+					if n < 10 {
+						regs[i.A] = r.Strings.Ascii['0'+byte(n)]
+						continue
+					}
+					tens := n / 10
+					data := (n%10+'0')<<8 | (tens%10 + '0')
+					length := 2
+					if tens >= 10 {
+						data = data<<8 | (tens/10 + '0')
+						length = 3
+					}
+					regs[i.A] = storage.Value{
+						N: math.Float64frombits(data),
+						O: &r.Shapes.ShortStrings[length],
+					}
+					continue
+				}
+			}
+		case bytecode.OpAppend, bytecode.OpAppendK, bytecode.OpPrepend, bytecode.OpPrependK:
+			x := regs[i.A]
+			if x.O == nil || x.O.Kind != storage.KindString {
+				break
+			}
+			xLen := len(x.O.Text())
+			if xLen > shortstrings.MaxBytes {
+				break
+			}
+			var y storage.Value
+			if i.Op == bytecode.OpAppendK || i.Op == bytecode.OpPrependK {
+				y = fp.Consts[i.B]
+			} else {
+				y = regs[i.B]
+			}
+			if y.O == nil || y.O.Kind != storage.KindString {
+				break
+			}
+			yLen := len(y.O.Text())
+			length := xLen + yLen
+			if length > shortstrings.MaxBytes {
+				break
+			}
+			if yLen == 0 {
+				continue
+			}
+			if xLen == 0 {
+				regs[i.A] = y
+				continue
+			}
+			a, b := math.Float64bits(x.N), math.Float64bits(y.N)
+			if !shortstrings.IsASCII(a | b) {
+				break
+			}
+			// Joining ASCII strings preserves their packed bytes.
+			data := a | b<<(8*xLen)
+			if i.Op == bytecode.OpPrepend || i.Op == bytecode.OpPrependK {
+				data = b | a<<(8*yLen)
+			}
+			regs[i.A] = storage.Value{
+				N: math.Float64frombits(data),
+				O: &ag.active.realm.Shapes.ShortStrings[length],
+			}
+			continue
 		case bytecode.OpSub:
 			if x, y := regs[i.B], regs[i.C]; x.O == storage.NumberObject && y.O == storage.NumberObject {
 				storage.SetNumber(&regs[i.A], x.N-y.N)
@@ -1635,12 +1711,9 @@ func (ag *agent) execFast(stop int, fp *storage.FuncProto, pc int, regs []storag
 				c := &fp.Caches[i.C]
 				e := &c.CacheEntry
 				if o == storage.NumberObject {
-					// A number's own method cache uses Number.prototype and keeps the primitive receiver.
 					o = ag.active.realm.Intrinsics[storage.IntrinsicNumberPrototype]
-					if e.Kind != storage.CacheOwn || o.Shape() != e.Shape {
-						break
-					}
-				} else if o.Shape() != e.Shape {
+				}
+				if o.Shape() != e.Shape {
 					e = &c.Second
 					if o.Shape() != e.Shape {
 						break
@@ -2698,11 +2771,14 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 
 		case bytecode.OpAdd:
 			x, y := regs[i.B], regs[i.C]
-			ag.frames[len(ag.frames)-1].pc = pc
-			if x.O != nil && y.O != nil && x.O.Kind == storage.KindString && y.O.Kind == storage.KindString {
-				regs[i.A] = ag.active.Concat(x, y)
+			if v, ok := ag.active.concatPrimitive(x, y, pc); ok {
+				regs[i.A] = v
+				if !fp.HeapRegs {
+					pc = ag.execQuiet(ag.active, fp, pc, regs)
+				}
 				continue
 			}
+			ag.frames[len(ag.frames)-1].pc = pc
 			if x.IsBigInt() && y.IsBigInt() {
 				regs[i.A] = ag.active.addBigInts(x, y)
 				continue
@@ -2773,15 +2849,22 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 			regs = ag.reload(regs, ag.frameBase(), fp)
 			regs[i.A] = v
 		case bytecode.OpConcatK:
-			x, y := regs[i.B], fp.Consts[i.C]
+			x, suffix := regs[i.B], fp.Consts[i.C]
 			ag.frames[len(ag.frames)-1].pc = pc
-			if x.O != nil && x.O.Kind == storage.KindString {
-				regs[i.A] = ag.active.Concat(x, y)
+			switch {
+			case x.IsString():
+				regs[i.A] = ag.active.Concat(x, suffix)
+			case x.IsNumber() && suffix.StringByteLength() == 0:
+				regs[i.A] = ag.active.NumberToString(x.N)
+			default:
+				v := ag.active.addValues(x, suffix)
+				regs = ag.reload(regs, ag.frameBase(), fp)
+				regs[i.A] = v
 				continue
 			}
-			v := ag.active.addValues(x, y)
-			regs = ag.reload(regs, ag.frameBase(), fp)
-			regs[i.A] = v
+			if !fp.HeapRegs {
+				pc = ag.execQuiet(ag.active, fp, pc, regs)
+			}
 		case bytecode.OpMod:
 			if x, y := regs[i.B], regs[i.C]; x.O == storage.NumberObject && y.O == storage.NumberObject {
 				regs[i.A] = storage.Number(math.Mod(x.N, y.N))
@@ -3137,19 +3220,6 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 						continue
 					}
 					methodDeclined = true
-				}
-			}
-			// Short method kernels can read arguments in place without recording a call frame.
-			if argc <= 1 && callThis.IsNumber() && f != nil && f.Fn != nil && !ag.InterruptFlag.Load() {
-				if info := f.Fn.Info; info != nil && info.Realm == ag.active.realmPart && info.Native.HasFast() {
-					k := nativeFastOf(info.Native)
-					if k.contract.Frame == FrameUnobservable && k.contract.Pace == PaceShort && (argc == 0 || k.number1 == nil) {
-						if v, ok := k.callMethod(info.Realm, callThis, slices.Clip(regs)[firstArgReg:firstArgReg+argc]); ok {
-							regs[ret] = v
-							continue
-						}
-						methodDeclined = true
-					}
 				}
 			}
 			goto callRegs
@@ -4098,6 +4168,13 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 					panic("engine: construction in a call of a native function")
 				}
 				if info.Native.HasFast() {
+					if !fp.HeapRegs && !methodDeclined && (i.Op == bytecode.OpCall || i.Op == bytecode.OpCallUndef) {
+						if v, ok := ag.active.quietCall(f, callThis, ag.stack, argBase, argc, pc); ok {
+							regs[ret] = v
+							pc = ag.execQuiet(ag.active, fp, pc, regs)
+							continue
+						}
+					}
 					k := nativeFastOf(info.Native)
 					if argc == 1 && k.number1 != nil {
 						if a := ag.stack[argBase]; a.O == storage.NumberObject {
@@ -4116,7 +4193,6 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 					ag.frames[len(ag.frames)-1].pc = pc
 					if !methodDeclined && info.Realm == ag.active.realmPart {
 						if v, ok := k.callMethod(info.Realm, callThis, ag.stack[argBase:argBase+argc:argBase+argc]); ok {
-							regs = ag.reload(regs, ag.frameBase(), fp)
 							regs[ret] = v
 							continue
 						}

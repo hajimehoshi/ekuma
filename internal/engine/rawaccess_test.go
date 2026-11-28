@@ -37,6 +37,7 @@ var unguardedUses = map[string]map[string]int{
 	},
 	"CacheEntry.OwnValue": {
 		"ExecutionContext.GetVCached": 2,
+		"agent.execQuiet":             1,
 	},
 	"GlobalCache.Remember": {
 		"ExecutionContext.getGlobal":        1,

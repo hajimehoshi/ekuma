@@ -166,6 +166,7 @@ Value.IsUndefined
 Value.IsWellFormed
 Value.Number
 Value.Object
+Value.PackedShortString
 Value.Str
 Value.StringByteLength
 Value.StringLength

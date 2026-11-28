@@ -100,8 +100,8 @@ func TestSameValueZero(t *testing.T) {
 				want: 2,
 			},
 			{
-				// A string with the same contents that is another object.
-				key:  cx.NewString(wtf8.String([]byte("key"))),
+				// The interned key has the same bytes as the packed key.
+				key:  storage.ObjectValue(cx.Intern("key")),
 				want: 3,
 			},
 			{
@@ -130,6 +130,14 @@ func TestSameValueZero(t *testing.T) {
 				}
 				break
 			}
+		}
+		// The trailing NUL changes the length but leaves the packed bits alone.
+		tab.Set(cx.NewString("key\x00"), storage.Number(5))
+		if !tab.Delete(storage.ObjectValue(cx.Intern("key"))) {
+			t.Errorf("filler %d: Delete(key) returned false", filler)
+		}
+		if v, ok := tab.Get(cx.NewString("key\x00")); !ok || v.Number() != 5 {
+			t.Errorf("filler %d: Get(key with trailing NUL) after Delete = %v, %t; want 5, true", filler, v.Number(), ok)
 		}
 	}
 }
@@ -197,18 +205,20 @@ func TestFindAfterDeletes(t *testing.T) {
 	cx, _ := engine.NewExecutionContext(nil)
 	// A new string for every call, so that keys are found by their contents.
 	key := func(i int) storage.Value {
-		switch i % 3 {
+		switch i % 4 {
 		case 0:
 			return storage.Number(float64(i))
 		case 1:
 			return cx.NewString(wtf8.String(strconv.Itoa(i)))
+		case 2:
+			return storage.BigIntFromInt64(-int64(i))
 		default:
 			return cx.NewString(wtf8.String("a key longer than sixteen bytes " + strconv.Itoa(i)))
 		}
 	}
 	check := func(name string, tab *collection.Table, n int) {
 		for i := range n {
-			deleted := i < 300 && i%4 == 0
+			deleted := i < 300 && i%5 == 0
 			if v, ok := tab.Get(key(i)); ok == deleted || ok && v.Number() != float64(i) {
 				t.Errorf("%s: Get(%d) = %s, %t", name, i, cx.DisplayString(v), ok)
 			}
@@ -219,7 +229,7 @@ func TestFindAfterDeletes(t *testing.T) {
 		tab.Set(key(i), storage.Number(float64(i)))
 	}
 	// Too few deletions to compact the table.
-	for i := 0; i < 300; i += 4 {
+	for i := 0; i < 300; i += 5 {
 		tab.Delete(key(i))
 	}
 	check("after deletes", &tab, 300)

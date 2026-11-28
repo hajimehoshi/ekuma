@@ -18,6 +18,17 @@ func (v Value) IsShortString() bool {
 	return v.IsString() && len(v.O.Text()) <= shortstrings.MaxBytes
 }
 
+// PackedShortString returns the bytes and byte length of v, if it is a short string.
+// The first byte occupies the low bits.
+func (v Value) PackedShortString() (uint64, int, bool) {
+	if v.IsString() {
+		if n := len(v.O.Text()); n <= shortstrings.MaxBytes {
+			return math.Float64bits(v.N), n, true
+		}
+	}
+	return 0, 0, false
+}
+
 func (r *RealmPart) ShortString(s wtf8.String) Value {
 	// The immutable sentinel carries the byte length and the originating realm.
 	return Value{
@@ -152,6 +163,30 @@ func (r *RealmPart) newLongASCIIString(b []byte) Value {
 
 // NumberToString is quiet.Context.NumberToString.
 func (r *RealmPart) NumberToString(n float64) Value {
+	if i := int64(n); i >= -9_999_999 && i <= 99_999_999 && float64(i) == n {
+		if uint64(i) < 10 {
+			return r.Strings.Character('0' + byte(i))
+		}
+		negative := i < 0
+		if negative {
+			i = -i
+		}
+		var data uint64
+		var length int
+		for i != 0 {
+			data = data<<8 | uint64('0'+i%10)
+			length++
+			i /= 10
+		}
+		if negative {
+			data = data<<8 | '-'
+			length++
+		}
+		return Value{
+			N: math.Float64frombits(data),
+			O: &r.Shapes.ShortStrings[length],
+		}
+	}
 	var buf [32]byte
 	b := numconv.AppendNumber(buf[:0], n)
 	if len(b) == 1 {
