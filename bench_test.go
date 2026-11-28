@@ -981,7 +981,7 @@ func BenchmarkImportedCall(b *testing.B) {
 	})
 }
 
-// BenchmarkNewVM creates a VM and initialises it, alone and followed by a trivial script.
+// BenchmarkNewVM measures initialisation, a trivial script, and a script that calls a Go function.
 func BenchmarkNewVM(b *testing.B) {
 	b.Run("init", func(b *testing.B) {
 		b.ReportAllocs()
@@ -1000,6 +1000,86 @@ func BenchmarkNewVM(b *testing.B) {
 			}
 		}
 	})
+	b.Run("hostCall", func(b *testing.B) {
+		b.ReportAllocs()
+		ctx := b.Context()
+		increment := func(_ ekuma.Value, args []ekuma.Value) (any, error) {
+			return args[0].Int() + 1, nil
+		}
+		for b.Loop() {
+			var vm ekuma.VM
+			if err := vm.Global().Set(ctx, "increment", vm.FuncOf("increment", increment)); err != nil {
+				b.Fatal(err)
+			}
+			if _, err := runScript(ctx, &vm, "script", "increment(41)"); err != nil {
+				b.Fatal(err)
+			}
+		}
+	})
+}
+
+// BenchmarkNewRealm creates a realm in an already initialised VM.
+func BenchmarkNewRealm(b *testing.B) {
+	var vm ekuma.VM
+	vm.InitialRealm()
+	b.ReportAllocs()
+	for b.Loop() {
+		vm.NewRealm()
+	}
+}
+
+// BenchmarkNewRealmFirstUse creates a realm and binds and evaluates a pre-parsed script in it.
+func BenchmarkNewRealmFirstUse(b *testing.B) {
+	for _, c := range []struct {
+		name string
+		src  string
+	}{
+		{
+			name: "trivial",
+			src:  "1 + 1",
+		},
+		{
+			name: "Math",
+			src:  "Math.abs(-1)",
+		},
+		{
+			name: "JSON",
+			src:  `JSON.parse("1")`,
+		},
+		{
+			name: "Reflect",
+			src:  `Reflect.has({}, "x")`,
+		},
+		{
+			name: "ArrayBuffer",
+			src:  "new ArrayBuffer(8)",
+		},
+		{
+			name: "DataView",
+			src:  "new DataView(new ArrayBuffer(8))",
+		},
+		{
+			name: "Uint8Array",
+			src:  "new Uint8Array(8)",
+		},
+	} {
+		b.Run(c.name, func(b *testing.B) {
+			script, err := ekuma.ParseUnboundScript("script", c.src)
+			if err != nil {
+				b.Fatal(err)
+			}
+			var vm ekuma.VM
+			vm.InitialRealm()
+			b.ReportAllocs()
+			ctx := b.Context()
+			for b.Loop() {
+				realm := vm.NewRealm()
+				if _, err := realm.BindScript(script).Evaluate(ctx); err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+	}
 }
 
 // BenchmarkTailCall compares a loop written as tail recursion in strict code with the same
