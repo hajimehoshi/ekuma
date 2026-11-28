@@ -71,15 +71,24 @@ func TestShiftedStorageAfterTruncation(t *testing.T) {
 }
 
 // TestStackReleased tests that a call with many arguments does not keep its stack slots
-// after it returns to Go.
+// after it returns to Go, and that the stack keeps as many slots as a new one has.
 func TestStackReleased(t *testing.T) {
 	const args = 1 << 18
 	cx := newTestContext(t)
 	if _, err := runScript(cx, "apply", `function f() {} f.apply(null, new Array(262144).fill(0));`); err != nil {
 		t.Fatalf("runScript: %v", err)
 	}
-	if got := engine.StackSize(cx); got >= args {
+	got := engine.StackSize(cx)
+	if got >= args {
 		t.Errorf("got %d stack slots, want fewer than %d", got, args)
+	}
+	// The checks of the interpreter drop the stack between calls into the engine.
+	if engine.ValidateExec {
+		return
+	}
+	fresh, _ := engine.NewExecutionContext(nil)
+	if want := engine.StackSize(fresh); got < want {
+		t.Errorf("got %d stack slots, want at least %d as a new stack has", got, want)
 	}
 }
 

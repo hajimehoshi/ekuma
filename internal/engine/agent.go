@@ -405,9 +405,9 @@ type agent struct {
 	clock func() time.Time
 }
 
-// initialStackSize is the number of values that the stack of an agent has room for from the start.
-// It is large enough for the Go runtime to allocate it on pages of its own, which the interpreter
-// loop runs measurably faster with.
+// initialStackSize is the number of values that the stack of an agent has room for from the start,
+// and the fewest that it keeps when it grows or shrinks. It is large enough for the Go runtime to
+// allocate it on pages of its own, which the interpreter loop runs measurably faster with.
 const initialStackSize = 1 << 12
 
 // NewExecutionContext creates an agent and returns its initial realm's context and host handle.

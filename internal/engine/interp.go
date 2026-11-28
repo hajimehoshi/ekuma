@@ -119,7 +119,7 @@ func (ag *agent) ensureStack(n int) {
 		}
 		return
 	}
-	s := make([]storage.Value, max(n+stackHeadroom, len(ag.stack)*2))
+	s := make([]storage.Value, max(n+stackHeadroom, len(ag.stack)*2, initialStackSize))
 	copy(s, ag.stack)
 	if validateExec {
 		ag.abandonStack()
@@ -134,8 +134,8 @@ func (ag *agent) ensureStack(n int) {
 // maxIdleStack is the number of stack slots that the stack keeps between calls into the engine.
 const maxIdleStack = 1 << 16
 
-// releaseStack moves the values in use to a smaller stack when the stack is larger than
-// maxIdleStack.
+// releaseStack moves the values in use to a smaller stack, of at least initialStackSize slots,
+// when the stack is larger than maxIdleStack.
 func (ag *agent) releaseStack() {
 	if validateExec {
 		ag.checkIdleStack()
@@ -143,11 +143,8 @@ func (ag *agent) releaseStack() {
 	if len(ag.stack) <= maxIdleStack || ag.sp+stackHeadroom > maxIdleStack {
 		return
 	}
-	var s []storage.Value
-	if ag.sp > 0 {
-		s = make([]storage.Value, ag.sp+stackHeadroom)
-		copy(s, ag.stack[:ag.sp])
-	}
+	s := make([]storage.Value, max(ag.sp+stackHeadroom, initialStackSize))
+	copy(s, ag.stack[:ag.sp])
 	if validateExec {
 		ag.abandonStack()
 	}
