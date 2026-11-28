@@ -82,6 +82,99 @@ func TestPushCapacityOfInPlacePushes(t *testing.T) {
 	}
 }
 
+func TestIndexedAppendAfterPrototypeMutation(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		change string
+	}{
+		{
+			name:   "define inherited setter",
+			change: `Object.defineProperty(Array.prototype, 1, {set: record});`,
+		},
+		{
+			name: "insert proxy in prototype chain",
+			change: `
+				Object.setPrototypeOf(Array.prototype, new Proxy(Object.prototype, {
+					set(target, key, value, receiver) {
+						if (key !== "1") return Reflect.set(target, key, value, receiver);
+						record.call(receiver, value);
+						return true;
+					}
+				}));
+			`,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cx := newTestContext(t)
+			v, err := runScript(cx, "append", `
+				function literal(a, value) { a[1] = value; }
+				function indexed(a, i, value) { a[i] = value; }
+				function push(a, value) { return a.push(value); }
+				function one() { const a = []; a.push(0); return a; }
+				literal(one(), 9);
+				indexed(one(), 1, 9);
+				push(one(), 9);
+				const a = one(), b = one(), c = one();
+				let seen = 0;
+				function record(value) {
+					if (this === a || this === b || this === c) seen = 10 * seen + value;
+				}
+				`+tc.change+`
+				literal(a, 2);
+				indexed(b, 1, 3);
+				seen === 23 && push(c, 4) === 2 && seen === 234 && c.length === 2 &&
+					!Object.hasOwn(a, 1) && !Object.hasOwn(b, 1) && !Object.hasOwn(c, 1);
+			`)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if v.O != storage.TrueObject {
+				t.Errorf("indexed appends returned %v, want true", v)
+			}
+		})
+	}
+}
+
+func TestIndexedPrototypePromotion(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		src  string
+	}{
+		{
+			name: "boxed",
+			src:  `({0: "boxed"});`,
+		},
+		{
+			name: "packed",
+			src:  `const a = []; for (let i = 0; i < 24; i++) a.push(i); a;`,
+		},
+		{
+			name: "sparse",
+			src:  `Object.defineProperty({}, 500, {value: 1});`,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cx := newTestContext(t)
+			v, err := runScript(cx, "prototype", tc.src)
+			if err != nil {
+				t.Fatal(err)
+			}
+			o := v.Object()
+			if tc.name == "packed" && o.Raw().NumCount() == 0 {
+				t.Fatal("prototype fixture has no packed elements")
+			}
+			space := o.Shape().Space
+			if space.ProtoElemsDirty {
+				t.Fatal("indexed object dirtied the prototype summary before promotion")
+			}
+			cx.NewObject(o)
+			if !space.ProtoElemsDirty {
+				t.Error("promoting an indexed object left the prototype summary clear")
+			}
+		})
+	}
+}
+
 func TestNumericArrayOperationsKeepPackedStorage(t *testing.T) {
 	const setup = `
 		function numbers() {

@@ -490,7 +490,7 @@ type shapeTable struct {
 // NewShape returns a new empty shared shape for objects whose prototype is proto.
 func (sp *Space) NewShape(proto *Object, r *RealmPart, family shapeFamily) *Shape {
 	if proto != nil {
-		proto.flags |= ObjIsProto
+		sp.markPrototype(proto)
 	}
 	return &Shape{
 		Space:  sp,
@@ -605,7 +605,7 @@ func (sp *Space) rebuildShape(o *Object, proto *Object, family shapeFamily) {
 		s.Proto = proto
 		s.Family = family
 		if proto != nil {
-			proto.flags |= ObjIsProto
+			sp.markPrototype(proto)
 		}
 		o.shape = s
 		return

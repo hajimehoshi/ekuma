@@ -209,6 +209,7 @@ func (o *Object) moveElems(n int) {
 
 // AppendElem appends v to the elements of o.
 func (o *Object) AppendElem(v Value) {
+	o.touchProtoElems()
 	elems := o.elems
 	if cap(elems) == 0 {
 		if p := o.packedNums(); p != nil {

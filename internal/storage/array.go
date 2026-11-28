@@ -144,10 +144,13 @@ func (o *Object) HolesAreAbsent() bool {
 // %Array.prototype% is an array and %Object.prototype% an ordinary object from the start, neither of
 // which can become exotic later.
 func (r *RealmPart) ArrayProtoPlain() bool {
-	a := r.Intrinsic(IntrinsicArrayPrototype)
-	o := r.Intrinsic(IntrinsicObjectPrototype)
-	// %Array.prototype% is marked as a prototype at initialization, so its elements stay boxed.
-	plain := len(a.elems) == 0 && len(o.elems) == 0 && (a.flags|o.flags)&ObjSparse == 0 && a.shape.Proto == o
+	plain := !r.ProtoElemsDirty
+	if !plain {
+		a := r.Intrinsic(IntrinsicArrayPrototype)
+		o := r.Intrinsic(IntrinsicObjectPrototype)
+		plain = a.shape.Proto == o && o.shape.Proto == nil &&
+			a.ElemCount() == 0 && o.ElemCount() == 0 && (a.flags|o.flags)&ObjSparse == 0
+	}
 	if ValidateExec && plain {
 		r.checkArrayProtoPlain()
 	}
@@ -336,7 +339,11 @@ func (r *RealmPart) AppendElements(o *Object, vals []Value) (uint32, bool) {
 	if n > MaxArrayIndex+1 || int64(int(n)) != n || !o.ElemsResizable() || !r.NewElementsPlain(o) {
 		return 0, false
 	}
-	if len(vals) != 0 && !o.appendNumericValues(&r.Poller, vals) {
+	if len(vals) == 0 {
+		return o.length, true
+	}
+	o.touchProtoElems()
+	if !o.appendNumericValues(&r.Poller, vals) {
 		if packed := o.packedNums(); packed != nil {
 			var extra int
 			if len(vals) <= PollChunk {
@@ -370,6 +377,9 @@ func (r *RealmPart) PrependElements(o *Object, vals []Value) (uint32, bool) {
 	}
 	o.ensureUnpacked()
 	n, k := len(o.elems), len(vals)
+	if k != 0 {
+		o.touchProtoElems()
+	}
 	if n > PollChunk {
 		r.Poll()
 	}
@@ -807,6 +817,9 @@ func (r *RealmPart) SpliceElements(o *Object, length, start, del int64, items []
 	if !o.elemsMovable() || !r.ArrayCtorPlain(o) || !r.ArrayProtoPlain() {
 		return nil, false
 	}
+	if len(items) != 0 {
+		o.touchProtoElems()
+	}
 	if packed := o.packedNums(); packed != nil {
 		var removed *Object
 		if del == 0 {
@@ -942,6 +955,9 @@ func (r *RealmPart) AppendElementsOf(dst *Object, n int64, src *Object) bool {
 	}
 	if nums := src.numericElements(); nums != nil && src.elemsComplete() {
 		if dstPacked := dst.packedNums(); dstPacked != nil {
+			if len(nums) != 0 {
+				dst.touchProtoElems()
+			}
 			dstPacked.values = appendPolled(&r.Poller, dstPacked.values, nums)
 			dst.length = uint32(len(dstPacked.values))
 			return true
@@ -959,6 +975,9 @@ func (r *RealmPart) AppendElementsOf(dst *Object, n int64, src *Object) bool {
 	elems, ok := src.PlainElems()
 	if !ok {
 		return false
+	}
+	if len(elems) != 0 {
+		dst.touchProtoElems()
 	}
 	dst.ensureUnpacked()
 	old := dst.elems

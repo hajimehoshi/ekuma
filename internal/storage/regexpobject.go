@@ -156,7 +156,7 @@ func (r *RealmPart) RecordRegExpOriginals(protoKeys, ctorKeys []*Object) {
 	record(ctor, ctorKeys)
 	// Adding, removing or redefining a property of an object marked as a prototype moves
 	// ProtoEpoch. Assigning to a data property does not.
-	ctor.flags |= ObjIsProto
+	r.markPrototype(ctor)
 	o.checked = false
 }
 
