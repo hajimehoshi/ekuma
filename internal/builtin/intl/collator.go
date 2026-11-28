@@ -539,18 +539,10 @@ func joinLocaleStrings(cx *engine.ExecutionContext, o *storage.Object, n int64, 
 	return cx.NewString(b.String())
 }
 
-var (
-	nativeArrayToLocaleString      = engine.RegisterNative(arrayToLocaleString)
-	nativeTypedArrayToLocaleString = engine.RegisterNative(typedArrayToLocaleString)
-)
+var nativeArrayToLocaleString = engine.RegisterNative(arrayToLocaleString)
 
-// initArrayToLocaleString replaces Array.prototype.toLocaleString and
-// %TypedArray%.prototype.toLocaleString with the versions of ECMA-402, which pass the locales
-// and the options to the elements.
 func initArrayToLocaleString(cx *engine.ExecutionContext) {
 	method(cx, cx.Intrinsic(storage.IntrinsicArrayPrototype), "toLocaleString", 0, nativeArrayToLocaleString)
-	typedArrayProto := cx.ProtoOf(cx.Intrinsic(storage.IntrinsicInt8ArrayPrototype))
-	method(cx, typedArrayProto, "toLocaleString", 0, nativeTypedArrayToLocaleString)
 }
 
 func arrayToLocaleString(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
@@ -558,7 +550,8 @@ func arrayToLocaleString(cx *engine.ExecutionContext, this storage.Value, args [
 	return joinLocaleStrings(cx, o, cx.LengthOfArrayLike(o), args)
 }
 
-func typedArrayToLocaleString(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
+// TypedArrayToLocaleString implements the ECMA-402 typed array locale method.
+func TypedArrayToLocaleString(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {
 	// ValidateTypedArray.
 	t := storage.TypedArrayData(this)
 	if t == nil {

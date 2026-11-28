@@ -634,11 +634,15 @@ type builtinLayout struct {
 	Objects []*Object
 }
 
-// StartBuiltins starts the creation of the built-in objects, which [Space.FinishBuiltins] ends.
-// In between, objects should only get their initial properties.
-func (sp *Space) StartBuiltins() {
+// StartBuiltins starts the creation of built-in objects if no creation is in progress.
+// The caller that starts creation must end it with [Space.FinishBuiltins].
+func (sp *Space) StartBuiltins() bool {
+	if sp.Builtins.building {
+		return false
+	}
 	sp.Builtins.building = true
 	sp.Strings.StartKeeping()
+	return true
 }
 
 // FinishBuiltins ends the creation of the built-in objects.

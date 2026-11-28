@@ -446,6 +446,26 @@ func TestSharedArrayBufferSliceSameDataBlock(t *testing.T) {
 	}
 }
 
+func TestRealmValueOfSharedDataBlock(t *testing.T) {
+	var vm ekuma.VM
+	source, err := runScript(t.Context(), &vm, "source", `new SharedArrayBuffer(4)`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	realm := vm.NewRealm()
+	buf := realm.ValueOf(source.SharedDataBlock())
+	if got, err := buf.Get(t.Context(), "byteLength"); err != nil || !got.Equal(vm.ValueOf(4)) {
+		t.Errorf("byteLength: got %v, %v, want 4", got, err)
+	}
+	ctor, err := realm.Global().Get(t.Context(), "SharedArrayBuffer")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ok, err := buf.InstanceOf(t.Context(), ctor); err != nil || !ok {
+		t.Errorf("InstanceOf: got %v, %v, want true", ok, err)
+	}
+}
+
 func TestSharedDataBlockOfNonShared(t *testing.T) {
 	var vm ekuma.VM
 	ab, err := runScript(t.Context(), &vm, "ab", `new ArrayBuffer(4)`)

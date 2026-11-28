@@ -24,6 +24,41 @@ func TestRealmIntrinsic(t *testing.T) {
 	}
 }
 
+func TestBinaryInitializerDefersForGlobalMutations(t *testing.T) {
+	cx, _ := engine.NewExecutionContext(nil)
+	var calls int
+	cx.SetBinaryInitializer(func(cx *engine.ExecutionContext) {
+		calls++
+		proto := cx.NewOrdinaryObject()
+		cx.SetIntrinsic(storage.IntrinsicArrayBufferPrototype, proto)
+		cx.FillBinaryGlobal("ArrayBuffer", proto)
+	})
+	cx.ReserveBinaryGlobal("ArrayBuffer")
+	cx.ReserveBinaryGlobal("SharedArrayBuffer")
+	cx.ReserveBinaryGlobal("DataView")
+
+	g := cx.GlobalObject().Object()
+	key := cx.KeyOfString("ArrayBuffer")
+	if !cx.HasOwnProperty(g, key) {
+		t.Error("reserved global is missing")
+	}
+	var attrs storage.PropDesc
+	attrs.SetWritable(false)
+	cx.DefinePropertyOrThrow(g, key, attrs)
+	cx.Set(g, cx.KeyOfString("SharedArrayBuffer"), storage.Undefined)
+	if !cx.DeleteProp(g, cx.KeyOfString("DataView")) {
+		t.Error("reserved global could not be deleted")
+	}
+	if calls != 0 {
+		t.Errorf("global mutations ran the initializer %d times, want 0", calls)
+	}
+	cx.Intrinsic(storage.IntrinsicArrayBufferPrototype)
+	cx.Intrinsic(storage.IntrinsicArrayBufferPrototype)
+	if calls != 1 {
+		t.Errorf("two intrinsic reads ran the initializer %d times in total, want 1", calls)
+	}
+}
+
 func TestCreateRealmThrow(t *testing.T) {
 	cx, host := engine.NewExecutionContext(nil)
 	var created *engine.ExecutionContext

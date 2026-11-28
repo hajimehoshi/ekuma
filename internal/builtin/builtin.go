@@ -71,10 +71,15 @@ func constant(cx *engine.ExecutionContext, o *storage.Object, name wtf8.String, 
 // constructor creates the constructor function name with the intrinsic prototype protoID,
 // and defines it as a global.
 func constructor(cx *engine.ExecutionContext, name wtf8.String, length int, protoID storage.Intrinsic, f storage.Native) *storage.Object {
+	c := newConstructor(cx, name, length, protoID, f)
+	cx.Define(cx.GlobalObject().Object(), cx.Intern(name), storage.ObjectValue(c), storage.FlagsHidden)
+	return c
+}
+
+func newConstructor(cx *engine.ExecutionContext, name wtf8.String, length int, protoID storage.Intrinsic, f storage.Native) *storage.Object {
 	c := cx.NewNativeConstructor(name, length, f)
 	cx.DefineConstructorPrototype(c, protoID)
 	cx.Define(cx.Intrinsic(protoID), cx.Key(storage.KeyConstructor), storage.ObjectValue(c), storage.FlagsHidden)
-	cx.Define(cx.GlobalObject().Object(), cx.Intern(name), storage.ObjectValue(c), storage.FlagsHidden)
 	return c
 }
 
@@ -117,7 +122,9 @@ var nativeThrowRestrictedProperty = engine.RegisterNative(throwRestrictedPropert
 
 // Install creates the standard built-in objects of the realm of cx, and those of the registered extensions.
 func Install(cx *engine.ExecutionContext) {
-	cx.StartBuiltins()
+	if cx.StartBuiltins() {
+		defer cx.FinishBuiltins()
+	}
 	objectProto := cx.Intrinsic(storage.IntrinsicObjectPrototype)
 	cx.SetIntrinsic(storage.IntrinsicNumberPrototype, cx.NewNumberObject(0, objectProto))
 	cx.SetIntrinsic(storage.IntrinsicBooleanPrototype, cx.NewBooleanObject(false, objectProto))
@@ -178,12 +185,12 @@ func Install(cx *engine.ExecutionContext) {
 	initPromise(cx)
 	initAsync(cx)
 	initDisposableStacks(cx)
-	initBinary(cx)
+	reserveBinary(cx)
+	initAtomics(cx)
 	initGlobalFunctions(cx, parseFloat, parseInt)
 	for _, install := range extensions {
 		install(cx)
 	}
-	cx.FinishBuiltins()
 }
 
 func throwRestrictedProperty(cx *engine.ExecutionContext, this storage.Value, args []storage.Value) storage.Value {

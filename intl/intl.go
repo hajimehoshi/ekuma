@@ -26,6 +26,7 @@ package intl
 import (
 	"github.com/hajimehoshi/ekuma/internal/builtin"
 	intlbuiltin "github.com/hajimehoshi/ekuma/internal/builtin/intl"
+	"github.com/hajimehoshi/ekuma/internal/engine"
 	"github.com/hajimehoshi/ekuma/internal/intl/calendar"
 	"github.com/hajimehoshi/ekuma/internal/temporal"
 )
@@ -33,5 +34,6 @@ import (
 func init() {
 	temporal.SetCalendars(calendar.Temporal)
 	builtin.SetDateTimeZoneName(intlbuiltin.DateTimeZoneName)
+	builtin.SetTypedArrayToLocaleString(engine.RegisterNative(intlbuiltin.TypedArrayToLocaleString))
 	builtin.RegisterExtension(intlbuiltin.Install)
 }

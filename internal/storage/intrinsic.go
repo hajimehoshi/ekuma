@@ -34,9 +34,6 @@ const (
 	IntrinsicMapPrototype
 	IntrinsicSetPrototype
 	IntrinsicDatePrototype
-	IntrinsicSharedArrayBufferPrototype
-	IntrinsicArrayBufferPrototype
-	IntrinsicDataViewPrototype
 	IntrinsicWeakMapPrototype
 	IntrinsicWeakSetPrototype
 	IntrinsicWeakRefPrototype
@@ -51,8 +48,6 @@ const (
 	IntrinsicFunction
 	IntrinsicRegExp
 	IntrinsicIterator
-	IntrinsicArrayBuffer
-	IntrinsicSharedArrayBuffer
 	IntrinsicAbstractModuleSource
 
 	IntrinsicTemporal
@@ -102,6 +97,14 @@ const (
 	IntrinsicFunctionCallerGetter
 	IntrinsicFunctionArgumentsGetter
 
+	// The binary built-ins are initialized together.
+	IntrinsicArrayBuffer
+	IntrinsicArrayBufferPrototype
+	IntrinsicSharedArrayBuffer
+	IntrinsicSharedArrayBufferPrototype
+	IntrinsicDataViewPrototype
+	IntrinsicTypedArrayPrototypeLengthGetter
+
 	// The typed array constructors are in the order of [element.Type].
 	IntrinsicInt8Array
 	IntrinsicUint8Array
@@ -140,10 +143,10 @@ const (
 	IntrinsicArrayPrototypePop
 	IntrinsicArrayIteratorPrototypeNext
 	IntrinsicArraySpeciesGetter
-	IntrinsicTypedArrayPrototypeLengthGetter
 	IntrinsicGeneratorPrototypeNext
 
 	// The initial values of these functions are what the built-ins treat specially.
+	IntrinsicArrayPrototypeToString
 	IntrinsicRegExpPrototypeExec
 	IntrinsicMapPrototypeSet
 	IntrinsicMapPrototypeEntries
@@ -160,6 +163,11 @@ const (
 
 	intrinsicCount
 )
+
+// IsBinary reports whether i belongs to the binary built-in family.
+func (i Intrinsic) IsBinary() bool {
+	return IntrinsicArrayBuffer <= i && i <= IntrinsicBigUint64ArrayPrototype
+}
 
 // Intrinsic returns the intrinsic object id of r, or nil before it is set.
 func (r *RealmPart) Intrinsic(id Intrinsic) *Object {

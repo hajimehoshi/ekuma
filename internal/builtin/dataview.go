@@ -53,7 +53,8 @@ var (
 func initDataView(cx *engine.ExecutionContext) {
 	proto := cx.NewOrdinaryObject()
 	cx.SetIntrinsic(storage.IntrinsicDataViewPrototype, proto)
-	constructor(cx, "DataView", 1, storage.IntrinsicDataViewPrototype, nativeDataViewConstructor)
+	ctor := newConstructor(cx, "DataView", 1, storage.IntrinsicDataViewPrototype, nativeDataViewConstructor)
+	cx.FillBinaryGlobal("DataView", ctor)
 
 	getter(cx, proto, cx.Intern("buffer"), "buffer", nativeDataViewBuffer)
 	getter(cx, proto, cx.Intern("byteLength"), "byteLength", nativeDataViewByteLength)

@@ -9,10 +9,52 @@ import (
 
 	"github.com/hajimehoshi/ekuma/internal/element"
 	"github.com/hajimehoshi/ekuma/internal/storage"
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
-// This file holds the operations of ArrayBuffer, SharedArrayBuffer and typed array objects that throw
-// or convert values.
+// SetBinaryInitializer registers the initializer for the binary built-ins of cx.
+// The initializer must run without calling guest or host code.
+func (cx *ExecutionContext) SetBinaryInitializer(init func(*ExecutionContext)) {
+	cx.realm.initBinaryBuiltins = init
+}
+
+// ReserveBinaryGlobal reserves the position of a binary constructor on the global object.
+func (cx *ExecutionContext) ReserveBinaryGlobal(name wtf8.String) {
+	cx.ReserveGlobal(cx.Intern(name))
+}
+
+// FillBinaryGlobal installs a binary constructor if the reserved property is still pending.
+func (cx *ExecutionContext) FillBinaryGlobal(name wtf8.String, ctor *storage.Object) {
+	cx.FillPendingGlobal(cx.Intern(name), storage.ObjectValue(ctor))
+}
+
+func (cx *ExecutionContext) initializeBinaryBuiltins() {
+	if init := cx.realm.initBinaryBuiltins; init != nil {
+		cx.realm.initBinaryBuiltins = nil
+		if cx.StartBuiltins() {
+			defer cx.FinishBuiltins()
+		}
+		cx.Run(func() {
+			init(cx)
+		})
+	}
+}
+
+// Intrinsic returns the intrinsic object identified by id in cx's realm, or nil if unavailable.
+func (cx *ExecutionContext) Intrinsic(id storage.Intrinsic) *storage.Object {
+	if o := cx.realmPart.Intrinsic(id); o != nil {
+		return o
+	}
+	return cx.initializeBinaryIntrinsic(id)
+}
+
+func (cx *ExecutionContext) initializeBinaryIntrinsic(id storage.Intrinsic) *storage.Object {
+	if id.IsBinary() {
+		cx.initializeBinaryBuiltins()
+		return cx.realmPart.Intrinsic(id)
+	}
+	return nil
+}
 
 // checkBufferLength throws a RangeError when a data block of n bytes cannot be created.
 func (cx *ExecutionContext) checkBufferLength(n int64) {

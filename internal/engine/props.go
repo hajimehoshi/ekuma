@@ -227,7 +227,7 @@ func (cx *ExecutionContext) getNamed(v storage.Value, key *storage.Object, c *st
 		if e.Shape != start.Shape() {
 			e = &c.Second
 		}
-		if e.Shape == start.Shape() && e.Kind == storage.CacheGetter && e.Epoch == cx.ProtoEpoch && e.Holder == cx.Intrinsic(storage.IntrinsicTypedArrayPrototypeLengthGetter) {
+		if e.Shape == start.Shape() && e.Kind == storage.CacheGetter && e.Epoch == cx.ProtoEpoch && e.Holder == cx.realmPart.Intrinsic(storage.IntrinsicTypedArrayPrototypeLengthGetter) {
 			if validateExec {
 				cx.checkTypedArrayLengthHit(nil, 0, v, float64(storage.TypedArrayLength(start)))
 			}
@@ -249,12 +249,26 @@ func (cx *ExecutionContext) getNamed(v storage.Value, key *storage.Object, c *st
 		return storage.Undefined, nil
 	case storage.LookupSlot:
 		if c != nil && c.Keep(start.Shape()) && start == v.O && start.Kind == storage.KindObject && start.Class == storage.ClassObject && start.Flags()&storage.ObjExotic == 0 &&
-			s == start.Shape() && s.Space == cx.space && epoch == cx.ProtoEpoch {
+			s == start.Shape() && s.Space == cx.space && epoch == cx.ProtoEpoch && !r.Holder.IsPendingGlobalSlot(r.Prop) {
 			c.RememberRead(cx.space, start, r.Holder, r.Prop)
 		}
-		return cx.ReadNamedSlot(start, r.Holder, r.Prop, c)
+		return cx.readNamedSlot(start, r.Holder, r.Prop, c)
 	}
 	panic("engine: unknown named lookup result")
+}
+
+func (cx *ExecutionContext) readNamedSlot(start, holder *storage.Object, p storage.Prop, c *storage.PropCache) (storage.Value, *storage.Object) {
+	val, getter := cx.space.ReadNamedSlot(start, holder, p, c)
+	if val.IsPendingGlobal() {
+		cx.contextOf(holder.CreationRealm()).initializeBinaryBuiltins()
+		return cx.space.ReadNamedSlot(start, holder, p, c)
+	}
+	return val, getter
+}
+
+func (cx *ExecutionContext) readPendingGlobal(holder *storage.Object, p storage.Prop) storage.Value {
+	cx.contextOf(holder.CreationRealm()).initializeBinaryBuiltins()
+	return holder.SlotValue(p)
 }
 
 // GetV returns the named property key of v, calling a getter.
@@ -396,6 +410,11 @@ func (cx *ExecutionContext) getIndex(v storage.Value, i uint32) (storage.Value, 
 
 // GetOwnProperty implements [[GetOwnProperty]].
 func (cx *ExecutionContext) GetOwnProperty(o *storage.Object, k storage.PropKey) (storage.PropDesc, bool) {
+	return cx.getOwnProperty(o, k, true)
+}
+
+// getOwnProperty can leave a global value pending for operations that use only its attributes.
+func (cx *ExecutionContext) getOwnProperty(o *storage.Object, k storage.PropKey, resolvePending bool) (storage.PropDesc, bool) {
 	if validateExec && k.Key != nil && k.Key.Kind == storage.KindString && k.Key.Flags()&storage.ObjInterned == 0 {
 		panic("engine: property key that is not interned")
 	}
@@ -460,6 +479,9 @@ func (cx *ExecutionContext) GetOwnProperty(o *storage.Object, k storage.PropKey)
 	if p.Flags&storage.FlagAccessor != 0 {
 		return storage.AccessorDesc(val.Accessor(), p.Flags), true
 	}
+	if resolvePending && val.IsPendingGlobal() {
+		val = cx.readPendingGlobal(o, p)
+	}
 	return storage.DataDesc(val, p.Flags), true
 }
 
@@ -473,7 +495,7 @@ func (cx *ExecutionContext) HasOwnProperty(o *storage.Object, k storage.PropKey)
 		_, ok := o.Shape().Lookup(k.Key)
 		return ok
 	}
-	_, ok := cx.GetOwnProperty(o, k)
+	_, ok := cx.getOwnProperty(o, k, false)
 	return ok
 }
 
@@ -514,7 +536,7 @@ func (cx *ExecutionContext) getProp(o *storage.Object, k storage.PropKey, receiv
 	for h := o; h != nil; h = h.Shape().Proto {
 		if k.Key != nil && h.Shape().Family == storage.OrdinaryRoot {
 			if p, ok := h.Shape().Lookup(k.Key); ok {
-				v, getter := cx.ReadNamedSlot(o, h, p, nil)
+				v, getter := cx.readNamedSlot(o, h, p, nil)
 				if getter != nil {
 					return cx.Call(getter, receiver)
 				}
@@ -753,7 +775,7 @@ func (cx *ExecutionContext) setProp(o *storage.Object, k storage.PropKey, val st
 				return true
 			}
 		}
-		if d, found = cx.GetOwnProperty(h, k); found {
+		if d, found = cx.getOwnProperty(h, k, false); found {
 			break
 		}
 	}
@@ -775,7 +797,7 @@ func (cx *ExecutionContext) setProp(o *storage.Object, k storage.PropKey, val st
 		// A global binding stores on the backing object even after detachment.
 		r = o
 	}
-	if existing, ok := cx.GetOwnProperty(r, k); ok {
+	if existing, ok := cx.getOwnProperty(r, k, false); ok {
 		if existing.IsAccessor() || !existing.Writable() {
 			return false
 		}
@@ -810,7 +832,7 @@ func (cx *ExecutionContext) defineOwnProperty(o *storage.Object, k storage.PropK
 			return cx.defineMappedArgument(o, k.Idx, u, d)
 		}
 	}
-	cur, exists := cx.GetOwnProperty(o, k)
+	cur, exists := cx.getOwnProperty(o, k, false)
 	if !exists {
 		if o.Flags()&storage.ObjNotExtensible != 0 {
 			return false
@@ -837,8 +859,13 @@ func (cx *ExecutionContext) defineOwnProperty(o *storage.Object, k storage.PropK
 	}
 
 	// ValidateAndApplyPropertyDescriptor for an existing property.
-	if !cur.Configurable() && !storage.NonConfigurableCompatible(&cur, &d) {
-		return false
+	if !cur.Configurable() {
+		if !cur.Writable() && d.HasField(storage.HasValue) && cur.Value().IsPendingGlobal() {
+			cur, _ = cx.GetOwnProperty(o, k)
+		}
+		if !storage.NonConfigurableCompatible(&cur, &d) {
+			return false
+		}
 	}
 
 	// Merge the fields that are present into the current property.

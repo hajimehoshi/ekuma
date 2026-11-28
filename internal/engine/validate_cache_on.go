@@ -41,7 +41,7 @@ func (cx *ExecutionContext) checkReadHit(fp *storage.FuncProto, pc int, v storag
 	p := cx.Peek(v, key)
 	switch p.Kind {
 	case peekData:
-		if ref == p.Slot() && sameBits(*ref, *p.Slot()) {
+		if ref == p.Slot() && !ref.IsPendingGlobal() && sameBits(*ref, *p.Slot()) {
 			return
 		}
 	case peekMiss, peekNumericMiss:
@@ -68,7 +68,7 @@ func (cx *ExecutionContext) checkEntryRead(fp *storage.FuncProto, pc int, v stor
 
 // checkRememberedRead checks that the property key of v is the property q of holder.
 func (cx *ExecutionContext) checkRememberedRead(v storage.Value, key, holder *storage.Object, q storage.Prop) {
-	if p := cx.Peek(v, key); p.Kind != peekData && p.Kind != peekAccessor || p.Holder != holder || p.Prop != q {
+	if p := cx.Peek(v, key); p.Kind != peekData && p.Kind != peekAccessor || p.Holder != holder || p.Prop != q || p.Slot().IsPendingGlobal() {
 		panic(cx.cacheFailure(nil, 0, "the cache of further shapes", key, fmt.Sprintf("the slot %d of the object %p", q.Slot, holder), p.String()))
 	}
 }
@@ -176,7 +176,7 @@ func (cx *ExecutionContext) checkGlobalExists(fp *storage.FuncProto, pc int, key
 // if write is set.
 func (cx *ExecutionContext) checkGlobalHit(fp *storage.FuncProto, pc int, key *storage.Object, c *storage.GlobalCache, write bool) {
 	p := cx.peekGlobal(key)
-	if c.Holder != cx.realm.Global || p.Kind != peekData || p.Slot() != c.Ref || c.Ref.O == tdzObject || write && p.Prop.Flags&storage.FlagWritable == 0 {
+	if c.Holder != cx.realm.Global || p.Kind != peekData || p.Slot() != c.Ref || c.Ref.O == tdzObject || c.Ref.IsPendingGlobal() || write && p.Prop.Flags&storage.FlagWritable == 0 {
 		panic(cx.cacheFailure(fp, pc, "the global cache", key, fmt.Sprintf("the initialized binding at %p of the global object %p", c.Ref, c.Holder), p.String()))
 	}
 }

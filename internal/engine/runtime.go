@@ -86,8 +86,12 @@ func (cx *ExecutionContext) getGlobal(key *storage.Object, c *storage.GlobalCach
 		return v
 	}
 	if p, ok := g.Shape().Lookup(key); ok && p.Flags&storage.FlagAccessor == 0 {
+		v := g.SlotValue(p)
+		if v.IsPendingGlobal() {
+			v = cx.readPendingGlobal(g, p)
+		}
 		c.Remember(g, g, p)
-		return g.SlotValue(p)
+		return v
 	}
 	switch l := quiet.ContextOf(r).LookupNamed(g, key); l.Kind {
 	case storage.LookupAbsent, storage.LookupNumericMiss:
@@ -96,7 +100,7 @@ func (cx *ExecutionContext) getGlobal(key *storage.Object, c *storage.GlobalCach
 		}
 		cx.ThrowReferenceError(wtf8.ToValidUTF8(key.Text()) + " is not defined")
 	case storage.LookupSlot:
-		v, getter := cx.ReadNamedSlot(g, l.Holder, l.Prop, nil)
+		v, getter := cx.readNamedSlot(g, l.Holder, l.Prop, nil)
 		if getter != nil {
 			return cx.Call(getter, storage.Value{O: r.GlobalThis})
 		}
@@ -214,14 +218,14 @@ func (cx *ExecutionContext) checkGlobalDecl(key *storage.Object, what int) {
 			cx.ThrowSyntaxError("identifier '" + wtf8.ToValidUTF8(key.Text()) + "' has already been declared")
 		}
 		// A lexical declaration may not hide a global property that cannot be reconfigured.
-		if d, ok := cx.GetOwnProperty(r.Global, storage.NamedKey(key)); ok && !d.Configurable() {
+		if d, ok := cx.getOwnProperty(r.Global, storage.NamedKey(key), false); ok && !d.Configurable() {
 			cx.ThrowSyntaxError("identifier '" + wtf8.ToValidUTF8(key.Text()) + "' has already been declared")
 		}
 	case bytecode.DeclFunction:
 		if lex {
 			cx.ThrowSyntaxError("identifier '" + wtf8.ToValidUTF8(key.Text()) + "' has already been declared")
 		}
-		d, ok := cx.GetOwnProperty(r.Global, storage.NamedKey(key))
+		d, ok := cx.getOwnProperty(r.Global, storage.NamedKey(key), false)
 		switch {
 		case !ok:
 			if !cx.IsExtensible(r.Global) {
@@ -239,7 +243,7 @@ func (cx *ExecutionContext) checkGlobalDecl(key *storage.Object, what int) {
 func (cx *ExecutionContext) declareGlobalVar(key *storage.Object, flags int, fn storage.Value) {
 	g := cx.realm.Global
 	k := storage.NamedKey(key)
-	d, ok := cx.GetOwnProperty(g, k)
+	d, ok := cx.getOwnProperty(g, k, false)
 	attrs := storage.FlagEnumerable | storage.FlagWritable
 	if flags&bytecode.GlobalVarDeletable != 0 {
 		attrs |= storage.FlagConfigurable
@@ -1272,7 +1276,7 @@ func (cx *ExecutionContext) GetPrototypeFromConstructor(ctor *storage.Object, de
 			cx.InitLazyObject(ns)
 		}
 	}
-	if proto := r.Intrinsics[defaultProto]; proto != nil {
+	if proto := r.context.Intrinsic(defaultProto); proto != nil {
 		return proto
 	}
 	panic("engine: uninitialized intrinsic prototype " + strconv.Itoa(int(defaultProto)))

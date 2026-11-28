@@ -18,6 +18,33 @@ const (
 	FlagsHidden = FlagWritable | FlagConfigurable
 )
 
+var pendingGlobal = Value{
+	O: NewMarker(nil),
+}
+
+// IsPendingGlobal reports whether v marks an uninitialized global property.
+func (v Value) IsPendingGlobal() bool {
+	return v.O == pendingGlobal.O
+}
+
+// ReserveGlobal creates the global property key before its value is available.
+func (r *RealmPart) ReserveGlobal(key *Object) {
+	r.Add(r.Global, key, pendingGlobal, FlagsHidden)
+}
+
+// FillPendingGlobal supplies the value of the global property key if it is still pending.
+func (r *RealmPart) FillPendingGlobal(key *Object, v Value) {
+	g := r.Global
+	if p, ok := g.shape.Lookup(key); ok && g.IsPendingGlobalSlot(p) {
+		g.slots[p.Slot] = v
+	}
+}
+
+// IsPendingGlobalSlot reports whether p is an uninitialized global property of o.
+func (o *Object) IsPendingGlobalSlot(p Prop) bool {
+	return o.slots[p.Slot].IsPendingGlobal()
+}
+
 // getOwn returns the own named property key of o.
 func (o *Object) getOwn(key *Object) (Prop, bool) {
 	return o.shape.Lookup(key)
@@ -204,8 +231,12 @@ func (r *RealmPart) Lookup(o *Object, key *Object) NamedLookup {
 }
 
 // ReadNamedSlot reads p and returns its getter separately for the caller to invoke.
+// A pending global marker is returned without caching the slot.
 func (sp *Space) ReadNamedSlot(start, holder *Object, p Prop, c *PropCache) (val Value, getter *Object) {
 	val = holder.slots[p.Slot]
+	if val.IsPendingGlobal() {
+		return val, nil
+	}
 	if p.Flags&FlagAccessor != 0 {
 		// Objects of one shape can hold different own accessors, and replacing an own accessor
 		// keeps the shape, so the cache of an own accessor remembers its slot, not its getter.
@@ -247,7 +278,7 @@ type dataSlot struct {
 // if the lookup cannot establish one without running code.
 func (r *RealmPart) LookupDataSlot(o, key *Object) dataSlot {
 	l := r.Lookup(o, key)
-	if l.Kind != LookupSlot || l.Prop.Flags&FlagAccessor != 0 {
+	if l.Kind != LookupSlot || l.Prop.Flags&FlagAccessor != 0 || l.Holder.IsPendingGlobalSlot(l.Prop) {
 		return dataSlot{}
 	}
 	return dataSlot{
@@ -322,8 +353,9 @@ func takenShape(dst, from *Object) *Shape {
 	if from.Kind != KindObject || from.Class != ClassObject || from.flags&(ObjExotic|ObjSparse) != 0 {
 		return nil
 	}
+	// Global slots can hold pending values that must be resolved individually.
 	s := from.shape
-	if s.Private || s.flatBased || s.Count == 0 {
+	if s.Private || s.flatBased || s.Count == 0 || from.Pinned&PinnedGlobalSlots != 0 {
 		return nil
 	}
 	t := s
@@ -397,7 +429,9 @@ func (r *RealmPart) GetVWithoutCall(v Value, key *Object, c *PropCache) (val Val
 				c.Keep(start.shape)
 			}
 			val, _ = r.ReadNamedSlot(start, l.Holder, l.Prop, c)
-			return val, true
+			if !val.IsPendingGlobal() {
+				return val, true
+			}
 		}
 	}
 	return Undefined, false

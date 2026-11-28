@@ -460,7 +460,7 @@ func TypedArrayPrototypeIntrinsic(t element.Type) storage.Intrinsic {
 // IntrinsicValue returns the intrinsic object id of the execution realm, which must be set, as a value.
 func (cx *ExecutionContext) IntrinsicValue(id storage.Intrinsic) storage.Value {
 	return storage.Value{
-		O: cx.realm.Intrinsics[id],
+		O: cx.Intrinsic(id),
 	}
 }
 

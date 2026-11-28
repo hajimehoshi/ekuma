@@ -356,7 +356,7 @@ func initArray(cx *engine.ExecutionContext) {
 	method(cx, proto, "splice", 2, nativeArraySplice)
 	method(cx, proto, "concat", 1, nativeArrayConcat)
 	method(cx, proto, "join", 1, nativeArrayJoin)
-	method(cx, proto, "toString", 0, nativeArrayToString)
+	cx.SetIntrinsic(storage.IntrinsicArrayPrototypeToString, method(cx, proto, "toString", 0, nativeArrayToString))
 	method(cx, proto, "reverse", 0, nativeArrayReverse)
 
 	method(cx, proto, "indexOf", 1, nativeArrayIndexOf)

@@ -582,7 +582,7 @@ func (q quietJobs) tryAwait(v storage.Value, action reactionAction) bool {
 		if ctor.Holder == nil {
 			return false
 		}
-		if ctor.Value().O == cx.Intrinsic(storage.IntrinsicPromise) {
+		if ctor.Value().O == cx.realmPart.Intrinsic(storage.IntrinsicPromise) {
 			cx.addReaction(v.O, &r)
 			return true
 		}
@@ -592,7 +592,7 @@ func (q quietJobs) tryAwait(v storage.Value, action reactionAction) bool {
 		return false
 	}
 	if then.IsCallable() {
-		p := cx.NewPromiseObject(cx.Intrinsic(storage.IntrinsicPromisePrototype))
+		p := cx.NewPromiseObject(cx.realmPart.Intrinsic(storage.IntrinsicPromisePrototype))
 		cx.enqueueThenableJob(p, v, then)
 		cx.addReaction(p, &r)
 	} else {

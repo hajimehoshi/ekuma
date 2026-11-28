@@ -9,15 +9,24 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/engine"
 	"github.com/hajimehoshi/ekuma/internal/numconv"
 	"github.com/hajimehoshi/ekuma/internal/storage"
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
-// initBinary defines ArrayBuffer, SharedArrayBuffer, the typed arrays, DataView and Atomics.
+func reserveBinary(cx *engine.ExecutionContext) {
+	cx.SetBinaryInitializer(initBinary)
+	cx.ReserveBinaryGlobal("ArrayBuffer")
+	cx.ReserveBinaryGlobal("SharedArrayBuffer")
+	for _, name := range typedArrayNames {
+		cx.ReserveBinaryGlobal(wtf8.String(name))
+	}
+	cx.ReserveBinaryGlobal("DataView")
+}
+
 func initBinary(cx *engine.ExecutionContext) {
 	initArrayBuffer(cx)
 	initSharedArrayBuffer(cx)
 	initTypedArrays(cx)
 	initDataView(cx)
-	initAtomics(cx)
 }
 
 // maxByteLengthOption implements GetArrayBufferMaxByteLengthOption. It returns -1 for empty.
@@ -85,8 +94,9 @@ var (
 func initArrayBuffer(cx *engine.ExecutionContext) {
 	proto := cx.NewOrdinaryObject()
 	cx.SetIntrinsic(storage.IntrinsicArrayBufferPrototype, proto)
-	ctor := constructor(cx, "ArrayBuffer", 1, storage.IntrinsicArrayBufferPrototype, nativeArrayBufferConstructor)
+	ctor := newConstructor(cx, "ArrayBuffer", 1, storage.IntrinsicArrayBufferPrototype, nativeArrayBufferConstructor)
 	cx.SetIntrinsic(storage.IntrinsicArrayBuffer, ctor)
+	cx.FillBinaryGlobal("ArrayBuffer", ctor)
 	speciesGetter(cx, ctor)
 	method(cx, ctor, "isView", 1, nativeArrayBufferIsView)
 
@@ -272,8 +282,9 @@ var (
 func initSharedArrayBuffer(cx *engine.ExecutionContext) {
 	proto := cx.NewOrdinaryObject()
 	cx.SetIntrinsic(storage.IntrinsicSharedArrayBufferPrototype, proto)
-	ctor := constructor(cx, "SharedArrayBuffer", 1, storage.IntrinsicSharedArrayBufferPrototype, nativeSharedArrayBufferConstructor)
+	ctor := newConstructor(cx, "SharedArrayBuffer", 1, storage.IntrinsicSharedArrayBufferPrototype, nativeSharedArrayBufferConstructor)
 	cx.SetIntrinsic(storage.IntrinsicSharedArrayBuffer, ctor)
+	cx.FillBinaryGlobal("SharedArrayBuffer", ctor)
 	speciesGetter(cx, ctor)
 
 	getter(cx, proto, cx.Intern("byteLength"), "byteLength", nativeSharedArrayBufferByteLength)

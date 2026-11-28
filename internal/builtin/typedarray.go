@@ -643,6 +643,12 @@ var (
 	nativeTypedArrayWith           = engine.RegisterNative(typedArrayWith)
 )
 
+// SetTypedArrayToLocaleString sets the native implementation installed in each realm.
+// It must be called before any VM is created.
+func SetTypedArrayToLocaleString(native storage.Native) {
+	nativeTypedArrayToLocaleString = native
+}
+
 func initTypedArrays(cx *engine.ExecutionContext) {
 	proto := cx.NewOrdinaryObject()
 	ctor := cx.NewNativeConstructor("TypedArray", 0, nativeTypedArrayConstructor)
@@ -693,8 +699,7 @@ func initTypedArrays(cx *engine.ExecutionContext) {
 	method(cx, proto, "toReversed", 0, nativeTypedArrayToReversed)
 	method(cx, proto, "toSorted", 1, nativeTypedArrayToSorted)
 	method(cx, proto, "with", 2, nativeTypedArrayWith)
-	toString := cx.Get(cx.Intrinsic(storage.IntrinsicArrayPrototype), storage.NamedKey(cx.Key(storage.KeyToString)))
-	cx.Define(proto, cx.Key(storage.KeyToString), toString, storage.FlagsHidden)
+	cx.Define(proto, cx.Key(storage.KeyToString), cx.IntrinsicValue(storage.IntrinsicArrayPrototypeToString), storage.FlagsHidden)
 
 	for typ := range element.TypeCount {
 		name := typedArrayNames[typ]
@@ -705,7 +710,7 @@ func initTypedArrays(cx *engine.ExecutionContext) {
 		cx.SetPrototypeOf(c, ctor)
 		cx.DefineConstructorPrototype(c, engine.TypedArrayPrototypeIntrinsic(typ))
 		cx.Define(p, cx.Key(storage.KeyConstructor), storage.ObjectValue(c), storage.FlagsHidden)
-		cx.Define(cx.GlobalObject().Object(), cx.Intern(wtf8.String(name)), storage.ObjectValue(c), storage.FlagsHidden)
+		cx.FillBinaryGlobal(wtf8.String(name), c)
 		bpe := storage.Number(float64(typ.Size()))
 		constant(cx, c, "BYTES_PER_ELEMENT", bpe)
 		constant(cx, p, "BYTES_PER_ELEMENT", bpe)

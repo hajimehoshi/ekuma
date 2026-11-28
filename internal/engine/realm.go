@@ -30,6 +30,8 @@ type realm struct {
 	// context is shared by jobs bound to this realm.
 	context ExecutionContext
 
+	initBinaryBuiltins func(*ExecutionContext)
+
 	exceptionReporter func(storage.Value, ExceptionLocation)
 
 	// globalProxyHandler is the private empty handler shared by realms that

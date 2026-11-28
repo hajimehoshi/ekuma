@@ -39,7 +39,6 @@ agent.execFast GlobalCache.Ref:write*2 PropCache.CacheEntry:ref*8 PropCache.Seco
 # Read properties without the guards of the property operations.
 [reads]
 ExecutionContext.DeleteProp shape.lookup:read
-ExecutionContext.GetOwnProperty Value.accessor:read shape.lookup:read
 ExecutionContext.HasOwnProperty shape.lookup:read
 ExecutionContext.QueryOwnProperty shape.lookup:read
 ExecutionContext.checkGlobalDecl shape.lookup:read
@@ -52,6 +51,7 @@ ExecutionContext.deleteName shape.lookup:read
 ExecutionContext.getGlobal shape.lookup:read
 ExecutionContext.getGlobalLexical shape.lookup:read
 ExecutionContext.getIndex Value.accessor:read shape.lookup:read
+ExecutionContext.getOwnProperty Value.accessor:read shape.lookup:read
 ExecutionContext.getPrivate Value.accessor:read shape.lookup:read
 ExecutionContext.getProp shape.lookup:read
 ExecutionContext.readInstancePrototype Value.accessor:read

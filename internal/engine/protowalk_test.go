@@ -90,9 +90,7 @@ var protoQueries = useCounts{
 		"builtin.objectGetPrototypeOf":         1,
 		"builtin.reflectGetPrototypeOf":        1,
 	},
-	protoKnown: {
-		"builtin/intl.initArrayToLocaleString": 1,
-	},
+	protoKnown: {},
 }
 
 // TestPrototypeWalks tests that the functions that read prototypes are those in protoReads and

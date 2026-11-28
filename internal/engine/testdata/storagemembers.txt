@@ -101,7 +101,6 @@ RealmPart.DefineAccessor
 RealmPart.DefineMatchResultProperties
 RealmPart.DefineMatchResultPropertiesWithIndices
 RealmPart.Intern
-RealmPart.Intrinsic
 RealmPart.KeyOfString
 RealmPart.NewASCIIStringBytes
 RealmPart.NewArray
