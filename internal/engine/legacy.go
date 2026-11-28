@@ -49,12 +49,9 @@ func (cx *ExecutionContext) innermostCall(f storage.Value) int {
 func (cx *ExecutionContext) callArguments(i int) *storage.Object {
 	fr := &cx.frames[i]
 	params := cx.frameRegs(fr)[:min(fr.argc, fr.fp.Nparams)]
-	// The parameters now share their values with the arguments object, so an append to a
-	// parameter can no longer grow its string in place.
+	// The parameters now share their values with the arguments object.
 	for _, v := range params {
-		if v.O != nil && v.O.Kind == storage.KindString && v.O.Flags()&storage.ObjExclusive != 0 {
-			v.O.Share()
-		}
+		v.Seal()
 	}
 	o := cx.NewArgumentsObject(params, cx.extraArgs(fr))
 	cx.Add(o, cx.Key(storage.KeyCallee), storage.Value{O: fr.cl}, storage.FlagsHidden)

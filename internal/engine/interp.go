@@ -492,7 +492,7 @@ func (ag *agent) execFast(stop int, fp *storage.FuncProto, pc int, regs []storag
 			regs[i.A] = regs[i.B]
 			continue
 		case bytecode.OpSeal:
-			if o := regs[i.A].O; o != nil && o.Kind == storage.KindString && o.Flags()&storage.ObjExclusive != 0 {
+			if o := regs[i.A].O; o != nil && (o.Kind == storage.KindString || o.Kind == storage.KindBigInt) && o.Flags()&storage.ObjExclusive != 0 {
 				o.Share()
 			}
 			continue
@@ -1151,7 +1151,7 @@ func (ag *agent) execFast(stop int, fp *storage.FuncProto, pc int, regs []storag
 			}
 		case bytecode.OpMul:
 			if x, y := regs[i.B], regs[i.C]; x.O == storage.NumberObject && y.O == storage.NumberObject {
-				storage.SetNumber(&regs[i.A], x.N*y.N)
+				storage.SetNumber(&regs[i.A], float64(x.N*y.N))
 				if i.FuseNext {
 					goto addLoaded
 				}
@@ -1168,7 +1168,7 @@ func (ag *agent) execFast(stop int, fp *storage.FuncProto, pc int, regs []storag
 			}
 		case bytecode.OpMulAdd:
 			if x, y := regs[i.B], regs[i.C]; x.O == storage.NumberObject && y.O == storage.NumberObject {
-				storage.SetNumber(&regs[i.A], x.N*y.N)
+				storage.SetNumber(&regs[i.A], float64(x.N*y.N))
 				if i.FuseNext {
 					goto addLoaded
 				}
@@ -1259,7 +1259,7 @@ func (ag *agent) execFast(stop int, fp *storage.FuncProto, pc int, regs []storag
 			}
 		case bytecode.OpMulK:
 			if x := regs[i.B]; x.O == storage.NumberObject {
-				storage.SetNumber(&regs[i.A], x.N*fp.Consts[i.C].N)
+				storage.SetNumber(&regs[i.A], float64(x.N*fp.Consts[i.C].N))
 				if i.FuseNext {
 					goto addLoaded
 				}
@@ -2780,7 +2780,10 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 			}
 			ag.frames[len(ag.frames)-1].pc = pc
 			if x.IsBigInt() && y.IsBigInt() {
-				regs[i.A] = ag.active.addBigInts(x, y)
+				regs[i.A] = ag.active.addSubBigInts(x, y, false, i.Accumulate)
+				if i.Accumulate && !fp.HeapRegs {
+					pc = ag.execQuiet(ag.active, fp, pc, regs)
+				}
 				continue
 			}
 			v := ag.active.addValues(x, y)
@@ -2882,21 +2885,15 @@ func (ag *agent) exec(stop int) (result storage.Value, status execStatus) {
 		case bytecode.OpMul, bytecode.OpMulAdd:
 			x, y := regs[i.B], regs[i.C]
 			if x.IsBigInt() && y.IsBigInt() {
-				ag.frames[len(ag.frames)-1].pc = pc
-				if i.Op == bytecode.OpMulAdd {
-					next := &fp.Code[pc]
-					addend := next.C
-					if addend == i.A {
-						addend = next.B
+				if i.Op == bytecode.OpMulAdd && ag.active.tryMulAddBigInts(regs, fp.Code, pc-1) {
+					accumulate := fp.Code[pc].Accumulate
+					pc++
+					if accumulate && !fp.HeapRegs {
+						pc = ag.execQuiet(ag.active, fp, pc, regs)
 					}
-					if z := regs[addend]; z.IsBigInt() {
-						if result, ok := ag.active.mulAddBigInts(x, y, z, pc+1); ok {
-							regs[next.A] = result
-							pc++
-							continue
-						}
-					}
+					continue
 				}
+				ag.frames[len(ag.frames)-1].pc = pc
 				regs[i.A] = ag.active.mulBigInts(x, y)
 				continue
 			}

@@ -239,6 +239,57 @@ func TestAppendSeals(t *testing.T) {
 	}
 }
 
+func TestCompoundBigIntAccumulation(t *testing.T) {
+	const src = `
+		function local(n, x) {
+			var total = 0n;
+			for (var i = 0; i < n; i++) {
+				total += x * x;
+				if (total < 0n) break;
+			}
+			return total;
+		}
+		function captured(n, x) {
+			var total = 0n;
+			function read() { return total; }
+			for (var i = 0; i < n; i++) total += x * x;
+			return read;
+		}
+	`
+	prog, err := parser.ParseScript(wtf8.String(src), parser.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	s, err := compiler.CompileScript(prog, "test.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	f := findFunc(s, "local")
+	var accumulations, seals int
+	for pc, in := range f.Code {
+		if in.Accumulate {
+			accumulations++
+			if pc == 0 || f.Code[pc-1].Op != bytecode.OpMulAdd {
+				t.Errorf("accumulating add at %d has no annotated multiply", pc)
+			}
+		}
+		if in.Op == bytecode.OpSeal {
+			seals++
+			if pc+1 == len(f.Code) || f.Code[pc+1].Op != bytecode.OpReturn || f.Code[pc+1].A != in.A {
+				t.Errorf("seal at %d does not protect the return", pc)
+			}
+		}
+	}
+	if accumulations != 1 || seals != 1 {
+		t.Errorf("got %d accumulating adds and %d seals, want one of each", accumulations, seals)
+	}
+	for pc, in := range findFunc(s, "captured").Code {
+		if in.Accumulate {
+			t.Errorf("add at %d can mutate a captured variable", pc)
+		}
+	}
+}
+
 // TestAppendLengthReads tests that a read of the length of a variable with appends needs no seal
 // of its register.
 func TestAppendLengthReads(t *testing.T) {
@@ -255,8 +306,8 @@ func TestAppendLengthReads(t *testing.T) {
 	if got := countOps(f, bytecode.OpAppendK); got != 1 {
 		t.Errorf("OpAppendK instructions: got %d, want 1", got)
 	}
-	if got := countOps(f, bytecode.OpSeal); got != 0 {
-		t.Errorf("OpSeal instructions: got %d, want 0", got)
+	if got := countAppendSeals(f); got != 0 {
+		t.Errorf("string seals: got %d, want 0", got)
 	}
 }
 
@@ -352,7 +403,7 @@ func TestAppendLoopSeals(t *testing.T) {
 				appends++
 			}
 		}
-		if seals := countOps(f, bytecode.OpSeal); appends != tc.appends || seals != tc.seals {
+		if seals := countAppendSeals(f); appends != tc.appends || seals != tc.seals {
 			var b strings.Builder
 			f.Disassemble(&b)
 			t.Errorf("%s: appends and seals: got %d, %d, want %d, %d\n%s", tc.name, appends, seals, tc.appends, tc.seals, b.String())
@@ -434,4 +485,20 @@ func grows(in bytecode.Instr) bool {
 		return in.C == 0
 	}
 	return false
+}
+
+func countAppendSeals(f *bytecode.Func) int {
+	regs := map[int32]bool{}
+	for _, in := range f.Code {
+		if grows(in) {
+			regs[in.A] = true
+		}
+	}
+	var count int
+	for _, in := range f.Code {
+		if in.Op == bytecode.OpSeal && regs[in.A] {
+			count++
+		}
+	}
+	return count
 }

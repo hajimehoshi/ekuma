@@ -83,6 +83,19 @@ func TestValidate(t *testing.T) {
 			breakFunc: func(f *bytecode.Func) {},
 		},
 		{
+			name: "accumulation with distinct destination",
+			breakFunc: func(f *bytecode.Func) {
+				f.Code[0] = bytecode.Instr{
+					Op:         bytecode.OpAdd,
+					Accumulate: true,
+					A:          0,
+					B:          1,
+					C:          2,
+				}
+			},
+			err: bytecode.ErrValue,
+		},
+		{
 			name: "register",
 			breakFunc: func(f *bytecode.Func) {
 				f.Code[3].A = 4

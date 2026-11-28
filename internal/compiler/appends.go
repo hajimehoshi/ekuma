@@ -5,6 +5,8 @@ package compiler
 
 import (
 	"math"
+	"math/bits"
+	"slices"
 
 	"github.com/hajimehoshi/ekuma/internal/ast"
 	"github.com/hajimehoshi/ekuma/internal/bytecode"
@@ -257,7 +259,8 @@ func (f *fn) settleAppends() {
 	if len(regs) > 64 || f.readsByName() {
 		refused = ^uint64(0)
 	} else {
-		refused = f.hiddenReads(regs) | f.unsealedReads(regs)
+		unsealed, _ := f.exclusiveReads(regs, false)
+		refused = f.hiddenReads(regs) | unsealed
 	}
 	if refused == 0 {
 		return
@@ -293,6 +296,96 @@ func (f *fn) settleAppends() {
 			in.C = 1
 		}
 	}
+}
+
+func (f *fn) canAccumulate(reg int32) bool {
+	// Legacy function.arguments can read parameters even when the function never uses arguments.
+	if len(f.accumRegs) > 64 || int(reg) < f.f.NumParams || f.node == nil || f.eval != nil ||
+		f.anyMutated || f.withsAround() > 0 || !f.inLoop() {
+		return false
+	}
+	if !slices.Contains(f.accumRegs, reg) {
+		f.accumRegs = append(f.accumRegs, reg)
+	}
+	return true
+}
+
+// settleAccums disallows ownership of registers with hidden readers and seals values before
+// explicit escapes. Registers may be reused by bindings with disjoint scopes.
+func (f *fn) settleAccums() {
+	regs := f.accumRegs
+	if len(regs) == 0 {
+		return
+	}
+	var refused uint64
+	var seals []uint64
+	allRefused := len(regs) > 64 || f.readsByName()
+	if !allRefused {
+		refused, seals = f.exclusiveReads(regs, true)
+		refused |= f.hiddenReads(regs)
+	}
+	if allRefused || refused != 0 {
+		for pc := range f.f.Code {
+			in := &f.f.Code[pc]
+			if in.Accumulate && (allRefused || refused&(1<<slices.Index(regs, in.A)) != 0) {
+				in.Accumulate = false
+			}
+		}
+	}
+	f.insertAccumSeals(regs, seals, refused)
+}
+
+func (f *fn) insertAccumSeals(regs []int32, seals []uint64, refused uint64) {
+	var count int
+	for _, mask := range seals {
+		count += bits.OnesCount64(mask &^ refused)
+	}
+	if count == 0 {
+		return
+	}
+	b := f.f
+	code := make([]bytecode.Instr, 0, len(b.Code)+count)
+	// A jump to an instruction must run any seals immediately before it.
+	newPCs := make([]int32, len(b.Code)+1)
+	for pc, in := range b.Code {
+		newPCs[pc] = int32(len(code))
+		for mask := seals[pc] &^ refused; mask != 0; mask &= mask - 1 {
+			code = append(code, bytecode.Instr{
+				Op: bytecode.OpSeal,
+				A:  regs[bits.TrailingZeros64(mask)],
+			})
+		}
+		code = append(code, in)
+	}
+	newPCs[len(b.Code)] = int32(len(code))
+	for pc := range code {
+		in := &code[pc]
+		mask := opFlows[in.Op].targets
+		for ; mask != 0; mask &= mask - 1 {
+			switch flowFields[bits.TrailingZeros8(mask)] {
+			case bytecode.FieldA:
+				in.A = newPCs[in.A]
+			case bytecode.FieldB:
+				in.B = newPCs[in.B]
+			case bytecode.FieldC:
+				in.C = newPCs[in.C]
+			case bytecode.FieldXA:
+				x := &code[pc+1]
+				x.A = newPCs[x.A]
+			case bytecode.FieldXB:
+				x := &code[pc+1]
+				x.B = newPCs[x.B]
+			}
+		}
+	}
+	for i := range b.Handlers {
+		h := &b.Handlers[i]
+		h.Start, h.End, h.Target = newPCs[h.Start], newPCs[h.End], newPCs[h.Target]
+	}
+	for i := range b.Positions {
+		b.Positions[i].PC = newPCs[b.Positions[i].PC]
+	}
+	b.Code = code
 }
 
 // readsByName reports whether the code of f can reach its variables by name, through a direct
@@ -345,15 +438,18 @@ func (f *fn) hiddenReads(regs []int32) uint64 {
 	return refused
 }
 
-// unsealedReads returns the indices in regs of registers that unsafe reads may see holding
-// an exclusive string.
-func (f *fn) unsealedReads(regs []int32) uint64 {
+// exclusiveReads tracks registers that may own an exclusive value. A string must already
+// have a seal at an escaping read. For a BigInt, record where to insert a seal, or refuse
+// ownership when an instruction must stay adjacent to its predecessor.
+func (f *fn) exclusiveReads(regs []int32, bigint bool) (refused uint64, seals []uint64) {
 	code := f.f.Code
 	handlers := f.f.Handlers
-	// in holds, by instruction, the set of the registers that may hold such a string before it.
+	// in holds, by instruction, the set of the registers that may own a value before it.
 	in := make([]uint64, len(code))
 	seen := make([]bool, len(code))
-	var refused uint64
+	if bigint {
+		seals = make([]uint64, len(code))
+	}
 	stack := []int32{0}
 	seen[0] = true
 	flow := func(pc int, state uint64) {
@@ -378,6 +474,9 @@ func (f *fn) unsealedReads(regs []int32) uint64 {
 		fl := &opFlows[inst.Op]
 		grows := inst.Op == bytecode.OpAppend || inst.Op == bytecode.OpAppendK ||
 			inst.Op == bytecode.OpPrepend || inst.Op == bytecode.OpPrependK && inst.C == 0
+		if bigint {
+			grows = inst.Accumulate
+		}
 		before := in[pc]
 		after := before
 		for k, r := range regs {
@@ -387,16 +486,19 @@ func (f *fn) unsealedReads(regs []int32) uint64 {
 				after &^= bit
 				continue
 			case grows && inst.A == r:
-				if before&bit != 0 && (inst.Op == bytecode.OpAppend || inst.Op == bytecode.OpPrepend) && inst.B == r {
+				if !bigint && before&bit != 0 && (inst.Op == bytecode.OpAppend || inst.Op == bytecode.OpPrepend) && inst.B == r {
 					refused |= bit
 				}
 				after |= bit
 				continue
 			}
-			// An OpGetLength of a string keeps no reference to it, and an OpCloseUpvals reads
-			// only the registers that upvalues refer to, which hiddenReads refuses.
-			if before&bit != 0 && (inst.Op != bytecode.OpGetLength && inst.Op != bytecode.OpCloseUpvals && bytecode.MayRead(code, pc, int(r)) || inst.Op == bytecode.OpRestArgs && int(r) < f.f.NumParams) {
-				refused |= bit
+			if before&bit != 0 && f.escapesExclusive(pc, r, bigint) {
+				if bigint && canInsertSeal(code, pc) {
+					seals[pc] |= bit
+					after &^= bit
+				} else {
+					refused |= bit
+				}
 			}
 			if definitelyWrites(code, pc, fl, r) {
 				after &^= bit
@@ -423,7 +525,52 @@ func (f *fn) unsealedReads(regs []int32) uint64 {
 			}
 		}
 	}
-	return refused
+	return refused, seals
+}
+
+func (f *fn) escapesExclusive(pc int, reg int32, bigint bool) bool {
+	code := f.f.Code
+	op := code[pc].Op
+	switch {
+	case op == bytecode.OpCloseUpvals:
+		// hiddenReads already refuses any register an upvalue refers to.
+		return false
+	case op == bytecode.OpRestArgs:
+		return int(reg) < f.f.NumParams
+	case !bigint && op == bytecode.OpGetLength:
+		return false
+	case bigint && readsBigIntWithoutEscape(op):
+		return false
+	}
+	return bytecode.MayRead(code, pc, int(reg))
+}
+
+func readsBigIntWithoutEscape(op bytecode.Opcode) bool {
+	// Addition and subtraction can return a zero operand's counterpart. The engine
+	// seals it when the destination does not own that reference.
+	switch {
+	case op >= bytecode.OpAdd && op <= bytecode.OpUShrK,
+		op >= bytecode.OpLt && op <= bytecode.OpStrictNe,
+		op >= bytecode.OpJumpIf && op <= bytecode.OpLoopNotNullish:
+		return true
+	}
+	switch op {
+	case bytecode.OpMulAdd, bytecode.OpNeg, bytecode.OpNot, bytecode.OpBitNot, bytecode.OpTypeof,
+		bytecode.OpToString, bytecode.OpInc, bytecode.OpDec, bytecode.OpCheckTDZ:
+		return true
+	}
+	return false
+}
+
+func canInsertSeal(code []bytecode.Instr, pc int) bool {
+	if pc == 0 {
+		return true
+	}
+	prev := code[pc-1].Op
+	if opFlows[prev].flow == bytecode.FlowNextOrSkip || prev == bytecode.OpCopyPropToGlobal {
+		return false
+	}
+	return pc < 2 || prev != bytecode.OpExtra || code[pc-2].Op != bytecode.OpIterNextPair
 }
 
 // definitelyWrites reports whether the instruction at pc of code, whose flow is fl, writes the

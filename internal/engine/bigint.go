@@ -10,6 +10,7 @@ import (
 	"slices"
 	"strconv"
 
+	"github.com/hajimehoshi/ekuma/internal/bytecode"
 	"github.com/hajimehoshi/ekuma/internal/numconv"
 	"github.com/hajimehoshi/ekuma/internal/storage"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
@@ -129,33 +130,44 @@ func significantWords(words []big.Word) int {
 
 // makeBigInt publishes a result with a normalized magnitude of up to bigIntInlineWords+1 words.
 func (cx *ExecutionContext) makeBigInt(words []big.Word, negative bool) storage.Value {
+	return cx.makeBigIntInto(words, negative, storage.Value{})
+}
+
+func (cx *ExecutionContext) makeBigIntInto(words []big.Word, negative bool, accumulator storage.Value) storage.Value {
 	if int64(len(words))*bits.UintSize > cx.MaxBigIntResultBits {
 		cx.checkBigIntBits(wordBitLen(words))
+	}
+	if accumulator.O != nil {
+		return accumulator.AccumulateBigInt(words, negative)
 	}
 	return storage.NewBigIntFromWords(words, negative)
 }
 
 func (cx *ExecutionContext) addBigInts(a, b storage.Value) storage.Value {
-	return cx.addSubBigInts(a, b, false)
+	return cx.addSubBigInts(a, b, false, false)
 }
 
 func (cx *ExecutionContext) subBigInts(a, b storage.Value) storage.Value {
 	if cx.InterruptFlag.Load() {
 		cx.Poll()
 	}
-	return cx.addSubBigInts(a, b, true)
+	return cx.addSubBigInts(a, b, true, false)
 }
 
-func (cx *ExecutionContext) addSubBigInts(a, b storage.Value, subtract bool) storage.Value {
+func (cx *ExecutionContext) addSubBigInts(a, b storage.Value, subtract, accumulate bool) storage.Value {
 	var xBuf, yBuf [64 / bits.UintSize]big.Word
 	x, xNegative := bigIntMagnitude(a, &xBuf)
 	y, yNegative := bigIntMagnitude(b, &yBuf)
 	if len(y) == 0 {
 		cx.checkBigIntBits(wordBitLen(x))
+		if !accumulate {
+			a.Seal()
+		}
 		return a
 	}
 	if len(x) == 0 && !subtract {
 		cx.checkBigIntBits(wordBitLen(y))
+		b.Seal()
 		return b
 	}
 	if max(len(x), len(y)) > bigIntInlineWords {
@@ -174,7 +186,11 @@ func (cx *ExecutionContext) addSubBigInts(a, b storage.Value, subtract bool) sto
 
 	var result [bigIntInlineWords + 1]big.Word
 	n, negative := addSignedWords(result[:], x, y, xNegative, yNegative != subtract)
-	return cx.makeBigInt(result[:n], negative)
+	var accumulator storage.Value
+	if accumulate {
+		accumulator = a
+	}
+	return cx.makeBigIntInto(result[:n], negative, accumulator)
 }
 
 func addSignedWords(dst, x, y []big.Word, xNegative, yNegative bool) (int, bool) {
@@ -216,18 +232,47 @@ func (cx *ExecutionContext) mulBigInts(a, b storage.Value) storage.Value {
 	return cx.makeBigInt(result[:n], xNegative != yNegative)
 }
 
+// tryMulAddBigInts executes a multiply-add pair when all operands are BigInts and the
+// operations fit in bounded scratch storage.
+func (cx *ExecutionContext) tryMulAddBigInts(regs []storage.Value, code []bytecode.Instr, pc int) bool {
+	mul, add := &code[pc], &code[pc+1]
+	addend := add.C
+	if addend == mul.A {
+		addend = add.B
+	}
+	x, y, z := regs[mul.B], regs[mul.C], regs[addend]
+	if !x.IsBigInt() || !y.IsBigInt() || !z.IsBigInt() || add.Accumulate && add.A != addend {
+		return false
+	}
+	cx.frames[len(cx.frames)-1].pc = pc + 1
+	result, ok := cx.mulAddBigInts(x, y, z, pc+2, add.Accumulate)
+	if ok {
+		regs[add.A] = result
+	}
+	return ok
+}
+
 // mulAddBigInts computes a*b+c when both operations fit in bounded scratch storage.
 // The caller has set the frame's PC for the multiplication.
-func (cx *ExecutionContext) mulAddBigInts(a, b, c storage.Value, addPC int) (storage.Value, bool) {
+func (cx *ExecutionContext) mulAddBigInts(a, b, c storage.Value, addPC int, accumulate bool) (storage.Value, bool) {
 	var xBuf, yBuf, zBuf [64 / bits.UintSize]big.Word
 	x, xNegative := bigIntMagnitude(a, &xBuf)
 	y, yNegative := bigIntMagnitude(b, &yBuf)
 	z, zNegative := bigIntMagnitude(c, &zBuf)
-	if len(x) == 0 || len(y) == 0 || len(z) == 0 || len(x)+len(y) > bigIntInlineWords || len(z) > bigIntInlineWords {
+	hasProduct := len(x) != 0 && len(y) != 0
+	if hasProduct && (len(x)+len(y) > bigIntInlineWords || len(z) > bigIntInlineWords) {
 		return storage.Value{}, false
 	}
 	if cx.InterruptFlag.Load() {
 		cx.Poll()
+	}
+	if !hasProduct {
+		cx.frames[len(cx.frames)-1].pc = addPC
+		cx.checkBigIntBits(wordBitLen(z))
+		if !accumulate {
+			c.Seal()
+		}
+		return c, true
 	}
 	var product [bigIntInlineWords]big.Word
 	n := mulWords(product[:], x, y)
@@ -237,7 +282,11 @@ func (cx *ExecutionContext) mulAddBigInts(a, b, c storage.Value, addPC int) (sto
 	cx.frames[len(cx.frames)-1].pc = addPC
 	var sum [bigIntInlineWords + 1]big.Word
 	n, negative := addSignedWords(sum[:], product[:n], z, xNegative != yNegative, zNegative)
-	return cx.makeBigInt(sum[:n], negative), true
+	var accumulator storage.Value
+	if accumulate {
+		accumulator = c
+	}
+	return cx.makeBigIntInto(sum[:n], negative, accumulator), true
 }
 
 // BigIntToString implements BigInt::toString. It throws a RangeError when the result would be

@@ -37,9 +37,7 @@ func (ag *agent) execQuiet(cx *ExecutionContext, fp *storage.FuncProto, pc int, 
 		case bytecode.OpMove:
 			regs[i.A] = regs[i.B]
 		case bytecode.OpSeal:
-			if o := regs[i.A].O; o != nil && o.Kind == storage.KindString && o.Flags()&storage.ObjExclusive != 0 {
-				o.Share()
-			}
+			regs[i.A].Seal()
 		case bytecode.OpNewObject:
 			regs[i.A] = storage.Value{O: cx.NewEmptyObjectWithRoom(int(i.C))}
 		case bytecode.OpGetGlobal, bytecode.OpGetGlobalStrict, bytecode.OpGetGlobalOrUndef, bytecode.OpGetGlobalOrUndefStrict:
@@ -167,6 +165,11 @@ func (ag *agent) execQuiet(cx *ExecutionContext, fp *storage.FuncProto, pc int, 
 				storage.SetNumber(&regs[i.A], x.N+y.N)
 				continue
 			}
+			if x.IsBigInt() && y.IsBigInt() {
+				ag.frames[len(ag.frames)-1].pc = pc
+				regs[i.A] = cx.addSubBigInts(x, y, false, i.Accumulate)
+				continue
+			}
 			if result, ok := cx.concatPrimitive(x, y, pc); ok {
 				regs[i.A] = result
 				continue
@@ -184,8 +187,17 @@ func (ag *agent) execQuiet(cx *ExecutionContext, fp *storage.FuncProto, pc int, 
 				continue
 			}
 			goto retry
+		case bytecode.OpMulAdd:
+			if regs[i.B].IsBigInt() {
+				if !cx.tryMulAddBigInts(regs, fp.Code, pc-1) {
+					goto retry
+				}
+				pc++
+				continue
+			}
+			fallthrough
 		case bytecode.OpAddK, bytecode.OpSubK, bytecode.OpMulK, bytecode.OpDivK, bytecode.OpModK,
-			bytecode.OpSub, bytecode.OpMul, bytecode.OpMulAdd, bytecode.OpDiv, bytecode.OpMod:
+			bytecode.OpSub, bytecode.OpMul, bytecode.OpDiv, bytecode.OpMod:
 			x := regs[i.B]
 			if x.O != storage.NumberObject {
 				goto retry
@@ -208,7 +220,7 @@ func (ag *agent) execQuiet(cx *ExecutionContext, fp *storage.FuncProto, pc int, 
 			case bytecode.OpSub, bytecode.OpSubK:
 				result = x.N - y
 			case bytecode.OpMul, bytecode.OpMulAdd, bytecode.OpMulK:
-				result = x.N * y
+				result = float64(x.N * y)
 			case bytecode.OpDiv, bytecode.OpDivK:
 				result = x.N / y
 			default:

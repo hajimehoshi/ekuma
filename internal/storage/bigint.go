@@ -26,11 +26,15 @@ const (
 
 func (o *bigIntObject) init(words []big.Word, negative bool) Value {
 	o.Kind = KindBigInt
-	o.integer.SetBits(words)
-	if negative {
-		o.integer.Neg(&o.integer)
-	}
+	setBigIntWords(&o.integer, words, negative)
 	return Value{O: o.plainObject.Init()}
+}
+
+func setBigIntWords(i *big.Int, words []big.Word, negative bool) {
+	i.SetBits(words)
+	if negative {
+		i.Neg(i)
+	}
 }
 
 func (o *Object) heapBigInt() *big.Int {
@@ -73,11 +77,10 @@ func NewBigInt(i *big.Int) Value {
 // BigIntInlineWords is the word count up to which arithmetic uses a bounded scratch buffer.
 const BigIntInlineWords = 512 / bits.UintSize
 
-// NewBigIntFromWords copies a normalized magnitude of up to [BigIntInlineWords]+1 words.
-func NewBigIntFromWords(words []big.Word, negative bool) Value {
+func bigIntFromWords64(words []big.Word, negative bool) (Value, bool) {
 	n := len(words)
 	if n == 0 {
-		return BigIntFromInt64(0)
+		return BigIntFromInt64(0), true
 	}
 	if n <= 64/bits.UintSize {
 		magnitude := uint64(words[0])
@@ -85,12 +88,21 @@ func NewBigIntFromWords(words []big.Word, negative bool) Value {
 			magnitude |= uint64(words[1]) << 32
 		}
 		if negative && magnitude <= 1<<63 {
-			return BigIntFromInt64(int64(-magnitude))
+			return BigIntFromInt64(int64(-magnitude)), true
 		}
 		if !negative && magnitude <= math.MaxInt64 {
-			return BigIntFromInt64(int64(magnitude))
+			return BigIntFromInt64(int64(magnitude)), true
 		}
 	}
+	return Value{}, false
+}
+
+// NewBigIntFromWords copies a normalized magnitude of up to [BigIntInlineWords]+1 words.
+func NewBigIntFromWords(words []big.Word, negative bool) Value {
+	if v, ok := bigIntFromWords64(words, negative); ok {
+		return v
+	}
+	n := len(words)
 	var o *bigIntObject
 	var magnitude []big.Word
 	switch {
@@ -115,6 +127,30 @@ func NewBigIntFromWords(words []big.Word, negative bool) Value {
 	}
 	copy(magnitude, words)
 	return o.init(magnitude, negative)
+}
+
+// AccumulateBigInt returns the BigInt with the given sign and normalized magnitude of up to
+// [BigIntInlineWords]+1 words, reusing v if its caller owns it exclusively.
+func (v Value) AccumulateBigInt(words []big.Word, negative bool) Value {
+	if result, ok := bigIntFromWords64(words, negative); ok {
+		return result
+	}
+	if v.O.flags&ObjExclusive != 0 {
+		i := v.O.heapBigInt()
+		// Exclusive BigInts retain the capacity of their own backing array across updates.
+		magnitude := i.Bits()[:len(words)]
+		copy(magnitude, words)
+		setBigIntWords(i, magnitude, negative)
+		return v
+	}
+	result := &struct {
+		bigIntObject
+		words [BigIntInlineWords + 1]big.Word
+	}{}
+	magnitude := result.words[:len(words)]
+	copy(magnitude, words)
+	result.flags = ObjExclusive
+	return result.init(magnitude, negative)
 }
 
 // Add64 returns x + y, and reports whether it does not overflow.

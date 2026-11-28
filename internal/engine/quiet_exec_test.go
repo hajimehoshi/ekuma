@@ -6,8 +6,41 @@ package engine_test
 import (
 	"testing"
 
+	"github.com/hajimehoshi/ekuma/internal/engine"
 	"github.com/hajimehoshi/ekuma/internal/storage"
 )
+
+func TestQuietBigIntAccumulation(t *testing.T) {
+	if !engine.ValidateExec {
+		t.Skip("requires instruction tracing")
+	}
+	cx := newTestContext(t)
+	f, err := runScript(cx, "quiet-bigint.js", `
+		function accumulate(initial) {
+			let term = initial, sum = 1n << 64n;
+			for (let i = 0; i < 8; i++) {
+				sum += term * term;
+				term += 1n;
+			}
+			return sum;
+		}
+		accumulate;
+	`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var count int
+	engine.TraceQuietMultiplications(f, &count)
+	if _, err := runScript(cx, "quiet-bigint-calls.js", `
+		accumulate(1n << 27n);
+		accumulate(1n << 123n);
+	`); err != nil {
+		t.Fatal(err)
+	}
+	if got, want := count, 14; got != want {
+		t.Errorf("annotated multiplies in execQuiet: got %d, want %d", got, want)
+	}
+}
 
 func TestQuietNumericConcatenation(t *testing.T) {
 	cx := newTestContext(t)

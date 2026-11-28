@@ -329,6 +329,7 @@ type fn struct {
 	// the bindings.
 	appendRegs     []int32
 	appendBindings []*binding
+	accumRegs      []int32
 
 	// loopSeals holds the bindings that loops being compiled set loopSealed of.
 	loopSeals []*binding
@@ -754,6 +755,7 @@ func (f *fn) finish() *bytecode.Func {
 	if f.firstEmptyObject != 0 {
 		f.presizeNewObjects()
 	}
+	f.settleAccums()
 
 	b.MarkFusions()
 
@@ -806,6 +808,7 @@ func (f *fn) finish() *bytecode.Func {
 		upvals:     f.upvals[:0],
 		upvalSaves: f.upvalSaves[:0],
 		copyCands:  f.copyCands[:0],
+		accumRegs:  f.accumRegs[:0],
 		control:    f.control[:0],
 		mapsPeak:   max(f.mapsPeak, n),
 	}

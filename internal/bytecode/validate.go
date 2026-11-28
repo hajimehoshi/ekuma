@@ -399,6 +399,9 @@ func (v *validator) regs(pc int, in, x Instr, ops *Operands, r Regs) error {
 // special validates what is particular to the instruction in at pc.
 func (v *validator) special(pc int, in Instr) error {
 	code := v.f.Code
+	if in.Accumulate && (in.Op != OpAdd || in.A != in.B) {
+		return v.errorf(pc, ErrValue, "accumulation requires an OpAdd with a == b")
+	}
 	switch in.Op {
 	case OpGetArgsIndex, OpGetArgsIndexInt:
 		if v.f.IsGenerator || v.f.IsAsync {

@@ -448,17 +448,24 @@ func (f *fn) binary(n *ast.BinaryExpr, dst int32) {
 		// OpIn takes the object before the key.
 		l, r = r, l
 	}
-	if n.Op == ast.OpAdd && l != r && len(f.f.Code) != 0 {
-		// Only an operand allocated by this expression can be dead after the add.
-		if p := &f.f.Code[len(f.f.Code)-1]; p.Op == bytecode.OpMul && p.A >= mark && (p.A == l || p.A == r) {
-			p.Op = bytecode.OpMulAdd
-		}
+	if n.Op == ast.OpAdd {
+		f.markMulAdd(mark, l, r)
 	}
 	f.emit(binaryOps[n.Op], dst, l, r)
 	if n.Op == ast.OpInstanceof {
 		f.emit(bytecode.OpExtra, f.site("prototype"), 0, 0)
 	}
 	f.free(mark)
+}
+
+func (f *fn) markMulAdd(mark, left, right int32) {
+	if left == right || len(f.f.Code) == 0 {
+		return
+	}
+	// Only an operand allocated by this expression can be dead after the add.
+	if p := &f.f.Code[len(f.f.Code)-1]; p.Op == bytecode.OpMul && p.A >= mark && (p.A == left || p.A == right) {
+		p.Op = bytecode.OpMulAdd
+	}
 }
 
 // stringChain compiles a chain of at least two additions whose leftmost operand is a string
@@ -2267,7 +2274,13 @@ func (f *fn) assign(n *ast.AssignExpr, dst int32) {
 					}
 				}
 				r := f.immediateOperand(n.Value)
-				f.emit(compoundOp(n.Op), local, local, r)
+				if n.Op == ast.OpAdd {
+					f.markMulAdd(mark, local, r)
+				}
+				pc := f.emit(compoundOp(n.Op), local, local, r)
+				if n.Op == ast.OpAdd && !stringValued(n.Value) && f.canAccumulate(local) {
+					f.f.Code[pc].Accumulate = true
+				}
 				if dst >= 0 && dst != local {
 					f.emit(bytecode.OpMove, dst, local, 0)
 				}

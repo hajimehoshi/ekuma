@@ -90,9 +90,16 @@ func (o *Object) MarkExclusive() {
 	o.flags |= ObjExclusive
 }
 
-// Share clears [ObjExclusive] of the string o.
+// Share clears [ObjExclusive] of o, which must be a string or BigInt.
 func (o *Object) Share() {
 	o.flags &^= ObjExclusive
+}
+
+// Seal makes an exclusive string or BigInt safe to share.
+func (v Value) Seal() {
+	if o := v.O; o != nil && (o.Kind == KindString || o.Kind == KindBigInt) && o.flags&ObjExclusive != 0 {
+		o.Share()
+	}
 }
 
 // ExtendExclusive makes the string o, which is marked [ObjExclusive] and was the tail of sb, hold

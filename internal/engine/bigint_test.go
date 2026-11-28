@@ -220,3 +220,136 @@ func TestBigIntMultiplyAddInterrupt(t *testing.T) {
 		t.Errorf("got %v, want %v", err, cause)
 	}
 }
+
+func TestBigIntAccumulationEscapes(t *testing.T) {
+	cx := newTestContext(t)
+	v, err := runScript(cx, "accumulation", `
+		function snapshots(wide) {
+			let sum = wide;
+			const values = [];
+			for (let i = 0; i < 1; i++) {
+				sum += 1n;
+				values[i] = sum;
+				sum += 1n;
+				const left = sum + 0n;
+				sum += 1n;
+				const right = 0n + sum;
+				sum += 1n;
+				const product = wide * 0n + sum;
+				sum += 1n;
+				values.push(left, right, product);
+			}
+			values.push(sum);
+			return values;
+		}
+		const wide = 1n << 80n;
+		snapshots(wide).map(x => x - wide).join();
+	`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := string(cx.ToString(v)), "1,2,3,4,5"; got != want {
+		t.Errorf("snapshots: got %s, want %s", got, want)
+	}
+}
+
+func TestBigIntAccumulationEvaluationOrder(t *testing.T) {
+	cx := newTestContext(t)
+	v, err := runScript(cx, "accumulation order", `
+		let order = "";
+		const lhs = { valueOf() { order += "s"; return 10n; } };
+		const left = { valueOf() { order += "l"; return 2n; } };
+		const right = { valueOf() { order += "r"; return 3n; } };
+		function accumulate(lhs, left, right, replace) {
+			let sum = lhs;
+			for (let i = 0; i < 1; i++) {
+				if (replace) sum += (sum = 100n, left) * right;
+				else sum += left * right;
+			}
+			return sum;
+		}
+		[accumulate(lhs, left, right, true), accumulate(lhs, left, right, false), order].join();
+	`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := string(cx.ToString(v)), "16,16,lrslrs"; got != want {
+		t.Errorf("results and coercions: got %s, want %s", got, want)
+	}
+}
+
+func TestBigIntAccumulationLimits(t *testing.T) {
+	cx := engine.NewExecutionContextWithBigIntResultLimit(128)
+	builtin.Install(cx)
+	v, err := runScript(cx, "accumulation limits", `
+		function cancel(max, half) {
+			let sum = -max + 1n;
+			for (let i = 0; i < 1; i++) {
+				sum += -1n;
+				try {
+					sum += max * 2n;
+					return "expected product overflow";
+				} catch (e) {
+					if (!(e instanceof RangeError) || sum !== -max) return "product overflow";
+				}
+				try {
+					sum += -half * half;
+					return "expected sum overflow";
+				} catch (e) {
+					if (!(e instanceof RangeError) || sum !== -max) return "sum overflow";
+				}
+				sum += max - half;
+			}
+			return sum;
+		}
+		cancel(BigInt.asUintN(128, -1n), 1n << 63n);
+	`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, ok := v.BigInt64(); !ok || got != -1<<63 {
+		t.Errorf("got %s, want an inline -9223372036854775808n", cx.ToString(v))
+	}
+}
+
+func TestBigIntAccumulationCarry(t *testing.T) {
+	cx := newTestContext(t)
+	v, err := runScript(cx, "accumulation carry", `
+		function accumulate(boundary) {
+			let sum = boundary - 2n;
+			for (let i = 0; i < 1; i++) {
+				sum += 1n;
+				sum += 1n;
+				sum += boundary * 2n;
+			}
+			return sum;
+		}
+		const boundary = 1n << 512n;
+		accumulate(boundary) === boundary * 3n;
+	`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !storage.ToBoolean(v) {
+		t.Error("accumulation lost a carry at the scratch storage boundary")
+	}
+}
+
+func TestNumberMultiplyAddRoundsProduct(t *testing.T) {
+	cx := newTestContext(t)
+	v, err := runScript(cx, "multiply-add rounding", `
+		function accumulate(x, y) {
+			let sum = -1;
+			for (let i = 0; i < 1; i++) sum += x * y;
+			return sum;
+		}
+		const delta = 2 ** -27;
+		Object.is(accumulate(1 + delta, 1 - delta), 0);
+	`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !storage.ToBoolean(v) {
+		t.Error("multiply followed by add did not round the product to 1")
+	}
+}

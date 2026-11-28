@@ -169,7 +169,7 @@ const (
 	OpToString        // a = b converted to a string
 	OpConcat          // a = the concatenation of the c strings from b on
 	OpAppend          // a = a + b. The next OpAppend to a may extend the string that it leaves there in place, so any other read of a must follow an [OpSeal] of a
-	OpSeal            // share the string in a before another register or object takes a reference to it
+	OpSeal            // share the string or BigInt in a before another register or object takes a reference to it
 	OpAppendK         // like [OpAppend] with the string Consts[b] in place of the register b
 	OpConcatK         // a = b + Consts[c], where Consts[c] is a string
 
@@ -464,7 +464,10 @@ type Instr struct {
 
 	// FuseNext allows the interpreter to consume the next instruction as part of this one.
 	FuseNext bool
-	A, B, C  int32
+
+	// Accumulate allows an OpAdd with a == b to grow a BigInt owned by a in place.
+	Accumulate bool
+	A, B, C    int32
 }
 
 // Handler is a region of code whose exceptions are caught.

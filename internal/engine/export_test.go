@@ -5,7 +5,9 @@ package engine
 
 import (
 	"reflect"
+	"runtime"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/hajimehoshi/ekuma/internal/bytecode"
@@ -143,6 +145,28 @@ func TraceShortcut(t *testing.T, f storage.Value, op bytecode.Opcode, bypass boo
 
 // ValidateExec reports whether the interpreter checks the code that it runs.
 const ValidateExec = validateExec
+
+// TraceQuietMultiplications counts annotated multiplies of f dispatched by execQuiet.
+func TraceQuietMultiplications(f storage.Value, count *int) {
+	fp := f.O.Fn.Code
+	executionContextOf(fp.Realm).checks.observeSteps(func(current *storage.FuncProto, pc int) {
+		if current != fp || fp.Code[pc].Op != bytecode.OpMulAdd {
+			return
+		}
+		var callers [8]uintptr
+		frames := runtime.CallersFrames(callers[:runtime.Callers(1, callers[:])])
+		for {
+			frame, more := frames.Next()
+			if strings.HasSuffix(frame.Function, ".(*agent).execQuiet") {
+				*count += 1
+				return
+			}
+			if !more {
+				return
+			}
+		}
+	})
+}
 
 // Registers is the registers of a running frame, loaded when it was created or last reloaded.
 type Registers struct {

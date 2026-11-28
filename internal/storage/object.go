@@ -44,8 +44,8 @@ const (
 // contents themselves needs [Object.Str].
 const ObjReversed = ObjFrozenLength
 
-// ObjExclusive marks a builder tail or head owned by a variable's register and eligible for
-// in-place growth. Its bit is that of ObjSparse, which only objects use.
+// ObjExclusive marks a string or BigInt owned by a variable's register and eligible for
+// in-place updates. Its bit is that of ObjSparse, which only objects use.
 const ObjExclusive = ObjSparse
 
 // objKept marks an interned string that the agent keeps alive for as long as it lives. Its bit is
