@@ -102,31 +102,35 @@ func NewBigIntFromWords(words []big.Word, negative bool) Value {
 	if v, ok := bigIntFromWords64(words, negative); ok {
 		return v
 	}
-	n := len(words)
-	var o *bigIntObject
-	var magnitude []big.Word
+	o, magnitude := newBigIntObject(len(words))
+	magnitude = slices.Clip(magnitude)
+	copy(magnitude, words)
+	return o.init(magnitude, negative)
+}
+
+// newBigIntObject allocates a BigInt object with room for a magnitude of n words, at most
+// [BigIntInlineWords]+1, and returns a magnitude of n words in that room.
+func newBigIntObject(n int) (*bigIntObject, []big.Word) {
 	switch {
 	case n <= 192/bits.UintSize:
 		result := &struct {
 			bigIntObject
 			words [192 / bits.UintSize]big.Word
 		}{}
-		o, magnitude = &result.bigIntObject, result.words[:n:n]
+		return &result.bigIntObject, result.words[:n]
 	case n <= 320/bits.UintSize:
 		result := &struct {
 			bigIntObject
 			words [320 / bits.UintSize]big.Word
 		}{}
-		o, magnitude = &result.bigIntObject, result.words[:n:n]
+		return &result.bigIntObject, result.words[:n]
 	default:
 		result := &struct {
 			bigIntObject
 			words [BigIntInlineWords + 1]big.Word
 		}{}
-		o, magnitude = &result.bigIntObject, result.words[:n:n]
+		return &result.bigIntObject, result.words[:n]
 	}
-	copy(magnitude, words)
-	return o.init(magnitude, negative)
 }
 
 // AccumulateBigInt returns the BigInt with the given sign and normalized magnitude of up to
@@ -138,19 +142,17 @@ func (v Value) AccumulateBigInt(words []big.Word, negative bool) Value {
 	if v.O.flags&ObjExclusive != 0 {
 		i := v.O.heapBigInt()
 		// Exclusive BigInts retain the capacity of their own backing array across updates.
-		magnitude := i.Bits()[:len(words)]
-		copy(magnitude, words)
-		setBigIntWords(i, magnitude, negative)
-		return v
+		if room := i.Bits(); cap(room) >= len(words) {
+			magnitude := room[:len(words)]
+			copy(magnitude, words)
+			setBigIntWords(i, magnitude, negative)
+			return v
+		}
 	}
-	result := &struct {
-		bigIntObject
-		words [BigIntInlineWords + 1]big.Word
-	}{}
-	magnitude := result.words[:len(words)]
+	o, magnitude := newBigIntObject(len(words))
 	copy(magnitude, words)
-	result.flags = ObjExclusive
-	return result.init(magnitude, negative)
+	o.flags = ObjExclusive
+	return o.init(magnitude, negative)
 }
 
 // Add64 returns x + y, and reports whether it does not overflow.
